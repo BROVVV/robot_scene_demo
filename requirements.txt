@@ -1,0 +1,9 @@
+python-dotenv
+openai
+pydantic
+networkx
+pandas
+matplotlib
+Pillow
+socksio
+streamlit
