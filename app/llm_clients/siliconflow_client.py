@@ -125,7 +125,8 @@ def _load_resized_image_bytes(path: Path, max_side: int) -> tuple[bytes, str]:
 
 _FAST_SYSTEM_PROMPT = """你是机器狗快速视觉识别模块。只输出紧凑 JSON，不要 Markdown。
 优先识别目标相关物体、障碍物、人物、桌椅、显示器、主机、箱子、鞋、篮子、线缆等导航相关物体。
-输出 6 到 10 个关键物体，不要重复同一个物体。"""
+输出 6 到 10 个关键物体，不要重复同一个物体。
+可以输出结构化任务和候选位置线索，但不要输出长篇自由文本推理；本地知识库、假设评分和任务规划模块会负责最终推理。"""
 
 
 def _build_fast_user_prompt(
@@ -170,6 +171,18 @@ def _build_fast_user_prompt(
     "steps": [
       {{"action": "move_forward", "distance_m": 1.0, "turn_angle_deg": null, "description_zh": "向前走 1 米"}}
     ]
+  }},
+  "task_understanding": {{
+    "task_type": "find_object",
+    "entities": ["phone"],
+    "constraints": ["on desk"],
+    "uncertainty": "中文不确定性说明"
+  }},
+  "scene_reasoning_hints": {{
+    "scene_type": "office",
+    "candidate_locations": ["desk surface", "beside keyboard"],
+    "supporting_evidence": ["visible desk", "visible keyboard"],
+    "recommended_next_observation": "靠近桌面右侧重新观察"
   }}
 }}
 
@@ -177,6 +190,7 @@ def _build_fast_user_prompt(
 - relation_type 只能用 left_of/right_of/in_front_of/behind/on/under/above/below/in/near/far/contains/occluding。
 - action 只能用 move_forward/move_backward/turn_left/turn_right/stop。
 - 目标是“挂着黄衣服的椅子”时，椅子和黄色衣服都要列入 objects。
+- task_understanding 和 scene_reasoning_hints 是可选辅助字段；如果输出，必须是结构化 JSON，不要写完整思维链。
 - 只输出 JSON。"""
     if extra_instructions:
         prompt += f"\n额外要求：{extra_instructions}"

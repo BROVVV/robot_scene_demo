@@ -14,6 +14,7 @@ SYSTEM_PROMPT = """你是机器狗的快速视觉场景理解模块。
 4. 对“挂着黄衣服的椅子”这类目标，要把椅子和衣服分开作为 object，并在 relations 中写出关系。
 5. 所有距离、角度都是估计值，必须保守。
 6. 只输出 JSON 对象，不要 Markdown，不要解释文本。
+7. 可以给出结构化任务和候选位置线索，但不要输出长篇自由文本推理；后续系统会用本地知识库和规则模块做最终评分与规划。
 """
 
 
@@ -74,6 +75,18 @@ def build_user_prompt(target_text: str, extra_instructions: str | None = None) -
       }}
     ],
     "safety_notes_zh": ["单张图片估计，仅用于 Demo"]
+  }},
+  "task_understanding": {{
+    "task_type": "find_object | count_objects | inspect_area | check_door_state | find_room | navigate_to_location | verify_condition | summarize_scene | compare_states",
+    "entities": ["phone"],
+    "constraints": ["on desk"],
+    "uncertainty": "中文不确定性说明"
+  }},
+  "scene_reasoning_hints": {{
+    "scene_type": "office",
+    "candidate_locations": ["desk surface", "beside keyboard"],
+    "supporting_evidence": ["visible desk", "visible keyboard"],
+    "recommended_next_observation": "靠近桌面右侧重新观察"
   }}
 }}
 
@@ -86,6 +99,7 @@ def build_user_prompt(target_text: str, extra_instructions: str | None = None) -
 - bbox_2d 坐标必须在 0 到 1。
 - confidence 必须在 0 到 1。
 - 不确定距离或角度用 null。
+- task_understanding 和 scene_reasoning_hints 是可选辅助字段；如果输出，必须保持结构化 JSON，不要写完整思维链。
 - 只输出 JSON。"""
 
     if extra_instructions:

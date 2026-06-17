@@ -15,7 +15,10 @@ from app.detectors.grounded_sam_subprocess import (
     GroundedSAMSubprocessDetector,
 )
 from app.llm_clients.siliconflow_client import SiliconFlowVisionClient
+from app.reasoning.task_parser import parse_robot_task
 from app.schemas import SceneAnalysisResult
+from app.services.knowledge_aware_analyzer import KnowledgeAwareAnalyzer
+from app.services.knowledge_output_writer import write_knowledge_aware_outputs
 from app.services.output_writer import prepare_analysis_result, write_analysis_outputs
 from app.services.route_planner import format_route_plan
 from app.services.scene_analyzer import SceneAnalyzer
@@ -39,10 +42,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="使用 examples/mock_scene_result.json，不调用真实 API",
     )
+    parser.add_argument(
+        "--enable-knowledge",
+        action="store_true",
+        help="启用知识库、预测性场景图、场景推理和任务规划增强输出。",
+    )
     return parser.parse_args(argv)
 
 
-def run(image_path: str, target_text: str, detector_backend: str | None = None) -> list[Path]:
+def run(
+    image_path: str,
+    target_text: str,
+    detector_backend: str | None = None,
+    enable_knowledge: bool = False,
+) -> list[Path]:
     image = Path(image_path)
     if not image.is_file():
         raise FileNotFoundError(f"Image file not found: {image_path}")
@@ -65,12 +78,29 @@ def run(image_path: str, target_text: str, detector_backend: str | None = None) 
         )
     else:
         raise ValueError(f"Unsupported detector backend: {backend}")
-    result = analyzer.analyze(str(image), target_text)
+    if enable_knowledge:
+        knowledge_result = KnowledgeAwareAnalyzer(
+            scene_analyzer=analyzer,
+            output_dir=output_dir,
+            update_kb=True,
+        ).analyze(str(image), target_text)
+        output_paths = export_and_print_result(
+            knowledge_result.base_scene,
+            output_dir,
+            image_path=image,
+        )
+        knowledge_paths = write_knowledge_aware_outputs(knowledge_result, output_dir)
+        _print_knowledge_outputs(knowledge_result, knowledge_paths)
+        return output_paths + list(knowledge_paths.values())
 
+    result = analyzer.analyze(str(image), target_text)
     return export_and_print_result(result, output_dir, image_path=image)
 
 
-def run_mock(mock_path: str | Path = "examples/mock_scene_result.json") -> list[Path]:
+def run_mock(
+    mock_path: str | Path = "examples/mock_scene_result.json",
+    enable_knowledge: bool = False,
+) -> list[Path]:
     path = Path(mock_path)
     if not path.is_file():
         raise FileNotFoundError(f"Mock result file not found: {path}")
@@ -79,7 +109,20 @@ def run_mock(mock_path: str | Path = "examples/mock_scene_result.json") -> list[
 
     data = json.loads(path.read_text(encoding="utf-8"))
     result = SceneAnalysisResult.model_validate(data)
-    return export_and_print_result(result, Path(DEFAULT_OUTPUT_DIR))
+    output_paths = export_and_print_result(result, Path(DEFAULT_OUTPUT_DIR))
+    if not enable_knowledge:
+        return output_paths
+
+    knowledge_result = KnowledgeAwareAnalyzer(update_kb=False).enrich_base_scene(
+        result,
+        result.target_decision.target_text,
+    )
+    knowledge_paths = write_knowledge_aware_outputs(
+        knowledge_result,
+        Path(DEFAULT_OUTPUT_DIR),
+    )
+    _print_knowledge_outputs(knowledge_result, knowledge_paths)
+    return output_paths + list(knowledge_paths.values())
 
 
 def export_and_print_result(
@@ -93,6 +136,10 @@ def export_and_print_result(
     print(f"场景摘要：{result.scene_summary_zh}")
     print()
     print(format_target_decision(result))
+    print()
+    parsed_task = parse_robot_task(result.target_decision.target_text)
+    print("任务解析：")
+    print(parsed_task.model_dump_json(indent=2))
     print()
     print(format_route_plan(result))
     print()
@@ -113,15 +160,31 @@ def export_and_print_result(
     return ordered_paths
 
 
+def _print_knowledge_outputs(
+    result,
+    output_paths: dict[str, Path],
+) -> None:
+    print()
+    print("知识增强推理：")
+    print(result.reasoning_summary_zh)
+    print()
+    print("任务规划：")
+    print(result.task_plan.summary_zh)
+    print()
+    print("知识增强输出：")
+    for path in output_paths.values():
+        print(path)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         if args.mock:
-            run_mock()
+            run_mock(enable_knowledge=args.enable_knowledge)
         else:
             if not args.image or not args.target:
                 raise ValueError("非 mock 模式必须同时提供 --image 和 --target。")
-            run(args.image, args.target, args.detector)
+            run(args.image, args.target, args.detector, enable_knowledge=args.enable_knowledge)
     except (
         SettingsError,
         FileNotFoundError,

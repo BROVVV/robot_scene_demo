@@ -1,0 +1,5 @@
+{"observation_id": "obs_seed_001", "timestamp": "2026-06-16T10:00:00+08:00", "location_hint": "floor_5 corridor", "summary_zh": "初始化示例观察：五层走廊存在 501、502、503 门牌。", "confidence": 0.7}
+{"observation_id": "obs_2026-06-17T014836981203+0000", "timestamp": "2026-06-17T01:48:36.981203+00:00", "location_hint": "current_scene", "summary_zh": "走廊通向客厅，地面铺瓷砖，左侧有柜子和纸箱，右侧有蓝色脚垫和小凳子。", "confidence": 0.9}
+{"observation_id": "obs_2026-06-17T015302002494+0000", "timestamp": "2026-06-17T01:53:02.002494+00:00", "location_hint": "current_room", "summary_zh": "办公室场景，有工作人员、多把椅子和办公设备", "confidence": 0.85}
+{"observation_id": "obs_2026-06-17T015341395874+0000", "timestamp": "2026-06-17T01:53:41.395874+00:00", "location_hint": "current_room", "summary_zh": "本地 Grounding DINO/SAM2 检测到 30 个物体，补全 40 条空间关系。", "confidence": 0.5104899406433105}
+{"observation_id": "obs_2026-06-17T020001155378+0000", "timestamp": "2026-06-17T02:00:01.155378+00:00", "location_hint": "current_room", "summary_zh": "办公室场景，有工作人员、多把椅子和办公设备", "confidence": 0.85}
