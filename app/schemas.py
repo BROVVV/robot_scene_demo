@@ -112,6 +112,51 @@ class RoutePlan(StrictBaseModel):
     safety_notes_zh: list[str] = Field(default_factory=list)
 
 
+class Ros2Vector3(StrictBaseModel):
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+
+
+class Ros2Twist(StrictBaseModel):
+    linear: Ros2Vector3 = Field(default_factory=Ros2Vector3)
+    angular: Ros2Vector3 = Field(default_factory=Ros2Vector3)
+
+
+class Ros2MotionCommand(StrictBaseModel):
+    command_id: str
+    route_step_id: int | None = None
+    source_action: Literal[
+        "move_forward",
+        "move_backward",
+        "turn_left",
+        "turn_right",
+        "stop",
+    ]
+    topic: str = "/cmd_vel"
+    message_type: str = "geometry_msgs/msg/Twist"
+    twist: Ros2Twist
+    duration_sec: float = Field(gt=0.0)
+    distance_m: float | None = None
+    turn_angle_deg: float | None = None
+    description_zh: str
+
+
+class Ros2MotionPlan(StrictBaseModel):
+    plan_id: str
+    generated_at: str
+    dry_run: bool = True
+    topic: str = "/cmd_vel"
+    message_type: str = "geometry_msgs/msg/Twist"
+    frame_id: str = "base_link"
+    route_type: str
+    route_summary_zh: str
+    command_rate_hz: float = Field(gt=0.0)
+    commands: list[Ros2MotionCommand] = Field(default_factory=list)
+    safety_notes_zh: list[str] = Field(default_factory=list)
+    integration_notes_zh: list[str] = Field(default_factory=list)
+
+
 class SceneAnalysisResult(StrictBaseModel):
     scene_summary_zh: str
     objects: list[SceneObject] = Field(default_factory=list)

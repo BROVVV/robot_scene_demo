@@ -297,9 +297,10 @@ def _render_result(
         st.text(format_route_plan(result))
 
     parsed_task = parse_robot_task(target_text or result.target_decision.target_text)
-    tab_names = ["物体", "关系", "拓扑", "标注", "任务", "JSON"]
+    tab_names = ["物体", "关系", "拓扑", "标注", "任务"]
     if show_psg:
-        tab_names.insert(5, "PSG")
+        tab_names.append("PSG")
+    tab_names.extend(["ROS2", "JSON"])
     tabs = st.tabs(tab_names)
 
     with tabs[0]:
@@ -317,16 +318,19 @@ def _render_result(
     with tabs[4]:
         st.json(parsed_task.model_dump(mode="json"))
 
-    json_tab_index = 5
+    next_tab_index = 5
     if show_psg:
-        json_tab_index = 6
-        with tabs[5]:
+        with tabs[next_tab_index]:
             psg, graphml_path = _build_and_export_psg(result, parsed_task)
             st.caption(f"节点数：{len(psg.nodes)} | 边数：{len(psg.edges)}")
             st.json(psg.model_dump(mode="json"))
             _render_file_download(graphml_path)
+        next_tab_index += 1
 
-    with tabs[json_tab_index]:
+    with tabs[next_tab_index]:
+        _render_json_file(paths.get("ros2_motion_plan"))
+
+    with tabs[next_tab_index + 1]:
         st.json(result.model_dump(mode="json"))
 
     _render_output_files(paths)
@@ -438,6 +442,18 @@ def _render_image_path(path: Path | None) -> None:
         st.info("图片尚未生成。")
         return
     st.image(str(path), use_container_width=True)
+
+
+def _render_json_file(path: Path | None) -> None:
+    if path is None or not path.is_file():
+        st.info("文件尚未生成。")
+        return
+    try:
+        st.json(json.loads(path.read_text(encoding="utf-8")))
+    except json.JSONDecodeError:
+        st.warning("JSON 文件无法读取。")
+        return
+    _render_file_download(path)
 
 
 def _render_knowledge_table(result: KnowledgeAwareSceneResult) -> None:

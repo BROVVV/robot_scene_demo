@@ -151,6 +151,7 @@ def export_and_print_result(
         output_paths["relation_table"],
         output_paths["topology_png"],
         output_paths["topology_graphml"],
+        output_paths["ros2_motion_plan"],
     ]
     if "annotated_image" in output_paths:
         ordered_paths.append(output_paths["annotated_image"])

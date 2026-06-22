@@ -8,6 +8,7 @@ from pathlib import Path
 from app.schemas import SceneAnalysisResult
 from app.services.image_annotator import export_annotated_image
 from app.services.relation_enricher import enrich_scene_relations
+from app.services.ros2_command_exporter import export_ros2_motion_plan
 from app.services.scene_normalizer import normalize_scene_labels
 from app.services.table_exporter import export_object_table, export_relation_table
 from app.services.topology_builder import export_topology_graph
@@ -35,6 +36,10 @@ def write_analysis_outputs(
     object_table_path = export_object_table(result, path / "object_table.csv")
     relation_table_path = export_relation_table(result, path / "relation_table.csv")
     topology_png_path, topology_graphml_path = export_topology_graph(result, path)
+    ros2_motion_plan_path = export_ros2_motion_plan(
+        result,
+        path / "ros2_motion_plan.json",
+    )
     annotated_image_path = None
     if image_path is not None:
         annotated_image_path = export_annotated_image(
@@ -49,6 +54,7 @@ def write_analysis_outputs(
         "relation_table": relation_table_path,
         "topology_png": topology_png_path,
         "topology_graphml": topology_graphml_path,
+        "ros2_motion_plan": ros2_motion_plan_path,
     }
     if annotated_image_path is not None:
         outputs["annotated_image"] = annotated_image_path
