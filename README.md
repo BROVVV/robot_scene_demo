@@ -657,6 +657,125 @@ tmux kill-session -t robot_scene_demo_ui
 outputs/ros2_motion_plan.json
 ```
 
+## 17. Florence-2、BEV/ESDF 与局部规划
+
+本项目新增 `florence2` 检测后端，以及可选的单目几何、BEV/ESDF、object-to-BEV waypoint 投影和 A* 局部规划。新增链路仍是离线/半离线 Demo：默认只写出 ROS2 `/cmd_vel` dry-run JSON，不直接控制真实机器狗。
+
+### 17.1 安装 Florence-2 可选依赖
+
+基础 `requirements.txt` 不强制安装大模型依赖。推荐给 Florence-2 单独建 Python 3.11 环境，避免大模型依赖影响主项目：
+
+```bash
+CONDA_NO_PLUGINS=true CONDA_PKGS_DIRS=/root/gpufree-data/conda_pkgs \
+  conda create --solver classic -p /root/gpufree-data/conda_envs/florence2 python=3.11 -y
+/root/gpufree-data/conda_envs/florence2/bin/python -m pip install -r requirements-florence2.txt
+```
+
+然后在 `.env` 中配置：
+
+```text
+DETECTION_BACKEND=florence2
+FLORENCE2_MODEL_ID=/root/gpufree-data/models/Florence-2-base
+FLORENCE2_PYTHON=/root/gpufree-data/conda_envs/florence2/bin/python
+FLORENCE2_DEVICE=cuda
+FLORENCE2_MAX_OBJECTS=40
+FLORENCE2_CONFIDENCE_THRESHOLD=0.15
+FLORENCE2_TASK_PROMPT=<OD>
+FLORENCE2_ALLOW_MOCK=false
+HF_HOME=/root/gpufree-data/hf_cache
+HF_MODULES_CACHE=/root/gpufree-data/hf_cache/modules_florence2_runtime
+```
+
+`FLORENCE2_DEVICE=cuda` 会强制使用 GPU；如果当前进程看不到 NVIDIA 驱动会直接报错。`FLORENCE2_DEVICE=auto` 会在 CUDA 不可见时退回 CPU。worker 会把实际设备写入对象属性，例如 `florence2_device=cuda` 和 `florence2_device_name=...`。
+
+无权重或无 GPU 的 smoke test 可以临时使用：
+
+```text
+FLORENCE2_ALLOW_MOCK=true
+```
+
+### 17.2 运行 Florence-2 + 几何 + 局部规划
+
+```bash
+python run_demo.py \
+  --image "/path/to/image.jpg" \
+  --target "找到手机" \
+  --detector florence2 \
+  --enable-knowledge
+```
+
+新增输出包括：
+
+```text
+outputs/point_map.npy
+outputs/depth.npy
+outputs/bev_occupancy.png
+outputs/free_space_mask.png
+outputs/esdf.npy
+outputs/esdf.png
+outputs/bev_metadata.json
+outputs/geometry_debug.png
+outputs/object_goal_projection.json
+outputs/local_plan.png
+```
+
+`object_table.csv` 新增 `bev_x`、`bev_y`、`distance_m`、`bearing_deg`、`reachable`、`clearance_m`、`goal_bev_x`、`goal_bev_y`、`geometry_backend`、`metric_reliable` 等字段。`scene_result.json` 顶层新增 `geometry`、`local_plan`、`selected_goal`、`selection_reason` 和 `warnings`。
+
+### 17.3 Florence-2 标签中文化
+
+Florence-2 的原始英文检测标签会保留在 `SceneObject.name` 和 `object_table.csv` 的英文名列，便于调试、匹配和回溯模型输出；面向用户展示的 `SceneObject.name_zh`、`object_table.csv` 中文名列和标注图统一使用中文。
+
+当前已补齐常见室内泛化标签映射，例如 `cabinetry -> 柜子`、`furniture -> 家具`、`house -> 室内空间`。如果 Florence-2 返回未命中的英文标签，系统会回退显示为 `物体`，避免 UI 或 CSV 中混入英文标签。
+
+### 17.4 几何层配置
+
+默认 `GEOMETRY_BACKEND=auto`。如果没有配置 `MOGE_ROOT`，系统会使用 `heuristic_fallback`，生成伪 depth/point map 和 BEV/ESDF，只用于链路演示和测试：
+
+```text
+ENABLE_GEOMETRY=true
+GEOMETRY_BACKEND=auto
+MOGE_ROOT=
+MOGE_PYTHON=
+MOGE_MODEL_ID=
+DEPTH_FALLBACK_BACKEND=heuristic
+CAMERA_HEIGHT_M=0.45
+BEV_X_MIN_M=0.0
+BEV_X_MAX_M=5.0
+BEV_Y_MIN_M=-2.5
+BEV_Y_MAX_M=2.5
+BEV_RESOLUTION_M=0.05
+UNKNOWN_AS_OCCUPIED=true
+ROBOT_RADIUS_M=0.25
+SAFETY_MARGIN_M=0.10
+```
+
+MoGe-2 真实接入预留了 subprocess 接口：设置 `MOGE_ROOT` 指向本地 MoGe 工程，`MOGE_PYTHON` 指向对应 Python，worker 需输出 `point_map_path`、`depth_path`、`camera` 和 `metric_reliable`。
+
+### 17.5 局部规划与 ROS2 dry-run
+
+局部规划默认使用 A* on ESDF：
+
+```text
+ENABLE_LOCAL_PLANNER=true
+LOCAL_PLANNER_BACKEND=astar
+LOCAL_PLANNER_MAX_STEPS=2000
+LOCAL_PLANNER_GOAL_TOLERANCE_M=0.20
+LOCAL_PLANNER_MIN_CLEARANCE_M=0.20
+LOCAL_PLANNER_ALLOW_PARTIAL=true
+CMD_VEL_LINEAR_SPEED=0.25
+CMD_VEL_ANGULAR_SPEED=0.6
+CMD_VEL_COMMAND_RATE_HZ=10.0
+CMD_VEL_WAYPOINT_TOLERANCE_M=0.15
+```
+
+预览 ROS2 dry-run：
+
+```bash
+python scripts/publish_ros2_motion_plan.py outputs/ros2_motion_plan.json
+```
+
+安全声明：heuristic geometry 不可用于真机安全导航；单目估计不是可靠避障；真实机器人必须接入深度、SLAM、避障、急停或厂商安全 SDK，并经过实地安全验证。
+
 它是 ROS2 `/cmd_vel` 兼容数据，核心字段：
 
 ```json

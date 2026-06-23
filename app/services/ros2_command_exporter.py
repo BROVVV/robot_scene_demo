@@ -7,6 +7,9 @@ import math
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.config import get_settings
+from app.navigation.local_planner import LocalPlanResult
+from app.navigation.path_to_cmd_vel import motion_plan_from_path, settings_kwargs
 from app.schemas import (
     Ros2MotionCommand,
     Ros2MotionPlan,
@@ -37,6 +40,10 @@ def build_ros2_motion_plan(
     angular_speed_radps: float = DEFAULT_ANGULAR_SPEED_RADPS,
 ) -> Ros2MotionPlan:
     """Convert a scene route plan to dry-run ROS2 /cmd_vel command data."""
+
+    local_motion_plan = _build_from_local_plan(result, generated_at=generated_at)
+    if local_motion_plan is not None:
+        return local_motion_plan
 
     if linear_speed_mps <= 0:
         raise ValueError("linear_speed_mps must be positive")
@@ -84,6 +91,46 @@ def build_ros2_motion_plan(
             "所有 command 执行完毕后应再次发布零速度 Twist，确保机器狗停止。",
         ],
     )
+
+
+def _build_from_local_plan(
+    result: SceneAnalysisResult,
+    *,
+    generated_at: str | None,
+) -> Ros2MotionPlan | None:
+    if not result.local_plan:
+        return None
+    payload = result.local_plan
+    path_xy = [
+        (float(item[0]), float(item[1]))
+        for item in payload.get("path_xy", [])
+        if isinstance(item, (list, tuple)) and len(item) >= 2
+    ]
+    plan = LocalPlanResult(
+        available=bool(payload.get("available")),
+        status=str(payload.get("status") or "unknown"),
+        path_xy=path_xy,
+        goal_xy=_tuple_or_none(payload.get("goal_xy")),
+        used_goal_xy=_tuple_or_none(payload.get("used_goal_xy")),
+        progress_score=payload.get("progress_score"),
+        collision_free=payload.get("collision_free"),
+        min_clearance_m=payload.get("min_clearance_m"),
+        planner_backend=str(payload.get("planner_backend") or "astar"),
+        warning=payload.get("warning"),
+        visualization_path=payload.get("visualization_path"),
+    )
+    settings = get_settings()
+    return motion_plan_from_path(
+        plan,
+        generated_at=generated_at,
+        **settings_kwargs(settings),
+    )
+
+
+def _tuple_or_none(value: object) -> tuple[float, float] | None:
+    if not isinstance(value, (list, tuple)) or len(value) < 2:
+        return None
+    return float(value[0]), float(value[1])
 
 
 def export_ros2_motion_plan(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pandas as pd
@@ -15,6 +16,7 @@ from app.detectors.grounded_sam_subprocess import (
     DetectorRuntimeError,
     GroundedSAMSubprocessDetector,
 )
+from app.detectors.florence2_detector import Florence2Detector
 from app.knowledge.retrieval import retrieve_relevant_knowledge
 from app.llm_clients.siliconflow_client import SiliconFlowVisionClient
 from app.reasoning.task_parser import parse_robot_task
@@ -25,6 +27,7 @@ from app.schemas import (
     SceneAnalysisResult,
 )
 from app.services.knowledge_aware_analyzer import KnowledgeAwareAnalyzer
+from app.services.geometry_navigation_pipeline import enrich_with_geometry_and_navigation
 from app.services.knowledge_output_writer import write_knowledge_aware_outputs
 from app.services.output_writer import prepare_analysis_result, write_analysis_outputs
 from app.services.psg_builder import (
@@ -89,7 +92,7 @@ def _render_sidebar() -> dict:
 
         mode = st.radio(
             "运行模式",
-            ["模拟数据", "真实 API", "GroundingDINO+SAM2"],
+            ["模拟数据", "真实 API", "GroundingDINO+SAM2", "Florence-2"],
             horizontal=False,
         )
 
@@ -115,7 +118,23 @@ def _render_sidebar() -> dict:
         st.header("增强选项")
         enable_knowledge = st.toggle("知识增强流程", value=True)
         show_psg = st.toggle("预测性场景图", value=True)
+        enable_geometry = st.toggle("启用单目几何", value=True)
+        enable_local_planner = st.toggle("启用局部规划", value=True)
+        show_bev_esdf = st.toggle("显示 BEV/ESDF", value=True)
         high_precision = st.toggle("高精度复查", value=False)
+        florence2_allow_mock = False
+        if mode == "Florence-2":
+            st.header("Florence-2")
+            florence2_allow_mock = st.toggle(
+                "Mock smoke 模式",
+                value=False,
+                help="关闭时加载本地 Florence-2 权重；开启时仅用于无模型 smoke test。",
+            )
+            try:
+                model_id = getattr(get_settings(), "florence2_model_id", "-")
+            except SettingsError:
+                model_id = "-"
+            st.caption(f"模型：{model_id}")
 
         analyze_clicked = st.button(
             "开始分析",
@@ -133,6 +152,10 @@ def _render_sidebar() -> dict:
         "high_precision": high_precision,
         "enable_knowledge": enable_knowledge,
         "show_psg": show_psg,
+        "enable_geometry": enable_geometry,
+        "enable_local_planner": enable_local_planner,
+        "show_bev_esdf": show_bev_esdf,
+        "florence2_allow_mock": florence2_allow_mock,
         "analyze_clicked": analyze_clicked,
     }
 
@@ -151,6 +174,7 @@ def _render_workspace(settings: dict) -> None:
             target_text=settings["target_text"],
             show_psg=settings["show_psg"],
             enable_knowledge=settings["enable_knowledge"],
+            show_bev_esdf=settings["show_bev_esdf"],
         )
 
 
@@ -178,6 +202,10 @@ def _render_runtime_status(settings: dict) -> None:
     metric_cols[1].metric("知识增强", "开" if settings["enable_knowledge"] else "关")
     metric_cols[2].metric("PSG", "开" if settings["show_psg"] else "关")
     metric_cols[3].metric("任务类型", parsed_task.task_type if parsed_task else "-")
+    st.caption(
+        f"几何：{'开' if settings['enable_geometry'] else '关'} | "
+        f"局部规划：{'开' if settings['enable_local_planner'] else '关'}"
+    )
 
     if parsed_task is not None:
         with st.expander("当前任务解析", expanded=True):
@@ -198,6 +226,10 @@ def _run_and_render(settings: dict) -> None:
                     settings["target_text"],
                     settings["high_precision"],
                     use_grounded_sam=(settings["mode"] == "GroundingDINO+SAM2"),
+                    use_florence2=(settings["mode"] == "Florence-2"),
+                    enable_geometry=settings["enable_geometry"],
+                    enable_local_planner=settings["enable_local_planner"],
+                    florence2_allow_mock=settings["florence2_allow_mock"],
                 )
             )
             result = prepare_analysis_result(result)
@@ -222,6 +254,7 @@ def _run_and_render(settings: dict) -> None:
             paths,
             target_text=settings["target_text"],
             show_psg=settings["show_psg"] and knowledge_result is None,
+            show_bev_esdf=settings["show_bev_esdf"],
         )
         if knowledge_result is not None:
             _render_knowledge_result(knowledge_result)
@@ -243,6 +276,10 @@ def _run_api(
     target_text: str,
     high_precision: bool,
     use_grounded_sam: bool,
+    use_florence2: bool,
+    enable_geometry: bool,
+    enable_local_planner: bool,
+    florence2_allow_mock: bool,
 ) -> SceneAnalysisResult:
     if uploaded_file is None:
         raise ValueError("真实 API 或本地检测模式需要上传图片。")
@@ -252,10 +289,20 @@ def _run_api(
     image_path.write_bytes(uploaded_file.getbuffer())
     st.session_state["last_image_path"] = str(image_path)
 
-    settings = get_settings()
+    settings = replace(
+        get_settings(),
+        enable_geometry=enable_geometry,
+        enable_local_planner=enable_local_planner,
+        florence2_allow_mock=florence2_allow_mock,
+    )
     if use_grounded_sam:
         analyzer = SceneAnalyzer(
             object_detector=GroundedSAMSubprocessDetector(settings),
+            output_dir=settings.output_dir,
+        )
+    elif use_florence2:
+        analyzer = SceneAnalyzer(
+            object_detector=Florence2Detector(settings),
             output_dir=settings.output_dir,
         )
     else:
@@ -265,7 +312,13 @@ def _run_api(
             enable_low_object_retry=high_precision,
             min_objects_for_complex_scene=settings.min_objects_for_complex_scene,
         )
-    return analyzer.analyze(str(image_path), target_text.strip())
+    result = analyzer.analyze(str(image_path), target_text.strip())
+    return enrich_with_geometry_and_navigation(
+        result,
+        image_path,
+        settings.output_dir,
+        settings,
+    )
 
 
 def _render_result(
@@ -273,6 +326,7 @@ def _render_result(
     paths: dict[str, Path],
     target_text: str | None = None,
     show_psg: bool = False,
+    show_bev_esdf: bool = False,
 ) -> None:
     st.divider()
     st.subheader("场景结果")
@@ -298,6 +352,8 @@ def _render_result(
 
     parsed_task = parse_robot_task(target_text or result.target_decision.target_text)
     tab_names = ["物体", "关系", "拓扑", "标注", "任务"]
+    if show_bev_esdf:
+        tab_names.append("BEV/ESDF")
     if show_psg:
         tab_names.append("PSG")
     tab_names.extend(["ROS2", "JSON"])
@@ -319,6 +375,24 @@ def _render_result(
         st.json(parsed_task.model_dump(mode="json"))
 
     next_tab_index = 5
+    if show_bev_esdf:
+        with tabs[next_tab_index]:
+            bev_cols = st.columns(3)
+            with bev_cols[0]:
+                st.caption("BEV occupancy")
+                _render_image_path(paths.get("bev_occupancy"))
+            with bev_cols[1]:
+                st.caption("ESDF")
+                _render_image_path(paths.get("esdf_png"))
+            with bev_cols[2]:
+                st.caption("Local plan")
+                _render_image_path(paths.get("local_plan"))
+            if result.geometry:
+                st.json(result.geometry)
+            if result.local_plan:
+                st.json(result.local_plan)
+        next_tab_index += 1
+
     if show_psg:
         with tabs[next_tab_index]:
             psg, graphml_path = _build_and_export_psg(result, parsed_task)
@@ -340,6 +414,7 @@ def _render_existing_outputs(
     target_text: str | None = None,
     show_psg: bool = False,
     enable_knowledge: bool = False,
+    show_bev_esdf: bool = False,
 ) -> None:
     scene_path = Path(DEFAULT_OUTPUT_DIR) / "scene_result.json"
     if not scene_path.is_file():
@@ -365,6 +440,7 @@ def _render_existing_outputs(
         paths,
         target_text=target_text,
         show_psg=show_psg and not enable_knowledge,
+        show_bev_esdf=show_bev_esdf,
     )
     if enable_knowledge:
         knowledge_result = KnowledgeAwareAnalyzer(update_kb=False).enrich_base_scene(

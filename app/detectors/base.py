@@ -16,6 +16,8 @@ class DetectedObject:
     attributes: list[str] = field(default_factory=list)
     mask_area_ratio: float | None = None
     source: str = "detector"
+    caption: str | None = None
+    raw_attributes: dict[str, str | int | float | bool | None] = field(default_factory=dict)
 
 
 class BaseObjectDetector:

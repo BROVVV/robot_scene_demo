@@ -20,7 +20,27 @@ TERM_ZH = {
     "desk": "桌子",
     "table": "桌子",
     "cabinet": "柜子",
+    "cabinetry": "柜子",
+    "cupboard": "柜子",
     "drawer": "抽屉",
+    "furniture": "家具",
+    "house": "室内空间",
+    "room": "房间",
+    "building": "建筑",
+    "ceiling": "天花板",
+    "window": "窗户",
+    "curtain": "窗帘",
+    "sofa": "沙发",
+    "couch": "沙发",
+    "bed": "床",
+    "lamp": "灯",
+    "light": "灯",
+    "plant": "植物",
+    "bookshelf": "书架",
+    "counter": "台面",
+    "countertop": "台面",
+    "sink": "水槽",
+    "appliance": "电器",
     "monitor": "显示器",
     "computer monitor": "显示器",
     "computer case": "电脑主机",
@@ -55,8 +75,28 @@ TERM_CATEGORY = {
     "desk": "furniture",
     "table": "furniture",
     "cabinet": "furniture",
+    "cabinetry": "furniture",
+    "cupboard": "furniture",
     "drawer": "furniture",
     "shelf": "furniture",
+    "furniture": "furniture",
+    "house": "structure",
+    "room": "structure",
+    "building": "structure",
+    "ceiling": "structure",
+    "window": "structure",
+    "curtain": "structure",
+    "sofa": "furniture",
+    "couch": "furniture",
+    "bed": "furniture",
+    "lamp": "electronics",
+    "light": "electronics",
+    "plant": "unknown",
+    "bookshelf": "furniture",
+    "counter": "furniture",
+    "countertop": "furniture",
+    "sink": "structure",
+    "appliance": "electronics",
     "clothing": "clothing",
     "yellow clothing": "clothing",
     "coat": "clothing",
@@ -94,6 +134,7 @@ BASE_TERMS = [
     "desk",
     "table",
     "cabinet",
+    "cabinetry",
     "drawer",
     "monitor",
     "computer monitor",
@@ -181,8 +222,10 @@ def terms_to_prompt(terms: list[str]) -> str:
 
 def label_zh(label: str) -> str:
     normalized = _normalize_label(label)
+    if _contains_cjk(normalized):
+        return normalized
     matched = _match_known_term(normalized, TERM_ZH)
-    return TERM_ZH.get(matched, normalized)
+    return TERM_ZH.get(matched, _fallback_zh_label(normalized))
 
 
 def category_for_label(label: str) -> str:
@@ -206,6 +249,29 @@ def color_for_label(label: str) -> str | None:
 
 def _normalize_label(label: str) -> str:
     return label.lower().strip().strip(".")
+
+
+def _contains_cjk(value: str) -> bool:
+    return any("\u4e00" <= char <= "\u9fff" for char in value)
+
+
+def _fallback_zh_label(label: str) -> str:
+    category = category_for_label(label)
+    labels = {
+        "person": "人",
+        "furniture": "家具",
+        "electronics": "电子设备",
+        "container": "容器",
+        "personal_item": "个人物品",
+        "clothing": "衣物",
+        "bag": "包",
+        "cable": "线缆",
+        "structure": "结构",
+        "robot": "机器人设备",
+        "equipment": "设备",
+        "unknown": "物体",
+    }
+    return labels.get(category, "物体")
 
 
 def _match_known_term(label: str, mapping: dict[str, str]) -> str:

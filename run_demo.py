@@ -14,10 +14,12 @@ from app.detectors.grounded_sam_subprocess import (
     DetectorRuntimeError,
     GroundedSAMSubprocessDetector,
 )
+from app.detectors.florence2_detector import Florence2Detector
 from app.llm_clients.siliconflow_client import SiliconFlowVisionClient
 from app.reasoning.task_parser import parse_robot_task
 from app.schemas import SceneAnalysisResult
 from app.services.knowledge_aware_analyzer import KnowledgeAwareAnalyzer
+from app.services.geometry_navigation_pipeline import enrich_with_geometry_and_navigation
 from app.services.knowledge_output_writer import write_knowledge_aware_outputs
 from app.services.output_writer import prepare_analysis_result, write_analysis_outputs
 from app.services.route_planner import format_route_plan
@@ -33,9 +35,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--target", help="目标描述文本，例如：桌子上的手机")
     parser.add_argument(
         "--detector",
-        choices=["llm", "grounded_sam"],
+        choices=["llm", "grounded_sam", "florence2"],
         default=None,
-        help="物体检测后端。llm 使用视觉大模型；grounded_sam 使用 Grounding DINO + SAM2。",
+        help="物体检测后端。llm 使用视觉大模型；grounded_sam 使用 Grounding DINO + SAM2；florence2 使用 Florence-2。",
     )
     parser.add_argument(
         "--mock",
@@ -69,6 +71,11 @@ def run(
             object_detector=GroundedSAMSubprocessDetector(settings),
             output_dir=output_dir,
         )
+    elif backend == "florence2":
+        analyzer = SceneAnalyzer(
+            object_detector=Florence2Detector(settings),
+            output_dir=output_dir,
+        )
     elif backend == "llm":
         analyzer = SceneAnalyzer(
             llm_client=SiliconFlowVisionClient(settings=settings),
@@ -79,11 +86,17 @@ def run(
     else:
         raise ValueError(f"Unsupported detector backend: {backend}")
     if enable_knowledge:
+        base_scene = analyzer.analyze(str(image), target_text)
+        base_scene = enrich_with_geometry_and_navigation(
+            base_scene,
+            image,
+            output_dir,
+            settings,
+        )
         knowledge_result = KnowledgeAwareAnalyzer(
-            scene_analyzer=analyzer,
             output_dir=output_dir,
             update_kb=True,
-        ).analyze(str(image), target_text)
+        ).enrich_base_scene(base_scene, target_text)
         output_paths = export_and_print_result(
             knowledge_result.base_scene,
             output_dir,
@@ -94,6 +107,12 @@ def run(
         return output_paths + list(knowledge_paths.values())
 
     result = analyzer.analyze(str(image), target_text)
+    result = enrich_with_geometry_and_navigation(
+        result,
+        image,
+        output_dir,
+        settings,
+    )
     return export_and_print_result(result, output_dir, image_path=image)
 
 
@@ -155,6 +174,15 @@ def export_and_print_result(
     ]
     if "annotated_image" in output_paths:
         ordered_paths.append(output_paths["annotated_image"])
+    for optional_key in [
+        "bev_occupancy",
+        "free_space_mask",
+        "esdf",
+        "geometry_debug",
+        "local_plan",
+    ]:
+        if optional_key in output_paths:
+            ordered_paths.append(output_paths[optional_key])
     for path in ordered_paths:
         print(path)
 

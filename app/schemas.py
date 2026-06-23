@@ -39,6 +39,25 @@ class SceneObject(StrictBaseModel):
     position: Position
     bbox_2d: BoundingBox2D
     confidence: Confidence = Field(ge=0.0, le=1.0)
+    bbox_xyxy: list[float] | None = None
+    source: str | None = None
+    caption: str | None = None
+    detection_attributes: dict[str, str | int | float | bool | None] = Field(
+        default_factory=dict
+    )
+    mask: str | None = None
+    mask_area_ratio: float | None = None
+    bev_x: float | None = None
+    bev_y: float | None = None
+    distance_m: float | None = None
+    bearing_deg: float | None = None
+    reachable: bool | None = None
+    clearance_m: float | None = None
+    goal_bev_x: float | None = None
+    goal_bev_y: float | None = None
+    geometry_backend: str | None = None
+    metric_reliable: bool | None = None
+    projection_warning: str | None = None
 
 
 class SceneRelation(StrictBaseModel):
@@ -164,6 +183,11 @@ class SceneAnalysisResult(StrictBaseModel):
     topology: TopologyGraph
     target_decision: TargetDecision
     route_plan: RoutePlan
+    geometry: dict[str, object] | None = None
+    local_plan: dict[str, object] | None = None
+    selected_goal: dict[str, object] | None = None
+    selection_reason: str | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class EnvironmentRoom(StrictBaseModel):

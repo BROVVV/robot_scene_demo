@@ -33,6 +33,43 @@ DEFAULT_SAM2_CHECKPOINT = "checkpoints/sam2.1_hiera_tiny.pt"
 DEFAULT_MAX_DETECTED_OBJECTS = 30
 DEFAULT_DETECTION_DEVICE = "auto"
 DEFAULT_DETECTOR_TIMEOUT_SECONDS = 60.0
+DEFAULT_FLORENCE2_MODEL_ID = "microsoft/Florence-2-base"
+DEFAULT_FLORENCE2_PYTHON = ""
+DEFAULT_FLORENCE2_DEVICE = "auto"
+DEFAULT_FLORENCE2_MAX_OBJECTS = 40
+DEFAULT_FLORENCE2_CONFIDENCE_THRESHOLD = 0.15
+DEFAULT_FLORENCE2_TASK_PROMPT = "<OD>"
+DEFAULT_FLORENCE2_ALLOW_MOCK = False
+DEFAULT_ENABLE_SAM2_BOX_REFINEMENT = False
+DEFAULT_ENABLE_GEOMETRY = True
+DEFAULT_GEOMETRY_BACKEND = "auto"
+DEFAULT_MOGE_ROOT = ""
+DEFAULT_MOGE_PYTHON = ""
+DEFAULT_MOGE_MODEL_ID = ""
+DEFAULT_DEPTH_FALLBACK_BACKEND = "heuristic"
+DEFAULT_CAMERA_HEIGHT_M = 0.45
+DEFAULT_CAMERA_PITCH_DEG = 0.0
+DEFAULT_BEV_X_MIN_M = 0.0
+DEFAULT_BEV_X_MAX_M = 5.0
+DEFAULT_BEV_Y_MIN_M = -2.5
+DEFAULT_BEV_Y_MAX_M = 2.5
+DEFAULT_BEV_RESOLUTION_M = 0.05
+DEFAULT_OBSTACLE_MIN_HEIGHT_M = 0.08
+DEFAULT_OBSTACLE_MAX_HEIGHT_M = 1.8
+DEFAULT_UNKNOWN_AS_OCCUPIED = True
+DEFAULT_ROBOT_RADIUS_M = 0.25
+DEFAULT_SAFETY_MARGIN_M = 0.10
+DEFAULT_GEOMETRY_TIMEOUT_SECONDS = 180.0
+DEFAULT_ENABLE_LOCAL_PLANNER = True
+DEFAULT_LOCAL_PLANNER_BACKEND = "astar"
+DEFAULT_LOCAL_PLANNER_MAX_STEPS = 2000
+DEFAULT_LOCAL_PLANNER_GOAL_TOLERANCE_M = 0.20
+DEFAULT_LOCAL_PLANNER_MIN_CLEARANCE_M = 0.20
+DEFAULT_LOCAL_PLANNER_ALLOW_PARTIAL = True
+DEFAULT_CMD_VEL_LINEAR_SPEED = 0.25
+DEFAULT_CMD_VEL_ANGULAR_SPEED = 0.6
+DEFAULT_CMD_VEL_COMMAND_RATE_HZ = 10.0
+DEFAULT_CMD_VEL_WAYPOINT_TOLERANCE_M = 0.15
 
 
 class SettingsError(RuntimeError):
@@ -65,6 +102,47 @@ class Settings:
     max_detected_objects: int = DEFAULT_MAX_DETECTED_OBJECTS
     detection_device: str = DEFAULT_DETECTION_DEVICE
     detector_timeout_seconds: float = DEFAULT_DETECTOR_TIMEOUT_SECONDS
+    florence2_model_id: str = DEFAULT_FLORENCE2_MODEL_ID
+    florence2_python: str = DEFAULT_FLORENCE2_PYTHON
+    florence2_device: str = DEFAULT_FLORENCE2_DEVICE
+    florence2_max_objects: int = DEFAULT_FLORENCE2_MAX_OBJECTS
+    florence2_confidence_threshold: float = DEFAULT_FLORENCE2_CONFIDENCE_THRESHOLD
+    florence2_task_prompt: str = DEFAULT_FLORENCE2_TASK_PROMPT
+    florence2_allow_mock: bool = DEFAULT_FLORENCE2_ALLOW_MOCK
+    enable_sam2_box_refinement: bool = DEFAULT_ENABLE_SAM2_BOX_REFINEMENT
+    enable_geometry: bool = DEFAULT_ENABLE_GEOMETRY
+    geometry_backend: str = DEFAULT_GEOMETRY_BACKEND
+    moge_root: str = DEFAULT_MOGE_ROOT
+    moge_python: str = DEFAULT_MOGE_PYTHON
+    moge_model_id: str = DEFAULT_MOGE_MODEL_ID
+    depth_fallback_backend: str = DEFAULT_DEPTH_FALLBACK_BACKEND
+    camera_fx: float | None = None
+    camera_fy: float | None = None
+    camera_cx: float | None = None
+    camera_cy: float | None = None
+    camera_height_m: float = DEFAULT_CAMERA_HEIGHT_M
+    camera_pitch_deg: float = DEFAULT_CAMERA_PITCH_DEG
+    bev_x_min_m: float = DEFAULT_BEV_X_MIN_M
+    bev_x_max_m: float = DEFAULT_BEV_X_MAX_M
+    bev_y_min_m: float = DEFAULT_BEV_Y_MIN_M
+    bev_y_max_m: float = DEFAULT_BEV_Y_MAX_M
+    bev_resolution_m: float = DEFAULT_BEV_RESOLUTION_M
+    obstacle_min_height_m: float = DEFAULT_OBSTACLE_MIN_HEIGHT_M
+    obstacle_max_height_m: float = DEFAULT_OBSTACLE_MAX_HEIGHT_M
+    unknown_as_occupied: bool = DEFAULT_UNKNOWN_AS_OCCUPIED
+    robot_radius_m: float = DEFAULT_ROBOT_RADIUS_M
+    safety_margin_m: float = DEFAULT_SAFETY_MARGIN_M
+    geometry_timeout_seconds: float = DEFAULT_GEOMETRY_TIMEOUT_SECONDS
+    enable_local_planner: bool = DEFAULT_ENABLE_LOCAL_PLANNER
+    local_planner_backend: str = DEFAULT_LOCAL_PLANNER_BACKEND
+    local_planner_max_steps: int = DEFAULT_LOCAL_PLANNER_MAX_STEPS
+    local_planner_goal_tolerance_m: float = DEFAULT_LOCAL_PLANNER_GOAL_TOLERANCE_M
+    local_planner_min_clearance_m: float = DEFAULT_LOCAL_PLANNER_MIN_CLEARANCE_M
+    local_planner_allow_partial: bool = DEFAULT_LOCAL_PLANNER_ALLOW_PARTIAL
+    cmd_vel_linear_speed: float = DEFAULT_CMD_VEL_LINEAR_SPEED
+    cmd_vel_angular_speed: float = DEFAULT_CMD_VEL_ANGULAR_SPEED
+    cmd_vel_command_rate_hz: float = DEFAULT_CMD_VEL_COMMAND_RATE_HZ
+    cmd_vel_waypoint_tolerance_m: float = DEFAULT_CMD_VEL_WAYPOINT_TOLERANCE_M
 
 
 def _project_root() -> Path:
@@ -82,6 +160,16 @@ def _env_float(name: str, default: float) -> float:
     value = _env_value(name)
     if value is None:
         return default
+    try:
+        return float(value)
+    except ValueError as exc:
+        raise SettingsError(f"{name} must be a number, got: {value}") from exc
+
+
+def _env_optional_float(name: str) -> float | None:
+    value = _env_value(name)
+    if value is None:
+        return None
     try:
         return float(value)
     except ValueError as exc:
@@ -164,5 +252,90 @@ def get_settings() -> Settings:
         detection_device=_env_value("DETECTION_DEVICE", DEFAULT_DETECTION_DEVICE),
         detector_timeout_seconds=_env_float(
             "DETECTOR_TIMEOUT_SECONDS", DEFAULT_DETECTOR_TIMEOUT_SECONDS
+        ),
+        florence2_model_id=_env_value("FLORENCE2_MODEL_ID", DEFAULT_FLORENCE2_MODEL_ID),
+        florence2_python=_env_value("FLORENCE2_PYTHON", DEFAULT_FLORENCE2_PYTHON),
+        florence2_device=_env_value("FLORENCE2_DEVICE", DEFAULT_FLORENCE2_DEVICE),
+        florence2_max_objects=_env_int(
+            "FLORENCE2_MAX_OBJECTS", DEFAULT_FLORENCE2_MAX_OBJECTS
+        ),
+        florence2_confidence_threshold=_env_float(
+            "FLORENCE2_CONFIDENCE_THRESHOLD",
+            DEFAULT_FLORENCE2_CONFIDENCE_THRESHOLD,
+        ),
+        florence2_task_prompt=_env_value(
+            "FLORENCE2_TASK_PROMPT", DEFAULT_FLORENCE2_TASK_PROMPT
+        ),
+        florence2_allow_mock=_env_bool(
+            "FLORENCE2_ALLOW_MOCK", DEFAULT_FLORENCE2_ALLOW_MOCK
+        ),
+        enable_sam2_box_refinement=_env_bool(
+            "ENABLE_SAM2_BOX_REFINEMENT", DEFAULT_ENABLE_SAM2_BOX_REFINEMENT
+        ),
+        enable_geometry=_env_bool("ENABLE_GEOMETRY", DEFAULT_ENABLE_GEOMETRY),
+        geometry_backend=_env_value("GEOMETRY_BACKEND", DEFAULT_GEOMETRY_BACKEND),
+        moge_root=_env_value("MOGE_ROOT", DEFAULT_MOGE_ROOT),
+        moge_python=_env_value("MOGE_PYTHON", DEFAULT_MOGE_PYTHON),
+        moge_model_id=_env_value("MOGE_MODEL_ID", DEFAULT_MOGE_MODEL_ID),
+        depth_fallback_backend=_env_value(
+            "DEPTH_FALLBACK_BACKEND", DEFAULT_DEPTH_FALLBACK_BACKEND
+        ),
+        camera_fx=_env_optional_float("CAMERA_FX"),
+        camera_fy=_env_optional_float("CAMERA_FY"),
+        camera_cx=_env_optional_float("CAMERA_CX"),
+        camera_cy=_env_optional_float("CAMERA_CY"),
+        camera_height_m=_env_float("CAMERA_HEIGHT_M", DEFAULT_CAMERA_HEIGHT_M),
+        camera_pitch_deg=_env_float("CAMERA_PITCH_DEG", DEFAULT_CAMERA_PITCH_DEG),
+        bev_x_min_m=_env_float("BEV_X_MIN_M", DEFAULT_BEV_X_MIN_M),
+        bev_x_max_m=_env_float("BEV_X_MAX_M", DEFAULT_BEV_X_MAX_M),
+        bev_y_min_m=_env_float("BEV_Y_MIN_M", DEFAULT_BEV_Y_MIN_M),
+        bev_y_max_m=_env_float("BEV_Y_MAX_M", DEFAULT_BEV_Y_MAX_M),
+        bev_resolution_m=_env_float("BEV_RESOLUTION_M", DEFAULT_BEV_RESOLUTION_M),
+        obstacle_min_height_m=_env_float(
+            "OBSTACLE_MIN_HEIGHT_M", DEFAULT_OBSTACLE_MIN_HEIGHT_M
+        ),
+        obstacle_max_height_m=_env_float(
+            "OBSTACLE_MAX_HEIGHT_M", DEFAULT_OBSTACLE_MAX_HEIGHT_M
+        ),
+        unknown_as_occupied=_env_bool(
+            "UNKNOWN_AS_OCCUPIED", DEFAULT_UNKNOWN_AS_OCCUPIED
+        ),
+        robot_radius_m=_env_float("ROBOT_RADIUS_M", DEFAULT_ROBOT_RADIUS_M),
+        safety_margin_m=_env_float("SAFETY_MARGIN_M", DEFAULT_SAFETY_MARGIN_M),
+        geometry_timeout_seconds=_env_float(
+            "GEOMETRY_TIMEOUT_SECONDS", DEFAULT_GEOMETRY_TIMEOUT_SECONDS
+        ),
+        enable_local_planner=_env_bool(
+            "ENABLE_LOCAL_PLANNER", DEFAULT_ENABLE_LOCAL_PLANNER
+        ),
+        local_planner_backend=_env_value(
+            "LOCAL_PLANNER_BACKEND", DEFAULT_LOCAL_PLANNER_BACKEND
+        ),
+        local_planner_max_steps=_env_int(
+            "LOCAL_PLANNER_MAX_STEPS", DEFAULT_LOCAL_PLANNER_MAX_STEPS
+        ),
+        local_planner_goal_tolerance_m=_env_float(
+            "LOCAL_PLANNER_GOAL_TOLERANCE_M",
+            DEFAULT_LOCAL_PLANNER_GOAL_TOLERANCE_M,
+        ),
+        local_planner_min_clearance_m=_env_float(
+            "LOCAL_PLANNER_MIN_CLEARANCE_M",
+            DEFAULT_LOCAL_PLANNER_MIN_CLEARANCE_M,
+        ),
+        local_planner_allow_partial=_env_bool(
+            "LOCAL_PLANNER_ALLOW_PARTIAL", DEFAULT_LOCAL_PLANNER_ALLOW_PARTIAL
+        ),
+        cmd_vel_linear_speed=_env_float(
+            "CMD_VEL_LINEAR_SPEED", DEFAULT_CMD_VEL_LINEAR_SPEED
+        ),
+        cmd_vel_angular_speed=_env_float(
+            "CMD_VEL_ANGULAR_SPEED", DEFAULT_CMD_VEL_ANGULAR_SPEED
+        ),
+        cmd_vel_command_rate_hz=_env_float(
+            "CMD_VEL_COMMAND_RATE_HZ", DEFAULT_CMD_VEL_COMMAND_RATE_HZ
+        ),
+        cmd_vel_waypoint_tolerance_m=_env_float(
+            "CMD_VEL_WAYPOINT_TOLERANCE_M",
+            DEFAULT_CMD_VEL_WAYPOINT_TOLERANCE_M,
         ),
     )

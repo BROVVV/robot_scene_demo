@@ -57,7 +57,7 @@ def build_scene_from_detections(
     target_decision = _match_target(enriched.objects, target_text)
     route_plan = _build_route_plan(enriched.objects, target_decision)
     summary = (
-        f"本地 Grounding DINO/SAM2 检测到 {len(enriched.objects)} 个物体，"
+        f"本地检测器识别到 {len(enriched.objects)} 个物体，"
         f"补全 {len(enriched.relations)} 条空间关系。"
     )
     return enriched.model_copy(
@@ -95,6 +95,11 @@ def _scene_object_from_detection(index: int, detection: DetectedObject) -> Scene
         ),
         bbox_2d=BoundingBox2D(x1=x1, y1=y1, x2=x2, y2=y2),
         confidence=detection.score,
+        bbox_xyxy=[x1, y1, x2, y2],
+        source=detection.source,
+        caption=detection.caption,
+        detection_attributes=detection.raw_attributes,
+        mask_area_ratio=detection.mask_area_ratio,
     )
 
 

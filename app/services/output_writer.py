@@ -58,4 +58,23 @@ def write_analysis_outputs(
     }
     if annotated_image_path is not None:
         outputs["annotated_image"] = annotated_image_path
+    _add_optional_geometry_outputs(outputs, path)
     return outputs
+
+
+def _add_optional_geometry_outputs(outputs: dict[str, Path], output_dir: Path) -> None:
+    optional_files = {
+        "point_map": output_dir / "point_map.npy",
+        "depth": output_dir / "depth.npy",
+        "bev_occupancy": output_dir / "bev_occupancy.png",
+        "free_space_mask": output_dir / "free_space_mask.png",
+        "esdf": output_dir / "esdf.npy",
+        "esdf_png": output_dir / "esdf.png",
+        "bev_metadata": output_dir / "bev_metadata.json",
+        "geometry_debug": output_dir / "geometry_debug.png",
+        "local_plan": output_dir / "local_plan.png",
+        "object_goal_projection": output_dir / "object_goal_projection.json",
+    }
+    for key, file_path in optional_files.items():
+        if file_path.is_file():
+            outputs[key] = file_path
