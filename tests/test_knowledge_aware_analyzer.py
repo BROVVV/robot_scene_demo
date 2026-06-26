@@ -46,11 +46,23 @@ class KnowledgeAwareAnalyzerTest(unittest.TestCase):
                 "hypotheses",
                 "knowledge_updates",
                 "reasoning_report",
+                "llm_search_hypotheses",
+                "quadruped_search_plan",
+                "reasoned_predictive_scene_graph",
+                "reasoned_predictive_scene_graph_graphml",
+                "actionability_report",
+                "quadruped_ros2_motion_plan",
+                "visual_grounding_report",
+                "motion_horizon_decision",
             }
             self.assertEqual(set(paths), expected)
             self.assertTrue(all(path.is_file() for path in paths.values()))
             payload = json.loads(paths["knowledge_aware_result"].read_text(encoding="utf-8"))
             KnowledgeAwareSceneResult.model_validate(payload)
+            motion_payload = json.loads(
+                paths["motion_horizon_decision"].read_text(encoding="utf-8")
+            )
+            self.assertIn("recommended_distance_m", motion_payload)
 
 
 def _base_scene() -> SceneAnalysisResult:

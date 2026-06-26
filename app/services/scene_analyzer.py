@@ -29,7 +29,12 @@ class SceneAnalyzer:
         self.enable_low_object_retry = enable_low_object_retry
         self.min_objects_for_complex_scene = min_objects_for_complex_scene
 
-    def analyze(self, image_path: str, target_text: str) -> SceneAnalysisResult:
+    def analyze(
+        self,
+        image_path: str,
+        target_text: str,
+        extra_instructions: str | None = None,
+    ) -> SceneAnalysisResult:
         if self.object_detector is not None:
             detections = self.object_detector.detect(image_path, target_text)
             result = build_scene_from_detections(detections, target_text)
@@ -39,7 +44,11 @@ class SceneAnalyzer:
         if self.llm_client is None:
             raise ValueError("SceneAnalyzer requires either llm_client or object_detector.")
 
-        raw_result = self.llm_client.analyze_scene(image_path, target_text)
+        raw_result = self.llm_client.analyze_scene(
+            image_path,
+            target_text,
+            extra_instructions=extra_instructions,
+        )
         result = SceneAnalysisResult.model_validate(raw_result)
         if (
             self.enable_low_object_retry

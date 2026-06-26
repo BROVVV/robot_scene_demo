@@ -16,6 +16,7 @@ class LLMPromptContractTest(unittest.TestCase):
         self.assertIn("task_understanding", prompt)
         self.assertIn("scene_reasoning_hints", prompt)
         self.assertIn("不要写完整思维链", prompt)
+        self.assertIn("bbox_2d", prompt)
 
     def test_normalizer_ignores_optional_reasoning_fields(self) -> None:
         normalized = _normalize_fast_result(
@@ -56,7 +57,46 @@ class LLMPromptContractTest(unittest.TestCase):
 
         result = SceneAnalysisResult.model_validate(normalized)
         self.assertFalse(result.target_decision.is_present)
+        self.assertEqual(result.route_plan.route_type, "explore_likely_location")
         self.assertEqual(result.objects[0].name, "desk")
+
+    def test_normalizer_accepts_bbox_and_maps_model_enum_drift(self) -> None:
+        normalized = _normalize_fast_result(
+            {
+                "objects": [
+                    {
+                        "name": "cup",
+                        "name_zh": "水杯",
+                        "bbox_2d": [0.2, 0.3, 0.5, 0.8],
+                    },
+                    {
+                        "name": "person",
+                        "name_zh": "人",
+                        "bbox_2d": {"x1": 0.0, "y1": 0.0, "x2": 0.8, "y2": 1.0},
+                    },
+                ],
+                "relations": [
+                    {
+                        "source_index": 2,
+                        "target_index": 1,
+                        "relation_type": "holding",
+                    }
+                ],
+                "target_decision": {
+                    "is_present": True,
+                    "matched_indices": [1],
+                },
+                "route_plan": {
+                    "steps": [{"action": "approach"}],
+                },
+            },
+            "水杯",
+        )
+
+        result = SceneAnalysisResult.model_validate(normalized)
+        self.assertEqual(result.objects[0].bbox_2d.x1, 0.2)
+        self.assertEqual(result.relations[0].relation_type, "near")
+        self.assertEqual(result.route_plan.steps[0].action, "stop")
 
 
 if __name__ == "__main__":

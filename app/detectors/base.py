@@ -12,12 +12,12 @@ class DetectedObject:
     category: str
     bbox_2d: tuple[float, float, float, float]
     score: float
+    text_score: float | None = None
     color: str | None = None
     attributes: list[str] = field(default_factory=list)
     mask_area_ratio: float | None = None
     source: str = "detector"
-    caption: str | None = None
-    raw_attributes: dict[str, str | int | float | bool | None] = field(default_factory=dict)
+    source_prompt_term: str | None = None
 
 
 class BaseObjectDetector:

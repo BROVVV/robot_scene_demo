@@ -146,6 +146,7 @@ def _build_fast_user_prompt(
       "color": "black",
       "attributes": ["front-left", "key object"],
       "relative_to_robot": "front-left",
+      "bbox_2d": {{"x1": 0.10, "y1": 0.20, "x2": 0.35, "y2": 0.75}},
       "estimated_distance_m": 1.2,
       "confidence": 0.8
     }}
@@ -188,6 +189,8 @@ def _build_fast_user_prompt(
 
 约束：
 - relation_type 只能用 left_of/right_of/in_front_of/behind/on/under/above/below/in/near/far/contains/occluding。
+- 每个可见物体必须输出 bbox_2d，坐标是相对图像宽高归一化到 0~1 的 x1/y1/x2/y2。
+- bbox_2d 必须尽量紧贴物体，不要用整张图 [0,0,1,1] 代替局部物体。
 - action 只能用 move_forward/move_backward/turn_left/turn_right/stop。
 - 目标是“挂着黄衣服的椅子”时，椅子和黄色衣服都要列入 objects。
 - task_understanding 和 scene_reasoning_hints 是可选辅助字段；如果输出，必须是结构化 JSON，不要写完整思维链。
@@ -203,6 +206,7 @@ def _normalize_fast_result(raw: dict, target_text: str) -> dict:
     for index, obj in enumerate(raw_objects, start=1):
         obj_id = f"obj_{index:03d}"
         relative = str(obj.get("relative_to_robot") or "front")
+        bbox = _normalize_bbox(obj.get("bbox_2d") or obj.get("bbox"))
         objects.append(
             {
                 "id": obj_id,
@@ -218,7 +222,7 @@ def _normalize_fast_result(raw: dict, target_text: str) -> dict:
                     "relative_to_robot": relative,
                     "estimated_distance_m": obj.get("estimated_distance_m"),
                 },
-                "bbox_2d": {"x1": 0.0, "y1": 0.0, "x2": 1.0, "y2": 1.0},
+                "bbox_2d": bbox,
                 "confidence": _clamp_confidence(obj.get("confidence", 0.6)),
             }
         )
@@ -233,7 +237,9 @@ def _normalize_fast_result(raw: dict, target_text: str) -> dict:
             {
                 "source_id": source_id,
                 "target_id": target_id,
-                "relation_type": relation.get("relation_type") or "near",
+                "relation_type": _normalize_relation_type(
+                    relation.get("relation_type")
+                ),
                 "description_zh": relation.get("description_zh") or "",
                 "estimated_distance_m": relation.get("estimated_distance_m"),
                 "confidence": _clamp_confidence(relation.get("confidence", 0.6)),
@@ -241,6 +247,7 @@ def _normalize_fast_result(raw: dict, target_text: str) -> dict:
         )
 
     decision = raw.get("target_decision") or {}
+    target_is_present = bool(decision.get("is_present", False))
     matched_ids = []
     matched_indices = decision.get("matched_indices") or []
     matched_zero_based = _contains_zero_index(matched_indices)
@@ -259,7 +266,7 @@ def _normalize_fast_result(raw: dict, target_text: str) -> dict:
         steps.append(
             {
                 "step_id": index,
-                "action": step.get("action") or "stop",
+                "action": _normalize_action(step.get("action")),
                 "distance_m": step.get("distance_m"),
                 "turn_angle_deg": step.get("turn_angle_deg"),
                 "description_zh": step.get("description_zh") or "停止",
@@ -283,15 +290,15 @@ def _normalize_fast_result(raw: dict, target_text: str) -> dict:
         "topology": {"nodes": [], "edges": []},
         "target_decision": {
             "target_text": target_text,
-            "is_present": bool(decision.get("is_present", False)),
+            "is_present": target_is_present,
             "matched_object_ids": matched_ids,
             "match_reason_zh": decision.get("match_reason_zh") or "",
             "confidence": _clamp_confidence(decision.get("confidence", 0.5)),
         },
         "route_plan": {
-            "route_type": route_plan.get("route_type") or (
+            "route_type": (
                 "approach_visible_target"
-                if bool(decision.get("is_present", False))
+                if target_is_present
                 else "explore_likely_location"
             ),
             "summary_zh": route_plan.get("summary_zh") or "",
@@ -353,3 +360,66 @@ def _clamp_confidence(value: object) -> float:
     except (TypeError, ValueError):
         return 0.5
     return max(0.0, min(1.0, numeric))
+
+
+def _normalize_bbox(value: object) -> dict[str, float]:
+    fallback = {"x1": 0.0, "y1": 0.0, "x2": 1.0, "y2": 1.0}
+    if isinstance(value, dict):
+        raw_values = [value.get(key) for key in ("x1", "y1", "x2", "y2")]
+    elif isinstance(value, (list, tuple)) and len(value) == 4:
+        raw_values = list(value)
+    else:
+        return fallback
+    try:
+        x1, y1, x2, y2 = (
+            max(0.0, min(1.0, float(item))) for item in raw_values
+        )
+    except (TypeError, ValueError):
+        return fallback
+    if x2 <= x1 or y2 <= y1:
+        return fallback
+    return {"x1": x1, "y1": y1, "x2": x2, "y2": y2}
+
+
+def _normalize_relation_type(value: object) -> str:
+    normalized = str(value or "near").lower().strip().replace(" ", "_")
+    allowed = {
+        "left_of",
+        "right_of",
+        "in_front_of",
+        "behind",
+        "on",
+        "under",
+        "above",
+        "below",
+        "in",
+        "near",
+        "far",
+        "contains",
+        "occluding",
+    }
+    if normalized in allowed:
+        return normalized
+    aliases = {
+        "holding": "near",
+        "held_by": "near",
+        "beside": "near",
+        "next_to": "near",
+        "inside": "in",
+        "within": "in",
+        "over": "above",
+        "in_front": "in_front_of",
+    }
+    return aliases.get(normalized, "near")
+
+
+def _normalize_action(value: object) -> str:
+    normalized = str(value or "stop").lower().strip().replace(" ", "_")
+    allowed = {
+        "move_forward",
+        "move_backward",
+        "turn_left",
+        "turn_right",
+        "stop",
+    }
+    return normalized if normalized in allowed else "stop"

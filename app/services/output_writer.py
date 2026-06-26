@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from app.config import Settings
 from app.schemas import SceneAnalysisResult
 from app.services.image_annotator import export_annotated_image
 from app.services.relation_enricher import enrich_scene_relations
@@ -22,6 +23,7 @@ def write_analysis_outputs(
     result: SceneAnalysisResult,
     output_dir: str | Path,
     image_path: str | Path | None = None,
+    settings: Settings | None = None,
 ) -> dict[str, Path]:
     result = prepare_analysis_result(result)
     path = Path(output_dir)
@@ -39,6 +41,18 @@ def write_analysis_outputs(
     ros2_motion_plan_path = export_ros2_motion_plan(
         result,
         path / "ros2_motion_plan.json",
+        settings=settings,
+    )
+    ros2_payload = json.loads(ros2_motion_plan_path.read_text(encoding="utf-8"))
+    motion_horizon_path = path / "motion_horizon_decision.json"
+    motion_horizon_path.write_text(
+        json.dumps(
+            ros2_payload.get("motion_horizon_decision") or {},
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
     )
     annotated_image_path = None
     if image_path is not None:
@@ -55,26 +69,8 @@ def write_analysis_outputs(
         "topology_png": topology_png_path,
         "topology_graphml": topology_graphml_path,
         "ros2_motion_plan": ros2_motion_plan_path,
+        "motion_horizon_decision": motion_horizon_path,
     }
     if annotated_image_path is not None:
         outputs["annotated_image"] = annotated_image_path
-    _add_optional_geometry_outputs(outputs, path)
     return outputs
-
-
-def _add_optional_geometry_outputs(outputs: dict[str, Path], output_dir: Path) -> None:
-    optional_files = {
-        "point_map": output_dir / "point_map.npy",
-        "depth": output_dir / "depth.npy",
-        "bev_occupancy": output_dir / "bev_occupancy.png",
-        "free_space_mask": output_dir / "free_space_mask.png",
-        "esdf": output_dir / "esdf.npy",
-        "esdf_png": output_dir / "esdf.png",
-        "bev_metadata": output_dir / "bev_metadata.json",
-        "geometry_debug": output_dir / "geometry_debug.png",
-        "local_plan": output_dir / "local_plan.png",
-        "object_goal_projection": output_dir / "object_goal_projection.json",
-    }
-    for key, file_path in optional_files.items():
-        if file_path.is_file():
-            outputs[key] = file_path

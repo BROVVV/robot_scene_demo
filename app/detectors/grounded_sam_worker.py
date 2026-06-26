@@ -114,6 +114,8 @@ def main() -> int:
             {
                 "label": str(label).lower().strip(),
                 "score": float(score),
+                "text_score": float(score),
+                "source_prompt_term": str(label).lower().strip(),
                 "bbox_2d": [
                     _clamp(x1 / width),
                     _clamp(y1 / height),

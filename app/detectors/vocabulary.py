@@ -20,27 +20,7 @@ TERM_ZH = {
     "desk": "桌子",
     "table": "桌子",
     "cabinet": "柜子",
-    "cabinetry": "柜子",
-    "cupboard": "柜子",
     "drawer": "抽屉",
-    "furniture": "家具",
-    "house": "室内空间",
-    "room": "房间",
-    "building": "建筑",
-    "ceiling": "天花板",
-    "window": "窗户",
-    "curtain": "窗帘",
-    "sofa": "沙发",
-    "couch": "沙发",
-    "bed": "床",
-    "lamp": "灯",
-    "light": "灯",
-    "plant": "植物",
-    "bookshelf": "书架",
-    "counter": "台面",
-    "countertop": "台面",
-    "sink": "水槽",
-    "appliance": "电器",
     "monitor": "显示器",
     "computer monitor": "显示器",
     "computer case": "电脑主机",
@@ -61,6 +41,18 @@ TERM_ZH = {
     "floor": "地面",
     "backpack": "书包",
     "phone": "手机",
+    "toilet": "厕所",
+    "restroom": "厕所",
+    "bathroom": "厕所",
+    "washroom": "厕所",
+    "lavatory": "厕所",
+    "toilet sign": "厕所标识",
+    "restroom sign": "厕所标识",
+    "bathroom sign": "厕所标识",
+    "sign": "指示牌",
+    "fire extinguisher": "灭火器",
+    "portable extinguisher": "灭火器",
+    "fire suppression unit": "灭火器",
 }
 
 TERM_CATEGORY = {
@@ -75,28 +67,8 @@ TERM_CATEGORY = {
     "desk": "furniture",
     "table": "furniture",
     "cabinet": "furniture",
-    "cabinetry": "furniture",
-    "cupboard": "furniture",
     "drawer": "furniture",
     "shelf": "furniture",
-    "furniture": "furniture",
-    "house": "structure",
-    "room": "structure",
-    "building": "structure",
-    "ceiling": "structure",
-    "window": "structure",
-    "curtain": "structure",
-    "sofa": "furniture",
-    "couch": "furniture",
-    "bed": "furniture",
-    "lamp": "electronics",
-    "light": "electronics",
-    "plant": "unknown",
-    "bookshelf": "furniture",
-    "counter": "furniture",
-    "countertop": "furniture",
-    "sink": "structure",
-    "appliance": "electronics",
     "clothing": "clothing",
     "yellow clothing": "clothing",
     "coat": "clothing",
@@ -121,6 +93,18 @@ TERM_CATEGORY = {
     "wall": "structure",
     "floor": "structure",
     "backpack": "bag",
+    "toilet": "place",
+    "restroom": "place",
+    "bathroom": "place",
+    "washroom": "place",
+    "lavatory": "place",
+    "toilet sign": "sign",
+    "restroom sign": "sign",
+    "bathroom sign": "sign",
+    "sign": "sign",
+    "fire extinguisher": "safety_equipment",
+    "portable extinguisher": "safety_equipment",
+    "fire suppression unit": "safety_equipment",
 }
 
 BASE_TERMS = [
@@ -134,7 +118,6 @@ BASE_TERMS = [
     "desk",
     "table",
     "cabinet",
-    "cabinetry",
     "drawer",
     "monitor",
     "computer monitor",
@@ -154,6 +137,7 @@ BASE_TERMS = [
     "door",
     "backpack",
     "phone",
+    "sign",
 ]
 
 TARGET_TERM_RULES = {
@@ -178,11 +162,58 @@ TARGET_TERM_RULES = {
     "包": ["backpack"],
     "人": ["person"],
     "机器人": ["robot", "machine"],
+    "灭火器": [
+        "fire extinguisher",
+        "portable extinguisher",
+        "fire suppression unit",
+    ],
+    "消防器材": [
+        "fire extinguisher",
+        "fire equipment",
+        "emergency equipment",
+    ],
+    "厕所": [
+        "toilet",
+        "restroom",
+        "bathroom",
+        "washroom",
+        "lavatory",
+        "toilet sign",
+        "restroom sign",
+        "bathroom sign",
+        "sign",
+        "door",
+    ],
+    "洗手间": [
+        "toilet",
+        "restroom",
+        "bathroom",
+        "washroom",
+        "toilet sign",
+        "restroom sign",
+        "sign",
+        "door",
+    ],
+    "卫生间": [
+        "toilet",
+        "restroom",
+        "bathroom",
+        "washroom",
+        "toilet sign",
+        "restroom sign",
+        "sign",
+        "door",
+    ],
 }
 
 
-def build_detection_terms(target_text: str, max_terms: int = 36) -> list[str]:
+def build_detection_terms(
+    target_text: str,
+    max_terms: int = 36,
+    dynamic_terms: list[str] | None = None,
+) -> list[str]:
     terms: list[str] = []
+    terms.extend(dynamic_terms or [])
     for key, values in TARGET_TERM_RULES.items():
         if key in target_text:
             terms.extend(values)
@@ -200,8 +231,14 @@ def build_detection_terms(target_text: str, max_terms: int = 36) -> list[str]:
     return deduped
 
 
-def build_detection_prompts(target_text: str, max_terms: int = 36) -> list[str]:
-    target_terms: list[str] = []
+def build_detection_prompts(
+    target_text: str,
+    max_terms: int = 36,
+    dynamic_terms: list[str] | None = None,
+    context_terms: list[str] | None = None,
+    include_base_terms: bool = True,
+) -> list[str]:
+    target_terms: list[str] = list(dynamic_terms or [])
     for key, values in TARGET_TERM_RULES.items():
         if key in target_text:
             target_terms.extend(values)
@@ -209,10 +246,18 @@ def build_detection_prompts(target_text: str, max_terms: int = 36) -> list[str]:
 
     prompts: list[str] = []
     if target_terms:
-        prompts.append(terms_to_prompt(target_terms[:12]))
+        prompts.append(terms_to_prompt(target_terms[:16]))
 
-    base_terms = build_detection_terms(target_text, max_terms=max_terms)
-    prompts.append(terms_to_prompt(base_terms))
+    if context_terms:
+        prompts.append(terms_to_prompt(_dedupe(context_terms)[:12]))
+
+    if include_base_terms:
+        base_terms = build_detection_terms(
+            target_text,
+            max_terms=max_terms,
+            dynamic_terms=dynamic_terms,
+        )
+        prompts.append(terms_to_prompt(base_terms))
     return _dedupe(prompts)
 
 
@@ -222,10 +267,8 @@ def terms_to_prompt(terms: list[str]) -> str:
 
 def label_zh(label: str) -> str:
     normalized = _normalize_label(label)
-    if _contains_cjk(normalized):
-        return normalized
     matched = _match_known_term(normalized, TERM_ZH)
-    return TERM_ZH.get(matched, _fallback_zh_label(normalized))
+    return TERM_ZH.get(matched, normalized)
 
 
 def category_for_label(label: str) -> str:
@@ -249,29 +292,6 @@ def color_for_label(label: str) -> str | None:
 
 def _normalize_label(label: str) -> str:
     return label.lower().strip().strip(".")
-
-
-def _contains_cjk(value: str) -> bool:
-    return any("\u4e00" <= char <= "\u9fff" for char in value)
-
-
-def _fallback_zh_label(label: str) -> str:
-    category = category_for_label(label)
-    labels = {
-        "person": "人",
-        "furniture": "家具",
-        "electronics": "电子设备",
-        "container": "容器",
-        "personal_item": "个人物品",
-        "clothing": "衣物",
-        "bag": "包",
-        "cable": "线缆",
-        "structure": "结构",
-        "robot": "机器人设备",
-        "equipment": "设备",
-        "unknown": "物体",
-    }
-    return labels.get(category, "物体")
 
 
 def _match_known_term(label: str, mapping: dict[str, str]) -> str:

@@ -57,7 +57,7 @@ def build_scene_from_detections(
     target_decision = _match_target(enriched.objects, target_text)
     route_plan = _build_route_plan(enriched.objects, target_decision)
     summary = (
-        f"本地检测器识别到 {len(enriched.objects)} 个物体，"
+        f"本地 Grounding DINO/SAM2 检测到 {len(enriched.objects)} 个物体，"
         f"补全 {len(enriched.relations)} 条空间关系。"
     )
     return enriched.model_copy(
@@ -76,6 +76,8 @@ def _scene_object_from_detection(index: int, detection: DetectedObject) -> Scene
     area = max(0.001, (x2 - x1) * (y2 - y1))
     attributes = list(detection.attributes)
     attributes.append(f"detection_source={detection.source}")
+    if detection.source_prompt_term:
+        attributes.append(f"source_prompt_term={detection.source_prompt_term}")
     if detection.mask_area_ratio is not None:
         attributes.append(f"mask_area_ratio={detection.mask_area_ratio:.4f}")
 
@@ -95,10 +97,8 @@ def _scene_object_from_detection(index: int, detection: DetectedObject) -> Scene
         ),
         bbox_2d=BoundingBox2D(x1=x1, y1=y1, x2=x2, y2=y2),
         confidence=detection.score,
-        bbox_xyxy=[x1, y1, x2, y2],
-        source=detection.source,
-        caption=detection.caption,
-        detection_attributes=detection.raw_attributes,
+        detector_score=detection.score,
+        text_score=detection.text_score,
         mask_area_ratio=detection.mask_area_ratio,
     )
 
@@ -260,6 +260,8 @@ def _target_score(obj: SceneObject, target_text: str) -> int:
         "鞋": ["shoe", "鞋"],
         "杯": ["cup", "杯"],
         "瓶": ["bottle", "瓶"],
+        "灭火器": ["fire extinguisher", "extinguisher", "灭火器"],
+        "消防器材": ["fire extinguisher", "fire equipment", "消防"],
     }
     for key, values in zh_rules.items():
         if key in target_text and any(value in haystack for value in values):

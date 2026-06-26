@@ -5,11 +5,14 @@
 - mock 场景理解
 - 硅基流动视觉 API 场景理解
 - GroundingDINO + SAM2 本地开放词表检测
-- 知识增强推理
+- 第一视角视频目标搜索与视频语义记忆
+- 无人工先验的大模型自生成常识推理与观察记忆导航
 - Streamlit Web UI
 - ROS2 可接收的 `/cmd_vel` 指令数据 dry-run 输出
+- 平台避障辅助下的自适应移动距离 Motion Horizon 输出
 
 项目当前仍是离线/半离线 Demo，不直接控制真实机器狗。ROS2 部分默认只输出和预览 `geometry_msgs/msg/Twist` 数据；只有显式执行 `--execute` 且已经安装并 source ROS2 环境时，才会尝试发布到 `/cmd_vel`。
+动态运动视界只决定高层建议移动距离，不实现深度图避障、代价地图、局部路径规划或急停；真实避障和打断仍由机械狗底层平台、SDK、ROS 安全层或操作员负责。
 
 ## 0. 推荐硬件与系统前提
 
@@ -22,7 +25,7 @@
 
 如果没有 NVIDIA GPU：
 
-- `mock`、`真实 API`、`知识增强`、`Streamlit UI` 可以跑。
+- `mock`、`真实 API`、LLM runtime prior、观察记忆、Streamlit UI 可以跑。
 - `GroundingDINO+SAM2` 可能无法跑通或速度极慢，不建议作为验收标准。
 
 检查 GPU：
@@ -161,14 +164,75 @@ SILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1
 SILICONFLOW_MODEL=Qwen/Qwen3-VL-8B-Instruct
 SILICONFLOW_TIMEOUT_SECONDS=25
 SILICONFLOW_MAX_TOKENS=2048
-IMAGE_MAX_SIDE=640
-IMAGE_DETAIL=low
-ENABLE_LOW_OBJECT_RETRY=false
-MIN_OBJECTS_FOR_COMPLEX_SCENE=10
+IMAGE_MAX_SIDE=1280
+IMAGE_DETAIL=high
+ENABLE_LOW_OBJECT_RETRY=true
+MIN_OBJECTS_FOR_COMPLEX_SCENE=6
 OUTPUT_DIR=outputs
 
 DETECTION_BACKEND=llm
 ```
+
+平台避障辅助动态运动视界建议配置：
+
+```text
+PLATFORM_OBSTACLE_AVOIDANCE_ASSUMED=true
+ENABLE_DYNAMIC_MOTION_HORIZON=true
+MOTION_HORIZON_PROFILE=platform_assisted_auto
+MOTION_STRICT_SAFE_MAX_STEP_M=0.5
+MOTION_PLATFORM_INDOOR_DEFAULT_STEP_M=1.2
+MOTION_PLATFORM_INDOOR_MAX_STEP_M=2.0
+MOTION_PLATFORM_OPEN_DEFAULT_STEP_M=3.0
+MOTION_PLATFORM_OPEN_MAX_STEP_M=5.0
+MOTION_ABSOLUTE_MAX_STEP_M=6.0
+MOTION_TARGET_CONFIRM_MAX_STEP_M=0.8
+MOTION_PLATFORM_FALLBACK_STEP_M=1.5
+MOTION_DEFAULT_STOP_AND_REOBSERVE=true
+MOTION_ENABLE_OBSERVE_WHILE_MOVING=false
+MOTION_SHORTEN_ON_TARGET_CANDIDATE=true
+MOTION_ALLOW_LLM_RECOMMENDED_HORIZON=true
+MOTION_LLM_HORIZON_WEIGHT=0.6
+```
+
+无人工先验导航建议配置：
+
+```text
+STATIC_KNOWLEDGE_BASE_ENABLED=false
+HANDWRITTEN_OBJECT_PRIORS_ENABLED=false
+HANDWRITTEN_LOCATION_PRIORS_ENABLED=false
+HANDWRITTEN_ROOM_PRIORS_ENABLED=false
+STATIC_OBJECT_PROMPTS_ENABLED=false
+ALLOW_HANDCRAFTED_SEARCH_RULES=false
+
+LLM_COMMONSENSE_PRIOR_ENABLED=true
+LLM_PRIOR_GENERATION_MODE=runtime
+LLM_PRIOR_CAN_CONFIRM_TARGET=false
+LLM_PRIOR_MAX_HYPOTHESES=8
+LLM_PRIOR_MAX_DETECTOR_PROMPTS=12
+
+EVIDENCE_GATING_ENABLED=true
+TARGET_CONFIRMATION_REQUIRE_VISUAL_EVIDENCE=true
+TARGET_CONFIRMATION_REQUIRE_BBOX=true
+TARGET_CONFIRMATION_REQUIRE_CROP_VERIFY=true
+TARGET_CONFIRMATION_MIN_SCORE=0.72
+
+OBSERVATION_MEMORY_ENABLED=true
+OBSERVATION_MEMORY_STORE_PATH=data/memory/observational_memory.jsonl
+OBSERVATION_MEMORY_WRITE_VISUAL_ONLY=true
+OBSERVATION_MEMORY_REQUIRE_PROVENANCE=true
+
+PRIOR_USAGE_AUDIT_ENABLED=true
+PRIOR_USAGE_REPORT_PATH=outputs/prior_usage_report.json
+```
+
+本项目现在的“常识”来自运行时 LLM 假设和机器人观察记忆，不来自开发者写死的物体-位置先验。LLM 假设只能用于排序搜索区域、生成动态检测词、建议下一视角；目标是否找到必须通过 bbox/crop/mask/frame 等视觉证据门控。
+
+策略档位说明：
+
+- `strict_safe`：严格安全模式，恢复最大 0.5m 单段距离。
+- `platform_assisted_indoor`：室内平台避障辅助，通常 0.8m 到 2.0m。
+- `platform_assisted_open_area`：开放区域平台避障辅助，通常 2.0m 到 5.0m。
+- `platform_assisted_auto`：根据场景类型、任务阶段、目标候选状态自动选择。
 
 安全要求：
 
@@ -210,7 +274,11 @@ OK
 mock 不需要图片、不需要 API Key、不需要 GPU。
 
 ```bash
-python run_demo.py --mock --enable-knowledge
+python run_demo.py --mock \
+  --enable-llm-prior \
+  --enable-observation-memory \
+  --enable-evidence-gating \
+  --disable-handwritten-priors
 ```
 
 成功后应生成：
@@ -222,6 +290,12 @@ outputs/relation_table.csv
 outputs/topology_graph.png
 outputs/topology_graph.graphml
 outputs/ros2_motion_plan.json
+outputs/motion_horizon_decision.json
+outputs/llm_generated_priors.json
+outputs/dynamic_detector_prompts.json
+outputs/evidence_gating_report.json
+outputs/observation_memory_updates.json
+outputs/prior_usage_report.json
 outputs/knowledge_aware_result.json
 outputs/parsed_task.json
 outputs/retrieved_knowledge.json
@@ -230,6 +304,8 @@ outputs/hypotheses.json
 outputs/knowledge_updates.json
 outputs/reasoning_report.md
 ```
+
+兼容说明：旧参数 `--enable-knowledge` 仍可使用，但会提示 deprecated，并映射为 LLM runtime prior + observation memory + evidence gating；默认不再启用静态 KB 或手写位置先验。
 
 ### 6.3 任务样例验证
 
@@ -258,10 +334,13 @@ python run_demo.py \
   --image "/root/gpufree-data/微信图片_20260617144106.jpg" \
   --target "巡查玄关区域，识别地面可通行区域和主要障碍物" \
   --detector llm \
-  --enable-knowledge
+  --enable-llm-prior \
+  --enable-observation-memory \
+  --enable-evidence-gating \
+  --disable-handwritten-priors
 ```
 
-成功后会生成基础输出、知识增强输出和 ROS2 dry-run 指令文件。
+成功后会生成基础输出、LLM runtime prior、证据门控、观察记忆、审计报告和 ROS2 dry-run 指令文件。
 
 如果报 `API 请求失败`：
 
@@ -509,7 +588,7 @@ python app/detectors/grounded_sam_worker.py \
   --image "/root/gpufree-data/微信图片_20260617144106.jpg" \
   --output /tmp/grounded_sam_worker_test.json \
   --root /root/gpufree-data/Grounded-SAM-2 \
-  --text-prompt "chair. box. shoe. basket. cabinet. door. floor. clothing." \
+  --text-prompt "phone. smartphone. screen-like object." \
   --grounding-config grounding_dino/groundingdino/config/GroundingDINO_SwinT_OGC.py \
   --grounding-checkpoint gdino_checkpoints/groundingdino_swint_ogc.pth \
   --box-threshold 0.25 \
@@ -539,6 +618,8 @@ PY
 - `objects` 大于 0。
 - `with_sam2_mask` 大于 0。如果等于 0，通常是 SAM2 config 或 checkpoint 路径错误。
 
+上面的 `--text-prompt` 只是 worker 手动 debug 示例。项目主流程默认不会依赖固定室内物体 prompt 表；检测词优先来自用户目标、LLM 运行时 prior、当前视觉摘要和 crop 复核摘要。
+
 ### 8.7 跑项目 GroundingDINO+SAM2 主流程
 
 ```bash
@@ -547,7 +628,10 @@ python run_demo.py \
   --image "/root/gpufree-data/微信图片_20260617144106.jpg" \
   --target "巡查玄关区域，识别地面可通行区域和主要障碍物" \
   --detector grounded_sam \
-  --enable-knowledge
+  --enable-llm-prior \
+  --enable-observation-memory \
+  --enable-evidence-gating \
+  --disable-handwritten-priors
 ```
 
 成功后应看到类似：
@@ -634,6 +718,11 @@ tmux kill-session -t robot_scene_demo_ui
 - `知识增强流程`：建议打开。
 - `预测性场景图`：显示 PSG。
 - `高精度复查`：只对真实 API 模式有意义。
+- `运动视界设置`
+  - `运动策略档位`：严格安全、平台避障室内、平台避障开放区域、平台避障自动。
+  - `假设机械狗已有基础避障`：开启后允许高层规划输出更长移动段。
+  - `启用自适应移动视界`：关闭后恢复严格安全单步裁剪。
+  - `开放区域最大移动距离` / `室内最大移动距离`：运行时覆盖 `.env` 中的最大距离。
 
 结果区：
 
@@ -648,6 +737,83 @@ tmux kill-session -t robot_scene_demo_ui
 - ROS2 指令 JSON
 - 原始 JSON
 - 知识增强结果
+- 知识增强页签中的 `运动视界决策`：显示策略档位、场景类型、任务阶段、LLM 推荐距离、规则裁剪后距离、最终导出距离和原因。
+
+### 10.1 视频目标搜索
+
+Web UI 的“运行模式”中选择“视频目标搜索”后，可以上传
+`mp4/avi/mov/mkv` 视频，设置目标、检测器、关键帧采样 FPS 和最大分析帧数。
+
+也可以直接使用命令行：
+
+```bash
+python run_video_demo.py \
+  --video "/path/to/robot_walk.mp4" \
+  --target "手机" \
+  --detector mock \
+  --sample-fps 1.0 \
+  --max-frames 120 \
+  --enable-knowledge \
+  --enable-video-memory
+```
+
+真实检测时把 `mock` 替换为 `llm` 或 `grounded_sam`。视频模式会生成：
+
+```text
+outputs/video_target_search.json
+outputs/video_target_timeline.json
+outputs/video_object_tracks.json
+outputs/video_candidate_regions.json
+outputs/video_memory_graph.json
+outputs/video_memory_graph.graphml
+outputs/video_memory_updates.json
+outputs/video_spatial_memory_snapshot.json
+outputs/video_predictive_scene_graph.graphml
+outputs/video_predictive_scene_graph.json
+outputs/video_hypotheses.json
+outputs/video_navigation_trace.json
+outputs/video_reasoning_report.md
+outputs/video_frames/
+outputs/video_frames_annotated/
+outputs/video_scene_results/
+data/memory/video_spatial_memory.jsonl
+```
+
+视频模式采用“场景中心记忆 + 目标条件推理”。即使采样帧里没有目标或候选物，
+系统仍会记录环境类型、稳定参照物、可通行区域和负目标证据，生成 PSG 搜索假设，
+并把去重后的观察写入长期 JSONL 记忆库。重复运行同一视频时，长期记忆库会跳过
+高度相似的条目，但本次运行的记忆更新和推理报告仍会生成。
+
+视频模式默认处理过去录制的第一视角视频。没有 odom、SLAM 位姿、深度或地图时，
+系统输出目标出现时间、画面位置、参照物、候选区域、环境记忆和回访建议，
+但不生成真实可执行导航路线。
+
+相关环境变量位于 `.env.example`，常用项包括：
+
+```text
+VIDEO_ENABLE_SCENE_MEMORY=true
+VIDEO_ALWAYS_WRITE_MEMORY=true
+VIDEO_ENABLE_VIDEO_PSG=true
+VIDEO_ENABLE_NEGATIVE_EVIDENCE=true
+VIDEO_MEMORY_STORE_PATH=data/memory/video_spatial_memory.jsonl
+VIDEO_ENABLE_MEMORY_RETRIEVAL=true
+VIDEO_MEMORY_RETRIEVAL_TOP_K=10
+```
+
+视频目标支持自然语言开放词表描述，例如：
+
+```text
+请帮我找一台能打印 A3 纸的设备
+找到红色把手的白色柜门
+寻找靠近饮水机的蓝色垃圾桶
+寻找挂在墙上的红色消防器材
+```
+
+每次视频运行会先生成 `outputs/video_target_profile.json`，其中包含核心实体、
+中英文开放词表、属性、关系约束和上下文线索。LLM 模式直接按目标画像逐帧判断；
+GroundingDINO 模式先动态生成检测提示词，对于带颜色、用途或关系约束的复杂目标，
+再使用视觉 LLM 对候选帧进行语义复核和 bbox 对齐。目标画像解析失败时会降级为
+原始目标文本，不会让整段视频直接失败。
 
 ## 11. ROS2 dry-run 指令数据
 
@@ -655,128 +821,10 @@ tmux kill-session -t robot_scene_demo_ui
 
 ```text
 outputs/ros2_motion_plan.json
+outputs/motion_horizon_decision.json
 ```
 
-## 17. Florence-2、BEV/ESDF 与局部规划
-
-本项目新增 `florence2` 检测后端，以及可选的单目几何、BEV/ESDF、object-to-BEV waypoint 投影和 A* 局部规划。新增链路仍是离线/半离线 Demo：默认只写出 ROS2 `/cmd_vel` dry-run JSON，不直接控制真实机器狗。
-
-### 17.1 安装 Florence-2 可选依赖
-
-基础 `requirements.txt` 不强制安装大模型依赖。推荐给 Florence-2 单独建 Python 3.11 环境，避免大模型依赖影响主项目：
-
-```bash
-CONDA_NO_PLUGINS=true CONDA_PKGS_DIRS=/root/gpufree-data/conda_pkgs \
-  conda create --solver classic -p /root/gpufree-data/conda_envs/florence2 python=3.11 -y
-/root/gpufree-data/conda_envs/florence2/bin/python -m pip install -r requirements-florence2.txt
-```
-
-然后在 `.env` 中配置：
-
-```text
-DETECTION_BACKEND=florence2
-FLORENCE2_MODEL_ID=/root/gpufree-data/models/Florence-2-base
-FLORENCE2_PYTHON=/root/gpufree-data/conda_envs/florence2/bin/python
-FLORENCE2_DEVICE=cuda
-FLORENCE2_MAX_OBJECTS=40
-FLORENCE2_CONFIDENCE_THRESHOLD=0.15
-FLORENCE2_TASK_PROMPT=<OD>
-FLORENCE2_ALLOW_MOCK=false
-HF_HOME=/root/gpufree-data/hf_cache
-HF_MODULES_CACHE=/root/gpufree-data/hf_cache/modules_florence2_runtime
-```
-
-`FLORENCE2_DEVICE=cuda` 会强制使用 GPU；如果当前进程看不到 NVIDIA 驱动会直接报错。`FLORENCE2_DEVICE=auto` 会在 CUDA 不可见时退回 CPU。worker 会把实际设备写入对象属性，例如 `florence2_device=cuda` 和 `florence2_device_name=...`。
-
-无权重或无 GPU 的 smoke test 可以临时使用：
-
-```text
-FLORENCE2_ALLOW_MOCK=true
-```
-
-### 17.2 运行 Florence-2 + 几何 + 局部规划
-
-```bash
-python run_demo.py \
-  --image "/path/to/image.jpg" \
-  --target "找到手机" \
-  --detector florence2 \
-  --enable-knowledge
-```
-
-新增输出包括：
-
-```text
-outputs/point_map.npy
-outputs/depth.npy
-outputs/bev_occupancy.png
-outputs/free_space_mask.png
-outputs/esdf.npy
-outputs/esdf.png
-outputs/bev_metadata.json
-outputs/geometry_debug.png
-outputs/object_goal_projection.json
-outputs/local_plan.png
-```
-
-`object_table.csv` 新增 `bev_x`、`bev_y`、`distance_m`、`bearing_deg`、`reachable`、`clearance_m`、`goal_bev_x`、`goal_bev_y`、`geometry_backend`、`metric_reliable` 等字段。`scene_result.json` 顶层新增 `geometry`、`local_plan`、`selected_goal`、`selection_reason` 和 `warnings`。
-
-### 17.3 Florence-2 标签中文化
-
-Florence-2 的原始英文检测标签会保留在 `SceneObject.name` 和 `object_table.csv` 的英文名列，便于调试、匹配和回溯模型输出；面向用户展示的 `SceneObject.name_zh`、`object_table.csv` 中文名列和标注图统一使用中文。
-
-当前已补齐常见室内泛化标签映射，例如 `cabinetry -> 柜子`、`furniture -> 家具`、`house -> 室内空间`。如果 Florence-2 返回未命中的英文标签，系统会回退显示为 `物体`，避免 UI 或 CSV 中混入英文标签。
-
-### 17.4 几何层配置
-
-默认 `GEOMETRY_BACKEND=auto`。如果没有配置 `MOGE_ROOT`，系统会使用 `heuristic_fallback`，生成伪 depth/point map 和 BEV/ESDF，只用于链路演示和测试：
-
-```text
-ENABLE_GEOMETRY=true
-GEOMETRY_BACKEND=auto
-MOGE_ROOT=
-MOGE_PYTHON=
-MOGE_MODEL_ID=
-DEPTH_FALLBACK_BACKEND=heuristic
-CAMERA_HEIGHT_M=0.45
-BEV_X_MIN_M=0.0
-BEV_X_MAX_M=5.0
-BEV_Y_MIN_M=-2.5
-BEV_Y_MAX_M=2.5
-BEV_RESOLUTION_M=0.05
-UNKNOWN_AS_OCCUPIED=true
-ROBOT_RADIUS_M=0.25
-SAFETY_MARGIN_M=0.10
-```
-
-MoGe-2 真实接入预留了 subprocess 接口：设置 `MOGE_ROOT` 指向本地 MoGe 工程，`MOGE_PYTHON` 指向对应 Python，worker 需输出 `point_map_path`、`depth_path`、`camera` 和 `metric_reliable`。
-
-### 17.5 局部规划与 ROS2 dry-run
-
-局部规划默认使用 A* on ESDF：
-
-```text
-ENABLE_LOCAL_PLANNER=true
-LOCAL_PLANNER_BACKEND=astar
-LOCAL_PLANNER_MAX_STEPS=2000
-LOCAL_PLANNER_GOAL_TOLERANCE_M=0.20
-LOCAL_PLANNER_MIN_CLEARANCE_M=0.20
-LOCAL_PLANNER_ALLOW_PARTIAL=true
-CMD_VEL_LINEAR_SPEED=0.25
-CMD_VEL_ANGULAR_SPEED=0.6
-CMD_VEL_COMMAND_RATE_HZ=10.0
-CMD_VEL_WAYPOINT_TOLERANCE_M=0.15
-```
-
-预览 ROS2 dry-run：
-
-```bash
-python scripts/publish_ros2_motion_plan.py outputs/ros2_motion_plan.json
-```
-
-安全声明：heuristic geometry 不可用于真机安全导航；单目估计不是可靠避障；真实机器人必须接入深度、SLAM、避障、急停或厂商安全 SDK，并经过实地安全验证。
-
-它是 ROS2 `/cmd_vel` 兼容数据，核心字段：
+`ros2_motion_plan.json` 是 ROS2 `/cmd_vel` 兼容数据。移动距离不再无条件固定为 0.5m，而是由 `Motion Horizon Planner` 根据场景、任务阶段、目标候选状态、LLM 建议和 `.env` 硬上限裁剪。核心字段：
 
 ```json
 {
@@ -784,18 +832,34 @@ python scripts/publish_ros2_motion_plan.py outputs/ros2_motion_plan.json
   "topic": "/cmd_vel",
   "message_type": "geometry_msgs/msg/Twist",
   "command_rate_hz": 10.0,
+  "platform_obstacle_avoidance_assumed": true,
+  "dynamic_motion_horizon_enabled": true,
+  "motion_horizon_profile": "platform_assisted_auto",
+  "motion_horizon_decision": {
+    "motion_policy": "platform_assisted_open_area",
+    "recommended_distance_m": 3.0,
+    "max_allowed_distance_m": 5.0,
+    "decision_reason_zh": "当前为开放区域搜索阶段，平台具备基础避障能力，允许较长移动段以提高搜索效率。"
+  },
   "commands": [
     {
       "source_action": "move_forward",
+      "distance_m": 3.0,
       "twist": {
         "linear": {"x": 0.25, "y": 0.0, "z": 0.0},
         "angular": {"x": 0.0, "y": 0.0, "z": 0.0}
       },
-      "duration_sec": 2.0
+      "duration_sec": 12.0,
+      "interruptible_by_platform": true,
+      "platform_obstacle_avoidance_assumed": true,
+      "requires_stop_after_motion": true,
+      "observe_while_moving": false
     }
   ]
 }
 ```
+
+`motion_horizon_decision.json` 是同一份动态距离决策的独立调试输出，便于查看最终距离为什么被放宽或缩短。
 
 预览指令，不发布 ROS2：
 
@@ -886,6 +950,8 @@ python scripts/publish_ros2_motion_plan.py \
 - 必须确认 `angular.z > 0` 的旋转方向。
 - 本项目估计距离来自单张图和规则，不等价于真实导航。
 - 真机执行前应接入深度、避障、SLAM 或机器狗厂商 SDK 的安全策略。
+- `platform_obstacle_avoidance_assumed=true` 只表示高层允许更长移动段，不表示本项目已经实现避障。
+- `strict_safe` 模式仍可把单段移动恢复为 0.5m 上限。
 
 ## 12. 常用命令汇总
 
@@ -906,7 +972,18 @@ mock：
 
 ```bash
 python run_demo.py --mock
-python run_demo.py --mock --enable-knowledge
+python run_demo.py --mock \
+  --enable-llm-prior \
+  --enable-observation-memory \
+  --enable-evidence-gating \
+  --disable-handwritten-priors
+python run_demo.py --mock \
+  --enable-llm-prior \
+  --enable-observation-memory \
+  --enable-evidence-gating \
+  --disable-handwritten-priors \
+  --motion-profile platform_assisted_auto \
+  --platform-obstacle-avoidance
 ```
 
 真实 API：
@@ -916,7 +993,13 @@ python run_demo.py \
   --image "/path/to/image.jpg" \
   --target "找到手机" \
   --detector llm \
-  --enable-knowledge
+  --enable-llm-prior \
+  --enable-observation-memory \
+  --enable-evidence-gating \
+  --disable-handwritten-priors \
+  --motion-profile platform_assisted_auto \
+  --platform-obstacle-avoidance \
+  --max-open-step 5.0
 ```
 
 GroundingDINO+SAM2：
@@ -926,7 +1009,10 @@ python run_demo.py \
   --image "/path/to/image.jpg" \
   --target "巡查玄关区域，识别地面可通行区域和主要障碍物" \
   --detector grounded_sam \
-  --enable-knowledge
+  --enable-llm-prior \
+  --enable-observation-memory \
+  --enable-evidence-gating \
+  --disable-handwritten-priors
 ```
 
 Web UI：
@@ -941,7 +1027,7 @@ ROS2 指令预览：
 python scripts/publish_ros2_motion_plan.py outputs/ros2_motion_plan.json
 ```
 
-知识库查询：
+旧静态知识库查询（仅调试兼容，不参与默认 target found 判断）：
 
 ```bash
 python scripts/query_scene_kb.py --target "手机" --room_type office --location floor_5
@@ -965,9 +1051,29 @@ outputs/topology_graph.png             拓扑图图片
 outputs/topology_graph.graphml         拓扑图 GraphML
 outputs/annotated_scene.png            标注图，有原图时生成
 outputs/ros2_motion_plan.json          ROS2 /cmd_vel dry-run 指令数据
+outputs/motion_horizon_decision.json   自适应移动视界决策
 ```
 
-知识增强输出：
+LLM runtime prior / evidence gate 输出：
+
+```text
+outputs/llm_generated_priors.json        LLM 运行时自生成常识搜索假设，不能确认目标
+outputs/dynamic_detector_prompts.json    用户目标 + LLM prior + 视觉摘要生成的动态检测词
+outputs/evidence_gating_report.json      目标状态与视觉证据门控结果
+outputs/observation_memory_updates.json  本次观察记忆写入记录
+outputs/prior_usage_report.json          本次是否使用静态/手写先验的审计报告
+```
+
+目标状态说明：
+
+```text
+llm_hypothesis_only：只有 LLM 常识假设，目标未确认。
+visual_candidate：有视觉候选，但还未通过门控。
+visual_confirmed：视觉证据通过门控，目标确认。
+user_confirmed：用户确认。
+```
+
+兼容输出：
 
 ```text
 outputs/knowledge_aware_result.json
@@ -977,6 +1083,11 @@ outputs/predictive_scene_graph.graphml
 outputs/hypotheses.json
 outputs/knowledge_updates.json
 outputs/reasoning_report.md
+outputs/quadruped_search_plan.json
+outputs/quadruped_ros2_motion_plan.json
+outputs/llm_search_hypotheses.json
+outputs/actionability_report.md
+outputs/visual_grounding_report.json
 ```
 
 ## 14. Git 与隐私注意事项
@@ -1138,4 +1249,179 @@ http://localhost:8501
 outputs/scene_result.json
 outputs/knowledge_aware_result.json
 outputs/ros2_motion_plan.json
+outputs/motion_horizon_decision.json
+```
+## 高精度目标识别模式
+
+项目现在支持“目标画像与动态开放词表 → 高召回候选检测 → 候选 crop
+视觉复核 → 多源分数融合 → 视频 track-level 投票”。没有 API Key 时会跳过
+crop 复核；mock 仍可独立运行。ROS2 输出仍默认 `dry_run=true`。
+
+推荐图片命令：
+
+```bash
+python run_demo.py \
+  --image "/path/to/image.jpg" \
+  --target "找到手机" \
+  --detector grounded_sam \
+  --high-recall \
+  --enable-crop-verify \
+  --enable-knowledge
+```
+
+推荐视频命令：
+
+```bash
+python run_video_demo.py \
+  --video "/path/to/robot_walk.mp4" \
+  --target "手机" \
+  --detector grounded_sam \
+  --sample-fps 3.0 \
+  --max-frames 300 \
+  --enable-tracking \
+  --enable-crop-verify \
+  --enable-knowledge \
+  --enable-video-memory
+```
+
+新增的主要调试输出包括：
+
+```text
+outputs/target_profile.json
+outputs/candidate_objects.json
+outputs/crop_verify_results.json
+outputs/fused_objects.json
+outputs/detection_debug_report.md
+outputs/video_track_summary.json
+outputs/video_crop_verify_results.json
+outputs/video_tracking_debug_report.md
+```
+
+内置示例标注可用于检查评估链路：
+
+```bash
+python scripts/evaluate_detection_accuracy.py
+python scripts/evaluate_video_target_search.py
+```
+# 无人工先验的大模型自生成常识推理
+
+本项目不是“完全无常识”，而是“无开发者预置常识库”：系统不默认读取 object-location、room-object、目标搜索规则等手写先验；LLM 可以在运行时根据目标、当前画面、可见物体、空间关系和观察记忆生成搜索假设。
+
+这些假设的 `prior_source` 是 `llm_runtime_commonsense`，`can_confirm_target=false`。它们只能用于候选区域排序、动态检测词生成、下一视角建议和解释搜索策略。目标确认必须通过 `evidence_gating_report.json` 中的视觉门控。
+
+推荐单图命令：
+
+```bash
+python run_demo.py \
+  --image "/path/to/image.jpg" \
+  --target "找到手机" \
+  --detector grounded_sam \
+  --enable-llm-prior \
+  --enable-observation-memory \
+  --enable-evidence-gating \
+  --disable-handwritten-priors
+```
+
+推荐视频命令：
+
+```bash
+python run_video_demo.py \
+  --video "/path/to/robot_walk.mp4" \
+  --target "手机" \
+  --detector grounded_sam \
+  --sample-fps 3.0 \
+  --max-frames 300 \
+  --enable-llm-prior \
+  --enable-tracking \
+  --enable-crop-verify \
+  --enable-observation-memory \
+  --enable-evidence-gating \
+  --disable-handwritten-priors
+```
+
+# LLM-first 机械狗情境搜索
+
+单图知识增强模式现在支持“视觉事实 → LLM 情境推理 → 视觉证据门控 →
+机械狗动作门控 → PSG v2 → 下一视角计划”。推断节点不会把目标误标记为已找到，
+超出机械狗能力的开柜、翻找、拿取和低头精查会被改写或标记为需要人工。
+
+快速验收：
+
+```bash
+python run_demo.py --mock --enable-knowledge --enable-llm-reasoning --quadruped-mode
+```
+
+新增输出包括：
+
+- `outputs/llm_search_hypotheses.json`
+- `outputs/quadruped_search_plan.json`
+- `outputs/reasoned_predictive_scene_graph.json`
+- `outputs/reasoned_predictive_scene_graph.graphml`
+- `outputs/actionability_report.md`
+- `outputs/quadruped_ros2_motion_plan.json`
+- `outputs/reasoned_annotated_scene.png`（提供原图时）
+- `outputs/visual_grounding_report.json`
+
+LLM API 不可用时流程不会中断，会明确标记推理不可用，并降级为基于当前视觉锚点
+的保守转向/重观测方案。
+
+当目标尚未视觉确认时，LLM 生成的 `suggested_detector_prompts_en` 会触发一次
+可选二次视觉复核。只有复核结果具有 bbox/mask/crop 等视觉证据时，目标才会从
+`inferred` 升级为 `observed`。GroundingDINO+SAM2 在无 CUDA 环境下可能超时，
+系统会返回可读的 `DetectorRuntimeError`，不会输出伪造检测结果。
+
+# 平台避障辅助动态运动视界
+
+单图与知识增强模式现在支持“平台避障辅助 + 高层语义自适应移动距离”。旧逻辑中 ROS2 单次前进/后退会被固定裁剪到 0.5m；现在系统会根据场景类型、任务阶段、目标候选状态、LLM 推荐距离和配置硬上限动态计算高层移动段长度。
+
+核心原则：
+
+- 本项目不实现避障、局部路径规划、代价地图、深度图避障或急停。
+- `platform_obstacle_avoidance_assumed=true` 表示真实安全由机械狗底层平台/SDK/ROS 安全层负责。
+- 开放区域搜索可以生成 2m 以上移动段。
+- 普通室内搜索可以生成 0.8m 到 2m 左右移动段。
+- 目标候选出现、目标确认阶段或信息不足时会自动缩短到 0.3m 到 0.8m。
+- LLM 不可用时，如果平台避障假设开启，会降级到保守的 1.0m 到 1.5m；如果平台避障假设关闭，则回到严格 0.5m。
+- 运动后仍保留 stop 命令，不取消段后停稳和重观测。
+
+快速验收：
+
+```bash
+python run_demo.py --mock --enable-knowledge \
+  --motion-profile platform_assisted_open_area \
+  --platform-obstacle-avoidance \
+  --max-open-step 5.0
+```
+
+注意：mock 样例中的目标已经可见，因此会进入目标确认阶段并主动缩短距离。这是预期行为。若要验证开放区域长距离，可使用目标未出现、场景开阔的图片或测试：
+
+```bash
+python -m unittest tests.test_motion_horizon tests.test_ros2_motion_dynamic_horizon
+```
+
+典型 `outputs/motion_horizon_decision.json`：
+
+```json
+{
+  "enabled": true,
+  "profile": "platform_assisted_auto",
+  "platform_obstacle_avoidance_assumed": true,
+  "scene_type": "open_area",
+  "task_phase": "search",
+  "motion_policy": "platform_assisted_open_area",
+  "recommended_distance_m": 3.0,
+  "max_allowed_distance_m": 5.0,
+  "requires_stop_after_motion": true,
+  "observe_while_moving": false,
+  "source": "mixed",
+  "decision_reason_zh": "当前为开放区域搜索阶段，平台具备基础避障能力，允许较长移动段以提高搜索效率。"
+}
+```
+
+如果需要恢复旧版保守行为：
+
+```bash
+python run_demo.py --mock --enable-knowledge \
+  --motion-profile strict_safe \
+  --disable-dynamic-motion-horizon
 ```
