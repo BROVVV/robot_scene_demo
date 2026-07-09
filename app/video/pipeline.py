@@ -66,6 +66,7 @@ def run_video_search(
     disable_handwritten_priors: bool = False,
     disable_static_kb: bool = False,
     prior_audit: bool = False,
+    include_runtime_artifacts: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Path]]:
     if not target.strip():
         raise ValueError("Target must not be empty.")
@@ -487,6 +488,13 @@ def run_video_search(
         paths["video_reasoning_report"] = write_video_report(
             search_result, output / "video_reasoning_report.md"
         )
+    if include_runtime_artifacts:
+        search_result["_runtime_artifacts"] = {
+            "frame_results": frame_results,
+            "object_tracks": tracks,
+            "target_profile": target_profile,
+            "settings": settings,
+        }
     return search_result, paths
 
 

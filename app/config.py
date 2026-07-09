@@ -81,10 +81,20 @@ DEFAULT_VIDEO_SAVE_CANDIDATE_CROPS = True
 DEFAULT_EVAL_IOU_THRESHOLD = 0.5
 DEFAULT_EVAL_OUTPUT_DIR = "outputs/eval"
 DEFAULT_VIDEO_ENABLE_SCENE_MEMORY = True
+DEFAULT_VIDEO_MODE_DEFAULT = "target_search"
+DEFAULT_VIDEO_ENABLE_SCENE_MAPPING = False
 DEFAULT_VIDEO_FULL_SCENE_MAP_ENABLED = True
+DEFAULT_VIDEO_USE_SCENE_MAP_FOR_SEARCH = False
+DEFAULT_VIDEO_ALLOW_SCENE_MAP_ONLY = True
+DEFAULT_VIDEO_TARGET_SEARCH_REQUIRED_WHEN_TARGET_PRESENT = True
+DEFAULT_VIDEO_SCENE_MAPPING_REUSE_TARGET_FRAMES = True
+DEFAULT_VIDEO_SCENE_MAPPING_REUSE_OBJECT_TRACKS = True
 DEFAULT_VIDEO_ALWAYS_WRITE_MEMORY = True
 DEFAULT_VIDEO_ENABLE_VIDEO_PSG = True
 DEFAULT_VIDEO_ENABLE_NAVIGATION_TOPOLOGY = True
+DEFAULT_VIDEO_TOPOLOGY_ANNOTATE_TARGET_SEARCH = True
+DEFAULT_VIDEO_TOPOLOGY_ADD_TARGET_CANDIDATE_NODES = True
+DEFAULT_VIDEO_TOPOLOGY_ADD_TARGET_SEARCH_SCORES = True
 DEFAULT_VIDEO_PSG_MAX_PREDICTED_NODES = 30
 DEFAULT_VIDEO_PSG_CONFIDENCE_THRESHOLD = 0.45
 DEFAULT_VIDEO_TOPOLOGY_OBSERVED_ONLY = False
@@ -148,12 +158,16 @@ DEFAULT_LLM_PRIOR_MAX_HYPOTHESES = 8
 DEFAULT_LLM_PRIOR_MAX_DETECTOR_PROMPTS = 12
 DEFAULT_LLM_PRIOR_OUTPUT_LANGUAGE = "zh"
 DEFAULT_EVIDENCE_GATING_ENABLED = True
+DEFAULT_VIDEO_TARGET_CONFIRMATION_BY_CONTEXT_ONLY = False
 DEFAULT_TARGET_CONFIRMATION_REQUIRE_VISUAL_EVIDENCE = True
 DEFAULT_TARGET_CONFIRMATION_REQUIRE_BBOX = True
 DEFAULT_TARGET_CONFIRMATION_REQUIRE_CROP_VERIFY = True
 DEFAULT_TARGET_CONFIRMATION_REQUIRE_MASK = False
 DEFAULT_TARGET_CONFIRMATION_MIN_SCORE = 0.72
 DEFAULT_TARGET_INFERRED_IS_NOT_FOUND = True
+DEFAULT_VIDEO_SEARCH_RANKER_ENABLED = True
+DEFAULT_VIDEO_SEARCH_RANKER_HIGH_SCORE_THRESHOLD = 0.70
+DEFAULT_VIDEO_SEARCH_RANKER_CONTEXT_ONLY_CAN_CONFIRM = False
 DEFAULT_OBSERVATION_MEMORY_ENABLED = True
 DEFAULT_OBSERVATION_MEMORY_STORE_PATH = "data/memory/observational_memory.jsonl"
 DEFAULT_OBSERVATION_MEMORY_WRITE_VISUAL_ONLY = True
@@ -249,10 +263,32 @@ class Settings:
     eval_iou_threshold: float = DEFAULT_EVAL_IOU_THRESHOLD
     eval_output_dir: str = DEFAULT_EVAL_OUTPUT_DIR
     video_enable_scene_memory: bool = DEFAULT_VIDEO_ENABLE_SCENE_MEMORY
+    video_mode_default: str = DEFAULT_VIDEO_MODE_DEFAULT
+    video_enable_scene_mapping: bool = DEFAULT_VIDEO_ENABLE_SCENE_MAPPING
     video_full_scene_map_enabled: bool = DEFAULT_VIDEO_FULL_SCENE_MAP_ENABLED
+    video_use_scene_map_for_search: bool = DEFAULT_VIDEO_USE_SCENE_MAP_FOR_SEARCH
+    video_allow_scene_map_only: bool = DEFAULT_VIDEO_ALLOW_SCENE_MAP_ONLY
+    video_target_search_required_when_target_present: bool = (
+        DEFAULT_VIDEO_TARGET_SEARCH_REQUIRED_WHEN_TARGET_PRESENT
+    )
+    video_scene_mapping_reuse_target_frames: bool = (
+        DEFAULT_VIDEO_SCENE_MAPPING_REUSE_TARGET_FRAMES
+    )
+    video_scene_mapping_reuse_object_tracks: bool = (
+        DEFAULT_VIDEO_SCENE_MAPPING_REUSE_OBJECT_TRACKS
+    )
     video_always_write_memory: bool = DEFAULT_VIDEO_ALWAYS_WRITE_MEMORY
     video_enable_video_psg: bool = DEFAULT_VIDEO_ENABLE_VIDEO_PSG
     video_enable_navigation_topology: bool = DEFAULT_VIDEO_ENABLE_NAVIGATION_TOPOLOGY
+    video_topology_annotate_target_search: bool = (
+        DEFAULT_VIDEO_TOPOLOGY_ANNOTATE_TARGET_SEARCH
+    )
+    video_topology_add_target_candidate_nodes: bool = (
+        DEFAULT_VIDEO_TOPOLOGY_ADD_TARGET_CANDIDATE_NODES
+    )
+    video_topology_add_target_search_scores: bool = (
+        DEFAULT_VIDEO_TOPOLOGY_ADD_TARGET_SEARCH_SCORES
+    )
     video_psg_max_predicted_nodes: int = DEFAULT_VIDEO_PSG_MAX_PREDICTED_NODES
     video_psg_confidence_threshold: float = DEFAULT_VIDEO_PSG_CONFIDENCE_THRESHOLD
     video_topology_observed_only: bool = DEFAULT_VIDEO_TOPOLOGY_OBSERVED_ONLY
@@ -328,6 +364,9 @@ class Settings:
     llm_prior_max_detector_prompts: int = DEFAULT_LLM_PRIOR_MAX_DETECTOR_PROMPTS
     llm_prior_output_language: str = DEFAULT_LLM_PRIOR_OUTPUT_LANGUAGE
     evidence_gating_enabled: bool = DEFAULT_EVIDENCE_GATING_ENABLED
+    video_target_confirmation_by_context_only: bool = (
+        DEFAULT_VIDEO_TARGET_CONFIRMATION_BY_CONTEXT_ONLY
+    )
     target_confirmation_require_visual_evidence: bool = (
         DEFAULT_TARGET_CONFIRMATION_REQUIRE_VISUAL_EVIDENCE
     )
@@ -338,6 +377,13 @@ class Settings:
     target_confirmation_require_mask: bool = DEFAULT_TARGET_CONFIRMATION_REQUIRE_MASK
     target_confirmation_min_score: float = DEFAULT_TARGET_CONFIRMATION_MIN_SCORE
     target_inferred_is_not_found: bool = DEFAULT_TARGET_INFERRED_IS_NOT_FOUND
+    video_search_ranker_enabled: bool = DEFAULT_VIDEO_SEARCH_RANKER_ENABLED
+    video_search_ranker_high_score_threshold: float = (
+        DEFAULT_VIDEO_SEARCH_RANKER_HIGH_SCORE_THRESHOLD
+    )
+    video_search_ranker_context_only_can_confirm: bool = (
+        DEFAULT_VIDEO_SEARCH_RANKER_CONTEXT_ONLY_CAN_CONFIRM
+    )
     observation_memory_enabled: bool = DEFAULT_OBSERVATION_MEMORY_ENABLED
     observation_memory_store_path: str = DEFAULT_OBSERVATION_MEMORY_STORE_PATH
     observation_memory_write_visual_only: bool = DEFAULT_OBSERVATION_MEMORY_WRITE_VISUAL_ONLY
@@ -599,8 +645,31 @@ def get_settings() -> Settings:
         video_enable_scene_memory=_env_bool(
             "VIDEO_ENABLE_SCENE_MEMORY", DEFAULT_VIDEO_ENABLE_SCENE_MEMORY
         ),
+        video_mode_default=_env_value("VIDEO_MODE_DEFAULT", DEFAULT_VIDEO_MODE_DEFAULT),
+        video_enable_scene_mapping=_env_bool(
+            "VIDEO_ENABLE_SCENE_MAPPING", DEFAULT_VIDEO_ENABLE_SCENE_MAPPING
+        ),
         video_full_scene_map_enabled=_env_bool(
             "VIDEO_FULL_SCENE_MAP_ENABLED", DEFAULT_VIDEO_FULL_SCENE_MAP_ENABLED
+        ),
+        video_use_scene_map_for_search=_env_bool(
+            "VIDEO_USE_SCENE_MAP_FOR_SEARCH",
+            DEFAULT_VIDEO_USE_SCENE_MAP_FOR_SEARCH,
+        ),
+        video_allow_scene_map_only=_env_bool(
+            "VIDEO_ALLOW_SCENE_MAP_ONLY", DEFAULT_VIDEO_ALLOW_SCENE_MAP_ONLY
+        ),
+        video_target_search_required_when_target_present=_env_bool(
+            "VIDEO_TARGET_SEARCH_REQUIRED_WHEN_TARGET_PRESENT",
+            DEFAULT_VIDEO_TARGET_SEARCH_REQUIRED_WHEN_TARGET_PRESENT,
+        ),
+        video_scene_mapping_reuse_target_frames=_env_bool(
+            "VIDEO_SCENE_MAPPING_REUSE_TARGET_FRAMES",
+            DEFAULT_VIDEO_SCENE_MAPPING_REUSE_TARGET_FRAMES,
+        ),
+        video_scene_mapping_reuse_object_tracks=_env_bool(
+            "VIDEO_SCENE_MAPPING_REUSE_OBJECT_TRACKS",
+            DEFAULT_VIDEO_SCENE_MAPPING_REUSE_OBJECT_TRACKS,
         ),
         video_always_write_memory=_env_bool(
             "VIDEO_ALWAYS_WRITE_MEMORY", DEFAULT_VIDEO_ALWAYS_WRITE_MEMORY
@@ -611,6 +680,18 @@ def get_settings() -> Settings:
         video_enable_navigation_topology=_env_bool(
             "VIDEO_ENABLE_NAVIGATION_TOPOLOGY",
             DEFAULT_VIDEO_ENABLE_NAVIGATION_TOPOLOGY,
+        ),
+        video_topology_annotate_target_search=_env_bool(
+            "VIDEO_TOPOLOGY_ANNOTATE_TARGET_SEARCH",
+            DEFAULT_VIDEO_TOPOLOGY_ANNOTATE_TARGET_SEARCH,
+        ),
+        video_topology_add_target_candidate_nodes=_env_bool(
+            "VIDEO_TOPOLOGY_ADD_TARGET_CANDIDATE_NODES",
+            DEFAULT_VIDEO_TOPOLOGY_ADD_TARGET_CANDIDATE_NODES,
+        ),
+        video_topology_add_target_search_scores=_env_bool(
+            "VIDEO_TOPOLOGY_ADD_TARGET_SEARCH_SCORES",
+            DEFAULT_VIDEO_TOPOLOGY_ADD_TARGET_SEARCH_SCORES,
         ),
         video_psg_max_predicted_nodes=_env_int(
             "VIDEO_PSG_MAX_PREDICTED_NODES",
@@ -846,6 +927,10 @@ def get_settings() -> Settings:
             "EVIDENCE_GATING_ENABLED",
             DEFAULT_EVIDENCE_GATING_ENABLED,
         ),
+        video_target_confirmation_by_context_only=_env_bool(
+            "VIDEO_TARGET_CONFIRMATION_BY_CONTEXT_ONLY",
+            DEFAULT_VIDEO_TARGET_CONFIRMATION_BY_CONTEXT_ONLY,
+        ),
         target_confirmation_require_visual_evidence=_env_bool(
             "TARGET_CONFIRMATION_REQUIRE_VISUAL_EVIDENCE",
             DEFAULT_TARGET_CONFIRMATION_REQUIRE_VISUAL_EVIDENCE,
@@ -869,6 +954,17 @@ def get_settings() -> Settings:
         target_inferred_is_not_found=_env_bool(
             "TARGET_INFERRED_IS_NOT_FOUND",
             DEFAULT_TARGET_INFERRED_IS_NOT_FOUND,
+        ),
+        video_search_ranker_enabled=_env_bool(
+            "VIDEO_SEARCH_RANKER_ENABLED", DEFAULT_VIDEO_SEARCH_RANKER_ENABLED
+        ),
+        video_search_ranker_high_score_threshold=_env_float(
+            "VIDEO_SEARCH_RANKER_HIGH_SCORE_THRESHOLD",
+            DEFAULT_VIDEO_SEARCH_RANKER_HIGH_SCORE_THRESHOLD,
+        ),
+        video_search_ranker_context_only_can_confirm=_env_bool(
+            "VIDEO_SEARCH_RANKER_CONTEXT_ONLY_CAN_CONFIRM",
+            DEFAULT_VIDEO_SEARCH_RANKER_CONTEXT_ONLY_CAN_CONFIRM,
         ),
         observation_memory_enabled=_env_bool(
             "OBSERVATION_MEMORY_ENABLED",

@@ -12,26 +12,47 @@ from pydantic import ValidationError
 from app.config import DEFAULT_OUTPUT_DIR, SettingsError
 from app.detectors.grounded_sam_subprocess import DetectorRuntimeError
 from app.video.full_scene_mapper import VideoFullSceneMapper
-from app.video.pipeline import run_video_search
+from app.video.video_target_search_pipeline import run_video_target_search_pipeline
 from app.video.video_reader import VideoReadError
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="输入机器狗第一视角视频，执行目标搜索或全场景语义建图。"
+        description="输入机器狗第一视角视频，执行目标搜索，并可选启用场景建图辅助。"
     )
     parser.add_argument("--video", required=True, help="输入视频路径")
-    parser.add_argument("--target", default="", help="要寻找的目标物；full_scene_map 模式可省略")
+    parser.add_argument("--target", default="", help="要寻找的目标物；scene_map_only 模式可省略")
     parser.add_argument(
         "--mode",
-        choices=["target_search", "full_scene_map"],
+        choices=["target_search", "scene_map_only", "full_scene_map"],
         default="target_search",
         help="视频运行模式",
     )
     parser.add_argument(
         "--enable-full-scene-map",
         action="store_true",
-        help="兼容开关，等价于 --mode full_scene_map",
+        help="兼容开关，等价于 --scene-map-only",
+    )
+    parser.add_argument(
+        "--scene-map-only",
+        action="store_true",
+        help="只调试全场景建图，不执行目标搜索",
+    )
+    parser.add_argument(
+        "--enable-scene-mapping",
+        action="store_true",
+        help="在目标搜索之后额外执行全场景建图辅助",
+    )
+    parser.add_argument(
+        "--use-scene-map-for-search",
+        action="store_true",
+        help="使用场景拓扑给后续目标搜索区域排序",
+    )
+    parser.add_argument(
+        "--target-required-for-search",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="target_search 模式下是否要求 --target",
     )
     parser.add_argument(
         "--detector",
@@ -150,18 +171,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         target_text = args.target.strip()
-        target_requests_map = (
-            ("导航拓扑" in target_text or "可导航" in target_text or "建图" in target_text)
-            and ("构建" in target_text or "生成" in target_text or "map" in target_text.lower())
-        )
         mode = (
-            "full_scene_map"
+            "scene_map_only"
             if args.enable_full_scene_map
-            or target_requests_map
+            or args.scene_map_only
+            or args.mode == "full_scene_map"
             or (args.enable_navigation_topology and not target_text)
             else args.mode
         )
-        if mode == "full_scene_map":
+        if mode == "scene_map_only":
             result, paths = VideoFullSceneMapper(output_dir=args.output_dir).run(
                 video_path=args.video,
                 detector=args.detector,
@@ -182,36 +200,33 @@ def main(argv: list[str] | None = None) -> int:
                 print(Path(path))
             return 0
 
-        if not args.target.strip():
-            raise ValueError("target_search 模式必须提供 --target；full_scene_map 模式可省略。")
+        if args.target_required_for_search and not args.target.strip():
+            raise ValueError("target_search 模式必须提供 --target；scene_map_only 模式可省略。")
         if args.enable_knowledge:
             print(
                 "--enable-knowledge is deprecated. Use --enable-llm-prior "
                 "--enable-observation-memory --enable-evidence-gating instead.",
                 file=sys.stderr,
             )
-        result, paths = run_video_search(
+        result = run_video_target_search_pipeline(
             video_path=args.video,
             target=args.target,
             detector=args.detector,
-            sample_fps=args.sample_fps,
-            max_frames=args.max_frames,
-            enable_knowledge=args.enable_knowledge,
-            enable_video_memory=(True if args.enable_video_memory else None),
-            output_dir=args.output_dir,
-            annotate=not args.no_annotate,
-            enable_tracking=args.enable_tracking,
-            enable_crop_verify=args.enable_crop_verify,
-            verify_every_n_frames=args.verify_every_n_frames,
-            track_iou_threshold=args.track_iou_threshold,
-            target_confirm_min_frames=args.target_confirm_min_frames,
-            target_confirm_score=args.target_confirm_score,
-            enable_llm_prior=args.enable_llm_prior,
-            enable_observation_memory=args.enable_observation_memory,
-            enable_evidence_gating=args.enable_evidence_gating,
-            disable_handwritten_priors=args.disable_handwritten_priors,
-            disable_static_kb=args.disable_static_kb,
-            prior_audit=args.prior_audit,
+            config=args,
+            enable_tracking=(
+                True if args.enable_tracking is None else args.enable_tracking
+            ),
+            enable_crop_verify=(
+                True if args.enable_crop_verify is None else args.enable_crop_verify
+            ),
+            enable_evidence_gating=(
+                True
+                if args.enable_evidence_gating is None
+                else args.enable_evidence_gating
+            ),
+            enable_scene_mapping=args.enable_scene_mapping,
+            enable_navigation_topology=bool(args.enable_navigation_topology),
+            use_scene_map_for_search=args.use_scene_map_for_search,
         )
     except (
         SettingsError,
@@ -227,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"错误：{exc}", file=sys.stderr)
         return 1
 
-    if result["target_found"]:
+    if result["target_confirmed"]:
         best = result["best_evidence"]
         print(f"已找到目标：{args.target}")
         print(f"最佳证据：{best['timestamp_sec']:.2f}s，置信度 {best['confidence']:.3f}")
@@ -241,9 +256,11 @@ def main(argv: list[str] | None = None) -> int:
                 f"负目标证据：{result.get('negative_evidence_count', 0)} 条；"
                 f"PSG 假设：{len(result.get('psg_hypotheses', []))} 条。"
             )
-    print(result["navigation_interpretation"]["suggestion"])
+    decision = result.get("navigation_decision", {})
+    print(f"目标状态：{result.get('target_status')}")
+    print(decision.get("reason") or result["navigation_interpretation"]["suggestion"])
     print("已生成：")
-    for path in paths.values():
+    for path in result.get("output_files", {}).values():
         print(Path(path))
     return 0
 

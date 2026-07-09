@@ -21,6 +21,18 @@ from app.video.target_profile import TargetProfile, TargetProfileResolver
 
 TARGET_SYNONYMS = {
     "手机": ["手机", "phone", "mobile phone", "cell phone", "iphone", "smartphone"],
+    "电视": [
+        "电视",
+        "电视机",
+        "television",
+        "tv",
+        "tv screen",
+        "monitor",
+        "display",
+        "flat screen",
+        "large black screen",
+        "screen-like rectangle",
+    ],
     "水杯": ["水杯", "杯子", "cup", "mug", "bottle"],
     "充电器": ["充电器", "charger", "adapter", "charging cable", "cable"],
     "钥匙": ["钥匙", "key", "keys", "keychain"],

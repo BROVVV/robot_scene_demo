@@ -303,6 +303,16 @@ def _fallback_profile(query: str) -> TargetProfile:
 def _known_profile(cleaned: str) -> dict[str, Any] | None:
     known = {
         "手机": (["phone", "cell phone", "mobile phone", "smartphone"], ["桌子", "沙发", "床", "充电线"], ["table", "sofa", "bed", "charger"]),
+        "电视": (
+            ["television", "TV", "tv screen", "monitor", "display", "flat screen", "large black screen", "screen-like rectangle"],
+            ["沙发", "电视柜", "客厅墙面", "遥控器", "娱乐柜"],
+            ["sofa", "TV stand", "living room wall", "remote control", "entertainment cabinet"],
+        ),
+        "电视机": (
+            ["television", "TV", "tv screen", "monitor", "display", "flat screen", "large black screen", "screen-like rectangle"],
+            ["沙发", "电视柜", "客厅墙面", "遥控器", "娱乐柜"],
+            ["sofa", "TV stand", "living room wall", "remote control", "entertainment cabinet"],
+        ),
         "水杯": (["cup", "mug", "water bottle"], ["桌子", "厨房台面"], ["table", "countertop"]),
         "钥匙": (["key", "keychain"], ["桌子", "门", "鞋柜"], ["table", "door", "shoe cabinet"]),
         "灭火器": (
@@ -321,7 +331,13 @@ def _known_profile(cleaned: str) -> dict[str, Any] | None:
     }
     for term, (labels, context_zh, context_en) in known.items():
         if term in cleaned:
-            canonical = "厕所" if term in {"洗手间", "卫生间"} else term
+            canonical = (
+                "厕所"
+                if term in {"洗手间", "卫生间"}
+                else "电视"
+                if term == "电视机"
+                else term
+            )
             return {
                 "canonical_name_zh": canonical,
                 "target_type": "place" if canonical == "厕所" else "object",
@@ -330,6 +346,12 @@ def _known_profile(cleaned: str) -> dict[str, Any] | None:
                 "aliases_en": labels,
                 "context_labels_zh": context_zh,
                 "context_labels_en": context_en,
+                "likely_regions_zh": ["客厅", "影音区"] if canonical == "电视" else [],
+                "negative_terms": (
+                    ["window", "mirror", "poster", "painting", "whiteboard"]
+                    if canonical == "电视"
+                    else []
+                ),
                 "search_hint_zh": "",
             }
     return None
