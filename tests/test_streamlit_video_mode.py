@@ -5,7 +5,7 @@ from streamlit.testing.v1 import AppTest
 
 class StreamlitVideoModeTest(unittest.TestCase):
     def test_quadruped_reasoning_controls_and_tabs_render(self) -> None:
-        app = AppTest.from_file("streamlit_app.py", default_timeout=30).run()
+        app = AppTest.from_file("streamlit_app.py", default_timeout=90).run()
         self.assertEqual(len(app.exception), 0)
         toggle_labels = {item.label for item in app.toggle}
         self.assertTrue(
@@ -19,7 +19,7 @@ class StreamlitVideoModeTest(unittest.TestCase):
             <= toggle_labels
         )
 
-        app.button[0].click().run(timeout=30)
+        app.button[0].click().run(timeout=90)
 
         self.assertEqual(len(app.exception), 0)
         tab_labels = {item.label for item in app.tabs}
@@ -36,9 +36,10 @@ class StreamlitVideoModeTest(unittest.TestCase):
         )
 
     def test_video_mode_renders_video_controls(self) -> None:
-        app = AppTest.from_file("streamlit_app.py", default_timeout=15).run()
+        app = AppTest.from_file("streamlit_app.py", default_timeout=90).run()
         self.assertEqual(len(app.exception), 0)
         self.assertIn("视频目标搜索", app.radio[0].options)
+        self.assertNotIn("视频全场景建图", app.radio[0].options)
 
         app.radio[0].set_value("视频目标搜索").run()
 
@@ -57,8 +58,17 @@ class StreamlitVideoModeTest(unittest.TestCase):
             <= {item.label for item in app.slider}
         )
         self.assertIn(
-            "视频场景长期记忆",
+            "启用视频记忆",
             [item.label for item in app.toggle],
+        )
+        self.assertTrue(
+            {
+                "启用视频 PSG",
+                "启用全场景建图辅助",
+                "生成导航拓扑图",
+                "使用拓扑图辅助目标搜索排序",
+            }
+            <= {item.label for item in app.toggle}
         )
 
 

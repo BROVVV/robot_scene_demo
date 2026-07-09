@@ -16,6 +16,45 @@ from app.video.video_target_search_pipeline import run_video_target_search_pipel
 from app.video.video_reader import VideoReadError
 
 
+def normalize_video_args(args: argparse.Namespace) -> argparse.Namespace:
+    """Normalize legacy scene-map flags into the target-search-first contract."""
+
+    target_text = args.target.strip()
+    legacy_full_scene_requested = (
+        args.enable_full_scene_map or args.mode == "full_scene_map"
+    )
+    if legacy_full_scene_requested and target_text and not args.scene_map_only:
+        args.mode = "target_search"
+        args.enable_scene_mapping = True
+        args.enable_navigation_topology = True
+    elif legacy_full_scene_requested:
+        args.mode = "scene_map_only"
+
+    if args.scene_map_only:
+        args.mode = "scene_map_only"
+
+    if target_text and args.mode == "scene_map_only":
+        raise ValueError(
+            "检测到 --target，但当前是 scene_map_only。"
+            "如果要找目标，请使用 --mode target_search --enable-scene-mapping。"
+        )
+
+    if target_text:
+        args.mode = "target_search"
+
+    if args.use_scene_map_for_search:
+        args.enable_navigation_topology = True
+        args.enable_scene_mapping = True
+    elif args.enable_navigation_topology:
+        args.enable_scene_mapping = True
+
+    if not args.enable_scene_mapping:
+        args.enable_navigation_topology = False
+        args.use_scene_map_for_search = False
+
+    return args
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="输入机器狗第一视角视频，执行目标搜索，并可选启用场景建图辅助。"
@@ -26,12 +65,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--mode",
         choices=["target_search", "scene_map_only", "full_scene_map"],
         default="target_search",
-        help="视频运行模式",
+        help="视频运行模式。默认 target_search。scene_map_only 仅用于高级调试；full_scene_map 为旧命令兼容。",
     )
     parser.add_argument(
         "--enable-full-scene-map",
         action="store_true",
-        help="兼容开关，等价于 --scene-map-only",
+        help="兼容开关；带 --target 时转为目标搜索内建图辅助，否则等价于 --scene-map-only",
     )
     parser.add_argument(
         "--scene-map-only",
@@ -168,17 +207,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
     try:
+        args = normalize_video_args(parse_args(argv))
         target_text = args.target.strip()
-        mode = (
-            "scene_map_only"
-            if args.enable_full_scene_map
-            or args.scene_map_only
-            or args.mode == "full_scene_map"
-            or (args.enable_navigation_topology and not target_text)
-            else args.mode
-        )
+        mode = args.mode
         if mode == "scene_map_only":
             result, paths = VideoFullSceneMapper(output_dir=args.output_dir).run(
                 video_path=args.video,

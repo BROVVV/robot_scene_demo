@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import streamlit as st
@@ -37,7 +38,15 @@ from app.services.psg_builder import (
 from app.services.route_planner import format_route_plan
 from app.services.scene_analyzer import SceneAnalyzer
 from app.services.target_matcher import format_target_decision
-from app.video.pipeline import run_video_search
+from app.task_understanding.task_pipeline import (
+    gate_result_to_dict,
+    navigation_target_text,
+    navigation_task_to_dict,
+    parsed_task_to_dict,
+    prepare_navigation_task_from_text,
+    write_task_understanding_outputs,
+)
+from app.video.video_target_search_pipeline import run_video_target_search_pipeline
 from app.video.target_profile import TargetProfileResolver
 from app.video.video_reader import VideoReadError
 from run_demo import _run_prior_free_runtime
@@ -46,40 +55,6 @@ from run_demo import _run_prior_free_runtime
 MOCK_PATH = Path("examples/mock_scene_result.json")
 UPLOAD_DIR = Path(DEFAULT_OUTPUT_DIR) / "uploads"
 VIDEO_UPLOAD_DIR = Path(DEFAULT_OUTPUT_DIR) / "video_uploads"
-
-TASK_PRESETS = [
-    {
-        "label": "find_object | 找可见目标 | 桌子上的手机",
-        "text": "桌子上的手机",
-        "caption": "用于验证目标已经在画面里时的识别、匹配和靠近计划。",
-    },
-    {
-        "label": "find_object | 找不可见目标 | 找到手机",
-        "text": "找到手机",
-        "caption": "用于验证目标不可见时，系统是否会根据桌面、键盘等线索生成候选位置。",
-    },
-    {
-        "label": "count_objects | 计数任务 | 数椅子",
-        "text": "数数这个房间里有几个椅子",
-        "caption": "用于验证当前视野计数、遮挡区域提示和下一视角规划。",
-    },
-    {
-        "label": "inspect_area + check_door_state | 巡查门状态 | 巡查开门",
-        "text": "巡查这层楼看看有几个房间的门是打开的",
-        "caption": "用于验证楼层巡查、门状态检查和按门序规划。",
-    },
-    {
-        "label": "find_room | 找房间 | 找 503",
-        "text": "找到 503 房间",
-        "caption": "用于验证门牌/房间号解析、运行时推理和下一视角规划。",
-    },
-    {
-        "label": "navigate_to_location | 导航到地点 | 走廊尽头",
-        "text": "去走廊尽头的房间",
-        "caption": "用于验证地点导航任务和走廊拓扑线索。",
-    },
-]
-
 
 def main() -> None:
     st.set_page_config(page_title="机器狗场景理解工作台", layout="wide")
@@ -101,20 +76,11 @@ def _render_sidebar() -> dict:
             horizontal=False,
         )
 
-        preset = st.selectbox(
-            "任务模板",
-            TASK_PRESETS,
-            index=0,
-            format_func=lambda item: item["label"],
-        )
-        if st.session_state.get("selected_task_preset") != preset["label"]:
-            st.session_state["selected_task_preset"] = preset["label"]
-            st.session_state["target_text"] = preset["text"]
-        st.caption(preset["caption"])
         target_text = st.text_area(
-            "目标描述",
-            value=st.session_state.get("target_text", preset["text"]),
+            "自然语言任务",
+            value=st.session_state.get("target_text", "帮我找到手机"),
             height=84,
+            placeholder="例如：帮我找到手机；找到张三，然后在安全距离处报告位置",
         ).strip()
         st.session_state["target_text"] = target_text
 
@@ -124,6 +90,13 @@ def _render_sidebar() -> dict:
         max_frames = 300
         video_detector = "llm"
         enable_video_memory = True
+        enable_video_psg = True
+        enable_scene_mapping = False
+        enable_navigation_topology = False
+        use_scene_map_for_search = False
+        topology_observed_only = False
+        save_frame_observations = True
+        runtime_settings = get_settings()
         if mode == "视频目标搜索":
             uploaded_video = st.file_uploader(
                 "上传机器狗第一视角视频",
@@ -145,10 +118,48 @@ def _render_sidebar() -> dict:
             sample_fps = st.slider("关键帧采样 FPS", 0.2, 5.0, 3.0, 0.2)
             max_frames = st.slider("最大分析帧数", 10, 500, 300, 10)
             enable_video_memory = st.toggle(
-                "视频场景长期记忆",
+                "启用视频记忆",
                 value=True,
                 help="即使目标未出现，也记录环境、负证据并生成视频 PSG。",
             )
+            st.markdown("### 辅助功能")
+            enable_video_psg = st.toggle(
+                "启用视频 PSG",
+                value=True,
+                help="根据真实观察生成可探索候选区域，但不能直接确认目标。",
+            )
+            enable_scene_mapping = st.toggle(
+                "启用全场景建图辅助",
+                value=runtime_settings.video_enable_scene_mapping,
+                help="在目标搜索过程中同时构建场景图，用于辅助理解场景和导航决策。不会替代目标搜索。",
+            )
+            enable_navigation_topology = st.toggle(
+                "生成导航拓扑图",
+                value=(
+                    runtime_settings.video_enable_navigation_topology
+                    if enable_scene_mapping
+                    else False
+                ),
+                disabled=not enable_scene_mapping,
+                help="基于场景图生成 place/passage/free_space/obstacle/PSG 导航拓扑图。",
+            )
+            use_scene_map_for_search = st.toggle(
+                "使用拓扑图辅助目标搜索排序",
+                value=(
+                    runtime_settings.video_use_scene_map_for_search
+                    if enable_scene_mapping
+                    else False
+                ),
+                disabled=not enable_scene_mapping,
+                help="使用拓扑图给候选区域和 next-best-view 排序，但目标确认仍必须依赖视觉证据。",
+            )
+            if not enable_scene_mapping:
+                enable_navigation_topology = False
+                use_scene_map_for_search = False
+            with st.expander("高级调试", expanded=False):
+                st.caption("只建图不搜索目标仅保留在 CLI 的 scene_map_only 调试模式中，普通 WebUI 不提供该入口。")
+                topology_observed_only = st.toggle("拓扑图只使用真实观察", value=False)
+                save_frame_observations = st.toggle("保存每帧观察 JSON", value=True)
         else:
             uploaded_file = st.file_uploader("场景图片", type=["jpg", "jpeg", "png"])
 
@@ -181,7 +192,6 @@ def _render_sidebar() -> dict:
             )
             max_candidates = st.slider("最大候选数量", 1, 100, 40, 1)
 
-        runtime_settings = get_settings()
         with st.expander("运动视界设置", expanded=True):
             motion_profile = st.selectbox(
                 "运动策略档位",
@@ -253,6 +263,12 @@ def _render_sidebar() -> dict:
         "sample_fps": sample_fps,
         "max_frames": max_frames,
         "enable_video_memory": enable_video_memory,
+        "enable_video_psg": enable_video_psg,
+        "enable_scene_mapping": enable_scene_mapping,
+        "enable_navigation_topology": enable_navigation_topology,
+        "use_scene_map_for_search": use_scene_map_for_search,
+        "topology_observed_only": topology_observed_only,
+        "save_frame_observations": save_frame_observations,
         "high_precision": high_precision,
         "enable_target_profile": enable_target_profile,
         "enable_high_recall": enable_high_recall,
@@ -438,8 +454,12 @@ def _render_input_preview(uploaded_file, mode: str, uploaded_video=None) -> None
 
 def _render_runtime_status(settings: dict) -> None:
     parsed_task = None
+    gate_result = None
+    nav_task = None
     try:
-        parsed_task = parse_robot_task(settings["target_text"])
+        parsed_task, gate_result, nav_task = prepare_navigation_task_from_text(
+            settings["target_text"]
+        )
     except ValueError:
         pass
 
@@ -448,29 +468,66 @@ def _render_runtime_status(settings: dict) -> None:
     metric_cols[0].metric("模式", settings["mode"])
     metric_cols[1].metric("知识增强", "开" if settings["enable_knowledge"] else "关")
     metric_cols[2].metric("PSG", "开" if settings["show_psg"] else "关")
-    metric_cols[3].metric("任务类型", parsed_task.task_type if parsed_task else "-")
+    metric_cols[3].metric(
+        "任务意图",
+        parsed_task.primary_intent.value if parsed_task else "-",
+    )
 
     if parsed_task is not None:
         with st.expander("当前任务解析", expanded=True):
-            st.json(parsed_task.model_dump(mode="json"))
+            st.json(parsed_task_to_dict(parsed_task))
+        if gate_result is not None and nav_task is not None:
+            st.info(gate_result.user_feedback)
+            st.caption(
+                "可进入导航管线："
+                + ("是" if nav_task.executable else "否")
+                + "；初始可见性：unknown"
+            )
 
 
 def _run_and_render(settings: dict) -> None:
     try:
         if not settings["target_text"]:
-            raise ValueError("目标描述不能为空。")
+            raise ValueError("自然语言任务不能为空。")
         if settings["mode"] == "视频目标搜索":
             _run_video_and_render(settings)
             return
 
         with st.spinner("正在分析场景..."):
             runtime_settings = _runtime_settings_from_ui(settings)
+            if settings["mode"] == "模拟数据":
+                runtime_settings = _replace_settings_compat(
+                    runtime_settings,
+                    {
+                        "llm_commonsense_prior_enabled": False,
+                        "enable_llm_situated_reasoning": False,
+                        "enable_llm_reasoning_memory": False,
+                    },
+                )
+            parsed_task, gate_result, nav_task = prepare_navigation_task_from_text(
+                settings["target_text"]
+            )
+            task_paths = write_task_understanding_outputs(
+                DEFAULT_OUTPUT_DIR,
+                parsed_task,
+                gate_result,
+                nav_task,
+            )
+            if not nav_task.executable:
+                st.warning(gate_result.user_feedback)
+                _render_json_file(task_paths.get("navigation_task"))
+                _render_output_files(task_paths, group="base")
+                return
+            target_text = navigation_target_text(
+                nav_task,
+                fallback=settings["target_text"],
+            )
             result = (
                 _run_mock()
                 if settings["mode"] == "模拟数据"
                 else _run_api(
                     settings["uploaded_file"],
-                    settings["target_text"],
+                    target_text,
                     settings["high_precision"],
                     use_grounded_sam=(settings["mode"] == "GroundingDINO+SAM2"),
                     ui_settings=settings,
@@ -480,7 +537,7 @@ def _run_and_render(settings: dict) -> None:
             image_path = st.session_state.get("last_image_path")
             result, prior_free_paths = _run_prior_free_runtime(
                 result,
-                settings["target_text"],
+                target_text,
                 runtime_settings,
                 Path(DEFAULT_OUTPUT_DIR),
                 image_path=image_path,
@@ -491,6 +548,7 @@ def _run_and_render(settings: dict) -> None:
                 image_path=image_path,
                 settings=runtime_settings,
             )
+            paths.update(task_paths)
             paths.update(prior_free_paths)
             paths.update(
                 {
@@ -500,20 +558,35 @@ def _run_and_render(settings: dict) -> None:
                     ).items()
                 }
             )
+            for key, filename in {
+                "grounding_prompt_plan": "grounding_prompt_plan.json",
+                "grounding_prompt_retry_plan": "grounding_prompt_retry_plan.json",
+            }.items():
+                candidate = Path(DEFAULT_OUTPUT_DIR) / filename
+                if candidate.is_file():
+                    paths[key] = candidate
 
             knowledge_result = None
             if settings["enable_knowledge"]:
                 visual_retry_callback = _build_ui_visual_retry_callback(settings)
                 knowledge_result = KnowledgeAwareAnalyzer(
                     update_kb=(settings["mode"] != "模拟数据"),
-                    enable_llm_reasoning=settings["enable_llm_reasoning"],
-                    enable_reasoning_memory=settings["enable_reasoning_memory"],
+                    enable_llm_reasoning=(
+                        False
+                        if settings["mode"] == "模拟数据"
+                        else settings["enable_llm_reasoning"]
+                    ),
+                    enable_reasoning_memory=(
+                        False
+                        if settings["mode"] == "模拟数据"
+                        else settings["enable_reasoning_memory"]
+                    ),
                     quadruped_mode=True,
                     allow_remote_reasoning=(settings["mode"] != "模拟数据"),
                     hide_unexecutable_actions=settings["only_executable"],
                     visual_retry_callback=visual_retry_callback,
                     settings=runtime_settings,
-                ).enrich_base_scene(result, settings["target_text"])
+                ).enrich_base_scene(result, target_text)
                 knowledge_paths = write_knowledge_aware_outputs(
                     knowledge_result,
                     DEFAULT_OUTPUT_DIR,
@@ -526,7 +599,7 @@ def _run_and_render(settings: dict) -> None:
         _render_result(
             result,
             paths,
-            target_text=settings["target_text"],
+            target_text=target_text,
             show_psg=settings["show_psg"] and knowledge_result is None,
         )
         if knowledge_result is not None:
@@ -540,6 +613,21 @@ def _run_and_render(settings: dict) -> None:
 
 
 def _run_video_and_render(settings: dict) -> None:
+    parsed_task, gate_result, nav_task = prepare_navigation_task_from_text(
+        settings["target_text"]
+    )
+    task_paths = write_task_understanding_outputs(
+        DEFAULT_OUTPUT_DIR,
+        parsed_task,
+        gate_result,
+        nav_task,
+    )
+    if not nav_task.executable:
+        st.warning(gate_result.user_feedback)
+        _render_json_file(task_paths.get("navigation_task"))
+        _render_output_files(task_paths, group="base")
+        return
+    target_text = navigation_target_text(nav_task, fallback=settings["target_text"])
     uploaded_video = settings["uploaded_video"]
     if uploaded_video is None:
         raise ValueError("视频目标搜索模式需要上传视频。")
@@ -550,24 +638,22 @@ def _run_video_and_render(settings: dict) -> None:
     video_path.write_bytes(uploaded_video.getbuffer())
 
     progress = st.progress(0.0, text="正在读取视频...")
-
-    def update_progress(done: int, total: int, message: str) -> None:
-        progress.progress(done / max(1, total), text=message)
-
-    result, paths = run_video_search(
-        video_path=video_path,
-        target=settings["target_text"],
-        detector=settings["video_detector"],
+    progress.progress(0.05, text="正在执行视频目标搜索...")
+    video_config = SimpleNamespace(
+        output_dir=DEFAULT_OUTPUT_DIR,
         sample_fps=settings["sample_fps"],
         max_frames=settings["max_frames"],
         enable_knowledge=settings["enable_knowledge"],
         enable_video_memory=settings["enable_video_memory"],
-        output_dir=DEFAULT_OUTPUT_DIR,
-        annotate=True,
-        progress_callback=update_progress,
-        enable_tracking=settings["enable_track_voting"],
-        enable_crop_verify=settings["enable_crop_verify"],
+        enable_video_psg=settings["enable_video_psg"],
+        psg_max_predicted_nodes=None,
+        psg_confidence_threshold=None,
+        topology_observed_only=settings["topology_observed_only"],
+        no_annotate=False,
+        verify_every_n_frames=None,
         track_iou_threshold=0.35,
+        target_confirm_min_frames=None,
+        target_confirm_score=None,
         enable_llm_prior=settings["enable_llm_prior"],
         enable_observation_memory=settings["enable_observation_memory"],
         enable_evidence_gating=settings["enable_evidence_gating"],
@@ -575,6 +661,20 @@ def _run_video_and_render(settings: dict) -> None:
         disable_static_kb=True,
         prior_audit=settings["show_prior_audit"],
     )
+    result = run_video_target_search_pipeline(
+        video_path=video_path,
+        target=target_text,
+        detector=settings["video_detector"],
+        enable_tracking=settings["enable_track_voting"],
+        enable_crop_verify=settings["enable_crop_verify"],
+        enable_evidence_gating=settings["enable_evidence_gating"],
+        enable_scene_mapping=settings["enable_scene_mapping"],
+        enable_navigation_topology=settings["enable_navigation_topology"],
+        use_scene_map_for_search=settings["use_scene_map_for_search"],
+        config=video_config,
+    )
+    paths = {key: Path(value) for key, value in result.get("output_files", {}).items()}
+    paths.update(task_paths)
     progress.progress(1.0, text="视频目标搜索完成")
     _render_video_result(result, paths)
 
@@ -630,6 +730,8 @@ def _render_video_result(result: dict, paths: dict[str, Path]) -> None:
         tab_crops,
         tab_regions,
         tab_context,
+        tab_scene_map,
+        tab_topology,
         tab_llm_prior,
         tab_dynamic_prompts,
         tab_evidence_gate,
@@ -647,6 +749,8 @@ def _render_video_result(result: dict, paths: dict[str, Path]) -> None:
             "候选 crop",
             "候选区域",
             "附近参照物",
+            "建图辅助",
+            "导航拓扑",
             "LLM 自生成常识",
             "动态检测词表",
             "视觉证据门控",
@@ -770,6 +874,37 @@ def _render_video_result(result: dict, paths: dict[str, Path]) -> None:
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
         else:
             st.info("没有直接目标的附近参照物。")
+    with tab_scene_map:
+        scene_map = result.get("scene_map_result") or {}
+        if scene_map:
+            st.json(
+                {
+                    "place_segment_count": len(scene_map.get("place_segments", [])),
+                    "object_track_count": len(scene_map.get("object_tracks", [])),
+                    "has_psg_layer": bool(scene_map.get("psg_layer")),
+                    "has_navigation_topology": bool(
+                        scene_map.get("navigation_topology")
+                    ),
+                }
+            )
+            _render_json_file(paths.get("video_place_segments"))
+            _render_json_file(paths.get("video_observed_scene_graph_json"))
+            _render_json_file(paths.get("video_psg_layer"))
+        else:
+            st.info("本次未启用全场景建图辅助。")
+    with tab_topology:
+        graph_path = _first_existing_path(
+            paths,
+            "video_navigation_topology_png",
+            "video_topology_graph",
+        )
+        if graph_path is not None:
+            st.image(str(graph_path), use_container_width=True)
+            _render_file_download(graph_path, "下载导航拓扑 PNG")
+        else:
+            st.info("未生成导航拓扑图。开启“启用全场景建图辅助”和“生成导航拓扑图”后会显示。")
+        _render_json_file(paths.get("video_navigation_topology"))
+        _render_json_file(paths.get("video_topology_search_ranking"))
     with tab_llm_prior:
         _render_json_file(paths.get("video_llm_generated_priors"))
     with tab_dynamic_prompts:
@@ -825,6 +960,18 @@ def _render_existing_video_outputs() -> None:
         "video_hypotheses": "video_hypotheses.json",
         "video_navigation_trace": "video_navigation_trace.json",
         "video_reasoning_report": "video_reasoning_report.md",
+        "video_place_segments": "video_place_segments.json",
+        "video_all_objects": "video_all_objects.json",
+        "video_observed_scene_graph_json": "video_observed_scene_graph.json",
+        "video_observed_scene_graph_graphml": "video_observed_scene_graph.graphml",
+        "video_psg_layer": "video_psg_layer.json",
+        "video_hybrid_scene_graph_json": "video_hybrid_scene_graph.json",
+        "video_hybrid_scene_graph_graphml": "video_hybrid_scene_graph.graphml",
+        "video_navigation_topology": "video_navigation_topology.json",
+        "video_navigation_topology_graphml": "video_navigation_topology.graphml",
+        "video_navigation_topology_png": "video_navigation_topology.png",
+        "video_navigation_topology_debug": "video_navigation_topology_debug.md",
+        "video_topology_search_ranking": "video_topology_search_ranking.json",
         "video_llm_generated_priors": "video_llm_generated_priors.json",
         "video_dynamic_detector_prompts": "video_dynamic_detector_prompts.json",
         "video_evidence_gating_report": "video_evidence_gating_report.json",
@@ -836,6 +983,9 @@ def _render_existing_video_outputs() -> None:
         for key, filename in path_names.items()
         if (Path(DEFAULT_OUTPUT_DIR) / filename).is_file()
     }
+    legacy_topology_png = Path(DEFAULT_OUTPUT_DIR) / "video_topology_graph.png"
+    if "video_navigation_topology_png" not in paths and legacy_topology_png.is_file():
+        paths["video_topology_graph"] = legacy_topology_png
     _render_video_result(result, paths)
 
 
@@ -883,11 +1033,14 @@ def _run_api(
         target_text.strip(),
         use_llm=settings.enable_target_profile,
     )
+    parsed_task, _, nav_task = prepare_navigation_task_from_text(target_text.strip())
     if use_grounded_sam:
         analyzer = SceneAnalyzer(
             object_detector=GroundedSAMSubprocessDetector(
                 settings,
                 target_profile=profile,
+                parsed_task=parsed_task,
+                navigation_task=nav_task,
             ),
             output_dir=settings.output_dir,
         )
@@ -948,10 +1101,13 @@ def _build_ui_visual_retry_callback(settings: dict):
         target_text,
         use_llm=runtime.enable_target_profile,
     )
+    parsed_task, _, nav_task = prepare_navigation_task_from_text(target_text)
     if settings["mode"] == "GroundingDINO+SAM2":
         detector = GroundedSAMSubprocessDetector(
             runtime,
             target_profile=profile,
+            parsed_task=parsed_task,
+            navigation_task=nav_task,
         )
 
         def grounded_retry(terms: list[str]) -> SceneAnalysisResult:
@@ -1009,7 +1165,11 @@ def _render_result(
         st.markdown("#### 路线规划")
         st.text(format_route_plan(result))
 
-    parsed_task = parse_robot_task(target_text or result.target_decision.target_text)
+    task_text = target_text or result.target_decision.target_text
+    legacy_task = parse_robot_task(task_text)
+    parsed_task, gate_result, nav_task = prepare_navigation_task_from_text(
+        task_text
+    )
     tab_names = ["物体", "关系", "拓扑", "标注", "任务"]
     if show_psg:
         tab_names.append("PSG")
@@ -1055,12 +1215,22 @@ def _render_result(
         else:
             st.info("当前结果没有可用原图路径，未生成标注图。")
     with tabs[4]:
-        st.json(parsed_task.model_dump(mode="json"))
+        task_json_path = paths.get("navigation_task")
+        if task_json_path is not None and task_json_path.is_file():
+            _render_json_file(task_json_path)
+        else:
+            st.json(
+                {
+                    "parsed_task": parsed_task_to_dict(parsed_task),
+                    "capability_gate": gate_result_to_dict(gate_result),
+                    "navigation_task": navigation_task_to_dict(nav_task),
+                }
+            )
 
     next_tab_index = 5
     if show_psg:
         with tabs[next_tab_index]:
-            psg, graphml_path = _build_and_export_psg(result, parsed_task)
+            psg, graphml_path = _build_and_export_psg(result, legacy_task)
             st.caption(f"节点数：{len(psg.nodes)} | 边数：{len(psg.edges)}")
             st.json(psg.model_dump(mode="json"))
             _render_file_download(graphml_path)
@@ -1073,6 +1243,12 @@ def _render_result(
         _render_json_file(paths.get("llm_generated_priors"))
     with tabs[next_tab_index + 2]:
         _render_json_file(paths.get("dynamic_detector_prompts"))
+        if paths.get("grounding_prompt_plan") is not None:
+            st.markdown("#### GroundingDINO Prompt Plan")
+            _render_json_file(paths.get("grounding_prompt_plan"))
+        if paths.get("grounding_prompt_retry_plan") is not None:
+            st.markdown("#### Retry Prompt Expansion")
+            _render_json_file(paths.get("grounding_prompt_retry_plan"))
     with tabs[next_tab_index + 3]:
         _render_json_file(paths.get("evidence_gating_report"))
     with tabs[next_tab_index + 4]:
@@ -1114,8 +1290,14 @@ def _render_existing_outputs(
         settings=runtime_settings,
     )
     for key, filename in {
+        "parsed_task": "parsed_task.json",
+        "capability_gate": "capability_gate_result.json",
+        "navigation_task": "navigation_task.json",
+        "actionability_report": "actionability_report.md",
         "llm_generated_priors": "llm_generated_priors.json",
         "dynamic_detector_prompts": "dynamic_detector_prompts.json",
+        "grounding_prompt_plan": "grounding_prompt_plan.json",
+        "grounding_prompt_retry_plan": "grounding_prompt_retry_plan.json",
         "evidence_gating_report": "evidence_gating_report.json",
         "observation_memory_updates": "observation_memory_updates.json",
         "prior_usage_report": "prior_usage_report.json",
@@ -1299,6 +1481,14 @@ def _render_image_path(path: Path | None) -> None:
         st.info("图片尚未生成。")
         return
     st.image(str(path), use_container_width=True)
+
+
+def _first_existing_path(paths: dict[str, Path], *keys: str) -> Path | None:
+    for key in keys:
+        path = paths.get(key)
+        if path is not None and Path(path).is_file():
+            return Path(path)
+    return None
 
 
 def _render_json_file(path: Path | None) -> None:

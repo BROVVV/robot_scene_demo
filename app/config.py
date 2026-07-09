@@ -83,15 +83,15 @@ DEFAULT_EVAL_OUTPUT_DIR = "outputs/eval"
 DEFAULT_VIDEO_ENABLE_SCENE_MEMORY = True
 DEFAULT_VIDEO_MODE_DEFAULT = "target_search"
 DEFAULT_VIDEO_ENABLE_SCENE_MAPPING = False
-DEFAULT_VIDEO_FULL_SCENE_MAP_ENABLED = True
-DEFAULT_VIDEO_USE_SCENE_MAP_FOR_SEARCH = False
-DEFAULT_VIDEO_ALLOW_SCENE_MAP_ONLY = True
+DEFAULT_VIDEO_FULL_SCENE_MAP_ENABLED = False
+DEFAULT_VIDEO_USE_SCENE_MAP_FOR_SEARCH = True
+DEFAULT_VIDEO_ALLOW_SCENE_MAP_ONLY = False
 DEFAULT_VIDEO_TARGET_SEARCH_REQUIRED_WHEN_TARGET_PRESENT = True
 DEFAULT_VIDEO_SCENE_MAPPING_REUSE_TARGET_FRAMES = True
 DEFAULT_VIDEO_SCENE_MAPPING_REUSE_OBJECT_TRACKS = True
 DEFAULT_VIDEO_ALWAYS_WRITE_MEMORY = True
 DEFAULT_VIDEO_ENABLE_VIDEO_PSG = True
-DEFAULT_VIDEO_ENABLE_NAVIGATION_TOPOLOGY = True
+DEFAULT_VIDEO_ENABLE_NAVIGATION_TOPOLOGY = False
 DEFAULT_VIDEO_TOPOLOGY_ANNOTATE_TARGET_SEARCH = True
 DEFAULT_VIDEO_TOPOLOGY_ADD_TARGET_CANDIDATE_NODES = True
 DEFAULT_VIDEO_TOPOLOGY_ADD_TARGET_SEARCH_SCORES = True
@@ -457,6 +457,10 @@ def _env_bool(name: str, default: bool) -> bool:
     return default
 
 
+def _env_bool_alias(primary: str, legacy: str, default: bool) -> bool:
+    return _env_bool(primary, _env_bool(legacy, default))
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Load settings from `.env` and process environment variables."""
@@ -646,18 +650,23 @@ def get_settings() -> Settings:
             "VIDEO_ENABLE_SCENE_MEMORY", DEFAULT_VIDEO_ENABLE_SCENE_MEMORY
         ),
         video_mode_default=_env_value("VIDEO_MODE_DEFAULT", DEFAULT_VIDEO_MODE_DEFAULT),
-        video_enable_scene_mapping=_env_bool(
-            "VIDEO_ENABLE_SCENE_MAPPING", DEFAULT_VIDEO_ENABLE_SCENE_MAPPING
+        video_enable_scene_mapping=_env_bool_alias(
+            "VIDEO_ENABLE_SCENE_MAPPING_DEFAULT",
+            "VIDEO_ENABLE_SCENE_MAPPING",
+            DEFAULT_VIDEO_ENABLE_SCENE_MAPPING,
         ),
         video_full_scene_map_enabled=_env_bool(
             "VIDEO_FULL_SCENE_MAP_ENABLED", DEFAULT_VIDEO_FULL_SCENE_MAP_ENABLED
         ),
-        video_use_scene_map_for_search=_env_bool(
+        video_use_scene_map_for_search=_env_bool_alias(
+            "VIDEO_USE_SCENE_MAP_FOR_SEARCH_DEFAULT",
             "VIDEO_USE_SCENE_MAP_FOR_SEARCH",
             DEFAULT_VIDEO_USE_SCENE_MAP_FOR_SEARCH,
         ),
-        video_allow_scene_map_only=_env_bool(
-            "VIDEO_ALLOW_SCENE_MAP_ONLY", DEFAULT_VIDEO_ALLOW_SCENE_MAP_ONLY
+        video_allow_scene_map_only=_env_bool_alias(
+            "VIDEO_ALLOW_SCENE_MAP_ONLY_DEBUG",
+            "VIDEO_ALLOW_SCENE_MAP_ONLY",
+            DEFAULT_VIDEO_ALLOW_SCENE_MAP_ONLY,
         ),
         video_target_search_required_when_target_present=_env_bool(
             "VIDEO_TARGET_SEARCH_REQUIRED_WHEN_TARGET_PRESENT",
@@ -677,7 +686,8 @@ def get_settings() -> Settings:
         video_enable_video_psg=_env_bool(
             "VIDEO_ENABLE_VIDEO_PSG", DEFAULT_VIDEO_ENABLE_VIDEO_PSG
         ),
-        video_enable_navigation_topology=_env_bool(
+        video_enable_navigation_topology=_env_bool_alias(
+            "VIDEO_ENABLE_NAVIGATION_TOPOLOGY_DEFAULT",
             "VIDEO_ENABLE_NAVIGATION_TOPOLOGY",
             DEFAULT_VIDEO_ENABLE_NAVIGATION_TOPOLOGY,
         ),
