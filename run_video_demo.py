@@ -1,4 +1,4 @@
-"""Command-line entry point for prerecorded first-person video target search."""
+"""Command-line entry point for prerecorded first-person video understanding."""
 
 from __future__ import annotations
 
@@ -11,16 +11,28 @@ from pydantic import ValidationError
 
 from app.config import DEFAULT_OUTPUT_DIR, SettingsError
 from app.detectors.grounded_sam_subprocess import DetectorRuntimeError
+from app.video.full_scene_mapper import VideoFullSceneMapper
 from app.video.pipeline import run_video_search
 from app.video.video_reader import VideoReadError
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="输入机器狗第一视角视频，构建语义视频记忆并搜索目标物。"
+        description="输入机器狗第一视角视频，执行目标搜索或全场景语义建图。"
     )
     parser.add_argument("--video", required=True, help="输入视频路径")
-    parser.add_argument("--target", required=True, help="要寻找的目标物")
+    parser.add_argument("--target", default="", help="要寻找的目标物；full_scene_map 模式可省略")
+    parser.add_argument(
+        "--mode",
+        choices=["target_search", "full_scene_map"],
+        default="target_search",
+        help="视频运行模式",
+    )
+    parser.add_argument(
+        "--enable-full-scene-map",
+        action="store_true",
+        help="兼容开关，等价于 --mode full_scene_map",
+    )
     parser.add_argument(
         "--detector",
         choices=["mock", "llm", "grounded_sam"],
@@ -34,6 +46,39 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--enable-video-memory",
         action="store_true",
         help="启用逐帧场景记忆、负证据、长期记忆和视频 PSG",
+    )
+    video_psg_group = parser.add_mutually_exclusive_group()
+    video_psg_group.add_argument(
+        "--enable-video-psg", dest="enable_video_psg", action="store_true"
+    )
+    video_psg_group.add_argument(
+        "--disable-video-psg", dest="enable_video_psg", action="store_false"
+    )
+    topology_group = parser.add_mutually_exclusive_group()
+    topology_group.add_argument(
+        "--build-navigation-topology",
+        "--enable-navigation-topology",
+        dest="enable_navigation_topology",
+        action="store_true",
+    )
+    topology_group.add_argument(
+        "--disable-navigation-topology",
+        dest="enable_navigation_topology",
+        action="store_false",
+    )
+    parser.add_argument("--psg-max-predicted-nodes", type=int)
+    parser.add_argument("--psg-confidence-threshold", type=float)
+    parser.add_argument("--topology-observed-only", action="store_true")
+    frame_obs_group = parser.add_mutually_exclusive_group()
+    frame_obs_group.add_argument(
+        "--save-frame-observations",
+        dest="save_frame_observations",
+        action="store_true",
+    )
+    frame_obs_group.add_argument(
+        "--no-save-frame-observations",
+        dest="save_frame_observations",
+        action="store_false",
     )
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR, help="输出目录")
     parser.add_argument("--no-annotate", action="store_true", help="不生成标注关键帧")
@@ -93,6 +138,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         enable_llm_prior=None,
         enable_observation_memory=None,
         enable_evidence_gating=None,
+        enable_video_psg=None,
+        enable_navigation_topology=None,
+        topology_observed_only=None,
+        save_frame_observations=None,
     )
     return parser.parse_args(argv)
 
@@ -100,6 +149,41 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
+        target_text = args.target.strip()
+        target_requests_map = (
+            ("导航拓扑" in target_text or "可导航" in target_text or "建图" in target_text)
+            and ("构建" in target_text or "生成" in target_text or "map" in target_text.lower())
+        )
+        mode = (
+            "full_scene_map"
+            if args.enable_full_scene_map
+            or target_requests_map
+            or (args.enable_navigation_topology and not target_text)
+            else args.mode
+        )
+        if mode == "full_scene_map":
+            result, paths = VideoFullSceneMapper(output_dir=args.output_dir).run(
+                video_path=args.video,
+                detector=args.detector,
+                sample_fps=args.sample_fps,
+                max_frames=args.max_frames,
+                enable_video_memory=args.enable_video_memory,
+                enable_video_psg=args.enable_video_psg,
+                enable_navigation_topology=args.enable_navigation_topology,
+                psg_max_predicted_nodes=args.psg_max_predicted_nodes,
+                psg_confidence_threshold=args.psg_confidence_threshold,
+                topology_observed_only=args.topology_observed_only,
+                save_frame_observations=args.save_frame_observations,
+                annotate=not args.no_annotate,
+            )
+            print(result.summary_zh)
+            print("已生成：")
+            for path in paths.values():
+                print(Path(path))
+            return 0
+
+        if not args.target.strip():
+            raise ValueError("target_search 模式必须提供 --target；full_scene_map 模式可省略。")
         if args.enable_knowledge:
             print(
                 "--enable-knowledge is deprecated. Use --enable-llm-prior "

@@ -31,9 +31,12 @@ DEFAULT_TARGET_PROFILE_MAX_TERMS = 40
 DEFAULT_ENABLE_TARGET_SYNONYM_EXPANSION = True
 DEFAULT_ENABLE_CONTEXT_OBJECT_EXPANSION = True
 DEFAULT_DETECTION_BACKEND = "llm"
-DEFAULT_GROUNDED_SAM_ROOT = "/home/user/python3.10.0/Grounded-SAM-2"
-DEFAULT_GROUNDED_SAM_PYTHON = "/home/user/python3.10/bin/python"
-DEFAULT_GROUNDED_SAM_PYTHONPATH = "/home/user/python3.10/lib/python3.10/site-packages"
+DEFAULT_GROUNDED_SAM_ROOT = "/root/gpufree-data/Grounded-SAM-2"
+DEFAULT_GROUNDED_SAM_PYTHON = "python"
+DEFAULT_GROUNDED_SAM_PYTHONPATH = (
+    "/root/gpufree-data/Grounded-SAM-2:"
+    "/root/gpufree-data/Grounded-SAM-2/grounding_dino"
+)
 DEFAULT_GROUNDING_DINO_CONFIG = "grounding_dino/groundingdino/config/GroundingDINO_SwinT_OGC.py"
 DEFAULT_GROUNDING_DINO_CHECKPOINT = "gdino_checkpoints/groundingdino_swint_ogc.pth"
 DEFAULT_GROUNDING_DINO_BOX_THRESHOLD = 0.12
@@ -78,8 +81,14 @@ DEFAULT_VIDEO_SAVE_CANDIDATE_CROPS = True
 DEFAULT_EVAL_IOU_THRESHOLD = 0.5
 DEFAULT_EVAL_OUTPUT_DIR = "outputs/eval"
 DEFAULT_VIDEO_ENABLE_SCENE_MEMORY = True
+DEFAULT_VIDEO_FULL_SCENE_MAP_ENABLED = True
 DEFAULT_VIDEO_ALWAYS_WRITE_MEMORY = True
 DEFAULT_VIDEO_ENABLE_VIDEO_PSG = True
+DEFAULT_VIDEO_ENABLE_NAVIGATION_TOPOLOGY = True
+DEFAULT_VIDEO_PSG_MAX_PREDICTED_NODES = 30
+DEFAULT_VIDEO_PSG_CONFIDENCE_THRESHOLD = 0.45
+DEFAULT_VIDEO_TOPOLOGY_OBSERVED_ONLY = False
+DEFAULT_VIDEO_SAVE_FRAME_OBSERVATIONS = True
 DEFAULT_VIDEO_ENABLE_NEGATIVE_EVIDENCE = True
 DEFAULT_VIDEO_ENABLE_REASONING_REPORT = True
 DEFAULT_VIDEO_MEMORY_STORE_PATH = "data/memory/video_spatial_memory.jsonl"
@@ -154,6 +163,15 @@ DEFAULT_OBSERVATION_MEMORY_RETRIEVAL_TOP_K = 10
 DEFAULT_OBSERVATION_MEMORY_REQUIRE_PROVENANCE = True
 DEFAULT_PRIOR_USAGE_AUDIT_ENABLED = True
 DEFAULT_PRIOR_USAGE_REPORT_PATH = "outputs/prior_usage_report.json"
+DEFAULT_GROUNDING_PROMPT_LLM_EXPANSION_ENABLED = True
+DEFAULT_GROUNDING_PROMPT_REQUIRE_NON_EMPTY = True
+DEFAULT_GROUNDING_PROMPT_FAIL_FAST_ON_EMPTY = True
+DEFAULT_GROUNDING_PROMPT_RETRY_ON_EMPTY = True
+DEFAULT_GROUNDING_PROMPT_MAX_RETRIES = 1
+DEFAULT_GROUNDING_PROMPT_MAX_TERMS = 24
+DEFAULT_GROUNDING_PROMPT_MIN_TERMS = 3
+DEFAULT_GROUNDING_PROMPT_DEBUG_OUTPUT = "outputs/grounding_prompt_plan.json"
+DEFAULT_GROUNDING_PROMPT_RETRY_DEBUG_OUTPUT = "outputs/grounding_prompt_retry_plan.json"
 
 
 class SettingsError(RuntimeError):
@@ -231,8 +249,14 @@ class Settings:
     eval_iou_threshold: float = DEFAULT_EVAL_IOU_THRESHOLD
     eval_output_dir: str = DEFAULT_EVAL_OUTPUT_DIR
     video_enable_scene_memory: bool = DEFAULT_VIDEO_ENABLE_SCENE_MEMORY
+    video_full_scene_map_enabled: bool = DEFAULT_VIDEO_FULL_SCENE_MAP_ENABLED
     video_always_write_memory: bool = DEFAULT_VIDEO_ALWAYS_WRITE_MEMORY
     video_enable_video_psg: bool = DEFAULT_VIDEO_ENABLE_VIDEO_PSG
+    video_enable_navigation_topology: bool = DEFAULT_VIDEO_ENABLE_NAVIGATION_TOPOLOGY
+    video_psg_max_predicted_nodes: int = DEFAULT_VIDEO_PSG_MAX_PREDICTED_NODES
+    video_psg_confidence_threshold: float = DEFAULT_VIDEO_PSG_CONFIDENCE_THRESHOLD
+    video_topology_observed_only: bool = DEFAULT_VIDEO_TOPOLOGY_OBSERVED_ONLY
+    video_save_frame_observations: bool = DEFAULT_VIDEO_SAVE_FRAME_OBSERVATIONS
     video_enable_negative_evidence: bool = DEFAULT_VIDEO_ENABLE_NEGATIVE_EVIDENCE
     video_enable_reasoning_report: bool = DEFAULT_VIDEO_ENABLE_REASONING_REPORT
     video_memory_store_path: str = DEFAULT_VIDEO_MEMORY_STORE_PATH
@@ -327,6 +351,21 @@ class Settings:
     )
     prior_usage_audit_enabled: bool = DEFAULT_PRIOR_USAGE_AUDIT_ENABLED
     prior_usage_report_path: str = DEFAULT_PRIOR_USAGE_REPORT_PATH
+    grounding_prompt_llm_expansion_enabled: bool = (
+        DEFAULT_GROUNDING_PROMPT_LLM_EXPANSION_ENABLED
+    )
+    grounding_prompt_require_non_empty: bool = DEFAULT_GROUNDING_PROMPT_REQUIRE_NON_EMPTY
+    grounding_prompt_fail_fast_on_empty: bool = (
+        DEFAULT_GROUNDING_PROMPT_FAIL_FAST_ON_EMPTY
+    )
+    grounding_prompt_retry_on_empty: bool = DEFAULT_GROUNDING_PROMPT_RETRY_ON_EMPTY
+    grounding_prompt_max_retries: int = DEFAULT_GROUNDING_PROMPT_MAX_RETRIES
+    grounding_prompt_max_terms: int = DEFAULT_GROUNDING_PROMPT_MAX_TERMS
+    grounding_prompt_min_terms: int = DEFAULT_GROUNDING_PROMPT_MIN_TERMS
+    grounding_prompt_debug_output: str = DEFAULT_GROUNDING_PROMPT_DEBUG_OUTPUT
+    grounding_prompt_retry_debug_output: str = (
+        DEFAULT_GROUNDING_PROMPT_RETRY_DEBUG_OUTPUT
+    )
 
 
 def _project_root() -> Path:
@@ -560,11 +599,34 @@ def get_settings() -> Settings:
         video_enable_scene_memory=_env_bool(
             "VIDEO_ENABLE_SCENE_MEMORY", DEFAULT_VIDEO_ENABLE_SCENE_MEMORY
         ),
+        video_full_scene_map_enabled=_env_bool(
+            "VIDEO_FULL_SCENE_MAP_ENABLED", DEFAULT_VIDEO_FULL_SCENE_MAP_ENABLED
+        ),
         video_always_write_memory=_env_bool(
             "VIDEO_ALWAYS_WRITE_MEMORY", DEFAULT_VIDEO_ALWAYS_WRITE_MEMORY
         ),
         video_enable_video_psg=_env_bool(
             "VIDEO_ENABLE_VIDEO_PSG", DEFAULT_VIDEO_ENABLE_VIDEO_PSG
+        ),
+        video_enable_navigation_topology=_env_bool(
+            "VIDEO_ENABLE_NAVIGATION_TOPOLOGY",
+            DEFAULT_VIDEO_ENABLE_NAVIGATION_TOPOLOGY,
+        ),
+        video_psg_max_predicted_nodes=_env_int(
+            "VIDEO_PSG_MAX_PREDICTED_NODES",
+            DEFAULT_VIDEO_PSG_MAX_PREDICTED_NODES,
+        ),
+        video_psg_confidence_threshold=_env_float(
+            "VIDEO_PSG_CONFIDENCE_THRESHOLD",
+            DEFAULT_VIDEO_PSG_CONFIDENCE_THRESHOLD,
+        ),
+        video_topology_observed_only=_env_bool(
+            "VIDEO_TOPOLOGY_OBSERVED_ONLY",
+            DEFAULT_VIDEO_TOPOLOGY_OBSERVED_ONLY,
+        ),
+        video_save_frame_observations=_env_bool(
+            "VIDEO_SAVE_FRAME_OBSERVATIONS",
+            DEFAULT_VIDEO_SAVE_FRAME_OBSERVATIONS,
         ),
         video_enable_negative_evidence=_env_bool(
             "VIDEO_ENABLE_NEGATIVE_EVIDENCE", DEFAULT_VIDEO_ENABLE_NEGATIVE_EVIDENCE
@@ -843,5 +905,41 @@ def get_settings() -> Settings:
         prior_usage_report_path=_env_value(
             "PRIOR_USAGE_REPORT_PATH",
             DEFAULT_PRIOR_USAGE_REPORT_PATH,
+        ),
+        grounding_prompt_llm_expansion_enabled=_env_bool(
+            "GROUNDING_PROMPT_LLM_EXPANSION_ENABLED",
+            DEFAULT_GROUNDING_PROMPT_LLM_EXPANSION_ENABLED,
+        ),
+        grounding_prompt_require_non_empty=_env_bool(
+            "GROUNDING_PROMPT_REQUIRE_NON_EMPTY",
+            DEFAULT_GROUNDING_PROMPT_REQUIRE_NON_EMPTY,
+        ),
+        grounding_prompt_fail_fast_on_empty=_env_bool(
+            "GROUNDING_PROMPT_FAIL_FAST_ON_EMPTY",
+            DEFAULT_GROUNDING_PROMPT_FAIL_FAST_ON_EMPTY,
+        ),
+        grounding_prompt_retry_on_empty=_env_bool(
+            "GROUNDING_PROMPT_RETRY_ON_EMPTY",
+            DEFAULT_GROUNDING_PROMPT_RETRY_ON_EMPTY,
+        ),
+        grounding_prompt_max_retries=_env_int(
+            "GROUNDING_PROMPT_MAX_RETRIES",
+            DEFAULT_GROUNDING_PROMPT_MAX_RETRIES,
+        ),
+        grounding_prompt_max_terms=_env_int(
+            "GROUNDING_PROMPT_MAX_TERMS",
+            DEFAULT_GROUNDING_PROMPT_MAX_TERMS,
+        ),
+        grounding_prompt_min_terms=_env_int(
+            "GROUNDING_PROMPT_MIN_TERMS",
+            DEFAULT_GROUNDING_PROMPT_MIN_TERMS,
+        ),
+        grounding_prompt_debug_output=_env_value(
+            "GROUNDING_PROMPT_DEBUG_OUTPUT",
+            DEFAULT_GROUNDING_PROMPT_DEBUG_OUTPUT,
+        ),
+        grounding_prompt_retry_debug_output=_env_value(
+            "GROUNDING_PROMPT_RETRY_DEBUG_OUTPUT",
+            DEFAULT_GROUNDING_PROMPT_RETRY_DEBUG_OUTPUT,
         ),
     )
