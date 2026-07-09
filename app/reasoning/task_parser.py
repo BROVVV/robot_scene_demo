@@ -1,63 +1,27 @@
-"""Rule-based parser from user goals to RobotTask."""
+"""Compatibility projection from LLM-first task understanding to RobotTask."""
 
 from __future__ import annotations
 
 import hashlib
-import re
+from typing import Any
 
 from app.schemas import RobotTask
-
-
-OBJECT_ALIASES = {
-    "手机": "phone",
-    "phone": "phone",
-    "椅子": "chair",
-    "chair": "chair",
-    "桌子": "desk",
-    "办公桌": "desk",
-    "desk": "desk",
-    "table": "desk",
-    "门": "door",
-    "房门": "door",
-    "door": "door",
-    "显示器": "monitor",
-    "monitor": "monitor",
-    "键盘": "keyboard",
-    "keyboard": "keyboard",
-}
+from app.task_understanding.schemas import ParsedTask, SubtaskType, TargetCategory, TaskIntent
+from app.task_understanding.task_pipeline import (
+    TaskUnderstandingResult,
+    run_task_understanding_pipeline,
+)
 
 
 def parse_robot_task(target_text: str) -> RobotTask:
-    text = target_text.strip()
-    if not text:
-        raise ValueError("目标描述不能为空。")
+    """
+    Deprecated compatibility wrapper.
 
-    normalized = text.lower()
-    task_type = _infer_task_type(text, normalized)
-    target_object = _extract_target_object(text, normalized, task_type)
-    target_room = _extract_room(text)
-    target_location = _extract_location(text, target_room)
-    scope = _extract_scope(text, normalized)
-    constraints = _extract_constraints(text)
-    parsed_slots = {
-        "subtask": "check_door_state"
-        if task_type == "inspect_area" and _mentions_door(text, normalized)
-        else None,
-        "state": _extract_state(text, normalized),
-    }
-
-    return RobotTask(
-        task_id=_task_id(text),
-        raw_text=text,
-        task_type=task_type,  # type: ignore[arg-type]
-        target_object=target_object,
-        target_location=target_location,
-        target_room=target_room,
-        scope=scope,
-        constraints=constraints,
-        parsed_slots={key: value for key, value in parsed_slots.items() if value},
-        confidence=_confidence_for(task_type, target_object, target_room, target_location),
-    )
+    New code should call
+    app.task_understanding.task_pipeline.run_task_understanding_pipeline directly.
+    """
+    result = run_task_understanding_pipeline(target_text)
+    return convert_new_task_to_legacy_format(result)
 
 
 def parse_robot_task_with_optional_llm(
@@ -71,129 +35,147 @@ def parse_robot_task_with_optional_llm(
         raw = llm_parser(target_text)  # type: ignore[operator]
         if isinstance(raw, RobotTask):
             return raw
-        if isinstance(raw, dict):
+        if isinstance(raw, dict) and "task_type" in raw:
             return RobotTask.model_validate(raw)
+        if isinstance(raw, TaskUnderstandingResult):
+            return convert_new_task_to_legacy_format(raw)
+        if isinstance(raw, ParsedTask):
+            return _robot_task_from_parsed(raw)
     except Exception:
         return parse_robot_task(target_text)
     return parse_robot_task(target_text)
 
 
-def _infer_task_type(text: str, normalized: str) -> str:
-    if any(keyword in text for keyword in ["比较", "变化", "前后", "不同"]):
-        return "compare_states"
-    if any(keyword in text for keyword in ["总结", "描述", "概括"]) or any(
-        keyword in normalized for keyword in ["summarize", "describe"]
+def convert_new_task_to_legacy_format(task_result: TaskUnderstandingResult) -> RobotTask:
+    return _robot_task_from_parsed(task_result.parsed_task)
+
+
+def _robot_task_from_parsed(parsed: ParsedTask) -> RobotTask:
+    intent = _intent_value(parsed.primary_intent)
+    target_category = _category_value(parsed.target.category)
+    task_type = _legacy_task_type(intent, target_category)
+    state_query = _first_state_query(parsed)
+    target_object = _legacy_target_object(parsed, task_type)
+    target_room = _legacy_target_room(parsed)
+    target_location = _legacy_target_location(parsed, target_room)
+    scope = _legacy_scope(parsed)
+    parsed_slots: dict[str, str | int | float | bool | None] = {}
+    if intent == TaskIntent.CHECK_DOOR_STATE.value or _has_subtask(
+        parsed, SubtaskType.INSPECT_DOOR_STATE
     ):
-        return "summarize_scene"
-    if _is_inspection_task(text, normalized):
-        return "inspect_area"
-    if _is_door_state_task(text, normalized):
-        return "check_door_state"
-    if _is_count_task(text, normalized):
-        return "count_objects"
-    if _is_navigation_task(text, normalized):
-        return "navigate_to_location"
-    if _is_find_room_task(text, normalized):
+        parsed_slots["subtask"] = "check_door_state"
+    if state_query:
+        parsed_slots["state"] = state_query
+
+    constraints = []
+    if parsed.area.name_zh:
+        constraints.append(parsed.area.name_zh)
+    constraints.extend(parsed.target.attributes)
+    constraints.extend(parsed.target.relations)
+    if state_query:
+        constraints.append(state_query)
+
+    return RobotTask(
+        task_id=_task_id(parsed.raw_task),
+        raw_text=parsed.raw_task,
+        task_type=task_type,  # type: ignore[arg-type]
+        target_object=target_object,
+        target_location=target_location,
+        target_room=target_room,
+        scope=scope,
+        constraints=constraints,
+        parsed_slots=parsed_slots,
+        confidence=max(
+            parsed.confidence.intent,
+            parsed.confidence.target,
+            0.0,
+        ),
+    )
+
+
+def _legacy_task_type(intent: str, target_category: str) -> str:
+    if intent == TaskIntent.FIND_ROOM.value or target_category == TargetCategory.ROOM.value:
         return "find_room"
-    if any(keyword in text for keyword in ["是否", "是不是", "确认", "验证"]):
-        return "verify_condition"
+    if intent == TaskIntent.CHECK_DOOR_STATE.value:
+        return "check_door_state"
+    if intent in {
+        TaskIntent.INSPECT_AREA.value,
+        TaskIntent.PATROL_AREA.value,
+        TaskIntent.CHECK_PASSABLE_AREA.value,
+    }:
+        return "inspect_area"
+    if intent in {TaskIntent.LOCATE_AREA.value, TaskIntent.APPROACH_TARGET.value}:
+        return "navigate_to_location"
+    if intent == TaskIntent.NON_NAVIGATION.value:
+        return "summarize_scene"
     return "find_object"
 
 
-def _is_count_task(text: str, normalized: str) -> bool:
-    return any(keyword in text for keyword in ["数", "几个", "多少", "统计"]) or "count" in normalized
-
-
-def _is_inspection_task(text: str, normalized: str) -> bool:
-    return any(keyword in text for keyword in ["巡查", "巡视", "巡检"]) or "inspect" in normalized
-
-
-def _is_door_state_task(text: str, normalized: str) -> bool:
-    return _mentions_door(text, normalized) and any(
-        keyword in text for keyword in ["开", "关", "状态", "是否", "是不是", "检查"]
-    )
-
-
-def _is_navigation_task(text: str, normalized: str) -> bool:
-    return any(keyword in text for keyword in ["去", "前往", "走到", "导航到", "移动到"]) or any(
-        keyword in normalized for keyword in ["go to", "navigate to", "move to"]
-    )
-
-
-def _is_find_room_task(text: str, normalized: str) -> bool:
-    return ("房间" in text or "room" in normalized or _extract_room(text) is not None) and any(
-        keyword in text for keyword in ["找", "寻找", "定位"]
-    )
-
-
-def _mentions_door(text: str, normalized: str) -> bool:
-    return "门" in text or "door" in normalized
-
-
-def _extract_target_object(text: str, normalized: str, task_type: str) -> str | None:
+def _legacy_target_object(parsed: ParsedTask, task_type: str) -> str | None:
+    category = _category_value(parsed.target.category)
     if task_type in {"find_room", "navigate_to_location", "summarize_scene", "compare_states"}:
+        return "door" if category == TargetCategory.DOOR.value else None
+    if category == TargetCategory.DOOR.value:
+        return "door"
+    if category == TargetCategory.ROOM.value:
         return None
+    return parsed.target.name_en or parsed.target.name_zh or None
 
-    for alias, canonical in OBJECT_ALIASES.items():
-        if alias in text or alias in normalized:
-            return canonical
+
+def _legacy_target_room(parsed: ParsedTask) -> str | None:
+    if _category_value(parsed.target.category) == TargetCategory.ROOM.value:
+        return parsed.target.name_zh or parsed.target.name_en or None
+    if _category_value(parsed.area.category) == TargetCategory.ROOM.value:
+        return parsed.area.name_zh or None
     return None
 
 
-def _extract_room(text: str) -> str | None:
-    match = re.search(r"\b\d{3,5}\b", text)
-    if match:
-        return match.group(0)
-    return None
-
-
-def _extract_location(text: str, target_room: str | None) -> str | None:
+def _legacy_target_location(parsed: ParsedTask, target_room: str | None) -> str | None:
     if target_room:
         return target_room
-    for keyword in ["桌子上", "办公桌上", "走廊尽头", "这层楼", "当前房间", "桌面", "门口"]:
-        if keyword in text:
-            return keyword
+    if parsed.area.name_zh:
+        return parsed.area.name_zh
+    if _category_value(parsed.target.category) in {
+        TargetCategory.AREA.value,
+        TargetCategory.FLOOR.value,
+        TargetCategory.CORRIDOR.value,
+    }:
+        return parsed.target.name_zh or parsed.target.name_en or None
     return None
 
 
-def _extract_scope(text: str, normalized: str) -> str | None:
-    if "这层" in text or "本层" in text or "floor" in normalized:
+def _legacy_scope(parsed: ParsedTask) -> str | None:
+    category = _category_value(parsed.area.category)
+    if category == TargetCategory.FLOOR.value:
         return "current_floor"
-    if "走廊" in text or "corridor" in normalized:
+    if category == TargetCategory.CORRIDOR.value:
         return "corridor"
-    if "房间" in text or "room" in normalized:
+    if category == TargetCategory.ROOM.value:
         return "current_room"
     return "current_scene"
 
 
-def _extract_constraints(text: str) -> list[str]:
-    constraints: list[str] = []
-    for keyword in ["桌子上", "办公桌上", "桌面", "走廊尽头", "打开", "关闭"]:
-        if keyword in text:
-            constraints.append(keyword)
-    return constraints
-
-
-def _extract_state(text: str, normalized: str) -> str | None:
-    if "打开" in text or "开着" in text or "open" in normalized:
-        return "open"
-    if "关闭" in text or "关着" in text or "closed" in normalized:
-        return "closed"
+def _first_state_query(parsed: ParsedTask) -> str | None:
+    for subtask in parsed.requested_subtasks:
+        if subtask.state_query:
+            return subtask.state_query
     return None
 
 
-def _confidence_for(
-    task_type: str,
-    target_object: str | None,
-    target_room: str | None,
-    target_location: str | None,
-) -> float:
-    confidence = 0.62
-    if task_type != "find_object":
-        confidence += 0.12
-    if target_object or target_room or target_location:
-        confidence += 0.14
-    return min(round(confidence, 2), 0.92)
+def _has_subtask(parsed: ParsedTask, subtask_type: SubtaskType) -> bool:
+    return any(_subtask_value(item.type) == subtask_type.value for item in parsed.requested_subtasks)
+
+
+def _intent_value(intent: Any) -> str:
+    return intent.value if isinstance(intent, TaskIntent) else str(intent)
+
+
+def _category_value(category: Any) -> str:
+    return category.value if isinstance(category, TargetCategory) else str(category)
+
+
+def _subtask_value(subtask_type: Any) -> str:
+    return subtask_type.value if isinstance(subtask_type, SubtaskType) else str(subtask_type)
 
 
 def _task_id(text: str) -> str:

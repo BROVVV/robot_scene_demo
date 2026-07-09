@@ -13,3 +13,4 @@
 {"observation_id": "obs_2026-06-25T063411577957+0000", "timestamp": "2026-06-25T06:34:11.577957+00:00", "location_hint": "current_room", "summary_zh": "办公室场景，地面光洁，左侧有门框和黄色墙面，右侧有办公桌和人员。", "confidence": 0.0}
 {"observation_id": "obs_2026-06-25T081615481025+0000", "timestamp": "2026-06-25T08:16:15.481025+00:00", "location_hint": "current_scene", "summary_zh": "空旷的办公室大厅，地面光洁，无明显家具或物品。", "confidence": 0.0}
 {"observation_id": "obs_2026-06-25T091018483898+0000", "timestamp": "2026-06-25T09:10:18.483898+00:00", "location_hint": "current_scene", "summary_zh": "空旷的办公室大厅，地面光洁，远处有门和窗户。", "confidence": 0.0}
+{"observation_id": "obs_2026-06-26T033322257375+0000", "timestamp": "2026-06-26T03:33:22.257375+00:00", "location_hint": "current_scene", "summary_zh": "卧室入口区域，可见床边柜、衣柜和装饰柜。", "confidence": 0.9}

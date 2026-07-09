@@ -24,6 +24,12 @@ from app.memory.video_memory_store import VideoMemoryStore
 from app.video.frame_analyzer import FrameAnalyzer, highlight_target_candidates
 from app.video.models import FrameAnalysisResult
 from app.video.object_tracker import track_objects
+from app.video.spatial_context import (
+    describe_target,
+    find_nearby_objects,
+    get_image_position,
+    relative_direction_hint,
+)
 from app.video.target_search import search_target_in_video
 from app.video.target_profile import TargetProfileResolver
 from app.video.semantic_verifier import verify_video_candidates
@@ -305,9 +311,14 @@ def run_video_search(
     )
     gate_report = _gate_video_search_result(search_result, frame_results, settings)
     search_result["evidence_gating"] = gate_report
-    if settings.evidence_gating_enabled and not gate_report.get("target_found"):
-        search_result["target_found"] = False
-        search_result["reason"] = "target_candidate_failed_evidence_gate"
+    if settings.evidence_gating_enabled:
+        if gate_report.get("target_found"):
+            search_result["target_found"] = True
+            if gate_report.get("best_evidence"):
+                search_result["best_evidence"] = gate_report["best_evidence"]
+        else:
+            search_result["target_found"] = False
+            search_result["reason"] = "target_candidate_failed_evidence_gate"
     paths["video_evidence_gating_report"] = _write_json(
         gate_report,
         output / "video_evidence_gating_report.json",
@@ -546,8 +557,8 @@ def _gate_video_search_result(
     settings: Any,
 ) -> dict[str, Any]:
     config = EvidenceGateConfig.from_settings(settings)
-    best = search_result.get("best_evidence")
-    if not best:
+    candidate_pairs = _video_gate_candidates(search_result, frame_results)
+    if not candidate_pairs:
         return {
             "target": search_result.get("task", {}).get("target"),
             "target_status": "not_observed",
@@ -558,45 +569,135 @@ def _gate_video_search_result(
             "blocking_rules": ["TARGET_CONFIRMATION_REQUIRE_VISUAL_EVIDENCE"],
             "candidates": [],
         }
-    obj = _find_video_object(frame_results, best.get("object_id"))
-    crop_verify = (obj or {}).get("crop_verify") or {}
-    crop_score = crop_verify.get("target_match_score")
-    if crop_score is None and crop_verify.get("is_target") is True:
-        crop_score = best.get("evidence_score") or best.get("confidence")
-    candidate = {
-        "candidate_id": best.get("object_id"),
-        "label": best.get("label"),
-        "label_zh": best.get("label_zh"),
-        "source": "visual_detector",
-        "has_visual_evidence": True,
-        "frame_id": best.get("frame_id"),
-        "image_path": best.get("frame_path"),
-        "crop_path": (obj or {}).get("crop_path"),
-        "bbox": best.get("bbox"),
-        "mask_area_ratio": best.get("mask_area_ratio"),
-        "detector_score": best.get("confidence"),
-        "crop_verify_score": crop_score,
-        "fused_score": best.get("evidence_score"),
-        "source_detector": search_result.get("task", {}).get("detector"),
-    }
-    report = evaluate_candidate(candidate, config)
+    reports = [
+        evaluate_candidate(
+            _candidate_from_video_object(search_result, frame, obj),
+            config,
+        )
+        for frame, obj in candidate_pairs
+    ]
+    found = any(item["target_found"] for item in reports)
+    report = (
+        max(
+            [item for item in reports if item["target_found"]],
+            key=lambda item: item["score"],
+        )
+        if found
+        else max(reports, key=lambda item: item["score"])
+    )
+    best_evidence = (
+        _best_video_evidence_from_report(
+            report,
+            search_result.get("task", {}).get("target") or "",
+            frame_results,
+        )
+        if found
+        else None
+    )
     return {
         **report,
         "target": search_result.get("task", {}).get("target"),
-        "candidates": [report],
+        "reason_zh": (
+            "视频中至少一个目标候选通过 bbox/crop/frame 视觉证据门控。"
+            if found
+            else "视频目标候选均未满足当前视觉证据门控。"
+        ),
+        "candidates": reports,
+        "best_evidence": best_evidence,
     }
 
 
-def _find_video_object(
+def _video_gate_candidates(
+    search_result: dict[str, Any],
     frame_results: list[FrameAnalysisResult],
-    object_id: Any,
+) -> list[tuple[FrameAnalysisResult, dict[str, Any]]]:
+    candidates = []
+    for frame in frame_results:
+        for obj in frame.objects:
+            if obj.get("is_target_candidate"):
+                candidates.append((frame, obj))
+    if candidates:
+        return candidates
+
+    best = search_result.get("best_evidence")
+    best_id = best.get("object_id") if isinstance(best, dict) else None
+    if best_id is None:
+        return []
+    for frame in frame_results:
+        for obj in frame.objects:
+            if obj.get("object_id") == best_id:
+                return [(frame, obj)]
+    return []
+
+
+def _candidate_from_video_object(
+    search_result: dict[str, Any],
+    frame: FrameAnalysisResult,
+    obj: dict[str, Any],
+) -> dict[str, Any]:
+    crop_verify = obj.get("crop_verify") or {}
+    crop_score = crop_verify.get("target_match_score")
+    if crop_score is None and crop_verify.get("is_target") is True:
+        crop_score = obj.get("final_score") or obj.get("confidence")
+    return {
+        "candidate_id": obj.get("object_id"),
+        "label": obj.get("label"),
+        "label_zh": obj.get("label_zh"),
+        "source": "visual_detector",
+        "has_visual_evidence": True,
+        "frame_id": frame.frame_id,
+        "image_path": frame.image_path,
+        "crop_path": obj.get("crop_path"),
+        "bbox": obj.get("bbox"),
+        "mask_area_ratio": obj.get("mask_area_ratio"),
+        "detector_score": obj.get("detector_score") or obj.get("confidence"),
+        "crop_verify_score": crop_score,
+        "fused_score": obj.get("final_score"),
+        "source_detector": search_result.get("task", {}).get("detector"),
+        "timestamp_sec": frame.timestamp_sec,
+        "annotated_frame_path": frame.annotated_frame_path,
+    }
+
+
+def _best_video_evidence_from_report(
+    report: dict[str, Any],
+    target: str,
+    frame_results: list[FrameAnalysisResult],
 ) -> dict[str, Any] | None:
+    evidence = report.get("evidence") or {}
+    object_id = evidence.get("candidate_id")
     if object_id is None:
         return None
     for frame in frame_results:
         for obj in frame.objects:
-            if obj.get("object_id") == object_id:
-                return obj
+            if obj.get("object_id") != object_id:
+                continue
+            nearby = find_nearby_objects(obj, frame.objects)
+            position = get_image_position(obj.get("bbox", []))
+            return {
+                "timestamp_sec": frame.timestamp_sec,
+                "frame_id": frame.frame_id,
+                "frame_path": frame.image_path,
+                "annotated_frame_path": frame.annotated_frame_path,
+                "object_id": obj.get("object_id"),
+                "track_id": obj.get("track_id"),
+                "label": obj.get("label"),
+                "label_zh": obj.get("label_zh"),
+                "confidence": obj.get("confidence"),
+                "evidence_score": report.get("score"),
+                "bbox": obj.get("bbox"),
+                "mask_area_ratio": obj.get("mask_area_ratio"),
+                "image_position": position,
+                "relative_direction_hint": relative_direction_hint(position),
+                "nearby_objects": nearby,
+                "description": describe_target(
+                    str(obj.get("label_zh") or target),
+                    position,
+                    nearby,
+                ),
+                "evidence_source": "video_evidence_gate",
+                "match_reason": report.get("reason_zh") or "",
+            }
     return None
 
 

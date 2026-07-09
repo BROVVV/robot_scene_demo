@@ -5,6 +5,7 @@
 - mock 场景理解
 - 硅基流动视觉 API 场景理解
 - GroundingDINO + SAM2 本地开放词表检测
+- LLM-first GroundingDINO Prompt Expansion：把“找到卧室 / 检查打开的门”等自然语言任务转成 DINO 可检测的英文物体、结构和锚点词表
 - 第一视角视频目标搜索与视频语义记忆
 - 无人工先验的大模型自生成常识推理与观察记忆导航
 - Streamlit Web UI
@@ -173,6 +174,13 @@ OUTPUT_DIR=outputs
 DETECTION_BACKEND=llm
 ```
 
+重要说明：
+
+- `DETECTION_BACKEND=llm` 只需要硅基流动视觉 API，不需要本地 GPU 检测模型。
+- `DETECTION_BACKEND=grounded_sam` 会调用本地 GroundingDINO + SAM2，并且默认先调用 LLM 生成 GroundingDINO 英文开放词表 prompt。
+- 如果要跑 `grounded_sam` 主流程，建议同时配置 `SILICONFLOW_API_KEY`；否则 prompt expansion 会明确失败，避免 GroundingDINO 静默收到空 prompt。
+- 如果只是调试本地 worker，可先不配置 API Key，直接使用第 8.6 节手写 `--text-prompt` 验证 GroundingDINO/SAM2 环境。
+
 平台避障辅助动态运动视界建议配置：
 
 ```text
@@ -225,7 +233,59 @@ PRIOR_USAGE_AUDIT_ENABLED=true
 PRIOR_USAGE_REPORT_PATH=outputs/prior_usage_report.json
 ```
 
-本项目现在的“常识”来自运行时 LLM 假设和机器人观察记忆，不来自开发者写死的物体-位置先验。LLM 假设只能用于排序搜索区域、生成动态检测词、建议下一视角；目标是否找到必须通过 bbox/crop/mask/frame 等视觉证据门控。
+视频目标搜索与建图辅助建议配置：
+
+```text
+VIDEO_MODE_DEFAULT=target_search
+VIDEO_ENABLE_SCENE_MAPPING_DEFAULT=false
+VIDEO_ENABLE_NAVIGATION_TOPOLOGY_DEFAULT=false
+VIDEO_USE_SCENE_MAP_FOR_SEARCH_DEFAULT=true
+VIDEO_ALLOW_SCENE_MAP_ONLY_DEBUG=false
+VIDEO_TARGET_SEARCH_REQUIRED_WHEN_TARGET_PRESENT=true
+VIDEO_SCENE_MAPPING_REUSE_TARGET_FRAMES=true
+VIDEO_SCENE_MAPPING_REUSE_OBJECT_TRACKS=true
+VIDEO_ENABLE_SCENE_MEMORY=true
+VIDEO_FULL_SCENE_MAP_ENABLED=false
+VIDEO_ALWAYS_WRITE_MEMORY=true
+VIDEO_ENABLE_VIDEO_PSG=true
+VIDEO_TOPOLOGY_ANNOTATE_TARGET_SEARCH=true
+VIDEO_TOPOLOGY_ADD_TARGET_CANDIDATE_NODES=true
+VIDEO_TOPOLOGY_ADD_TARGET_SEARCH_SCORES=true
+```
+
+视频运行模式的主任务永远是 `target_search`。Web UI 不再提供“视频全场景建图”作为顶层运行模式；全场景建图、导航拓扑图和拓扑辅助排序都只是“视频目标搜索”内部的辅助功能。`scene_map_only` 只保留给 CLI 高级调试，不适合真实导航目标搜索。
+
+GroundingDINO Prompt Expansion 建议配置：
+
+```text
+GROUNDING_PROMPT_LLM_EXPANSION_ENABLED=true
+GROUNDING_PROMPT_REQUIRE_NON_EMPTY=true
+GROUNDING_PROMPT_FAIL_FAST_ON_EMPTY=true
+GROUNDING_PROMPT_RETRY_ON_EMPTY=true
+GROUNDING_PROMPT_MAX_RETRIES=1
+GROUNDING_PROMPT_MAX_TERMS=24
+GROUNDING_PROMPT_MIN_TERMS=3
+GROUNDING_PROMPT_DEBUG_OUTPUT=outputs/grounding_prompt_plan.json
+GROUNDING_PROMPT_RETRY_DEBUG_OUTPUT=outputs/grounding_prompt_retry_plan.json
+```
+
+这组配置是 GroundingDINO+SAM2 主流程的关键桥接层。系统不会把“卧室 / 房间 / 区域”这种抽象场景词直接作为唯一 DINO prompt，而是让 LLM 根据完整任务语义生成英文可见代理物体、结构锚点、门牌/入口/标识等开放词表，例如：
+
+```text
+bed . wardrobe . nightstand . curtain . window . door . doorway . room entrance .
+```
+
+门状态任务也不会只靠 DINO 判断“打开/关闭”，而是先检测 `door / doorway / door frame / door handle` 等可见对象，再交给后续 crop verify、视觉模型或状态判断模块确认。
+
+如果你没有 API Key，又必须临时跑 `grounded_sam` 主流程，可以在 `.env` 中关闭 LLM prompt expansion：
+
+```text
+GROUNDING_PROMPT_LLM_EXPANSION_ENABLED=false
+```
+
+关闭后系统会回到 TargetProfile / dynamic terms 兼容路径；这只适合作为离线调试或兼容旧流程，不是推荐实验配置。
+
+本项目现在的“常识”来自运行时 LLM 假设和机器人观察记忆，不来自开发者写死的物体-位置先验。LLM 假设只能用于排序搜索区域、生成动态检测词、建议下一视角；目标是否找到必须通过 bbox/crop/mask/frame 等视觉证据门控。`TARGET_CONFIRMATION_REQUIRE_CROP_VERIFY=true` 表示有视觉 API Key 时启用 crop 复核硬门控；如果当前环境没有可用 API Key，系统会自动降级为 bbox/frame/mask/分数门控，避免本地 GroundingDINO+SAM2 检测结果因无法调用 crop verifier 而全部被拒绝。
 
 策略档位说明：
 
@@ -257,10 +317,21 @@ git status --short .env
 
 ## 6. 先跑基础验收
 
-### 6.1 单元测试
+### 6.1 核心 smoke test
 
 ```bash
-python -m unittest discover -s tests
+python -m py_compile \
+  app/config.py \
+  app/perception/grounding_prompt_planner.py \
+  app/detectors/grounded_sam_subprocess.py \
+  app/detectors/grounded_sam_worker.py \
+  run_demo.py \
+  streamlit_app.py
+
+python -m unittest \
+  tests.test_grounding_prompt_planner \
+  tests.test_grounded_sam_prompt_integration \
+  tests.test_grounded_sam_runtime
 ```
 
 期望：
@@ -268,6 +339,20 @@ python -m unittest discover -s tests
 ```text
 OK
 ```
+
+可选全量回归：
+
+```bash
+python -m unittest discover -s tests
+```
+
+当前开发分支上，全量回归可能出现两类非部署阻塞问题：
+
+- Streamlit AppTest 在无浏览器/低资源 bare mode 下超时。
+- `scripts/evaluate_task_examples.py` 中部分 legacy task type 期望仍按旧任务模板断言，而当前系统已切到 LLM-first 自然语言任务理解。
+- 部分新测试使用 pytest 风格，例如视频参数归一化和建图辅助链路；基础 `requirements.txt` 不包含 pytest。如需运行这些测试，先执行 `pip install pytest`，再运行 `python -m pytest tests/test_run_video_demo_args.py tests/test_scene_map_as_auxiliary.py`。
+
+如果目标是验证“空机器能部署并跑通主流程”，优先以本节 smoke test、mock 流程、Web UI 健康检查和实际 `run_demo.py` 输出为准。
 
 ### 6.2 mock 流程
 
@@ -293,11 +378,16 @@ outputs/ros2_motion_plan.json
 outputs/motion_horizon_decision.json
 outputs/llm_generated_priors.json
 outputs/dynamic_detector_prompts.json
+outputs/grounding_prompt_plan.json
+outputs/grounding_prompt_retry_plan.json
 outputs/evidence_gating_report.json
 outputs/observation_memory_updates.json
 outputs/prior_usage_report.json
 outputs/knowledge_aware_result.json
 outputs/parsed_task.json
+outputs/capability_gate_result.json
+outputs/navigation_task.json
+outputs/actionability_report.md
 outputs/retrieved_knowledge.json
 outputs/predictive_scene_graph.graphml
 outputs/hypotheses.json
@@ -307,17 +397,19 @@ outputs/reasoning_report.md
 
 兼容说明：旧参数 `--enable-knowledge` 仍可使用，但会提示 deprecated，并映射为 LLM runtime prior + observation memory + evidence gating；默认不再启用静态 KB 或手写位置先验。
 
-### 6.3 任务样例验证
+### 6.3 任务样例回归
 
 ```bash
 python scripts/evaluate_task_examples.py
 ```
 
-期望输出 JSON 中包含：
+理想输出 JSON 中包含：
 
 ```json
 "passed": true
 ```
+
+当前 LLM-first 任务理解改造后，部分样例仍使用旧版 `count_objects` / `navigate_to_location` 模板期望，可能输出 `passed=false`。只要失败项是 `legacy_task_type`，通常表示样例断言尚未同步新任务 schema，不代表部署失败。真正需要优先处理的是导入错误、配置错误、模型调用错误、输出文件缺失或主流程异常退出。
 
 ## 7. 跑硅基流动真实 API
 
@@ -552,21 +644,34 @@ nano .env
 ```text
 DETECTION_BACKEND=grounded_sam
 GROUNDED_SAM_ROOT=/root/gpufree-data/Grounded-SAM-2
-GROUNDED_SAM_PYTHON=/root/miniconda3/envs/go2_robot_scene_demo/bin/python
+GROUNDED_SAM_PYTHON=python
 GROUNDED_SAM_PYTHONPATH=/root/gpufree-data/Grounded-SAM-2:/root/gpufree-data/Grounded-SAM-2/grounding_dino
 GROUNDING_DINO_CONFIG=grounding_dino/groundingdino/config/GroundingDINO_SwinT_OGC.py
 GROUNDING_DINO_CHECKPOINT=gdino_checkpoints/groundingdino_swint_ogc.pth
 GROUNDING_DINO_BOX_THRESHOLD=0.25
 GROUNDING_DINO_TEXT_THRESHOLD=0.20
+GROUNDING_DINO_HIGH_RECALL_BOX_THRESHOLD=0.10
+GROUNDING_DINO_HIGH_RECALL_TEXT_THRESHOLD=0.08
+ENABLE_GDINO_HIGH_RECALL=true
 ENABLE_SAM2=true
 SAM2_CONFIG=configs/sam2.1/sam2.1_hiera_t.yaml
 SAM2_CHECKPOINT=checkpoints/sam2.1_hiera_tiny.pt
 MAX_DETECTED_OBJECTS=30
 DETECTION_DEVICE=auto
 DETECTOR_TIMEOUT_SECONDS=180
+
+GROUNDING_PROMPT_LLM_EXPANSION_ENABLED=true
+GROUNDING_PROMPT_REQUIRE_NON_EMPTY=true
+GROUNDING_PROMPT_FAIL_FAST_ON_EMPTY=true
+GROUNDING_PROMPT_RETRY_ON_EMPTY=true
+GROUNDING_PROMPT_MAX_RETRIES=1
+GROUNDING_PROMPT_MAX_TERMS=24
+GROUNDING_PROMPT_MIN_TERMS=3
+GROUNDING_PROMPT_DEBUG_OUTPUT=outputs/grounding_prompt_plan.json
+GROUNDING_PROMPT_RETRY_DEBUG_OUTPUT=outputs/grounding_prompt_retry_plan.json
 ```
 
-注意 `GROUNDED_SAM_PYTHON` 必须写成你机器上的真实 Python 路径。查询方式：
+如果运行前已经 `conda activate go2_robot_scene_demo`，`GROUNDED_SAM_PYTHON=python` 会使用当前环境。也可以写成你机器上的真实 Python 路径；查询方式：
 
 ```bash
 conda activate go2_robot_scene_demo
@@ -618,7 +723,58 @@ PY
 - `objects` 大于 0。
 - `with_sam2_mask` 大于 0。如果等于 0，通常是 SAM2 config 或 checkpoint 路径错误。
 
-上面的 `--text-prompt` 只是 worker 手动 debug 示例。项目主流程默认不会依赖固定室内物体 prompt 表；检测词优先来自用户目标、LLM 运行时 prior、当前视觉摘要和 crop 复核摘要。
+上面的 `--text-prompt` 只是 worker 手动 debug 示例。项目主流程默认不会依赖固定室内物体 prompt 表；GroundingDINO 检测词优先由 `GroundingPromptPlanner` 根据自然语言任务解析结果、导航任务和 TargetProfile 动态生成，LLM runtime prior 只作为后续搜索假设和动态复核线索，不能代替视觉证据确认目标。
+worker 现在会拒绝空 `--text-prompt`。如果看到：
+
+```text
+text_prompt is empty. GroundingDINO requires a non-empty open-vocabulary prompt.
+```
+
+说明应该先检查 prompt 生成链路，而不是继续调低检测阈值。
+
+### 8.6.1 验证 LLM-first GroundingDINO prompt expansion
+
+GroundingDINO 不是整图场景理解模型，不能指望它直接检测“卧室”“房间”“区域”这类抽象目标。项目主流程会先解析自然语言任务，再调用 `GroundingPromptPlanner` 生成英文开放词表。
+
+推荐先用房间类任务验证 prompt plan 是否生成：
+
+```bash
+python run_demo.py \
+  --image "/root/gpufree-data/微信图片_20260617144106.jpg" \
+  --target "找到卧室" \
+  --detector grounded_sam \
+  --disable-crop-verify \
+  --disable-handwritten-priors
+```
+
+即使当前图片里没有卧室，也应该生成：
+
+```text
+outputs/grounding_prompt_plan.json
+outputs/detection_debug_report.md
+```
+
+检查 prompt：
+
+```bash
+python - <<'PY'
+import json
+p="outputs/grounding_prompt_plan.json"
+data=json.load(open(p, encoding="utf-8"))
+print("target_category:", data.get("target_category"))
+print("strategy:", data.get("grounding_strategy"))
+print("prompt_valid:", data.get("is_valid_for_grounding_dino"))
+print("prompt:", data.get("grounding_prompt"))
+print("warnings:", data.get("warnings"))
+PY
+```
+
+期望：
+
+- `prompt_valid` 为 `True`。
+- `grounding_prompt` 非空。
+- room / area / scene / floor / corridor 任务中，prompt 不应只有 `bedroom .`、`room .` 这类抽象词。
+- 如果第一次 DINO 返回 0 candidate 且开启 retry，会额外生成 `outputs/grounding_prompt_retry_plan.json`。
 
 ### 8.7 跑项目 GroundingDINO+SAM2 主流程
 
@@ -626,7 +782,7 @@ PY
 cd /root/gpufree-data/robot_scene_demo
 python run_demo.py \
   --image "/root/gpufree-data/微信图片_20260617144106.jpg" \
-  --target "巡查玄关区域，识别地面可通行区域和主要障碍物" \
+  --target "找到卧室" \
   --detector grounded_sam \
   --enable-llm-prior \
   --enable-observation-memory \
@@ -646,8 +802,19 @@ outputs/topology_graph.png
 outputs/topology_graph.graphml
 outputs/ros2_motion_plan.json
 outputs/annotated_scene.png
+outputs/grounding_prompt_plan.json
+outputs/detection_debug_report.md
 ...
 ```
+
+`detection_debug_report.md` 会记录：
+
+- 原始任务、intent、目标类别
+- prompt 来源和生成策略
+- direct terms / proxy object terms / context anchor terms
+- 最终 GroundingDINO prompt
+- 0 candidate retry prompt
+- 原始候选数、过滤候选数、候选融合结果
 
 ## 9. 启动 Streamlit Web UI
 
@@ -712,9 +879,15 @@ tmux kill-session -t robot_scene_demo_ui
   - `模拟数据`：不需要图片、不需要 API Key。
   - `真实 API`：上传图片，调用硅基流动视觉模型。
   - `GroundingDINO+SAM2`：上传图片，调用本地检测器。
-- `任务模板`：选择常见任务。
-- `目标描述`：可手动输入任务，例如 `找到手机`。
+  - `视频目标搜索`：上传第一视角视频，先执行目标搜索，再按开关生成视频记忆、PSG、场景建图和导航拓扑辅助结果。
+- `自然语言任务`：直接输入开放式任务，例如 `帮我找到手机`、`找到张三，然后在安全距离处报告位置`。
 - `场景图片`：真实 API 和 GroundingDINO+SAM2 模式需要上传。
+- `视频目标搜索` 模式下的辅助功能：
+  - `启用视频记忆`：记录稳定场景、负目标证据和长期视频空间记忆。
+  - `启用视频 PSG`：根据真实观察生成可探索候选区域，不能单独确认目标。
+  - `启用全场景建图辅助`：在目标搜索过程中额外构建场景图，不替代目标搜索。
+  - `生成导航拓扑图`：只有启用建图辅助后可选，输出 place/passage/free_space/obstacle/PSG 拓扑。
+  - `使用拓扑图辅助目标搜索排序`：只给候选区域和 next-best-view 排序，目标确认仍必须依赖视觉证据。
 - `知识增强流程`：建议打开。
 - `预测性场景图`：显示 PSG。
 - `高精度复查`：只对真实 API 模式有意义。
@@ -739,10 +912,32 @@ tmux kill-session -t robot_scene_demo_ui
 - 知识增强结果
 - 知识增强页签中的 `运动视界决策`：显示策略档位、场景类型、任务阶段、LLM 推荐距离、规则裁剪后距离、最终导出距离和原因。
 
-### 10.1 视频目标搜索
+### 10.1 自然语言任务理解与安全门控
+
+Web UI 不再要求用户选择“找可见目标 / 找不可见目标”等任务模板。系统会先把自然语言任务解析为 `ParsedTask`，再经过能力与安全门控生成 `NavigationTask`。
+
+可执行范围只包括观察、搜索、巡查、导航到更好视角、接近目标附近、安全距离停止和反馈。拿取、开柜、翻找、破坏、推撞、攻击、殴打、伤害、强行接触人员等子任务会被拦截。
+
+如果任务同时包含可执行和不可执行部分，例如：
+
+```text
+找到张三，然后把他打一顿
+```
+
+系统只保留定位/搜索/安全距离观察/停止反馈部分，并在 `outputs/actionability_report.md` 中说明被拦截的伤害行为。目标是否可见不会由用户输入决定，解析阶段固定为 `initial_visibility_state="unknown"`，后续只能由视觉检测和 evidence gating 判断为 `visual_candidate`、`visual_confirmed` 或当前视角未确认。
+
+### 10.2 视频目标搜索
 
 Web UI 的“运行模式”中选择“视频目标搜索”后，可以上传
 `mp4/avi/mov/mkv` 视频，设置目标、检测器、关键帧采样 FPS 和最大分析帧数。
+
+当前产品语义：
+
+- 顶层运行模式只有 `视频目标搜索`，没有 `视频全场景建图`。
+- 只要提供目标，后端必须先执行目标搜索。
+- `启用全场景建图辅助`、`生成导航拓扑图`、`使用拓扑图辅助目标搜索排序` 都是目标搜索内部的辅助开关。
+- 看到客厅、沙发、电视柜等上下文，只能生成“可能搜索区域”和下一步观察建议，不能把目标升级为 `visual_confirmed`。
+- `scene_map_only` 只用于 CLI 高级调试；带 `--target` 时会被防呆拒绝。
 
 也可以直接使用命令行：
 
@@ -750,20 +945,78 @@ Web UI 的“运行模式”中选择“视频目标搜索”后，可以上传
 python run_video_demo.py \
   --video "/path/to/robot_walk.mp4" \
   --target "手机" \
+  --mode target_search \
   --detector mock \
   --sample-fps 1.0 \
   --max-frames 120 \
-  --enable-knowledge \
   --enable-video-memory
 ```
 
-真实检测时把 `mock` 替换为 `llm` 或 `grounded_sam`。视频模式会生成：
+真实检测时把 `mock` 替换为 `llm` 或 `grounded_sam`。如需在目标搜索过程中启用场景建图和导航拓扑辅助：
+
+```bash
+python run_video_demo.py \
+  --video "/path/to/robot_walk.mp4" \
+  --target "电视" \
+  --mode target_search \
+  --detector llm \
+  --sample-fps 2.0 \
+  --max-frames 300 \
+  --enable-video-memory \
+  --enable-video-psg \
+  --enable-scene-mapping \
+  --enable-navigation-topology \
+  --use-scene-map-for-search
+```
+
+兼容旧命令时，`--mode full_scene_map` 或 `--enable-full-scene-map` 如果同时带 `--target`，会自动归一化为 `target_search + --enable-scene-mapping + --enable-navigation-topology`。只有显式 `--scene-map-only` 且不提供 `--target` 时，才会只建图不搜索目标。
+
+不启用建图辅助时，视频目标搜索主输出包括：
 
 ```text
+outputs/video_target_profile.json
 outputs/video_target_search.json
 outputs/video_target_timeline.json
+outputs/video_target_candidates.json
 outputs/video_object_tracks.json
+outputs/video_track_summary.json
+outputs/video_crop_verify_results.json
+outputs/video_tracking_debug_report.md
 outputs/video_candidate_regions.json
+outputs/video_navigation_trace.json
+outputs/video_reasoning_report.md
+outputs/video_llm_generated_priors.json
+outputs/video_dynamic_detector_prompts.json
+outputs/video_evidence_gating_report.json
+outputs/video_observation_memory_updates.json
+outputs/video_prior_usage_report.json
+outputs/video_frames/
+outputs/video_frames_annotated/
+outputs/video_scene_results/
+```
+
+启用建图辅助后，会在上述目标搜索主输出之外额外生成：
+
+```text
+outputs/video_frame_observations.json
+outputs/video_place_segments.json
+outputs/video_all_objects.json
+outputs/video_observed_scene_graph.json
+outputs/video_observed_scene_graph.graphml
+outputs/video_psg_layer.json
+outputs/video_hybrid_scene_graph.json
+outputs/video_hybrid_scene_graph.graphml
+outputs/video_navigation_map.json
+outputs/video_navigation_topology.json
+outputs/video_navigation_topology.graphml
+outputs/video_navigation_topology.png
+outputs/video_navigation_topology_debug.md
+outputs/video_topology_search_ranking.json
+```
+
+视频记忆和 PSG 相关输出包括：
+
+```text
 outputs/video_memory_graph.json
 outputs/video_memory_graph.graphml
 outputs/video_memory_updates.json
@@ -771,11 +1024,6 @@ outputs/video_spatial_memory_snapshot.json
 outputs/video_predictive_scene_graph.graphml
 outputs/video_predictive_scene_graph.json
 outputs/video_hypotheses.json
-outputs/video_navigation_trace.json
-outputs/video_reasoning_report.md
-outputs/video_frames/
-outputs/video_frames_annotated/
-outputs/video_scene_results/
 data/memory/video_spatial_memory.jsonl
 ```
 
@@ -791,6 +1039,10 @@ data/memory/video_spatial_memory.jsonl
 相关环境变量位于 `.env.example`，常用项包括：
 
 ```text
+VIDEO_ENABLE_SCENE_MAPPING_DEFAULT=false
+VIDEO_ENABLE_NAVIGATION_TOPOLOGY_DEFAULT=false
+VIDEO_USE_SCENE_MAP_FOR_SEARCH_DEFAULT=true
+VIDEO_ALLOW_SCENE_MAP_ONLY_DEBUG=false
 VIDEO_ENABLE_SCENE_MEMORY=true
 VIDEO_ALWAYS_WRITE_MEMORY=true
 VIDEO_ENABLE_VIDEO_PSG=true
@@ -1007,7 +1259,7 @@ GroundingDINO+SAM2：
 ```bash
 python run_demo.py \
   --image "/path/to/image.jpg" \
-  --target "巡查玄关区域，识别地面可通行区域和主要障碍物" \
+  --target "找到卧室" \
   --detector grounded_sam \
   --enable-llm-prior \
   --enable-observation-memory \
@@ -1044,6 +1296,10 @@ python scripts/evaluate_task_examples.py
 基础输出：
 
 ```text
+outputs/parsed_task.json              自然语言任务结构化解析，initial_visibility_state 固定为 unknown
+outputs/capability_gate_result.json   机器狗能力边界与安全门控结果
+outputs/navigation_task.json          可进入感知/导航管线的导航任务
+outputs/actionability_report.md       已执行/已拦截子任务的人类可读报告
 outputs/scene_result.json              场景结构化结果
 outputs/object_table.csv               物体表
 outputs/relation_table.csv             关系表
@@ -1059,6 +1315,9 @@ LLM runtime prior / evidence gate 输出：
 ```text
 outputs/llm_generated_priors.json        LLM 运行时自生成常识搜索假设，不能确认目标
 outputs/dynamic_detector_prompts.json    用户目标 + LLM prior + 视觉摘要生成的动态检测词
+outputs/grounding_prompt_plan.json       GroundingDINO prompt expansion 计划，记录策略、词表和最终 prompt
+outputs/grounding_prompt_retry_plan.json 0 candidate 时的高召回 retry prompt，只有触发 retry 时生成
+outputs/detection_debug_report.md        Grounded-SAM/crop/fusion 调试报告，含最终 GroundingDINO prompt
 outputs/evidence_gating_report.json      目标状态与视觉证据门控结果
 outputs/observation_memory_updates.json  本次观察记忆写入记录
 outputs/prior_usage_report.json          本次是否使用静态/手写先验的审计报告
@@ -1071,6 +1330,69 @@ llm_hypothesis_only：只有 LLM 常识假设，目标未确认。
 visual_candidate：有视觉候选，但还未通过门控。
 visual_confirmed：视觉证据通过门控，目标确认。
 user_confirmed：用户确认。
+```
+
+视频目标搜索主输出：
+
+```text
+outputs/video_target_profile.json        视频目标画像与开放词表
+outputs/video_target_search.json         视频目标搜索主结果，目标状态以视觉证据为准
+outputs/video_target_timeline.json       目标候选/状态时间线
+outputs/video_target_candidates.json     目标候选摘要
+outputs/video_object_tracks.json         视频目标/物体 track 结果
+outputs/video_track_summary.json         track-level 投票摘要
+outputs/video_crop_verify_results.json   候选 crop 复核结果
+outputs/video_tracking_debug_report.md   视频 tracking 调试报告
+outputs/video_candidate_regions.json     未确认时的候选搜索区域
+outputs/video_navigation_trace.json      下一步观察/导航建议轨迹
+outputs/video_reasoning_report.md        视频目标搜索推理报告
+```
+
+视频记忆、运行时 prior 与 evidence gate 输出：
+
+```text
+outputs/video_memory_graph.json
+outputs/video_memory_graph.graphml
+outputs/video_memory_updates.json
+outputs/video_spatial_memory_snapshot.json
+outputs/video_predictive_scene_graph.json
+outputs/video_predictive_scene_graph.graphml
+outputs/video_hypotheses.json
+outputs/video_llm_generated_priors.json
+outputs/video_dynamic_detector_prompts.json
+outputs/video_evidence_gating_report.json
+outputs/video_observation_memory_updates.json
+outputs/video_prior_usage_report.json
+data/memory/video_spatial_memory.jsonl
+```
+
+视频目标搜索内的建图辅助输出。只有启用 `--enable-scene-mapping` 或 Web UI 的“启用全场景建图辅助”后才要求生成：
+
+```text
+outputs/video_frame_observations.json
+outputs/video_place_segments.json
+outputs/video_all_objects.json
+outputs/video_observed_scene_graph.json
+outputs/video_observed_scene_graph.graphml
+outputs/video_psg_layer.json
+outputs/video_hybrid_scene_graph.json
+outputs/video_hybrid_scene_graph.graphml
+outputs/video_navigation_map.json
+outputs/video_navigation_topology.json
+outputs/video_navigation_topology.graphml
+outputs/video_navigation_topology.png
+outputs/video_navigation_topology_debug.md
+outputs/video_topology_search_ranking.json
+```
+
+视频目标状态补充：
+
+```text
+target_not_seen：没有任何目标候选。
+target_candidate：检测到疑似目标，但证据不足。
+target_visual_confirmed：目标被 bbox / crop verify / track voting / evidence gating 视觉确认。
+target_lost_after_seen：之前看到过目标，后续帧丢失。
+target_unconfirmed_but_likely_area_found：未看到目标，但拓扑或上下文发现可能搜索区域。
 ```
 
 兼容输出：
@@ -1170,7 +1492,71 @@ SAM2_CHECKPOINT=checkpoints/sam2.1_hiera_tiny.pt
 SAM2_CONFIG=sam2/configs/sam2.1/sam2.1_hiera_t.yaml
 ```
 
-### 15.5 Streamlit 端口占用
+### 15.5 GroundingDINO prompt 为空
+
+如果报：
+
+```text
+GroundingDINO prompt is empty
+```
+
+或 worker 报：
+
+```text
+text_prompt is empty. GroundingDINO requires a non-empty open-vocabulary prompt.
+```
+
+处理顺序：
+
+1. 检查 `.env` 是否启用：
+
+```text
+GROUNDING_PROMPT_LLM_EXPANSION_ENABLED=true
+GROUNDING_PROMPT_REQUIRE_NON_EMPTY=true
+```
+
+2. 检查是否配置了 `SILICONFLOW_API_KEY`。Grounded-SAM 主流程默认需要 LLM 生成开放词表。
+
+3. 查看：
+
+```bash
+ls -lh outputs/grounding_prompt_plan.json outputs/detection_debug_report.md
+cat outputs/detection_debug_report.md
+```
+
+4. 如果 `outputs/grounding_prompt_plan.json` 不存在，说明 prompt expansion 调用没有成功，优先检查 API Key、网络、模型名和超时。
+
+5. 如果只是离线调试本地检测器，可以临时关闭：
+
+```text
+GROUNDING_PROMPT_LLM_EXPANSION_ENABLED=false
+```
+
+然后用第 8.6 节 worker 命令手动传入非空 `--text-prompt`。
+
+### 15.6 GroundingDINO 0 candidate
+
+0 candidate 不一定是 SAM2 问题。排查顺序：
+
+1. 打开 `outputs/detection_debug_report.md`，看 `Final GroundingDINO Prompt` 是否是具体英文可见词。
+2. 如果目标是房间/区域/场景，prompt 不应只有 `bedroom .`、`room .`、`area .`。
+3. 查看是否触发 retry：
+
+```bash
+cat outputs/grounding_prompt_retry_plan.json
+```
+
+4. 临时降低阈值：
+
+```text
+GROUNDING_DINO_BOX_THRESHOLD=0.10
+GROUNDING_DINO_TEXT_THRESHOLD=0.08
+ENABLE_GDINO_HIGH_RECALL=true
+```
+
+5. 用第 8.6 节 worker 手动传一个确定能检测的词，例如 `person . chair . table . door .`，验证本地 DINO/SAM2 环境本身是否正常。
+
+### 15.7 Streamlit 端口占用
 
 换端口：
 
@@ -1184,7 +1570,7 @@ bash scripts/start_web_ui.sh 8502
 ss -ltnp | grep 8501
 ```
 
-### 15.6 ROS2 发布脚本找不到 `rclpy`
+### 15.8 ROS2 发布脚本找不到 `rclpy`
 
 说明当前 shell 没有 ROS2 环境：
 
@@ -1196,7 +1582,7 @@ print("ok")
 PY
 ```
 
-### 15.7 API 超时
+### 15.9 API 超时
 
 调大：
 
@@ -1218,12 +1604,23 @@ python run_demo.py --mock --enable-knowledge
 在全新 Ubuntu 上，至少完成以下命令才算部署成功：
 
 ```bash
-python -m unittest discover -s tests
-python run_demo.py --mock --enable-knowledge
-python scripts/evaluate_task_examples.py
+python -m py_compile app/config.py app/perception/grounding_prompt_planner.py app/detectors/grounded_sam_subprocess.py run_demo.py streamlit_app.py
+python -m unittest tests.test_grounding_prompt_planner tests.test_grounded_sam_prompt_integration tests.test_grounded_sam_runtime
+python run_demo.py --mock --enable-llm-prior --enable-observation-memory --enable-evidence-gating --disable-handwritten-priors
 python scripts/publish_ros2_motion_plan.py outputs/ros2_motion_plan.json
 bash scripts/start_web_ui.sh
 ```
+
+可选回归检查：
+
+```bash
+python -m unittest discover -s tests
+python scripts/evaluate_task_examples.py
+pip install pytest
+python -m pytest tests/test_run_video_demo_args.py tests/test_scene_map_as_auxiliary.py
+```
+
+如果可选回归只失败在 Streamlit AppTest 超时或 legacy task type 断言，可先按第 6.1 和第 6.3 节说明判断，不把它作为部署失败。
 
 如果配置了真实 API：
 
@@ -1234,7 +1631,7 @@ python run_demo.py --image "/path/to/image.jpg" --target "找到手机" --detect
 如果配置了 GroundingDINO+SAM2：
 
 ```bash
-python run_demo.py --image "/path/to/image.jpg" --target "巡查玄关区域，识别地面可通行区域和主要障碍物" --detector grounded_sam --enable-knowledge
+python run_demo.py --image "/path/to/image.jpg" --target "找到卧室" --detector grounded_sam --enable-llm-prior --enable-observation-memory --enable-evidence-gating --disable-handwritten-priors
 ```
 
 最终应能访问：
@@ -1250,6 +1647,7 @@ outputs/scene_result.json
 outputs/knowledge_aware_result.json
 outputs/ros2_motion_plan.json
 outputs/motion_horizon_decision.json
+outputs/grounding_prompt_plan.json
 ```
 ## 高精度目标识别模式
 
@@ -1275,6 +1673,7 @@ python run_demo.py \
 python run_video_demo.py \
   --video "/path/to/robot_walk.mp4" \
   --target "手机" \
+  --mode target_search \
   --detector grounded_sam \
   --sample-fps 3.0 \
   --max-frames 300 \
@@ -1284,9 +1683,20 @@ python run_video_demo.py \
   --enable-video-memory
 ```
 
+如果需要在高精度视频搜索中同时生成场景拓扑辅助结果，在上述命令后追加：
+
+```bash
+  --enable-video-psg \
+  --enable-scene-mapping \
+  --enable-navigation-topology \
+  --use-scene-map-for-search
+```
+
 新增的主要调试输出包括：
 
 ```text
+outputs/grounding_prompt_plan.json
+outputs/grounding_prompt_retry_plan.json
 outputs/target_profile.json
 outputs/candidate_objects.json
 outputs/crop_verify_results.json
@@ -1328,6 +1738,7 @@ python run_demo.py \
 python run_video_demo.py \
   --video "/path/to/robot_walk.mp4" \
   --target "手机" \
+  --mode target_search \
   --detector grounded_sam \
   --sample-fps 3.0 \
   --max-frames 300 \

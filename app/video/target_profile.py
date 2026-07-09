@@ -9,6 +9,7 @@ from typing import Any
 from openai import OpenAI
 
 from app.config import Settings, get_settings
+from app.task_understanding.schemas import GroundingPromptPlan
 from app.utils.json_utils import extract_json_from_text
 from app.vision.vocab import COLOR_TERMS, COMMON_OBJECT_VOCAB
 
@@ -34,9 +35,18 @@ class TargetProfile:
     search_hint_zh: str = ""
     resolver_source: str = "fallback"
     resolver_error: str | None = None
+    target_category: str = "unknown"
+    grounding_strategy: str = "unknown"
+    direct_detection_supported: bool = True
+    requires_proxy_objects: bool = False
+    requires_scene_confirmation: bool = False
+    requires_state_verification: bool = False
+    grounding_prompt_plan: GroundingPromptPlan | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
+        if self.grounding_prompt_plan is not None:
+            payload["grounding_prompt_plan"] = asdict(self.grounding_prompt_plan)
         payload.update(
             {
                 "raw_target": self.raw_query,

@@ -29,6 +29,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if not args.text_prompt or not args.text_prompt.strip():
+        raise ValueError(
+            "text_prompt is empty. GroundingDINO requires a non-empty "
+            "open-vocabulary prompt."
+        )
     root = Path(args.root).resolve()
     sys.path.insert(0, str(root))
     os.chdir(root)

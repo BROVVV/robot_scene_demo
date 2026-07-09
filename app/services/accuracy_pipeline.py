@@ -193,6 +193,13 @@ def detection_config_payload(
         "enable_score_fusion": settings.enable_score_fusion,
         "final_target_score_threshold": settings.final_target_score_threshold,
         "final_candidate_score_threshold": settings.final_candidate_score_threshold,
+        "grounding_prompt_llm_expansion_enabled": (
+            settings.grounding_prompt_llm_expansion_enabled
+        ),
+        "grounding_prompt_require_non_empty": settings.grounding_prompt_require_non_empty,
+        "grounding_prompt_retry_on_empty": settings.grounding_prompt_retry_on_empty,
+        "grounding_prompt_debug_output": settings.grounding_prompt_debug_output,
+        "grounding_prompt_retry_debug_output": settings.grounding_prompt_retry_debug_output,
     }
 
 
@@ -249,17 +256,83 @@ def _write_debug_report(
     candidates: list[CandidateObject],
     path: Path,
 ) -> Path:
+    prompt_plan = _read_optional_json(config.get("grounding_prompt_debug_output"))
+    retry_plan = _read_optional_json(config.get("grounding_prompt_retry_debug_output"))
     rows = [
-        "# Detection debug report",
+        "# Detection Debug Report",
         "",
-        f"- target: {profile.raw_query}",
-        f"- grounding prompt: {profile.grounding_prompt}",
-        f"- summary: {json.dumps(summary, ensure_ascii=False)}",
-        f"- config: {json.dumps(config, ensure_ascii=False)}",
+        "## Task",
         "",
-        "| object | label | detector | final | decision | reason |",
-        "|---|---|---:|---:|---|---|",
+        f"- raw_task: {profile.raw_query}",
+        f"- target: {profile.canonical_name_zh}",
+        f"- target_category: {prompt_plan.get('target_category', profile.target_type) if prompt_plan else profile.target_type}",
+        "",
+        "## Grounding Prompt Plan",
+        "",
     ]
+    if prompt_plan:
+        rows.extend(
+            [
+                f"- grounding_strategy: {prompt_plan.get('grounding_strategy', 'unknown')}",
+                f"- prompt_source: {prompt_plan.get('prompt_source', 'unknown')}",
+                f"- prompt_valid: {prompt_plan.get('is_valid_for_grounding_dino', False)}",
+                f"- requires_proxy_objects: {prompt_plan.get('requires_proxy_objects', False)}",
+                f"- requires_scene_confirmation: {prompt_plan.get('requires_scene_confirmation', False)}",
+                f"- requires_state_verification: {prompt_plan.get('requires_state_verification', False)}",
+                "",
+                "### Direct Terms",
+                "",
+                *_markdown_terms(prompt_plan.get("direct_terms_en") or []),
+                "",
+                "### Proxy Object Terms",
+                "",
+                *_markdown_terms(prompt_plan.get("proxy_object_terms_en") or []),
+                "",
+                "### Context Anchor Terms",
+                "",
+                *_markdown_terms(prompt_plan.get("context_anchor_terms_en") or []),
+                "",
+                "### Final GroundingDINO Prompt",
+                "",
+                str(prompt_plan.get("grounding_prompt") or ""),
+                "",
+            ]
+        )
+    else:
+        rows.extend(
+            [
+                f"- prompt_valid: {bool(profile.grounding_prompt)}",
+                f"- prompt_source: {profile.resolver_source}",
+                "",
+                "### Final GroundingDINO Prompt",
+                "",
+                profile.grounding_prompt,
+                "",
+            ]
+        )
+    if retry_plan:
+        rows.extend(
+            [
+                "## Retry Prompt Expansion",
+                "",
+                f"- retry_count: {retry_plan.get('retry_count', 0)}",
+                f"- retry_prompt: {retry_plan.get('grounding_prompt', '')}",
+                f"- reason_zh: {retry_plan.get('prompt_reason_zh', '')}",
+                "",
+            ]
+        )
+    rows.extend(
+        [
+            "## Detection Summary",
+            "",
+            json.dumps(summary, ensure_ascii=False, indent=2),
+            "",
+            f"- config: {json.dumps(config, ensure_ascii=False)}",
+            "",
+            "| object | label | detector | final | decision | reason |",
+            "|---|---|---:|---:|---|---|",
+        ]
+    )
     for item in candidates:
         rows.append(
             f"| {item.object_id} | {item.label} | "
@@ -269,3 +342,22 @@ def _write_debug_report(
         )
     path.write_text("\n".join(rows) + "\n", encoding="utf-8")
     return path
+
+
+def _read_optional_json(path_value: Any) -> dict[str, Any] | None:
+    if not path_value:
+        return None
+    path = Path(str(path_value))
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _markdown_terms(terms: list[Any]) -> list[str]:
+    if not terms:
+        return ["- (none)"]
+    return [f"- {term}" for term in terms]

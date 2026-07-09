@@ -28,7 +28,6 @@ from app.reasoning.prior_usage_auditor import (
     build_prior_usage_report,
     write_prior_usage_report,
 )
-from app.reasoning.task_parser import parse_robot_task
 from app.schemas import SceneAnalysisResult
 from app.services.knowledge_aware_analyzer import KnowledgeAwareAnalyzer
 from app.services.knowledge_output_writer import write_knowledge_aware_outputs
@@ -38,6 +37,12 @@ from app.services.output_writer import prepare_analysis_result, write_analysis_o
 from app.services.route_planner import format_route_plan
 from app.services.scene_analyzer import SceneAnalyzer
 from app.services.target_matcher import format_target_decision
+from app.task_understanding.task_pipeline import (
+    navigation_target_text,
+    parsed_task_to_dict,
+    prepare_navigation_task_from_text,
+    write_task_understanding_outputs,
+)
 from app.video.target_profile import TargetProfileResolver
 
 
@@ -219,10 +224,6 @@ def run(
     disable_static_kb: bool = False,
     prior_audit: bool = False,
 ) -> list[Path]:
-    image = Path(image_path)
-    if not image.is_file():
-        raise FileNotFoundError(f"Image file not found: {image_path}")
-
     if enable_knowledge:
         _warn_deprecated_enable_knowledge()
     settings = _apply_prior_free_flags(
@@ -235,6 +236,30 @@ def run(
         disable_static_kb=disable_static_kb,
         prior_audit=prior_audit,
     )
+    output_dir = Path(settings.output_dir)
+    parsed_task, gate_result, nav_task = prepare_navigation_task_from_text(target_text)
+    task_output_paths = write_task_understanding_outputs(
+        output_dir,
+        parsed_task,
+        gate_result,
+        nav_task,
+    )
+    print("自然语言任务理解：")
+    print(json.dumps(parsed_task_to_dict(parsed_task), ensure_ascii=False, indent=2))
+    print()
+    print(gate_result.user_feedback)
+    print()
+    if not nav_task.executable:
+        print("任务未进入视觉检测、规划或 ROS2 dry-run 管线。")
+        print("已生成：")
+        for path in task_output_paths.values():
+            print(path)
+        return list(task_output_paths.values())
+
+    image = Path(image_path)
+    if not image.is_file():
+        raise FileNotFoundError(f"Image file not found: {image_path}")
+    target_text = navigation_target_text(nav_task, fallback=target_text)
     profile_enabled = (
         settings.enable_target_profile
         if enable_target_profile is None
@@ -293,7 +318,6 @@ def run(
             else settings.enable_dynamic_motion_horizon
         ),
     )
-    output_dir = Path(settings.output_dir)
     backend = detector_backend or settings.detection_backend
     profile = TargetProfileResolver(settings=settings).resolve(
         target_text,
@@ -320,6 +344,8 @@ def run(
         grounded_detector = GroundedSAMSubprocessDetector(
             settings,
             target_profile=profile if profile_enabled else None,
+            parsed_task=parsed_task,
+            navigation_task=nav_task,
         )
         analyzer = SceneAnalyzer(
             object_detector=grounded_detector,
@@ -409,14 +435,16 @@ def run(
         )
         _print_knowledge_outputs(knowledge_result, knowledge_paths)
         return (
-            output_paths
+            list(task_output_paths.values())
+            + output_paths
             + list(accuracy_paths.values())
             + list(prior_free_paths.values())
             + list(knowledge_paths.values())
         )
 
     return (
-        export_and_print_result(result, output_dir, image_path=image, settings=settings)
+        list(task_output_paths.values())
+        + export_and_print_result(result, output_dir, image_path=image, settings=settings)
         + list(accuracy_paths.values())
         + list(prior_free_paths.values())
     )
@@ -486,15 +514,28 @@ def run_mock(
         ),
     )
     output_dir = Path(settings.output_dir)
+    parsed_task, gate_result, nav_task = prepare_navigation_task_from_text(
+        result.target_decision.target_text
+    )
+    task_output_paths = write_task_understanding_outputs(
+        output_dir,
+        parsed_task,
+        gate_result,
+        nav_task,
+    )
+    if not nav_task.executable:
+        print(gate_result.user_feedback)
+        return list(task_output_paths.values())
+    target_text = navigation_target_text(nav_task, fallback=result.target_decision.target_text)
     result, prior_free_paths = _run_prior_free_runtime(
         result,
-        result.target_decision.target_text,
+        target_text,
         settings,
         output_dir,
     )
     output_paths = export_and_print_result(result, output_dir, settings=settings)
     if not enable_knowledge:
-        return output_paths + list(prior_free_paths.values())
+        return list(task_output_paths.values()) + output_paths + list(prior_free_paths.values())
 
     knowledge_result = KnowledgeAwareAnalyzer(
         update_kb=False,
@@ -505,14 +546,19 @@ def run_mock(
         settings=settings,
     ).enrich_base_scene(
         result,
-        result.target_decision.target_text,
+        target_text,
     )
     knowledge_paths = write_knowledge_aware_outputs(
         knowledge_result,
         output_dir,
     )
     _print_knowledge_outputs(knowledge_result, knowledge_paths)
-    return output_paths + list(prior_free_paths.values()) + list(knowledge_paths.values())
+    return (
+        list(task_output_paths.values())
+        + output_paths
+        + list(prior_free_paths.values())
+        + list(knowledge_paths.values())
+    )
 
 
 def export_and_print_result(
@@ -533,9 +579,13 @@ def export_and_print_result(
     print()
     print(format_target_decision(result))
     print()
-    parsed_task = parse_robot_task(result.target_decision.target_text)
-    print("任务解析：")
-    print(parsed_task.model_dump_json(indent=2))
+    parsed_task, gate_result, nav_task = prepare_navigation_task_from_text(
+        result.target_decision.target_text
+    )
+    print("自然语言任务解析与能力门控：")
+    print(json.dumps(parsed_task_to_dict(parsed_task), ensure_ascii=False, indent=2))
+    print(gate_result.user_feedback)
+    print(f"进入导航管线：{nav_task.executable}")
     print()
     print(format_route_plan(result))
     print()

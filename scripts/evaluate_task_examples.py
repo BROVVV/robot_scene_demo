@@ -1,4 +1,4 @@
-"""Evaluate example task fixtures against the knowledge-aware pipeline."""
+"""Evaluate task fixtures against the LLM-first task understanding pipeline."""
 
 from __future__ import annotations
 
@@ -15,9 +15,10 @@ if str(ROOT) not in sys.path:
 from app.knowledge.retrieval import retrieve_relevant_knowledge
 from app.planning.task_planner import plan_task
 from app.reasoning.scene_reasoner import reason_about_scene
-from app.reasoning.task_parser import parse_robot_task
+from app.reasoning.task_parser import convert_new_task_to_legacy_format
 from app.schemas import KnowledgeAwareSceneResult, SceneAnalysisResult
 from app.services.psg_builder import build_predictive_scene_graph
+from app.task_understanding.task_pipeline import run_task_understanding_pipeline
 
 
 DEFAULT_TASK_DIR = ROOT / "examples" / "tasks"
@@ -38,43 +39,70 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def evaluate_task_examples(tasks_dir: str | Path = DEFAULT_TASK_DIR) -> list[dict[str, Any]]:
+def evaluate_task_examples(
+    tasks_dir: str | Path = DEFAULT_TASK_DIR,
+    llm_client: Any | None = None,
+) -> list[dict[str, Any]]:
     reports = []
     for path in sorted(Path(tasks_dir).glob("*.json")):
         payload = json.loads(path.read_text(encoding="utf-8"))
-        reports.append(_evaluate_one(path, payload))
+        reports.append(_evaluate_one(path, payload, llm_client=llm_client))
     return reports
 
 
-def _evaluate_one(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
-    task_text = str(payload["task_text"])
-    expected_task_type = str(payload["expected_task_type"])
-    parsed_task = parse_robot_task(task_text)
+def _evaluate_one(
+    path: Path,
+    payload: dict[str, Any],
+    *,
+    llm_client: Any | None,
+) -> dict[str, Any]:
+    task_text = str(payload.get("task") or payload.get("task_text") or "")
+    expected = payload.get("expected")
+    result = run_task_understanding_pipeline(
+        task_text,
+        llm_client=llm_client,
+        enable_verifier=llm_client is None,
+    )
+    parsed_task = result.parsed_task
+    actionability = result.actionability
+    legacy_task = convert_new_task_to_legacy_format(result)
     scene = _load_scene_fixture(payload.get("scene_fixture"))
     knowledge = retrieve_relevant_knowledge(
         target_text=task_text,
         room_type=_room_type_hint(scene),
-        location_hint=parsed_task.target_location or parsed_task.scope,
+        location_hint=legacy_task.target_location or legacy_task.scope,
         kb_dir=ROOT / "data" / "scene_kb",
     )
 
     report: dict[str, Any] = {
         "example": path.name,
         "task_text": task_text,
-        "expected_task_type": expected_task_type,
-        "parsed_task_type": parsed_task.task_type,
-        "task_type_ok": parsed_task.task_type == expected_task_type,
+        "primary_intent": _value(parsed_task.primary_intent),
+        "target_category": _value(parsed_task.target.category),
+        "navigation_part_executable": actionability.navigation_part_executable,
+        "fully_executable": actionability.fully_executable,
+        "safety_flags": [_value(flag) for flag in actionability.safety_flags],
         "knowledge_items": len(knowledge),
         "has_scene_fixture": scene is not None,
         "checks": [],
     }
-    report["checks"].append(_check("task_type", report["task_type_ok"]))
+
+    if isinstance(expected, dict):
+        report["checks"].extend(_check_expected(report, expected))
+    elif payload.get("expected_task_type"):
+        expected_task_type = str(payload["expected_task_type"])
+        report["expected_task_type"] = expected_task_type
+        report["parsed_task_type"] = legacy_task.task_type
+        report["checks"].append(
+            _check("legacy_task_type", legacy_task.task_type == expected_task_type)
+        )
+
     report["checks"].append(_check("knowledge_retrieval", len(knowledge) > 0))
 
     if scene is not None:
-        psg = build_predictive_scene_graph(scene, knowledge, parsed_task)
-        reasoning = reason_about_scene(scene, parsed_task, knowledge, psg)
-        task_plan = plan_task(scene, parsed_task, reasoning.hypotheses, psg)
+        psg = build_predictive_scene_graph(scene, knowledge, legacy_task)
+        reasoning = reason_about_scene(scene, legacy_task, knowledge, psg)
+        task_plan = plan_task(scene, legacy_task, reasoning.hypotheses, psg)
         report.update(
             {
                 "psg_nodes": len(psg.nodes),
@@ -93,6 +121,44 @@ def _evaluate_one(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
 
     report["passed"] = all(check["passed"] for check in report["checks"])
     return report
+
+
+def _check_expected(report: dict[str, Any], expected: dict[str, Any]) -> list[dict[str, Any]]:
+    checks = []
+    if "primary_intent" in expected:
+        checks.append(
+            _check(
+                "primary_intent",
+                report["primary_intent"] == expected["primary_intent"],
+            )
+        )
+    if "target_category" in expected:
+        checks.append(
+            _check(
+                "target_category",
+                report["target_category"] == expected["target_category"],
+            )
+        )
+    if "navigation_part_executable" in expected:
+        checks.append(
+            _check(
+                "navigation_part_executable",
+                report["navigation_part_executable"]
+                == bool(expected["navigation_part_executable"]),
+            )
+        )
+    if "fully_executable" in expected:
+        checks.append(
+            _check(
+                "fully_executable",
+                report["fully_executable"] == bool(expected["fully_executable"]),
+            )
+        )
+    for flag in expected.get("required_safety_flags", []):
+        checks.append(_check(f"required_flag:{flag}", flag in report["safety_flags"]))
+    for flag in expected.get("forbidden_safety_flags", []):
+        checks.append(_check(f"forbidden_flag:{flag}", flag not in report["safety_flags"]))
+    return checks
 
 
 def _load_scene_fixture(fixture: object) -> SceneAnalysisResult | None:
@@ -121,6 +187,10 @@ def _room_type_hint(scene: SceneAnalysisResult | None) -> str | None:
 
 def _check(name: str, passed: bool) -> dict[str, Any]:
     return {"name": name, "passed": passed}
+
+
+def _value(value: Any) -> str:
+    return value.value if hasattr(value, "value") else str(value)
 
 
 def main(argv: list[str] | None = None) -> int:

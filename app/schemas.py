@@ -267,6 +267,18 @@ class Ros2MotionCommand(StrictBaseModel):
     observe_while_moving: bool = False
 
 
+def default_navigation_execution_constraints() -> dict[str, Any]:
+    return {
+        "contact_allowed": False,
+        "manipulation_allowed": False,
+        "harmful_action_allowed": False,
+        "chase_or_ram_allowed": False,
+        "requires_stop_after_navigation": True,
+        "stop_distance_policy": "safe_distance",
+        "max_speed_policy": "normal_or_conservative",
+    }
+
+
 class Ros2MotionPlan(StrictBaseModel):
     plan_id: str
     generated_at: str
@@ -280,6 +292,9 @@ class Ros2MotionPlan(StrictBaseModel):
     commands: list[Ros2MotionCommand] = Field(default_factory=list)
     safety_notes_zh: list[str] = Field(default_factory=list)
     integration_notes_zh: list[str] = Field(default_factory=list)
+    execution_constraints: dict[str, Any] = Field(
+        default_factory=default_navigation_execution_constraints
+    )
     platform_obstacle_avoidance_assumed: bool = False
     dynamic_motion_horizon_enabled: bool = False
     motion_horizon_profile: str = "strict_safe"

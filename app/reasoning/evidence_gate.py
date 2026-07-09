@@ -15,17 +15,23 @@ class EvidenceGateConfig:
     require_visual_evidence: bool = True
     require_bbox: bool = True
     require_crop_verify: bool = True
+    crop_verify_requested: bool = False
+    crop_verify_available: bool = True
     require_mask: bool = False
     min_score: float = 0.72
 
     @classmethod
     def from_settings(cls, settings: Settings | None = None) -> "EvidenceGateConfig":
         config = settings or get_settings()
+        crop_verify_requested = config.target_confirmation_require_crop_verify
+        crop_verify_available = bool(config.siliconflow_api_key) and config.enable_crop_verify
         return cls(
             enabled=config.evidence_gating_enabled,
             require_visual_evidence=config.target_confirmation_require_visual_evidence,
             require_bbox=config.target_confirmation_require_bbox,
-            require_crop_verify=config.target_confirmation_require_crop_verify,
+            require_crop_verify=crop_verify_requested and crop_verify_available,
+            crop_verify_requested=crop_verify_requested,
+            crop_verify_available=crop_verify_available,
             require_mask=config.target_confirmation_require_mask,
             min_score=config.target_confirmation_min_score,
         )
@@ -137,7 +143,7 @@ def evaluate_candidate(candidate: dict[str, Any], config: EvidenceGateConfig) ->
     if config.require_crop_verify and candidate.get("crop_verify_score") is None:
         blocked.append("TARGET_CONFIRMATION_REQUIRE_CROP_VERIFY")
     else:
-        passed.append("TARGET_CONFIRMATION_REQUIRE_CROP_VERIFY")
+        passed.append(_crop_verify_rule_name(candidate, config))
     if config.require_mask and candidate.get("mask_area_ratio") is None:
         blocked.append("TARGET_CONFIRMATION_REQUIRE_MASK")
     elif config.require_mask:
@@ -198,3 +204,16 @@ def _candidate_score(candidate: dict[str, Any]) -> float:
             except (TypeError, ValueError):
                 continue
     return 0.0
+
+
+def _crop_verify_rule_name(
+    candidate: dict[str, Any],
+    config: EvidenceGateConfig,
+) -> str:
+    if candidate.get("crop_verify_score") is not None:
+        return "TARGET_CONFIRMATION_REQUIRE_CROP_VERIFY"
+    if config.crop_verify_requested and not config.crop_verify_available:
+        return "TARGET_CONFIRMATION_CROP_VERIFY_UNAVAILABLE"
+    if not config.crop_verify_requested:
+        return "TARGET_CONFIRMATION_CROP_VERIFY_NOT_REQUIRED"
+    return "TARGET_CONFIRMATION_REQUIRE_CROP_VERIFY"
