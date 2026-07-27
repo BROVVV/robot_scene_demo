@@ -64,7 +64,15 @@ class Nav2Gateway:
     def _spawn_worker(self, handle: Nav2JobHandle) -> None:
         setup = Path(self.settings.setup_bash)
         if not setup.is_file():
-            self._unavailable(handle, "NAV2_ROS_SETUP_NOT_FOUND", f"ROS2 setup 不存在：{setup}")
+            standard = Path("/opt/ros") / self.settings.ros_distro / "setup.bash"
+            detail = (
+                f"ROS2 设置脚本不存在：{setup}。"
+                f"请先运行 `bash scripts/install_nav2_humble.sh`；"
+                f"安装后应存在 `{standard}`。"
+                "若 ROS 安装在其他位置，请把 NAV2_SETUP_BASH 设置为一个完整的 "
+                "setup.bash 文件路径，不要填写目录，也不要拼接多个路径。"
+            )
+            self._unavailable(handle, "NAV2_ROS_SETUP_NOT_FOUND", detail)
             return
         worker = self.root / "scripts/nav2_bridge_worker.py"
         workspace = f"source {shlex.quote(self.settings.workspace_setup)}; " if self.settings.workspace_setup else ""

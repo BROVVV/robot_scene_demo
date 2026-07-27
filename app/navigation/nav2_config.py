@@ -21,6 +21,18 @@ def env_bool(name: str, default: bool = False) -> bool:
     raise Nav2ValidationError(f"{name} 必须是 true/false/1/0/yes/no")
 
 
+def resolve_setup_bash(configured: str, ros_distro: str = "humble") -> str:
+    """Resolve ROS setup and repair only a recognizable ``setup.bas*`` typo."""
+    expanded = str(Path(configured).expanduser())
+    if Path(expanded).is_file():
+        return expanded
+    standard = Path("/opt/ros") / ros_distro / "setup.bash"
+    malformed = "setup.bas" in expanded and expanded != str(standard)
+    if malformed and standard.is_file():
+        return str(standard)
+    return expanded
+
+
 @dataclass(frozen=True)
 class Nav2Settings:
     enabled: bool = False
@@ -55,12 +67,16 @@ class Nav2Settings:
     @classmethod
     def from_env(cls) -> "Nav2Settings":
         mode = Nav2Mode(os.getenv("NAV2_MODE", "disabled"))
+        ros_distro = os.getenv("NAV2_ROS_DISTRO", "humble")
+        configured_setup = os.getenv(
+            "NAV2_SETUP_BASH", f"/opt/ros/{ros_distro}/setup.bash"
+        )
         value = cls(
             enabled=env_bool("NAV2_ENABLED"),
             mode=mode,
-            ros_distro=os.getenv("NAV2_ROS_DISTRO", "humble"),
+            ros_distro=ros_distro,
             system_python=str(Path(os.getenv("NAV2_SYSTEM_PYTHON", "/usr/bin/python3")).expanduser()),
-            setup_bash=str(Path(os.getenv("NAV2_SETUP_BASH", "/opt/ros/humble/setup.bash")).expanduser()),
+            setup_bash=resolve_setup_bash(configured_setup, ros_distro),
             workspace_setup=os.path.expanduser(os.getenv("NAV2_WORKSPACE_SETUP", "")),
             namespace=os.getenv("NAV2_NAMESPACE", ""),
             map_frame=os.getenv("NAV2_MAP_FRAME", "map"),

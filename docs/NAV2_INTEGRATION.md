@@ -19,9 +19,22 @@ provenance；否则请在 CLI/Web UI 手工输入地图目标。
 ```bash
 bash scripts/install_nav2_humble.sh
 source /opt/ros/humble/setup.bash
-cd ros2_ws && colcon build --symlink-install
+cd ros2_ws
+colcon build --symlink-install --cmake-args \
+  -DPython3_EXECUTABLE=/usr/bin/python3
 source install/setup.bash
 python3 ../scripts/check_nav2_runtime.py --json ../outputs/nav2_health.json
+```
+
+如果主项目运行在 Conda 中，上面的 CMake 参数不可省略；它防止 ROS 构建
+误用 Conda Python。Worker 本身始终使用 `/usr/bin/python3`。
+
+安装脚本会在全新 Ubuntu 22.04 上初始化 ROS 2 官方 APT 软件源。正确的系统环境
+脚本是 `/opt/ros/humble/setup.bash`。不要写成 `setup.bas`，也不要把两个路径
+拼接成 `/setup.bashe/setup.bas`。自定义安装位置时只设置一个完整文件路径：
+
+```bash
+NAV2_SETUP_BASH=/custom/ros/humble/setup.bash
 ```
 
 启动外部定位、地图和传感器后：

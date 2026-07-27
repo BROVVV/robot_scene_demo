@@ -1,6 +1,6 @@
 import os, unittest
 from unittest.mock import patch
-from app.navigation.nav2_config import Nav2Settings, env_bool
+from app.navigation.nav2_config import Nav2Settings, env_bool, resolve_setup_bash
 from app.navigation.nav2_models import Nav2Mode, Nav2Pose
 from app.navigation.nav2_request_builder import make_request
 class RequestBuilderTest(unittest.TestCase):
@@ -14,3 +14,6 @@ class RequestBuilderTest(unittest.TestCase):
         self.assertTrue(r.safety_confirmation.complete)
     def test_bool_parser(self):
         with patch.dict(os.environ,{"X_BOOL":"yes"}): self.assertTrue(env_bool("X_BOOL"))
+    def test_invalid_setup_path_is_not_silently_accepted(self):
+        value=resolve_setup_bash("/missing/setup.bashe/setup.bas","not-installed")
+        self.assertEqual(value,"/missing/setup.bashe/setup.bas")

@@ -100,6 +100,85 @@ def safety_check(request):
         raise RuntimeError("NAV2_SAFETY_CONFIRMATION_MISSING: 安全确认不完整")
 
 
+def wait_for_action_server(client, timeout, name):
+    if not client.wait_for_server(timeout_sec=float(timeout)):
+        raise RuntimeError(
+            f"NAV2_ACTION_SERVER_UNAVAILABLE: {name} 在 {timeout} 秒内不可用；"
+            "请启动 Nav2 bringup，并检查 namespace 与 ROS_DOMAIN_ID"
+        )
+
+
+def wait_for_future(rclpy, navigator, future, deadline, timeout_error):
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise RuntimeError(timeout_error)
+    rclpy.spin_until_future_complete(navigator, future, timeout_sec=remaining)
+    if not future.done():
+        raise RuntimeError(timeout_error)
+    return future.result()
+
+
+def get_path_with_timeout(rclpy, navigator, start, goal, request):
+    from action_msgs.msg import GoalStatus
+    from nav2_msgs.action import ComputePathToPose
+
+    timeout = float(request.get("planning_timeout_sec", 30))
+    wait_for_action_server(
+        navigator.compute_path_to_pose_client, timeout, "compute_path_to_pose"
+    )
+    deadline = time.monotonic() + timeout
+    goal_msg = ComputePathToPose.Goal()
+    if start is not None:
+        goal_msg.start = start
+    goal_msg.goal = goal
+    goal_msg.planner_id = request.get("planner_id", "")
+    goal_msg.use_start = not request.get("use_current_robot_pose_as_start", True)
+    goal_handle = wait_for_future(
+        rclpy,
+        navigator,
+        navigator.compute_path_to_pose_client.send_goal_async(goal_msg),
+        deadline,
+        "NAV2_PLANNING_TIMEOUT: 提交规划请求超时",
+    )
+    if goal_handle is None or not goal_handle.accepted:
+        raise RuntimeError("NAV2_PLAN_REJECTED: Nav2 拒绝了规划请求")
+    navigator.goal_handle = goal_handle
+    result = wait_for_future(
+        rclpy,
+        navigator,
+        goal_handle.get_result_async(),
+        deadline,
+        "NAV2_PLANNING_TIMEOUT: 全局路径规划超时",
+    )
+    if result is None or result.status != GoalStatus.STATUS_SUCCEEDED:
+        code = getattr(result, "status", "unknown")
+        raise RuntimeError(f"NAV2_NO_PATH: Nav2 规划失败，状态码={code}")
+    return result.result.path
+
+
+def start_navigation_with_timeout(rclpy, navigator, goal, behavior_tree, timeout):
+    from nav2_msgs.action import NavigateToPose
+
+    wait_for_action_server(navigator.nav_to_pose_client, timeout, "navigate_to_pose")
+    goal_msg = NavigateToPose.Goal()
+    goal_msg.pose = goal
+    goal_msg.behavior_tree = behavior_tree
+    deadline = time.monotonic() + float(timeout)
+    goal_handle = wait_for_future(
+        rclpy,
+        navigator,
+        navigator.nav_to_pose_client.send_goal_async(
+            goal_msg, navigator._feedbackCallback
+        ),
+        deadline,
+        "NAV2_ACTION_TIMEOUT: 提交导航请求超时",
+    )
+    if goal_handle is None or not goal_handle.accepted:
+        raise RuntimeError("NAV2_GOAL_REJECTED: Nav2 拒绝了导航目标")
+    navigator.goal_handle = goal_handle
+    navigator.result_future = goal_handle.get_result_async()
+
+
 def run(request_path):
     request_path = Path(request_path).resolve(); job = request_path.parent
     request = json.loads(request_path.read_text(encoding="utf-8"))
@@ -130,21 +209,28 @@ def run(request_path):
         navigator.create_subscription(Twist, request.get("cmd_vel_topic", "/cmd_vel"), cmd_callback, 20)
     try:
         status(job, request, "ready", "Nav2 Worker 已就绪", nav2_available=True)
-        navigator.waitUntilNav2Active()
         goal = make_pose(navigator, request["goal_pose"])
         use_current = request.get("use_current_robot_pose_as_start", True)
         start = None if use_current else make_pose(navigator, request["start_pose"])
         status(job, request, "planning", "正在调用 Nav2 全局规划")
         started = time.monotonic()
-        path = navigator.getPath(start, goal, request.get("planner_id", ""), use_start=not use_current)
+        path = get_path_with_timeout(rclpy, navigator, start, goal, request)
         if path is None or not path.poses:
             raise RuntimeError("NAV2_NO_PATH: Nav2 未返回可行路径")
         path_payload = serialize_path(job, request, path)
+        path_payload["planning_time_sec"] = time.monotonic() - started
+        atomic_json(job/"global_path.json", path_payload)
         status(job, request, "planned", "Nav2 已生成真实全局路径",
                path_length_m=path_payload["path_length_m"])
         if request["mode"] == "plan_only": return 0
         behavior_tree = request.get("behavior_tree", "")
-        navigator.goToPose(goal, behavior_tree=behavior_tree)
+        start_navigation_with_timeout(
+            rclpy,
+            navigator,
+            goal,
+            behavior_tree,
+            request.get("planning_timeout_sec", 30),
+        )
         status(job, request, "executing", "正在执行 Nav2 导航", path_length_m=path_payload["path_length_m"])
         execute_started = time.monotonic()
         while not navigator.isTaskComplete():
