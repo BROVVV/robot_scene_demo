@@ -44,6 +44,7 @@ from app.task_understanding.task_pipeline import (
     write_task_understanding_outputs,
 )
 from app.video.target_profile import TargetProfileResolver
+from app.navigation.nav2_cli import add_nav2_arguments, run_nav2_from_args
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -194,6 +195,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         enable_observation_memory=None,
         enable_evidence_gating=None,
     )
+    add_nav2_arguments(parser)
     return parser.parse_args(argv)
 
 
@@ -878,6 +880,10 @@ def main(argv: list[str] | None = None) -> int:
                 disable_static_kb=args.disable_static_kb,
                 prior_audit=args.prior_audit,
             )
+        run_nav2_from_args(
+            args,
+            task_context={"natural_language_task": args.target or "mock", "source_pipeline": "single_image"},
+        )
     except (
         SettingsError,
         FileNotFoundError,

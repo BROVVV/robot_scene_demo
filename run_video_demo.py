@@ -14,6 +14,7 @@ from app.detectors.grounded_sam_subprocess import DetectorRuntimeError
 from app.video.full_scene_mapper import VideoFullSceneMapper
 from app.video.video_target_search_pipeline import run_video_target_search_pipeline
 from app.video.video_reader import VideoReadError
+from app.navigation.nav2_cli import add_nav2_arguments, run_nav2_from_args
 
 
 def normalize_video_args(args: argparse.Namespace) -> argparse.Namespace:
@@ -203,6 +204,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         topology_observed_only=None,
         save_frame_observations=None,
     )
+    add_nav2_arguments(parser)
     return parser.parse_args(argv)
 
 
@@ -294,6 +296,14 @@ def main(argv: list[str] | None = None) -> int:
     print("已生成：")
     for path in result.get("output_files", {}).values():
         print(Path(path))
+    run_nav2_from_args(
+        args,
+        task_context={
+            "natural_language_task": args.target,
+            "target_status": result.get("target_status"),
+            "source_pipeline": "video",
+        },
+    )
     return 0
 
 

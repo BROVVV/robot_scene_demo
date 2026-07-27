@@ -50,6 +50,7 @@ from app.video.video_target_search_pipeline import run_video_target_search_pipel
 from app.video.target_profile import TargetProfileResolver
 from app.video.video_reader import VideoReadError
 from run_demo import _run_prior_free_runtime
+from app.ui.nav2_panel import process_and_render_nav2, render_nav2_sidebar
 
 
 MOCK_PATH = Path("examples/mock_scene_result.json")
@@ -250,6 +251,7 @@ def _render_sidebar() -> dict:
             type="primary",
             use_container_width=True,
         )
+        nav2 = render_nav2_sidebar()
 
         st.divider()
         st.caption(f"输出目录：{DEFAULT_OUTPUT_DIR}")
@@ -295,6 +297,7 @@ def _render_sidebar() -> dict:
         "max_open_step": max_open_step,
         "max_indoor_step": max_indoor_step,
         "analyze_clicked": analyze_clicked,
+        "nav2": nav2,
     }
 
 
@@ -320,6 +323,7 @@ def _render_workspace(settings: dict) -> None:
             enable_knowledge=settings["enable_knowledge"],
             ui_settings=settings,
         )
+    process_and_render_nav2(settings.get("nav2", {}))
 
 
 def _runtime_settings_from_ui(ui_settings: dict):

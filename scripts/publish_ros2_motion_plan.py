@@ -44,6 +44,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Override the topic in the plan, for example /cmd_vel.",
     )
+    parser.add_argument(
+        "--force-legacy-while-nav2-inactive",
+        action="store_true",
+        help="Explicitly permit legacy publishing only when no Nav2 execute job is active.",
+    )
     return parser.parse_args(argv)
 
 
@@ -63,8 +68,37 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    conflict = _active_nav2_execute_job(ROOT / "outputs" / "nav2_status.json")
+    if conflict:
+        print(
+            "NAV2_CMD_VEL_CONFLICT: 活动的 Nav2 execute 任务正在发布速度；"
+            "双发布会造成速度竞争，已拒绝 legacy /cmd_vel。",
+            file=sys.stderr,
+        )
+        return 4
+    if not args.force_legacy_while_nav2_inactive:
+        print(
+            "Legacy /cmd_vel 发布需要 --force-legacy-while-nav2-inactive；"
+            "该参数也不能绕过活动 Nav2 任务互斥。",
+            file=sys.stderr,
+        )
+        return 4
 
     return _publish_to_ros2(plan, topic)
+
+
+def _active_nav2_execute_job(path: Path) -> bool:
+    if not path.exists():
+        return False
+    try:
+        status = json.loads(path.read_text(encoding="utf-8"))
+        request_path = ROOT / "outputs" / "nav2_request.json"
+        request = json.loads(request_path.read_text(encoding="utf-8")) if request_path.exists() else {}
+        return request.get("mode") == "execute" and status.get("state") in {
+            "created", "validating", "ready", "planning", "planned", "executing", "canceling"
+        }
+    except (OSError, json.JSONDecodeError):
+        return True
 
 
 def _load_plan(path: Path) -> Ros2MotionPlan:

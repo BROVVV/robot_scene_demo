@@ -1836,3 +1836,29 @@ python run_demo.py --mock --enable-knowledge \
   --motion-profile strict_safe \
   --disable-dynamic-motion-horizon
 ```
+
+# Navigation2（ROS2 Humble）
+
+项目现已增加隔离式 Nav2 规划/执行层：现有感知和语义推理负责产生有来源证明的
+候选观察位姿，Nav2 负责全局规划、路径跟踪、恢复与取消。默认关闭且禁止运动；
+单图/视频像素坐标不会被伪造成 map 坐标。完整部署、安全门控、输出和验收见
+[`docs/NAV2_INTEGRATION.md`](docs/NAV2_INTEGRATION.md)。
+
+```bash
+# 旧流程
+python run_demo.py --mock
+
+# 无 ROS 的 Web UI/接口预览
+python run_demo.py --mock --enable-nav2 --nav2-mode offline_preview \
+  --nav2-goal-x 2 --nav2-goal-y 1 --nav2-wait
+NAV2_ENABLED=true NAV2_MODE=offline_preview streamlit run streamlit_app.py
+
+# ROS/Nav2 健康检查
+source /opt/ros/humble/setup.bash
+python3 scripts/check_nav2_runtime.py
+
+# 真实 Nav2 只规划
+python run_demo.py --mock --enable-nav2 --nav2-mode plan_only \
+  --nav2-goal-x 1 --nav2-goal-y 0 --nav2-goal-yaw 0 \
+  --nav2-use-current-start --nav2-wait
+```
