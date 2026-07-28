@@ -51,6 +51,7 @@ from app.video.target_profile import TargetProfileResolver
 from app.video.video_reader import VideoReadError
 from run_demo import _run_prior_free_runtime
 from app.ui.nav2_panel import process_and_render_nav2, render_nav2_sidebar
+from app.ui.nav2_visualization import render_navigation_plan_figure
 
 
 MOCK_PATH = Path("examples/mock_scene_result.json")
@@ -726,6 +727,7 @@ def _render_video_result(result: dict, paths: dict[str, Path]) -> None:
             st.info("没有可展示的直接目标证据帧。")
 
     (
+        tab_video_navigation,
         tab_memory,
         tab_negative,
         tab_psg,
@@ -745,6 +747,7 @@ def _render_video_result(result: dict, paths: dict[str, Path]) -> None:
         tab_files,
     ) = st.tabs(
         [
+            "导航规划",
             "环境记忆",
             "负目标证据",
             "PSG 假设",
@@ -764,6 +767,8 @@ def _render_video_result(result: dict, paths: dict[str, Path]) -> None:
             "输出文件",
         ]
     )
+    with tab_video_navigation:
+        _render_video_navigation_result(result, paths)
     with tab_memory:
         memories = result.get("observed_places", [])
         if memories:
@@ -936,6 +941,83 @@ def _render_video_result(result: dict, paths: dict[str, Path]) -> None:
         _render_output_files(paths, group="video")
 
 
+def _render_video_navigation_result(result: dict, paths: dict[str, Path]) -> None:
+    navigation = result.get("video_navigation") or {}
+    if not navigation:
+        plan_path = paths.get("video_navigation_visual_navigation_plan")
+        instructions_path = paths.get("video_navigation_navigation_instructions")
+        if plan_path and Path(plan_path).is_file():
+            navigation = {
+                "visual_navigation_plan": json.loads(Path(plan_path).read_text(encoding="utf-8")),
+                "navigation_instructions": (
+                    json.loads(Path(instructions_path).read_text(encoding="utf-8"))
+                    if instructions_path and Path(instructions_path).is_file()
+                    else []
+                ),
+            }
+    plan = navigation.get("visual_navigation_plan") or {}
+    if not plan:
+        st.warning("本次视频结果还没有导航规划；重新分析后会自动生成 Visual Preview。")
+        return
+    summary = navigation.get("summary") or {
+        "mode": plan.get("mode"),
+        "target_status": plan.get("target_status"),
+        "navigation_strategy": plan.get("navigation_strategy"),
+        "scale_status": plan.get("scale_status"),
+        "executable": plan.get("executable"),
+        "executable_reason": plan.get("executable_reason"),
+    }
+    st.info("VISUAL PREVIEW：基于视频视觉轨迹与语义地图的导航规划；非 Nav2 实时路径，不可直接执行。")
+    cols = st.columns(5)
+    cols[0].metric("导航模式", summary.get("mode", "visual_preview"))
+    cols[1].metric("目标状态", summary.get("target_status", "-"))
+    cols[2].metric("策略", summary.get("navigation_strategy", "-"))
+    cols[3].metric("空间尺度", summary.get("scale_status", "-"))
+    cols[4].metric("可执行", "Yes" if summary.get("executable") else "No")
+    st.caption(summary.get("executable_reason") or plan.get("executable_reason") or "")
+    length = plan.get("path_length")
+    unit = "m" if plan.get("scale_status") == "metric" else "relative units"
+    st.write(
+        f"路径长度：{length:.2f} {unit}" if isinstance(length, (int, float)) else "路径长度：-"
+    )
+    st.pyplot(render_navigation_plan_figure(plan), use_container_width=True)
+    waypoints = plan.get("waypoints", [])
+    if waypoints:
+        st.markdown("#### Waypoints")
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "id": item.get("waypoint_id"),
+                        "type": item.get("waypoint_type"),
+                        "frame": item.get("source_frame_id"),
+                        "label": item.get("semantic_label"),
+                        "confidence": item.get("confidence"),
+                        "x": (item.get("pose") or {}).get("x"),
+                        "y": (item.get("pose") or {}).get("y"),
+                    }
+                    for item in waypoints
+                ]
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
+    instructions = navigation.get("navigation_instructions") or []
+    if instructions:
+        st.markdown("#### 导航指令")
+        for item in instructions:
+            st.write(f"{item.get('step')}. {item.get('instruction')}")
+    nav2 = navigation.get("nav2_adapter") or {}
+    if nav2:
+        if nav2.get("allowed"):
+            st.success(f"Nav2 handoff ready：{nav2.get('reason')}")
+        else:
+            st.warning(f"Nav2 不可用：{nav2.get('reason')}")
+    manifest = paths.get("video_navigation_webui_manifest")
+    if manifest:
+        _render_file_download(manifest, "下载导航规划 Manifest")
+
+
 def _render_existing_video_outputs() -> None:
     result_path = Path(DEFAULT_OUTPUT_DIR) / "video_target_search.json"
     if not result_path.is_file():
@@ -987,6 +1069,10 @@ def _render_existing_video_outputs() -> None:
         for key, filename in path_names.items()
         if (Path(DEFAULT_OUTPUT_DIR) / filename).is_file()
     }
+    for key, value in (result.get("output_files") or {}).items():
+        candidate = Path(value)
+        if candidate.is_file():
+            paths[key] = candidate
     legacy_topology_png = Path(DEFAULT_OUTPUT_DIR) / "video_topology_graph.png"
     if "video_navigation_topology_png" not in paths and legacy_topology_png.is_file():
         paths["video_topology_graph"] = legacy_topology_png

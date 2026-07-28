@@ -20,17 +20,14 @@ class SingleImageCliTest(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 parse_args(["--detector", "florence2"])
 
-    def test_video_input_is_rejected_with_actionable_message(self) -> None:
+    def test_video_input_uses_video_pipeline_and_reports_missing_file(self) -> None:
         stderr = io.StringIO()
 
         with contextlib.redirect_stderr(stderr):
             exit_code = main(["--video", "input.mp4", "--target", "找到手机"])
 
         self.assertEqual(exit_code, 1)
-        self.assertIn(
-            "当前 README12 版本不支持视频输入，请使用 --image。",
-            stderr.getvalue(),
-        )
+        self.assertIn("Video file not found", stderr.getvalue())
 
     def test_scene_schema_rejects_readme13_geometry_fields(self) -> None:
         payload = json.loads(

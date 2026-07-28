@@ -142,6 +142,41 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_false",
     )
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR, help="输出目录")
+    video_nav_group = parser.add_mutually_exclusive_group()
+    video_nav_group.add_argument(
+        "--enable-video-navigation",
+        dest="enable_video_navigation",
+        action="store_true",
+        help="分析视频后自动生成 Video-to-Navigation 视觉规划",
+    )
+    video_nav_group.add_argument(
+        "--disable-video-navigation",
+        dest="enable_video_navigation",
+        action="store_false",
+        help="关闭自动 Video-to-Navigation 视觉规划",
+    )
+    parser.add_argument(
+        "--video-navigation-mode",
+        choices=["visual_preview", "metric_preview", "plan_only", "execute"],
+        default=None,
+        help="视频导航规划模式；普通 RGB 默认 visual_preview",
+    )
+    parser.add_argument(
+        "--video-pose-backend",
+        choices=["auto", "mock", "relative", "metric"],
+        default=None,
+        help="视频轨迹估计后端",
+    )
+    parser.add_argument("--depth-dir", help="RGB-D/深度帧目录；存在时允许 metric 轨迹接口")
+    parser.add_argument(
+        "--video-map-transform-json",
+        help="包含 T_map_video_map 的 JSON；只有提供可靠尺度/外参时才用于 Nav2 handoff",
+    )
+    parser.add_argument(
+        "--force-exploration",
+        action="store_true",
+        help="忽略目标线索，强制生成探索式导航规划",
+    )
     parser.add_argument("--no-annotate", action="store_true", help="不生成标注关键帧")
     tracking_group = parser.add_mutually_exclusive_group()
     tracking_group.add_argument(
@@ -203,6 +238,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         enable_navigation_topology=None,
         topology_observed_only=None,
         save_frame_observations=None,
+        enable_video_navigation=None,
     )
     add_nav2_arguments(parser)
     return parser.parse_args(argv)
@@ -293,6 +329,14 @@ def main(argv: list[str] | None = None) -> int:
     decision = result.get("navigation_decision", {})
     print(f"目标状态：{result.get('target_status')}")
     print(decision.get("reason") or result["navigation_interpretation"]["suggestion"])
+    if result.get("video_navigation"):
+        nav_summary = result["video_navigation"].get("summary", {})
+        print(
+            "视频导航规划："
+            f"{nav_summary.get('navigation_strategy')} / "
+            f"{nav_summary.get('scale_status')} / "
+            f"executable={nav_summary.get('executable')}"
+        )
     print("已生成：")
     for path in result.get("output_files", {}).values():
         print(Path(path))

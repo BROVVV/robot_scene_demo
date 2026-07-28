@@ -53,6 +53,12 @@ class Nav2Gateway:
                                 "Navigation2 已关闭", error_code="NAV2_DISABLED",
                                 updated_at=datetime.now(UTC).isoformat(), finished_at=datetime.now(UTC).isoformat())
             atomic_write_json(handle.job_dir / "status.json", status.to_dict())
+        elif request.mode == Nav2Mode.VISUAL_PREVIEW:
+            status = Nav2Status(request.request_id, Nav2JobState.UNAVAILABLE, "visual_preview", False,
+                                "Visual Preview 只生成视频视觉规划，不请求 ROS2/Nav2",
+                                error_code="NAV2_VISUAL_PREVIEW_ONLY",
+                                updated_at=datetime.now(UTC).isoformat(), finished_at=datetime.now(UTC).isoformat())
+            atomic_write_json(handle.job_dir / "status.json", status.to_dict())
         elif request.mode == Nav2Mode.OFFLINE_PREVIEW:
             fixture = self.root / self.settings.offline_fixture
             OfflinePreviewBackend(fixture).run(request, handle.job_dir)

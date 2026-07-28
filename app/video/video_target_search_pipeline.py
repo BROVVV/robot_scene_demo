@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -23,6 +24,7 @@ from app.video.video_graph_io import write_json
 from app.video.video_graph_visualizer import render_topology_png
 from app.video.video_target_report_builder import write_video_target_search_report
 from app.video.video_target_state import apply_target_state
+from app.navigation.navigation_planning_pipeline import run_video_navigation_planning
 
 
 def run_video_target_search_pipeline(
@@ -180,6 +182,62 @@ def run_video_target_search_pipeline(
         _json_safe_result(search_result),
         output_dir / "video_target_search.json",
     )
+    if _video_navigation_enabled(config, settings):
+        video_navigation = run_video_navigation_planning(
+            video_path=video_path,
+            target_search_result=_json_safe_result(search_result),
+            output_root=output_dir,
+            mode=str(
+                getattr(config, "video_navigation_mode", None)
+                or settings.video_navigation_mode
+            ),
+            pose_backend=str(
+                getattr(config, "video_pose_backend", None)
+                or settings.video_pose_backend
+            ),
+            rgbd_path=getattr(config, "depth_dir", None),
+            calibration=_video_navigation_calibration(config, settings),
+            force_exploration=bool(getattr(config, "force_exploration", False)),
+            max_frames=int(
+                getattr(
+                    config,
+                    "video_navigation_max_frames",
+                    settings.video_navigation_max_frames,
+                )
+            ),
+            frame_sample_interval=int(
+                getattr(
+                    config,
+                    "video_navigation_frame_sample_interval",
+                    settings.video_navigation_frame_sample_interval,
+                )
+            ),
+            observation_distance=float(
+                getattr(
+                    config,
+                    "video_navigation_target_observation_distance",
+                    settings.video_navigation_target_observation_distance,
+                )
+            ),
+            exploration_max_candidates=int(
+                getattr(
+                    config,
+                    "video_navigation_exploration_max_candidates",
+                    settings.video_navigation_exploration_max_candidates,
+                )
+            ),
+        )
+        search_result["video_navigation"] = video_navigation
+        paths.update(
+            {
+                f"video_navigation_{key}": Path(value)
+                for key, value in video_navigation.get("output_files", {}).items()
+            }
+        )
+        paths["video_target_search"] = write_json(
+            _json_safe_result(search_result),
+            output_dir / "video_target_search.json",
+        )
     paths["video_reasoning_report"] = write_video_target_search_report(
         _json_safe_result(search_result),
         output_dir / "video_reasoning_report.md",
@@ -187,6 +245,35 @@ def run_video_target_search_pipeline(
     )
     search_result["output_files"] = {key: str(path) for key, path in paths.items()}
     return _json_safe_result(search_result)
+
+
+def _video_navigation_enabled(config: Any, settings: Any) -> bool:
+    value = getattr(config, "enable_video_navigation", None)
+    if value is None:
+        value = getattr(settings, "video_navigation_enabled", True)
+    auto_plan = getattr(config, "video_navigation_auto_plan", None)
+    if auto_plan is None:
+        auto_plan = getattr(settings, "video_navigation_auto_plan", True)
+    return bool(value and auto_plan)
+
+
+def _video_navigation_calibration(config: Any, settings: Any) -> dict[str, Any] | None:
+    selected_mode = str(
+        getattr(config, "video_navigation_mode", None) or settings.video_navigation_mode
+    )
+    calibration: dict[str, Any] = {
+        "scale_verified": selected_mode in {"metric_preview", "plan_only", "execute"}
+    }
+    transform_path = getattr(config, "video_map_transform_json", None)
+    if transform_path:
+        transform_payload = json.loads(Path(transform_path).read_text(encoding="utf-8"))
+        calibration["T_map_video_map"] = (
+            transform_payload.get("T_map_video_map")
+            if isinstance(transform_payload, dict)
+            else transform_payload
+        )
+        calibration["scale_verified"] = True
+    return calibration if calibration["scale_verified"] or getattr(config, "depth_dir", None) else None
 
 
 def _aux_config(config: Any, output_dir: Path, enable_navigation_topology: bool) -> Any:

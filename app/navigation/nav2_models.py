@@ -17,6 +17,7 @@ class Nav2ValidationError(ValueError):
 class Nav2Mode(str, Enum):
     DISABLED = "disabled"
     OFFLINE_PREVIEW = "offline_preview"
+    VISUAL_PREVIEW = "visual_preview"
     PLAN_ONLY = "plan_only"
     EXECUTE = "execute"
 
@@ -156,7 +157,7 @@ class Nav2Request:
             raise Nav2ValidationError("不支持的 Nav2 schema_version")
         if not self.request_id or "/" in self.request_id or ".." in self.request_id:
             raise Nav2ValidationError("request_id 非法")
-        if self.mode != Nav2Mode.DISABLED and self.goal_pose is None:
+        if self.mode not in {Nav2Mode.DISABLED, Nav2Mode.VISUAL_PREVIEW} and self.goal_pose is None:
             raise Nav2ValidationError("启用 Nav2 时必须提供目标位姿")
         if self.goal_pose:
             self.goal_pose.validate(map_frame=self.map_frame)

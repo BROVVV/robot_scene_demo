@@ -12,11 +12,12 @@ from app.ui.nav2_visualization import render_nav2_path_figure
 def render_nav2_sidebar() -> dict:
     st.markdown("### Navigation2 导航")
     enabled=st.toggle("启用 Navigation2",value=False)
-    labels={"关闭":"disabled","离线路径预览":"offline_preview","Nav2 只规划不执行":"plan_only","Nav2 规划并执行":"execute"}
+    labels={"关闭":"disabled","视觉规划预览":"visual_preview","离线路径预览":"offline_preview","Nav2 只规划不执行":"plan_only","Nav2 规划并执行":"execute"}
     label=st.selectbox("导航模式",list(labels),disabled=not enabled)
     mode=labels[label] if enabled else "disabled"
-    x=st.number_input("目标 X",value=1.0,disabled=not enabled); y=st.number_input("目标 Y",value=0.0,disabled=not enabled)
-    yaw=st.number_input("目标 Yaw（度）",value=0.0,disabled=not enabled)
+    visual_only=mode=="visual_preview"
+    x=st.number_input("目标 X",value=1.0,disabled=not enabled or visual_only); y=st.number_input("目标 Y",value=0.0,disabled=not enabled or visual_only)
+    yaw=st.number_input("目标 Yaw（度）",value=0.0,disabled=not enabled or visual_only)
     current=st.checkbox("使用当前机器人位姿作为起点",value=True,disabled=not enabled)
     confirmations={}
     if mode=="execute":
@@ -25,12 +26,15 @@ def render_nav2_sidebar() -> dict:
         confirmations["estop"]=st.checkbox("急停可用")
         confirmations["footprint"]=st.checkbox("footprint 已实测配置")
         confirmations["motion"]=st.checkbox("允许本次发布运动速度")
-    action=st.button({"offline_preview":"生成离线路径预览","plan_only":"请求 Nav2 规划","execute":"启动 Nav2 导航"}.get(mode,"Navigation2 已关闭"),
-                     disabled=not enabled or mode=="disabled" or (mode=="execute" and not all(confirmations.values())),
+    action=st.button({"visual_preview":"视觉规划由视频分析自动生成","offline_preview":"生成离线路径预览","plan_only":"请求 Nav2 规划","execute":"启动 Nav2 导航"}.get(mode,"Navigation2 已关闭"),
+                     disabled=not enabled or mode in {"disabled","visual_preview"} or (mode=="execute" and not all(confirmations.values())),
                      use_container_width=True)
     return {"enabled":enabled,"mode":mode,"x":x,"y":y,"yaw":yaw,"current":current,"confirmations":confirmations,"action":action}
 
 def process_and_render_nav2(config: dict) -> None:
+    if config.get("mode") == "visual_preview":
+        st.info("Visual Preview 只展示视频视觉规划，不会请求 ROS2/Nav2，也不会发布 /cmd_vel。")
+        return
     if config.get("action"):
         try:
             settings=Nav2Settings.from_env()

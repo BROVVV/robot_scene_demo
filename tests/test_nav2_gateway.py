@@ -11,3 +11,10 @@ class GatewayTest(unittest.TestCase):
             req=make_request(mode=Nav2Mode.PLAN_ONLY,goal=Nav2Pose(),settings=settings)
             gateway=Nav2Gateway(settings,d); h=gateway.plan(req); status=gateway.get_status(h.request_id)
             self.assertEqual(status.state.value,"unavailable"); self.assertEqual(status.error_code,"NAV2_ROS_SETUP_NOT_FOUND")
+    def test_visual_preview_never_spawns_worker(self):
+        with tempfile.TemporaryDirectory() as d:
+            settings=Nav2Settings(output_dir="out",setup_bash="/definitely/missing")
+            req=make_request(mode=Nav2Mode.VISUAL_PREVIEW,goal=None,settings=settings)
+            gateway=Nav2Gateway(settings,d); h=gateway.plan(req); status=gateway.get_status(h.request_id)
+            self.assertEqual(status.state.value,"unavailable"); self.assertEqual(status.error_code,"NAV2_VISUAL_PREVIEW_ONLY")
+            self.assertFalse((Path(d)/"out"/"jobs"/h.request_id/"worker.pid").exists())

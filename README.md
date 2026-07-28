@@ -266,6 +266,38 @@ VIDEO_TOPOLOGY_ADD_TARGET_SEARCH_SCORES=true
 
 视频运行模式的主任务永远是 `target_search`。Web UI 不再提供“视频全场景建图”作为顶层运行模式；全场景建图、导航拓扑图和拓扑辅助排序都只是“视频目标搜索”内部的辅助功能。`scene_map_only` 只保留给 CLI 高级调试，不适合真实导航目标搜索。
 
+Video-to-Navigation Planning 默认启用，但只生成安全的视觉预览规划，不会控制机器人：
+
+```text
+VIDEO_NAVIGATION_ENABLED=true
+VIDEO_NAVIGATION_MODE=visual_preview
+VIDEO_POSE_BACKEND=auto
+VIDEO_POSE_ALLOW_RELATIVE=true
+VIDEO_POSE_REQUIRE_METRIC_FOR_NAV2=true
+VIDEO_NAVIGATION_AUTO_PLAN=true
+VIDEO_NAVIGATION_AUTO_EXPLORATION=true
+VIDEO_NAVIGATION_MAX_FRAMES=300
+VIDEO_NAVIGATION_FRAME_SAMPLE_INTERVAL=5
+VIDEO_NAVIGATION_TARGET_OBSERVATION_DISTANCE=1.5
+VIDEO_NAVIGATION_ENABLE_FRONTIER_EXPLORATION=true
+VIDEO_NAVIGATION_EXPLORATION_MAX_CANDIDATES=8
+VIDEO_NAVIGATION_ALLOW_NAV2_FROM_METRIC_VIDEO=false
+VISUAL_NAV_EXECUTION_ENABLED=false
+```
+
+普通 RGB MP4 会标记为 `scale_status=relative`，Web UI 显示 `Visual Preview / Relative`，路径长度使用相对单位，不会伪装成米制 Nav2 路径。只有 RGB-D、双目、视觉惯性或外部标定提供可靠尺度与 `map` 坐标变换后，才允许进入真实 Nav2 handoff。CLI 可通过 `--video-map-transform-json` 提供 `T_map_video_map`：
+
+```json
+{
+  "T_map_video_map": {
+    "x": 1.2,
+    "y": -0.4,
+    "yaw": 0.0,
+    "source": "external_calibration"
+  }
+}
+```
+
 GroundingDINO Prompt Expansion 建议配置：
 
 ```text
@@ -959,6 +991,7 @@ Web UI 的“运行模式”中选择“视频目标搜索”后，可以上传
 - `启用全场景建图辅助`、`生成导航拓扑图`、`使用拓扑图辅助目标搜索排序` 都是目标搜索内部的辅助开关。
 - 看到客厅、沙发、电视柜等上下文，只能生成“可能搜索区域”和下一步观察建议，不能把目标升级为 `visual_confirmed`。
 - `scene_map_only` 只用于 CLI 高级调试；带 `--target` 时会被防呆拒绝。
+- 视频分析成功后会自动生成 Video-to-Navigation 规划；即使没有 ROS2、没有 Nav2 goal 或没有目标线索，也会降级显示 `Visual Preview` 或 `Exploration`，不会让导航区域空白。
 
 也可以直接使用命令行：
 
@@ -970,7 +1003,23 @@ python run_video_demo.py \
   --detector mock \
   --sample-fps 1.0 \
   --max-frames 120 \
-  --enable-video-memory
+  --enable-video-memory \
+  --enable-video-navigation \
+  --video-navigation-mode visual_preview
+```
+
+RGB-D、双目或外部尺度已验证输入可以使用 metric preview；只有同时提供 `T_map_video_map` 时才会准备 Nav2 map-frame goal：
+
+```bash
+python run_video_demo.py \
+  --video "/path/to/rgbd_walk.mp4" \
+  --target "红色背包" \
+  --detector llm \
+  --enable-video-navigation \
+  --video-navigation-mode metric_preview \
+  --video-pose-backend metric \
+  --depth-dir "/path/to/depth" \
+  --video-map-transform-json "/path/to/T_map_video_map.json"
 ```
 
 真实检测时把 `mock` 替换为 `llm` 或 `grounded_sam`。如需在目标搜索过程中启用场景建图和导航拓扑辅助：
@@ -1740,7 +1789,9 @@ python run_video_demo.py \
   --enable-tracking \
   --enable-crop-verify \
   --enable-knowledge \
-  --enable-video-memory
+  --enable-video-memory \
+  --enable-video-navigation \
+  --video-navigation-mode visual_preview
 ```
 
 如果需要在高精度视频搜索中同时生成场景拓扑辅助结果，在上述命令后追加：
@@ -1765,7 +1816,12 @@ outputs/detection_debug_report.md
 outputs/video_track_summary.json
 outputs/video_crop_verify_results.json
 outputs/video_tracking_debug_report.md
+outputs/video_navigation/<request_id>/visual_navigation_plan.json
+outputs/video_navigation/<request_id>/navigation_instructions.json
+outputs/video_navigation/<request_id>/webui_manifest.json
 ```
+
+如果普通 RGB 视频中没有找到目标，系统会自动生成探索式导航规划，并写入 frontier 候选点；如果找到目标或疑似目标，则生成目标/候选观察位姿，而不是把 bbox 中心直接当作机器人 goal。
 
 内置示例标注可用于检查评估链路：
 
@@ -1807,7 +1863,9 @@ python run_video_demo.py \
   --enable-crop-verify \
   --enable-observation-memory \
   --enable-evidence-gating \
-  --disable-handwritten-priors
+  --disable-handwritten-priors \
+  --enable-video-navigation \
+  --video-navigation-mode visual_preview
 ```
 
 # LLM-first 机械狗情境搜索

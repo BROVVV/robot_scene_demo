@@ -25,6 +25,9 @@ def add_nav2_arguments(parser: argparse.ArgumentParser) -> None:
 def run_nav2_from_args(args, *, task_context=None):
     mode = Nav2Mode(args.nav2_mode)
     if not args.enable_nav2 and mode == Nav2Mode.DISABLED: return None
+    if mode == Nav2Mode.VISUAL_PREVIEW:
+        print("[Navigation2] visual_preview 只显示视觉规划，不请求 ROS2/Nav2。")
+        return None
     settings = Nav2Settings.from_env()
     if args.nav2_planner_id: object.__setattr__(settings, "planner_id", args.nav2_planner_id)
     if args.nav2_controller_id: object.__setattr__(settings, "controller_id", args.nav2_controller_id)

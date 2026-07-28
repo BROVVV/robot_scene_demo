@@ -111,6 +111,22 @@ DEFAULT_VIDEO_ENABLE_MEMORY_RETRIEVAL = True
 DEFAULT_VIDEO_MEMORY_RETRIEVAL_TOP_K = 10
 DEFAULT_VIDEO_SCENE_REASONER_BACKEND = "llm"
 DEFAULT_VIDEO_FORCE_JSON_OUTPUT = True
+DEFAULT_VIDEO_NAVIGATION_ENABLED = True
+DEFAULT_VIDEO_NAVIGATION_MODE = "visual_preview"
+DEFAULT_VIDEO_POSE_BACKEND = "auto"
+DEFAULT_VIDEO_POSE_ALLOW_RELATIVE = True
+DEFAULT_VIDEO_POSE_REQUIRE_METRIC_FOR_NAV2 = True
+DEFAULT_VIDEO_NAVIGATION_AUTO_PLAN = True
+DEFAULT_VIDEO_NAVIGATION_AUTO_EXPLORATION = True
+DEFAULT_VIDEO_NAVIGATION_MAX_FRAMES = 300
+DEFAULT_VIDEO_NAVIGATION_FRAME_SAMPLE_INTERVAL = 5
+DEFAULT_VIDEO_NAVIGATION_MIN_TRACK_CONFIDENCE = 0.5
+DEFAULT_VIDEO_NAVIGATION_TARGET_OBSERVATION_DISTANCE = 1.5
+DEFAULT_VIDEO_NAVIGATION_ENABLE_FRONTIER_EXPLORATION = True
+DEFAULT_VIDEO_NAVIGATION_EXPLORATION_MAX_CANDIDATES = 8
+DEFAULT_VIDEO_NAVIGATION_EXPLORATION_MIN_INFORMATION_GAIN = 0.2
+DEFAULT_VIDEO_NAVIGATION_ALLOW_NAV2_FROM_METRIC_VIDEO = False
+DEFAULT_VISUAL_NAV_EXECUTION_ENABLED = False
 DEFAULT_ENABLE_LLM_SITUATED_REASONING = True
 DEFAULT_ENABLE_LLM_REASONING_MEMORY = True
 DEFAULT_LLM_REASONING_MAX_HYPOTHESES = 5
@@ -305,6 +321,40 @@ class Settings:
     video_memory_retrieval_top_k: int = DEFAULT_VIDEO_MEMORY_RETRIEVAL_TOP_K
     video_scene_reasoner_backend: str = DEFAULT_VIDEO_SCENE_REASONER_BACKEND
     video_force_json_output: bool = DEFAULT_VIDEO_FORCE_JSON_OUTPUT
+    video_navigation_enabled: bool = DEFAULT_VIDEO_NAVIGATION_ENABLED
+    video_navigation_mode: str = DEFAULT_VIDEO_NAVIGATION_MODE
+    video_pose_backend: str = DEFAULT_VIDEO_POSE_BACKEND
+    video_pose_allow_relative: bool = DEFAULT_VIDEO_POSE_ALLOW_RELATIVE
+    video_pose_require_metric_for_nav2: bool = (
+        DEFAULT_VIDEO_POSE_REQUIRE_METRIC_FOR_NAV2
+    )
+    video_navigation_auto_plan: bool = DEFAULT_VIDEO_NAVIGATION_AUTO_PLAN
+    video_navigation_auto_exploration: bool = (
+        DEFAULT_VIDEO_NAVIGATION_AUTO_EXPLORATION
+    )
+    video_navigation_max_frames: int = DEFAULT_VIDEO_NAVIGATION_MAX_FRAMES
+    video_navigation_frame_sample_interval: int = (
+        DEFAULT_VIDEO_NAVIGATION_FRAME_SAMPLE_INTERVAL
+    )
+    video_navigation_min_track_confidence: float = (
+        DEFAULT_VIDEO_NAVIGATION_MIN_TRACK_CONFIDENCE
+    )
+    video_navigation_target_observation_distance: float = (
+        DEFAULT_VIDEO_NAVIGATION_TARGET_OBSERVATION_DISTANCE
+    )
+    video_navigation_enable_frontier_exploration: bool = (
+        DEFAULT_VIDEO_NAVIGATION_ENABLE_FRONTIER_EXPLORATION
+    )
+    video_navigation_exploration_max_candidates: int = (
+        DEFAULT_VIDEO_NAVIGATION_EXPLORATION_MAX_CANDIDATES
+    )
+    video_navigation_exploration_min_information_gain: float = (
+        DEFAULT_VIDEO_NAVIGATION_EXPLORATION_MIN_INFORMATION_GAIN
+    )
+    video_navigation_allow_nav2_from_metric_video: bool = (
+        DEFAULT_VIDEO_NAVIGATION_ALLOW_NAV2_FROM_METRIC_VIDEO
+    )
+    visual_nav_execution_enabled: bool = DEFAULT_VISUAL_NAV_EXECUTION_ENABLED
     enable_llm_situated_reasoning: bool = DEFAULT_ENABLE_LLM_SITUATED_REASONING
     enable_llm_reasoning_memory: bool = DEFAULT_ENABLE_LLM_REASONING_MEMORY
     llm_reasoning_max_hypotheses: int = DEFAULT_LLM_REASONING_MAX_HYPOTHESES
@@ -755,6 +805,61 @@ def get_settings() -> Settings:
         ),
         video_force_json_output=_env_bool(
             "VIDEO_FORCE_JSON_OUTPUT", DEFAULT_VIDEO_FORCE_JSON_OUTPUT
+        ),
+        video_navigation_enabled=_env_bool(
+            "VIDEO_NAVIGATION_ENABLED", DEFAULT_VIDEO_NAVIGATION_ENABLED
+        ),
+        video_navigation_mode=_env_value(
+            "VIDEO_NAVIGATION_MODE", DEFAULT_VIDEO_NAVIGATION_MODE
+        ),
+        video_pose_backend=_env_value("VIDEO_POSE_BACKEND", DEFAULT_VIDEO_POSE_BACKEND),
+        video_pose_allow_relative=_env_bool(
+            "VIDEO_POSE_ALLOW_RELATIVE", DEFAULT_VIDEO_POSE_ALLOW_RELATIVE
+        ),
+        video_pose_require_metric_for_nav2=_env_bool(
+            "VIDEO_POSE_REQUIRE_METRIC_FOR_NAV2",
+            DEFAULT_VIDEO_POSE_REQUIRE_METRIC_FOR_NAV2,
+        ),
+        video_navigation_auto_plan=_env_bool(
+            "VIDEO_NAVIGATION_AUTO_PLAN", DEFAULT_VIDEO_NAVIGATION_AUTO_PLAN
+        ),
+        video_navigation_auto_exploration=_env_bool(
+            "VIDEO_NAVIGATION_AUTO_EXPLORATION",
+            DEFAULT_VIDEO_NAVIGATION_AUTO_EXPLORATION,
+        ),
+        video_navigation_max_frames=_env_int(
+            "VIDEO_NAVIGATION_MAX_FRAMES", DEFAULT_VIDEO_NAVIGATION_MAX_FRAMES
+        ),
+        video_navigation_frame_sample_interval=_env_int(
+            "VIDEO_NAVIGATION_FRAME_SAMPLE_INTERVAL",
+            DEFAULT_VIDEO_NAVIGATION_FRAME_SAMPLE_INTERVAL,
+        ),
+        video_navigation_min_track_confidence=_env_float(
+            "VIDEO_NAVIGATION_MIN_TRACK_CONFIDENCE",
+            DEFAULT_VIDEO_NAVIGATION_MIN_TRACK_CONFIDENCE,
+        ),
+        video_navigation_target_observation_distance=_env_float(
+            "VIDEO_NAVIGATION_TARGET_OBSERVATION_DISTANCE",
+            DEFAULT_VIDEO_NAVIGATION_TARGET_OBSERVATION_DISTANCE,
+        ),
+        video_navigation_enable_frontier_exploration=_env_bool(
+            "VIDEO_NAVIGATION_ENABLE_FRONTIER_EXPLORATION",
+            DEFAULT_VIDEO_NAVIGATION_ENABLE_FRONTIER_EXPLORATION,
+        ),
+        video_navigation_exploration_max_candidates=_env_int(
+            "VIDEO_NAVIGATION_EXPLORATION_MAX_CANDIDATES",
+            DEFAULT_VIDEO_NAVIGATION_EXPLORATION_MAX_CANDIDATES,
+        ),
+        video_navigation_exploration_min_information_gain=_env_float(
+            "VIDEO_NAVIGATION_EXPLORATION_MIN_INFORMATION_GAIN",
+            DEFAULT_VIDEO_NAVIGATION_EXPLORATION_MIN_INFORMATION_GAIN,
+        ),
+        video_navigation_allow_nav2_from_metric_video=_env_bool(
+            "VIDEO_NAVIGATION_ALLOW_NAV2_FROM_METRIC_VIDEO",
+            DEFAULT_VIDEO_NAVIGATION_ALLOW_NAV2_FROM_METRIC_VIDEO,
+        ),
+        visual_nav_execution_enabled=_env_bool(
+            "VISUAL_NAV_EXECUTION_ENABLED", DEFAULT_VISUAL_NAV_EXECUTION_ENABLED
         ),
         enable_llm_situated_reasoning=_env_bool(
             "ENABLE_LLM_SITUATED_REASONING",

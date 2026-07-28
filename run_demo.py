@@ -44,6 +44,7 @@ from app.task_understanding.task_pipeline import (
     write_task_understanding_outputs,
 )
 from app.video.target_profile import TargetProfileResolver
+from app.video.video_target_search_pipeline import run_video_target_search_pipeline
 from app.navigation.nav2_cli import add_nav2_arguments, run_nav2_from_args
 
 
@@ -52,7 +53,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="机器狗场景理解 Demo：输入单张图片和目标描述，输出场景理解结果。"
     )
     parser.add_argument("--image", help="场景图片路径")
-    parser.add_argument("--video", help=argparse.SUPPRESS)
+    parser.add_argument("--video", help="第一人称视频路径；会进入视频目标搜索与视觉导航规划")
     parser.add_argument("--target", help="目标描述文本，例如：桌子上的手机")
     parser.add_argument(
         "--detector",
@@ -186,6 +187,32 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="禁用 data/scene_kb 静态知识库检索与写入。",
     )
     parser.add_argument("--prior-audit", action="store_true", help="输出先验使用审计。")
+    video_nav_group = parser.add_mutually_exclusive_group()
+    video_nav_group.add_argument(
+        "--enable-video-navigation",
+        dest="enable_video_navigation",
+        action="store_true",
+        help="视频分析后自动生成 Video-to-Navigation 规划",
+    )
+    video_nav_group.add_argument(
+        "--disable-video-navigation",
+        dest="enable_video_navigation",
+        action="store_false",
+        help="关闭视频视觉导航规划",
+    )
+    parser.add_argument(
+        "--video-navigation-mode",
+        choices=["visual_preview", "metric_preview", "plan_only", "execute"],
+        default=None,
+    )
+    parser.add_argument(
+        "--video-pose-backend",
+        choices=["auto", "mock", "relative", "metric"],
+        default=None,
+    )
+    parser.add_argument("--depth-dir")
+    parser.add_argument("--video-map-transform-json")
+    parser.add_argument("--force-exploration", action="store_true")
     parser.set_defaults(
         enable_target_profile=None,
         enable_crop_verify=None,
@@ -194,6 +221,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         enable_llm_prior=None,
         enable_observation_memory=None,
         enable_evidence_gating=None,
+        enable_video_navigation=None,
     )
     add_nav2_arguments(parser)
     return parser.parse_args(argv)
@@ -820,9 +848,75 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         if args.video:
-            raise ValueError(
-                "当前 README12 版本不支持视频输入，请使用 --image。"
+            if not args.target:
+                raise ValueError("--video 模式必须提供 --target。")
+            settings = get_settings()
+            video_config = argparse.Namespace(
+                output_dir=settings.output_dir,
+                sample_fps=settings.video_sample_fps,
+                max_frames=settings.video_max_frames,
+                enable_knowledge=args.enable_knowledge,
+                enable_video_memory=settings.video_enable_scene_memory,
+                enable_video_psg=settings.video_enable_video_psg,
+                enable_navigation_topology=settings.video_enable_navigation_topology,
+                enable_scene_mapping=settings.video_enable_scene_mapping,
+                use_scene_map_for_search=settings.video_use_scene_map_for_search,
+                no_annotate=False,
+                enable_llm_prior=args.enable_llm_prior,
+                enable_observation_memory=args.enable_observation_memory,
+                enable_evidence_gating=args.enable_evidence_gating,
+                disable_handwritten_priors=args.disable_handwritten_priors,
+                disable_static_kb=args.disable_static_kb,
+                prior_audit=args.prior_audit,
+                enable_video_navigation=args.enable_video_navigation,
+                video_navigation_mode=args.video_navigation_mode,
+                video_pose_backend=args.video_pose_backend,
+                depth_dir=args.depth_dir,
+                video_map_transform_json=args.video_map_transform_json,
+                force_exploration=args.force_exploration,
             )
+            result = run_video_target_search_pipeline(
+                video_path=args.video,
+                target=args.target,
+                detector=args.detector or settings.detection_backend,
+                config=video_config,
+                enable_tracking=settings.video_enable_tracking,
+                enable_crop_verify=(
+                    settings.enable_crop_verify
+                    if args.enable_crop_verify is None
+                    else args.enable_crop_verify
+                ),
+                enable_evidence_gating=(
+                    settings.evidence_gating_enabled
+                    if args.enable_evidence_gating is None
+                    else args.enable_evidence_gating
+                ),
+                enable_scene_mapping=settings.video_enable_scene_mapping,
+                enable_navigation_topology=settings.video_enable_navigation_topology,
+                use_scene_map_for_search=settings.video_use_scene_map_for_search,
+            )
+            nav_summary = result.get("video_navigation", {}).get("summary", {})
+            print("视频分析完成。")
+            print(f"目标状态：{result.get('target_status')}")
+            if nav_summary:
+                print(
+                    "视频导航规划："
+                    f"{nav_summary.get('navigation_strategy')} / "
+                    f"{nav_summary.get('scale_status')} / "
+                    f"executable={nav_summary.get('executable')}"
+                )
+            print("已生成：")
+            for path in result.get("output_files", {}).values():
+                print(Path(path))
+            run_nav2_from_args(
+                args,
+                task_context={
+                    "natural_language_task": args.target,
+                    "target_status": result.get("target_status"),
+                    "source_pipeline": "video",
+                },
+            )
+            return 0
         if args.mock:
             run_mock(
                 enable_knowledge=args.enable_knowledge,
