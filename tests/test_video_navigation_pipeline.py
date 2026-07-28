@@ -61,6 +61,32 @@ class VideoNavigationPipelineTest(unittest.TestCase):
             self.assertTrue(result["nav2_adapter"]["allowed"])
             self.assertEqual(result["nav2_adapter"]["goal_pose"]["frame_id"], "map")
 
+    def test_string_priority_candidate_region_is_supported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = run_video_navigation_planning(
+                video_path="missing.mp4",
+                target_search_result={
+                    "target": "红色背包",
+                    "video_meta": {"duration_sec": 2.0, "sampled_keyframes": 6},
+                    "target_status": "target_candidate",
+                    "target_found": False,
+                    "candidate_regions": [
+                        {
+                            "frame_id": 10,
+                            "timestamp_sec": 1.0,
+                            "priority": "high",
+                            "reason": "疑似背包区域",
+                        }
+                    ],
+                },
+                output_root=directory,
+            )
+            self.assertEqual(
+                result["visual_navigation_plan"]["navigation_strategy"],
+                "candidate_navigation",
+            )
+            self.assertIsInstance(result["visual_navigation_plan"]["confidence"], float)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,6 +6,7 @@ import math
 from typing import Any
 
 from .models import Pose2D, VideoFramePose
+from .priority import priority_to_confidence
 
 
 TARGET_VISUAL_CONFIRMED = "target_visual_confirmed"
@@ -115,7 +116,7 @@ def _candidate_evidence(result: dict[str, Any]) -> dict[str, Any] | None:
     return {
         "frame_id": region.get("frame_id"),
         "timestamp_sec": region.get("timestamp_sec"),
-        "confidence": region.get("priority", 0.45),
+        "confidence": priority_to_confidence(region.get("priority"), 0.45),
         "bbox": region.get("bbox"),
     }
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .models import NavigationWaypoint, VideoFramePose
+from .priority import priority_to_confidence
 
 
 def generate_candidate_goals(
@@ -25,7 +26,7 @@ def generate_candidate_goals(
                 source_frame_id=frame_pose.frame_id,
                 semantic_label=str(region.get("reason") or "候选区域重新观察"),
                 waypoint_type="candidate",
-                confidence=float(region.get("priority", 0.45) or 0.45),
+                confidence=priority_to_confidence(region.get("priority"), 0.45),
                 provenance={
                     "source": "candidate_regions",
                     "region": region,
