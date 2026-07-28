@@ -9,11 +9,18 @@
 - 第一视角视频目标搜索与视频语义记忆
 - 无人工先验的大模型自生成常识推理与观察记忆导航
 - Streamlit Web UI
-- ROS2 可接收的 `/cmd_vel` 指令数据 dry-run 输出
+- ROS2 可接收的 `/cmd_vel` 兼容 dry-run 输出
+- ROS2 Humble Navigation2 的真实全局规划、导航执行、反馈、取消与路径可视化
 - 平台避障辅助下的自适应移动距离 Motion Horizon 输出
 
-项目当前仍是离线/半离线 Demo，不直接控制真实机器狗。ROS2 部分默认只输出和预览 `geometry_msgs/msg/Twist` 数据；只有显式执行 `--execute` 且已经安装并 source ROS2 环境时，才会尝试发布到 `/cmd_vel`。
-动态运动视界只决定高层建议移动距离，不实现深度图避障、代价地图、局部路径规划或急停；真实避障和打断仍由机械狗底层平台、SDK、ROS 安全层或操作员负责。
+项目默认仍是安全的离线/半离线 Demo，不会控制真实机器狗。旧
+`ros2_motion_plan.json` 只保留作兼容调试；正式导航链路使用独立的 ROS2 Humble
+Nav2 Worker，并且默认 `disabled`。只有环境变量允许、CLI/Web UI 再次确认、
+footprint 与急停确认全部通过时，`execute` 模式才会请求 Nav2 执行。
+
+动态运动视界只决定候选观察位姿、搜索半径或停止距离，不直接生成正式避障轨迹。
+全局/局部规划交给 Nav2，最终硬件保护仍由 Collision Monitor、机器狗底层、
+厂商 SDK 和操作员急停共同负责。
 
 ## 0. 推荐硬件与系统前提
 
@@ -23,6 +30,10 @@
 - 至少 16 GB RAM
 - 至少 20 GB 可用磁盘
 - NVIDIA GPU 用于 GroundingDINO + SAM2，本项目已验证 RTX 4090 + CUDA PyTorch 可运行
+
+Nav2 正式规划/执行固定支持 **Ubuntu 22.04 + ROS2 Humble**。Ubuntu 24.04
+仍可运行感知、推理、Web UI 和 `offline_preview`，但不属于本项目的 Humble
+Worker 验收平台。
 
 如果没有 NVIDIA GPU：
 
@@ -857,6 +868,16 @@ curl --noproxy '*' -fsS http://127.0.0.1:8501/_stcore/health
 ok
 ```
 
+只验证 Nav2 面板和离线路径、不连接 ROS 时：
+
+```bash
+NAV2_ENABLED=true NAV2_MODE=offline_preview \
+  bash scripts/start_web_ui.sh
+```
+
+页面中的 `offline_preview` 会显式标记为“非 Nav2 真实路径 / 不可执行”，不会在
+ROS 不可用时把 `plan_only` 或 `execute` 静默降级为模拟路径。
+
 查看 UI 日志：
 
 ```bash
@@ -1143,14 +1164,12 @@ cmd_002 step=2 action=stop duration=1s linear.x=0 angular.z=0
 
 ### 11.2 方式 B：使用项目内置 publisher 脚本
 
-先安装 ROS2。Ubuntu 22.04 常用 ROS2 Humble：
+在 Ubuntu 22.04 上安装 ROS2 Humble/Nav2。脚本会初始化 ROS2 APT 软件源并安装
+本项目所需的 Nav2、Simple Commander、Collision Monitor、Velocity Smoother
+和 colcon：
 
 ```bash
-sudo apt update
-sudo apt install -y software-properties-common
-sudo add-apt-repository universe
-sudo apt update
-sudo apt install -y ros-humble-ros-base
+bash scripts/install_nav2_humble.sh
 ```
 
 source ROS2 环境：
@@ -1159,15 +1178,23 @@ source ROS2 环境：
 source /opt/ros/humble/setup.bash
 ```
 
+正确文件名必须是 `setup.bash`，不能写成 `setup.bas`，也不能拼成
+`/opt/ros/humble/setup.bashe/setup.bas`。
+
 确认 Python 能导入 ROS2：
 
 ```bash
-python - <<'PY'
+/usr/bin/python3 - <<'PY'
 import rclpy
 from geometry_msgs.msg import Twist
 print("ros2 python ok")
 PY
 ```
+
+这只验证 ROS2 系统 Python。默认双 Python 部署中，Conda Python 不直接加载
+Humble 的 `rclpy`，系统 Python 也不自动包含主项目的 Pydantic 依赖。因此旧
+publisher 的真实发布只作为兼容接口；推荐的正式执行方式是后文的隔离式 Nav2
+Worker。
 
 先 dry-run 预览：
 
@@ -1175,13 +1202,15 @@ PY
 python scripts/publish_ros2_motion_plan.py outputs/ros2_motion_plan.json
 ```
 
-确认安全后再发布：
+只有在你已经准备了同时包含项目依赖与 Humble `rclpy` 的兼容 Python 环境时，
+才能使用旧链路真实发布：
 
 ```bash
 python scripts/publish_ros2_motion_plan.py \
   outputs/ros2_motion_plan.json \
   --execute \
-  --allow-dry-run-plan
+  --allow-dry-run-plan \
+  --force-legacy-while-nav2-inactive
 ```
 
 如果你的机器狗不是监听 `/cmd_vel`，可以改 topic：
@@ -1191,11 +1220,14 @@ python scripts/publish_ros2_motion_plan.py \
   outputs/ros2_motion_plan.json \
   --execute \
   --allow-dry-run-plan \
+  --force-legacy-while-nav2-inactive \
   --topic /your_robot/cmd_vel
 ```
 
 安全要求：
 
+- 活动的 Nav2 `execute` 任务存在时，旧 publisher 会拒绝发布，避免双重
+  `/cmd_vel` 来源竞争；`--force-legacy-while-nav2-inactive` 不能绕过此互斥。
 - 第一次必须架空机器狗或断开电机执行。
 - 必须有急停。
 - 必须确认机器狗底盘坐标系中 `linear.x > 0` 是前进。
@@ -1570,16 +1602,42 @@ bash scripts/start_web_ui.sh 8502
 ss -ltnp | grep 8501
 ```
 
-### 15.8 ROS2 发布脚本找不到 `rclpy`
+### 15.8 ROS2/Nav2 设置脚本或 `rclpy` 不存在
 
-说明当前 shell 没有 ROS2 环境：
+先检查正确文件：
+
+```bash
+test -f /opt/ros/humble/setup.bash && echo "ROS2 setup ok"
+```
+
+若不存在，在 Ubuntu 22.04 上运行：
+
+```bash
+bash scripts/install_nav2_humble.sh
+```
+
+然后使用系统 Python 验证。不要用 Conda Python 直接导入 Humble 的 `rclpy`：
 
 ```bash
 source /opt/ros/humble/setup.bash
-python - <<'PY'
+/usr/bin/python3 - <<'PY'
 import rclpy
+from nav2_simple_commander.robot_navigator import BasicNavigator
 print("ok")
 PY
+```
+
+如果曾把 `NAV2_SETUP_BASH` 错写成
+`/opt/ros/humble/setup.bashe/setup.bas`，当前网关会在标准安装存在时修复到
+`/opt/ros/humble/setup.bash`；仍建议同时修正 shell 或 `.env` 中的原始值。
+
+Conda 环境中构建 ROS 工作区必须固定系统 Python：
+
+```bash
+source /opt/ros/humble/setup.bash
+cd ros2_ws
+colcon build --symlink-install --cmake-args \
+  -DPython3_EXECUTABLE=/usr/bin/python3
 ```
 
 ### 15.9 API 超时
@@ -1606,7 +1664,9 @@ python run_demo.py --mock --enable-knowledge
 ```bash
 python -m py_compile app/config.py app/perception/grounding_prompt_planner.py app/detectors/grounded_sam_subprocess.py run_demo.py streamlit_app.py
 python -m unittest tests.test_grounding_prompt_planner tests.test_grounded_sam_prompt_integration tests.test_grounded_sam_runtime
+python -m unittest discover -s tests -p 'test_nav2_*.py'
 python run_demo.py --mock --enable-llm-prior --enable-observation-memory --enable-evidence-gating --disable-handwritten-priors
+python run_demo.py --mock --enable-nav2 --nav2-mode offline_preview --nav2-goal-x 2 --nav2-goal-y 1 --nav2-wait
 python scripts/publish_ros2_motion_plan.py outputs/ros2_motion_plan.json
 bash scripts/start_web_ui.sh
 ```
@@ -1839,26 +1899,163 @@ python run_demo.py --mock --enable-knowledge \
 
 # Navigation2（ROS2 Humble）
 
-项目现已增加隔离式 Nav2 规划/执行层：现有感知和语义推理负责产生有来源证明的
-候选观察位姿，Nav2 负责全局规划、路径跟踪、恢复与取消。默认关闭且禁止运动；
-单图/视频像素坐标不会被伪造成 map 坐标。完整部署、安全门控、输出和验收见
-[`docs/NAV2_INTEGRATION.md`](docs/NAV2_INTEGRATION.md)。
+### 架构与模式
+
+项目采用主程序与 ROS Worker 隔离的架构：
+
+```text
+Streamlit / run_demo.py（Conda Python）
+        ↓ 原子 JSON/JSONL + subprocess
+nav2_bridge_worker.py（/usr/bin/python3 + ROS2 Humble）
+        ↓ ComputePathToPose / NavigateToPose
+Navigation2
+```
+
+现有感知、LLM-first 推理、证据门控、视频记忆、PSG、拓扑候选和 Motion Horizon
+继续负责“去哪里观察”；Nav2 负责 map 坐标下的真实规划与执行。单图像素和视频帧
+坐标不会被伪造成 map pose，自动目标必须包含可验证的坐标来源 `provenance`。
+
+| 模式 | ROS/Nav2 | 是否执行 | 说明 |
+|---|---:|---:|---|
+| `disabled` | 不需要 | 否 | 默认值，保持旧流程 |
+| `offline_preview` | 不需要 | 否 | 固定 fixture，只验证接口和 UI |
+| `plan_only` | 需要 | 否 | 调用真实 `ComputePathToPose` |
+| `execute` | 需要 | 是 | 先规划，再调用 `NavigateToPose` |
+
+`plan_only` 和 `execute` 失败时不会自动降级为离线路径。
+
+### 安装与构建
 
 ```bash
-# 旧流程
-python run_demo.py --mock
+cd /root/gpufree-data/robot_scene_demo
+bash scripts/install_nav2_humble.sh
 
-# 无 ROS 的 Web UI/接口预览
+source /opt/ros/humble/setup.bash
+cd ros2_ws
+colcon build --symlink-install --cmake-args \
+  -DPython3_EXECUTABLE=/usr/bin/python3
+source install/setup.bash
+cd ..
+```
+
+Humble 的环境脚本固定是：
+
+```text
+/opt/ros/humble/setup.bash
+```
+
+不要写成 `setup.bas` 或 `/opt/ros/humble/setup.bashe/setup.bas`。项目会在标准安装
+确实存在时自动纠正这类可识别拼写错误；自定义 ROS 安装则必须提供一个完整文件：
+
+```text
+NAV2_SETUP_BASH=/custom/ros/humble/setup.bash
+NAV2_SYSTEM_PYTHON=/usr/bin/python3
+NAV2_WORKSPACE_SETUP=/absolute/path/to/ros2_ws/install/setup.bash
+```
+
+### 启动 Nav2 和健康检查
+
+先启动机器人底层、里程计、LaserScan、定位与 `map → base_link` TF，再加载地图。
+下面的项目 launch 可用于 Nav2 核心规划/导航：
+
+```bash
+source /opt/ros/humble/setup.bash
+source ros2_ws/install/setup.bash
+ros2 launch robot_scene_nav_bringup robot_scene_nav2.launch.py \
+  map:=/absolute/path/to/map.yaml
+```
+
+`execute` 还必须在机器人 bringup 中以生命周期方式启动 Velocity Smoother 和
+Collision Monitor，并将速度链配置为
+`controller_server → velocity_smoother → collision_monitor → /cmd_vel`。
+仓库提供了参数模板，但不能把示例 footprint、传感器 topic 和速度限制直接用于
+真机。只运行上面的核心 launch 而没有最终安全速度链时，不得开启执行门控。
+
+另一个终端执行：
+
+```bash
+source /opt/ros/humble/setup.bash
+source ros2_ws/install/setup.bash
+/usr/bin/python3 scripts/check_nav2_runtime.py \
+  --json outputs/nav2_health.json
+```
+
+健康检查会验证 ROS distro、系统 Python 导入、两个 Action Server、地图、TF、
+里程计、`/cmd_vel` 与 Collision Monitor。外部 Nav2 图未启动时会在有限时间内
+返回阻塞项，不会无限等待。Worker 本身也会按照
+`NAV2_PLANNING_TIMEOUT_SECONDS` 返回 `NAV2_ACTION_SERVER_UNAVAILABLE` 或
+`NAV2_PLANNING_TIMEOUT`。
+
+### 离线预览与真实规划
+
+无 ROS 的离线接口/UI 验收：
+
+```bash
 python run_demo.py --mock --enable-nav2 --nav2-mode offline_preview \
   --nav2-goal-x 2 --nav2-goal-y 1 --nav2-wait
-NAV2_ENABLED=true NAV2_MODE=offline_preview streamlit run streamlit_app.py
 
-# ROS/Nav2 健康检查
+NAV2_ENABLED=true NAV2_MODE=offline_preview \
+  bash scripts/start_web_ui.sh
+```
+
+真实 Nav2 只规划：
+
+```bash
 source /opt/ros/humble/setup.bash
-python3 scripts/check_nav2_runtime.py
-
-# 真实 Nav2 只规划
+source ros2_ws/install/setup.bash
 python run_demo.py --mock --enable-nav2 --nav2-mode plan_only \
   --nav2-goal-x 1 --nav2-goal-y 0 --nav2-goal-yaw 0 \
   --nav2-use-current-start --nav2-wait
 ```
+
+也可以使用快捷脚本：
+
+```bash
+bash scripts/run_nav2_plan_only.sh 1.0 0.0 0.0
+```
+
+### 执行模式与安全门控
+
+`execute` 必须同时通过环境门控和操作员门控：
+
+```bash
+NAV2_ALLOW_EXECUTE=true \
+NAV2_FOOTPRINT_CONFIRMED=true \
+NAV2_EMERGENCY_STOP_CONFIRMED=true \
+python run_demo.py --mock \
+  --enable-nav2 --nav2-mode execute \
+  --nav2-goal-x 1 --nav2-goal-y 0 \
+  --nav2-use-current-start \
+  --nav2-allow-execute \
+  --nav2-safety-confirmed \
+  --nav2-footprint-confirmed \
+  --nav2-estop-confirmed \
+  --nav2-wait
+```
+
+仓库中的 footprint、速度限制和 Collision Monitor 区域只是保守示例，不代表
+已经适配真实机器狗。真机前必须实测 footprint、LaserScan、速度链、急停和底层
+坐标方向。
+
+### 输出与验收
+
+每个任务保存在：
+
+```text
+outputs/nav2/jobs/<request_id>/
+```
+
+其中包括请求、状态、全局路径 JSON/CSV、路径图、指令预览、执行反馈、
+`cmd_vel` 轨迹、Worker 日志和导航报告；`outputs/nav2_*` 是最近任务快捷副本。
+所有 JSON 使用 UTF-8 原子写入，Web UI 不会读到半写文件。
+
+Nav2 单元测试：
+
+```bash
+python -m unittest discover -s tests -p 'test_nav2_*.py'
+```
+
+更完整的部署、安全说明和 Web UI 验收步骤见：
+
+- [`docs/NAV2_INTEGRATION.md`](docs/NAV2_INTEGRATION.md)
+- [`docs/NAV2_WEBUI_TESTING.md`](docs/NAV2_WEBUI_TESTING.md)
