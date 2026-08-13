@@ -31,13 +31,15 @@ class FrameAnalyzer:
         target_profile: TargetProfile | None = None,
         annotate: bool = True,
         mock_path: str | Path = "examples/mock_scene_result.json",
+        scene_dir_name: str = "video_scene_results",
+        annotated_dir_name: str = "video_frames_annotated",
     ) -> None:
         self.detector = detector
         self.target = target
         self.target_profile = target_profile
         self.output_dir = Path(output_dir)
-        self.scene_dir = self.output_dir / "video_scene_results"
-        self.annotated_dir = self.output_dir / "video_frames_annotated"
+        self.scene_dir = self.output_dir / scene_dir_name
+        self.annotated_dir = self.output_dir / annotated_dir_name
         self.annotate = annotate
         self.mock_path = Path(mock_path)
         self.analyzer = self._build_analyzer()

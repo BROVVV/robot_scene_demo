@@ -607,6 +607,19 @@ def _gate_video_search_result(
     }
 
 
+def evaluate_video_search_evidence(
+    search_result: dict[str, Any],
+    frame_results: list[FrameAnalysisResult],
+    settings: Any | None = None,
+) -> dict[str, Any]:
+    """Public reuse point for live and prerecorded evidence gating."""
+    return _gate_video_search_result(
+        search_result,
+        frame_results,
+        settings or get_settings(),
+    )
+
+
 def _video_gate_candidates(
     search_result: dict[str, Any],
     frame_results: list[FrameAnalysisResult],

@@ -45,7 +45,7 @@ class Nav2Settings:
     map_frame: str = "map"
     odom_frame: str = "odom"
     base_frame: str = "base_link"
-    cmd_vel_topic: str = "/cmd_vel"
+    cmd_vel_topic: str = "/go2w/nav2_cmd_vel"
     global_plan_topic: str = "/plan"
     local_plan_topic: str = "/local_plan"
     planner_id: str = "GridBased"
@@ -82,7 +82,7 @@ class Nav2Settings:
             map_frame=os.getenv("NAV2_MAP_FRAME", "map"),
             odom_frame=os.getenv("NAV2_ODOM_FRAME", "odom"),
             base_frame=os.getenv("NAV2_BASE_FRAME", "base_link"),
-            cmd_vel_topic=os.getenv("NAV2_CMD_VEL_TOPIC", "/cmd_vel"),
+            cmd_vel_topic=os.getenv("NAV2_CMD_VEL_TOPIC", "/go2w/nav2_cmd_vel"),
             global_plan_topic=os.getenv("NAV2_GLOBAL_PLAN_TOPIC", "/plan"),
             local_plan_topic=os.getenv("NAV2_LOCAL_PLAN_TOPIC", "/local_plan"),
             planner_id=os.getenv("NAV2_PLANNER_ID", "GridBased"),

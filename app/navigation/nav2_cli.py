@@ -20,6 +20,7 @@ def add_nav2_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--nav2-execution-timeout", type=float); parser.add_argument("--nav2-allow-execute", action="store_true")
     parser.add_argument("--nav2-safety-confirmed", action="store_true"); parser.add_argument("--nav2-footprint-confirmed", action="store_true")
     parser.add_argument("--nav2-estop-confirmed", action="store_true"); parser.add_argument("--nav2-candidate-pose-json")
+    parser.add_argument("--nav2-capability-gate-json")
     parser.add_argument("--nav2-wait", action="store_true")
 
 def run_nav2_from_args(args, *, task_context=None):
@@ -47,9 +48,13 @@ def run_nav2_from_args(args, *, task_context=None):
         if args.nav2_start_x is None or args.nav2_start_y is None: raise ValueError("显式起点需要 X/Y")
         start = Nav2Pose(frame_id=args.nav2_goal_frame, x=args.nav2_start_x, y=args.nav2_start_y,
                          yaw_rad=args.nav2_start_yaw, source="manual_cli", provenance={"type":"user_input"})
+    gate_result = None
+    if args.nav2_capability_gate_json:
+        gate_result = json.loads(Path(args.nav2_capability_gate_json).read_text(encoding="utf-8"))
     request = make_request(mode=mode, goal=goal, start=start, use_current_start=args.nav2_use_current_start,
         settings=settings, allow_execute=args.nav2_allow_execute, operator_confirmed=args.nav2_safety_confirmed,
-        footprint_confirmed=args.nav2_footprint_confirmed, estop_confirmed=args.nav2_estop_confirmed)
+        footprint_confirmed=args.nav2_footprint_confirmed, estop_confirmed=args.nav2_estop_confirmed,
+        capability_gate_result=gate_result)
     request.task_context = task_context or {}
     gateway=Nav2Gateway(settings)
     handle=gateway.execute(request) if mode==Nav2Mode.EXECUTE else gateway.plan(request)

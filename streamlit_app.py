@@ -52,6 +52,7 @@ from app.video.video_reader import VideoReadError
 from run_demo import _run_prior_free_runtime
 from app.ui.nav2_panel import process_and_render_nav2, render_nav2_sidebar
 from app.ui.nav2_visualization import render_navigation_plan_figure
+from app.ui.go2w_live_panel import render_go2w_live_sidebar, render_go2w_live_workspace
 
 
 MOCK_PATH = Path("examples/mock_scene_result.json")
@@ -74,7 +75,7 @@ def _render_sidebar() -> dict:
 
         mode = st.radio(
             "运行模式",
-            ["模拟数据", "真实 API", "GroundingDINO+SAM2", "视频目标搜索"],
+            ["模拟数据", "真实 API", "GroundingDINO+SAM2", "视频目标搜索", "Go2-W 实时目标搜索"],
             horizontal=False,
         )
 
@@ -162,7 +163,7 @@ def _render_sidebar() -> dict:
                 st.caption("只建图不搜索目标仅保留在 CLI 的 scene_map_only 调试模式中，普通 WebUI 不提供该入口。")
                 topology_observed_only = st.toggle("拓扑图只使用真实观察", value=False)
                 save_frame_observations = st.toggle("保存每帧观察 JSON", value=True)
-        else:
+        elif mode != "Go2-W 实时目标搜索":
             uploaded_file = st.file_uploader("场景图片", type=["jpg", "jpeg", "png"])
 
         st.header("增强选项")
@@ -247,12 +248,18 @@ def _render_sidebar() -> dict:
                 0.1,
             )
 
-        analyze_clicked = st.button(
-            "开始分析",
-            type="primary",
-            use_container_width=True,
-        )
-        nav2 = render_nav2_sidebar()
+        if mode == "Go2-W 实时目标搜索":
+            analyze_clicked = False
+            live_go2w = render_go2w_live_sidebar()
+            nav2 = {"enabled": False, "mode": "disabled"}
+        else:
+            analyze_clicked = st.button(
+                "开始分析",
+                type="primary",
+                use_container_width=True,
+            )
+            live_go2w = None
+            nav2 = render_nav2_sidebar()
 
         st.divider()
         st.caption(f"输出目录：{DEFAULT_OUTPUT_DIR}")
@@ -298,11 +305,15 @@ def _render_sidebar() -> dict:
         "max_open_step": max_open_step,
         "max_indoor_step": max_indoor_step,
         "analyze_clicked": analyze_clicked,
+        "live_go2w": live_go2w,
         "nav2": nav2,
     }
 
 
 def _render_workspace(settings: dict) -> None:
+    if settings["mode"] == "Go2-W 实时目标搜索":
+        render_go2w_live_workspace(settings["live_go2w"], target=settings["target_text"])
+        return
     preview_col, status_col = st.columns([1.1, 1.4], gap="large")
     with preview_col:
         _render_input_preview(

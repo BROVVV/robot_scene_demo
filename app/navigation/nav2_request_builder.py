@@ -13,6 +13,7 @@ def make_request(*, mode: Nav2Mode | str, goal: Nav2Pose | None, settings: Nav2S
                  start: Nav2Pose | None = None, use_current_start: bool = True,
                  allow_execute: bool = False, operator_confirmed: bool = False,
                  footprint_confirmed: bool = False, estop_confirmed: bool = False,
+                 capability_gate_result: dict | None = None,
                  source: str = "manual_cli") -> Nav2Request:
     selected = Nav2Mode(mode)
     now = datetime.now(UTC)
@@ -36,6 +37,7 @@ def make_request(*, mode: Nav2Mode | str, goal: Nav2Pose | None, settings: Nav2S
             footprint_confirmed=footprint_confirmed and settings.footprint_confirmed,
             emergency_stop_confirmed=estop_confirmed and settings.emergency_stop_confirmed,
         ),
+        capability_gate_result=dict(capability_gate_result or {}),
     )
     request.validate()
     return request

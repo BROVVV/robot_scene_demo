@@ -149,6 +149,7 @@ class Nav2Request:
     local_plan_topic: str = "/local_plan"
     allow_execute: bool = False
     safety_confirmation: SafetyConfirmation = field(default_factory=SafetyConfirmation)
+    capability_gate_result: dict[str, Any] = field(default_factory=dict)
     task_context: dict[str, Any] = field(default_factory=dict)
     schema_version: str = SCHEMA_VERSION
 
@@ -172,6 +173,12 @@ class Nav2Request:
                 raise Nav2ValidationError("NAV2_EXECUTION_NOT_ALLOWED: allow_execute=false")
             if not self.safety_confirmation.complete:
                 raise Nav2ValidationError("NAV2_SAFETY_CONFIRMATION_MISSING: 执行安全门控未全部通过")
+            from app.live_robot.navigation_gate import validate_execute_gate_payload
+
+            try:
+                validate_execute_gate_payload(self.capability_gate_result)
+            except ValueError as exc:
+                raise Nav2ValidationError(str(exc)) from exc
 
     def to_dict(self) -> dict[str, Any]:
         value = asdict(self)

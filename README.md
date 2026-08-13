@@ -12,6 +12,9 @@
 - ROS2 可接收的 `/cmd_vel` 兼容 dry-run 输出
 - ROS2 Humble Navigation2 的真实全局规划、导航执行、反馈、取消与路径可视化
 - 平台避障辅助下的自适应移动距离 Motion Horizon 输出
+- Go2-W 真机：内置 RGB/LiDAR/IMU 采集、LLM 视觉目标搜索（硅基流动 API）、
+  wheel+LIO 融合里程计、短步搜索状态机与录像叠加（详见下方
+  “Go2-W 真机项目当前进度还原指南”）
 
 项目默认仍是安全的离线/半离线 Demo，不会控制真实机器狗。旧
 `ros2_motion_plan.json` 只保留作兼容调试；正式导航链路使用独立的 ROS2 Humble
@@ -21,6 +24,216 @@ footprint 与急停确认全部通过时，`execute` 模式才会请求 Nav2 执
 动态运动视界只决定候选观察位姿、搜索半径或停止距离，不直接生成正式避障轨迹。
 全局/局部规划交给 Nav2，最终硬件保护仍由 Collision Monitor、机器狗底层、
 厂商 SDK 和操作员急停共同负责。
+
+## Go2-W 真机项目当前进度还原指南（2026-08-13）
+
+> 本节是“照着做就能还原当前真机进度”的权威步骤。项目其余章节保留离线/视频/
+> Nav2 软件流程。硬件证据（bag、录像、JSONL）体积大且含私人画面，**不进入
+> 本仓库**；本节给出证据所在的本机路径。
+
+### 0.1 当前能力状态（真机验收结论）
+
+| 能力 | 状态 | 说明 / 证据 |
+|---|---|---|
+| 内置 RGB ROS2 桥（RPC） | PASS | `/camera/front/image_raw(+compressed)`、CameraInfo；损坏帧跳过 + 自动重连 |
+| 相机内参（9×6，15 mm） | PASS | `configs/go2w/camera_intrinsics.yaml`；105 视角 |
+| LiDAR/IMU 时间桥 | PASS | `configs/go2w/time_sync.yaml`；云 RMSE <1 ms |
+| base→LiDAR TF | PASS（实机复核） | `official_reference.yaml`，pitch −15.09°（z-up） |
+| LiDAR 预处理 /scan / clearance | PASS（静止实测） | `lidar_preprocess.yaml`；自过滤、720-bin |
+| 轮式里程计 `/go2w/odom/wheel` | EXPERIMENTAL | 四轮 dq×0.089 m + Sport yaw；转弯跳过平移 |
+| 融合里程计 `/go2w/odom/fused` | EXPERIMENTAL | 轮式平移 + Sport/LIO 融合航向；LIO 门禁自动回退 |
+| Point-LIO 转向（yaw） | PASS | ±10° 实测 89% 幅度、符号正确（yaw_reflect） |
+| Point-LIO 平移 | **BLOCKED** | 0.2/0.4 滤波均失败（偏 69°/塌缩/发散），只用其 yaw |
+| USLAM `/uslam/*` | **BLOCKED** | 当前固件未启用 |
+| LLM 快速检测（硅基流动） | PASS | `--detector llm`，默认 30B-A3B，单次 5–15 s |
+| LLM 目标复核（`--verify`） | PASS | 到达前确认物体身份，防椅子/书包误判 |
+| 自主搜索 scan360/level_a | PASS（小范围） | 找到→对齐→靠近→复核→`target_reached` |
+| 状态机 `state_machine_search` | PASS（软件+真机） | `app/live_robot` 正式链路 |
+| RGB–LiDAR 外参/3D 定位 | EXPERIMENTAL（未几何确认） | 仅静止演示，不用于导航 |
+| Level D / 地图 / Nav2 | **BLOCKED** | `navigation_gate.yaml` fail-closed 未改动 |
+
+### 0.2 硬件与网络前置
+
+- Ubuntu 22.04 x86_64 + ROS2 Humble；至少 16 GB RAM；
+- 主机直连网口 `enp6s0`：`192.168.123.99/24`，机器人 `192.168.123.18`；
+- 机器狗处于 `ai-w` 运动模式，`/lf/sportmodestate` 的 `mode=1, error_code=0`；
+- 运动授权：操作者明确授权 `GO2W_MOTION_READY`，小范围（半径 ≤1.0 m）活动与
+  转向；场地清空、遥控器可急停。
+
+### 0.3 需要提前就位的项目（不在本仓库内）
+
+1. **unitree_go2w_control**（当前在 `/home/brov/robot/unitree_go2w_control`，
+   软链 `/home/brov/unitree_go2w_control`）：提供
+   `scripts/setup_go2w_ros2.sh`、`hold_sport_lease.py`、
+   `go2w_motion_control`（Action `/go2w/motion`、服务 `/go2w/arm`、
+   `/go2w/emergency_stop`）、`go2w_motion_interfaces`；
+2. **unitree_ros2 / cyclonedds_ws**（Humble 消息 + CycloneDDS 配置）；
+3. **Grounded-SAM-2**（可选，`--detector grounded_sam` 才需要）；
+4. **Point-LIO 隔离环境**：`conda env go2w_point_lio_noetic` +
+   `point_lio_ws`（构建时应用 `patches/go2w/point_lio_noetic_pcl115.patch`）。
+
+### 0.4 环境与构建（一次性）
+
+```bash
+# 主项目：Conda 环境 go2_robot_scene_demo + 依赖
+cd /home/brov/robot/robot_scene_demo
+bash scripts/go2w/install_dependencies.sh
+
+# ROS2 工作区（系统 Python /usr/bin/python3）
+bash scripts/go2w/build_ros2.sh
+
+# Point-LIO（Noetic 隔离；首次需要 clone 上游 + 打补丁）
+bash scripts/go2w/setup_point_lio_noetic.sh
+
+# 运动控制工作区（unitree_go2w_control 内）
+cd /home/brov/robot/unitree_go2w_control
+source /opt/ros/humble/setup.bash
+colcon build --packages-select go2w_motion_interfaces go2w_motion_control
+```
+
+配置模板（**不含任何密钥**）：
+
+```bash
+cp .env.example .env          # 填入 SILICONFLOW_API_KEY（不要提交）
+# .env.go2w 已在本仓库，按需使用
+```
+
+### 0.5 启动顺序（每次真机运行）
+
+```bash
+# 终端 1：只读感知栈（相机/LiDAR/时间/融合/Bundle）
+cd /home/brov/robot/robot_scene_demo
+bash scripts/go2w/start_live_perception.sh
+
+# 终端 2：轮式 + 融合里程计（/go2w/odom/wheel 与 /go2w/odom/fused）
+source /opt/ros/humble/setup.bash
+source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source /home/brov/robot/robot_scene_demo/ros2_ws/install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI="file:///home/brov/robot/robot_scene_demo/configs/go2w/cyclonedds_go2w.xml"
+ros2 launch go2w_lio_bringup wheel_odom.launch.py
+
+# 终端 3：运动控制（lease holder + Action server）
+cd /home/brov/robot/unitree_go2w_control
+source scripts/setup_go2w_ros2.sh
+ros2 launch go2w_motion_control go2w_motion_control.launch.py
+
+# 终端 4（可选，供融合航向）：Point-LIO + 桥
+cd /home/brov/robot/robot_scene_demo
+POINT_LIO_OUTPUT_DIR=outputs/go2w_acceptance/lio_xxx \
+POINT_LIO_USE_IMU_AS_INPUT=false \
+POINT_LIO_FILTER_SIZE_SURF=0.2 POINT_LIO_FILTER_SIZE_MAP=0.2 \
+scripts/go2w/run_point_lio_ros1.sh
+# 另开终端：
+ros2 launch go2w_lio_bringup point_lio.launch.py \
+  lio_config:=configs/go2w/point_lio.yaml \
+  reference_config:=configs/go2w/official_reference.yaml \
+  time_config:=configs/go2w/time_sync.yaml
+```
+
+启动后自检：
+
+```bash
+ros2 topic hz /camera/front/image_raw      # ~15–28 Hz
+ros2 topic hz /go2w/odom/wheel             # 20 Hz
+ros2 topic hz /go2w/odom/fused             # 20 Hz
+ros2 topic echo /go2w/odom/fused/status --once
+ros2 topic echo /lf/sportmodestate --once  # mode=1 error_code=0
+```
+
+### 0.6 自主搜索运行命令
+
+```bash
+cd /home/brov/robot/robot_scene_demo
+source /opt/ros/humble/setup.bash
+source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source /home/brov/robot/unitree_go2w_control/ros2_ws/install/setup.bash
+source /home/brov/robot/robot_scene_demo/ros2_ws/install/setup.bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export CYCLONEDDS_URI="file:///home/brov/robot/robot_scene_demo/configs/go2w/cyclonedds_go2w.xml"
+
+# 360° 扫描 → 高分提前停止 → 靠近 → LLM 复核 → 到达（推荐演示）
+/usr/bin/python3 scripts/go2w/run_autonomous_loop.py \
+  --mode scan360_approach --target "灰色书包" --detector llm \
+  --llm-model Qwen/Qwen3-VL-30B-A3B-Instruct \
+  --target-score-min 0.45 --max-radius 1.0 --max-seconds 420 \
+  --reach-area-ratio 0.08 --odom-topic /go2w/odom/fused \
+  --record-video outputs/go2w_acceptance/scan360_demo.mp4 \
+  --output outputs/go2w_acceptance/scan360_demo.jsonl
+
+# Level A 摆动搜索（发现→对齐→靠近）
+/usr/bin/python3 scripts/go2w/run_autonomous_loop.py \
+  --mode level_a_search --target "手机" --detector llm \
+  --llm-model Qwen/Qwen3-VL-30B-A3B-Instruct \
+  --max-radius 1.0 --max-seconds 300 --odom-topic /go2w/odom/fused \
+  --output outputs/go2w_acceptance/level_a_demo.jsonl
+
+# 正式 app/live_robot 状态机驱动
+/usr/bin/python3 scripts/go2w/run_autonomous_loop.py \
+  --mode state_machine_search --target "灰色书包" --detector llm \
+  --llm-model Qwen/Qwen3-VL-30B-A3B-Instruct \
+  --reach-area-ratio 0.08 --max-radius 1.0 --max-seconds 300 \
+  --odom-topic /go2w/odom/fused \
+  --record-video outputs/go2w_acceptance/sm_demo.mp4 \
+  --output outputs/go2w_acceptance/sm_demo.jsonl
+```
+
+每次运动都满足：短步（前进 2 s×0.12 m/s、转向 ≤30°）、轮式/融合里程计校验、
+前向净空门禁、`mode/error` 检查、无位移自动重试/绕障、结束三次 STOP + disarm。
+
+### 0.7 关键配置与代码索引
+
+```text
+configs/go2w/camera_intrinsics.yaml      # 相机内参（已标定）
+configs/go2w/official_reference.yaml     # 官方几何 / base→LiDAR
+configs/go2w/time_sync.yaml              # LiDAR/IMU 时间桥
+configs/go2w/lidar_preprocess.yaml       # /scan、clearance、自过滤
+configs/go2w/wheel_odom.yaml             # 轮式 + 融合里程计参数
+configs/go2w/point_lio.yaml              # Point-LIO 桥接/门禁
+configs/go2w/point_lio_unilidar_l2.yaml  # 官方 L2 基线（identity 外参）
+configs/go2w/navigation_gate.yaml        # fail-closed，未改动
+scripts/go2w/run_autonomous_loop.py      # pattern/wander/camera_guided/
+                                         # level_a_search/scan360_approach/
+                                         # state_machine_search
+app/detectors/siliconflow_vision_worker.py   # LLM quick/verify worker
+app/live_robot/step_planner.py               # 纯函数步进规划
+app/live_robot/step_search_runner.py         # 状态机编排器
+ros2_ws/src/go2w_lio_bringup/.../wheel_odom.py  # 融合里程计
+reports/go2w_codex_handoff_20260807.md      # 最新交接报告（本机）
+```
+
+### 0.8 证据位置（本机，未入库）
+
+```text
+outputs/go2w_acceptance/camera_calibration_20260806/
+outputs/go2w_acceptance/time_bridge_live/
+outputs/go2w_acceptance/lidar_preprocessor_live_corrected_tf/
+outputs/go2w_acceptance/imu_turn_verify_20260807/          # 转向矩阵/搜索演示
+outputs/go2w_acceptance/restart_verify_20260807/           # 相机修复后 LLM 搜索
+outputs/go2w_acceptance/lio_calibration_20260807/          # LIO 直线试验
+outputs/go2w_acceptance/fusion_validation_20260807/        # 融合里程计试验
+```
+
+### 0.9 常见故障与解决
+
+- **lease 3207**：旧 `go2w_motion_action_server`/`hold_sport_lease` 残留 →
+  kill 后重启运动栈；
+- **相机断流**：新版相机桥损坏帧跳过 + 3 s 读超时 + 自动重连（退避 1→10 s）；
+- **Bundle 陈旧**：>5 s 且重试 6 次仍不更新 → 自主循环拒绝动作并安全中止；
+- **goal 被拒 “motion is not armed”**：LLM 检测可能超过 60 s arm 时限，脚本
+  每次发动作前自动重新 arm；
+- **LLM 慢/超时**：默认 `--llm-model Qwen/Qwen3-VL-30B-A3B-Instruct`（约 5–15 s）；
+  8B 更慢；`SILICONFLOW_TIMEOUT_SECONDS` 在 `.env` 中调大；
+- **椅子被当书包**：到达前会先 `--verify` 复核，`is_target=false` 则右转 15°
+  继续观察；仍误判时建议加颜色/结构属性约束；
+- **LIO 平移不可用**：属已知 BLOCKED，用 `/go2w/odom/fused`（轮式平移 +
+  融合航向）；轮半径 0.089 m 为标称值，尚未标定。
+
+### 0.10 安全硬约束
+
+禁止 `/lowcmd`、`LowCmd`、`ReleaseMode()`、`Damp()`、固件修改、关闭安全保护；
+Level D–F / Nav2 保持 fail-closed（`navigation_gate.yaml` 未改动）；任何运行
+前确认场地与遥控器。
 
 ## 0. 推荐硬件与系统前提
 
@@ -171,7 +384,7 @@ nano .env
 基础配置建议：
 
 ```text
-SILICONFLOW_API_KEY=这里填你的硅基流动APIKey
+SILICONFLOW_API_KEY=
 SILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1
 SILICONFLOW_MODEL=Qwen/Qwen3-VL-8B-Instruct
 SILICONFLOW_TIMEOUT_SECONDS=25
@@ -2014,20 +2227,20 @@ NAV2_WORKSPACE_SETUP=/absolute/path/to/ros2_ws/install/setup.bash
 ### 启动 Nav2 和健康检查
 
 先启动机器人底层、里程计、LaserScan、定位与 `map → base_link` TF，再加载地图。
-下面的项目 launch 可用于 Nav2 核心规划/导航：
+纯规划使用不含 controller 或 `cmd_vel` 节点的 launch：
 
 ```bash
 source /opt/ros/humble/setup.bash
 source ros2_ws/install/setup.bash
-ros2 launch robot_scene_nav_bringup robot_scene_nav2.launch.py \
+ros2 launch robot_scene_nav_bringup robot_scene_nav2_plan_only.launch.py \
   map:=/absolute/path/to/map.yaml
 ```
 
-`execute` 还必须在机器人 bringup 中以生命周期方式启动 Velocity Smoother 和
-Collision Monitor，并将速度链配置为
-`controller_server → velocity_smoother → collision_monitor → /cmd_vel`。
-仓库提供了参数模板，但不能把示例 footprint、传感器 topic 和速度限制直接用于
-真机。只运行上面的核心 launch 而没有最终安全速度链时，不得开启执行门控。
+完整 launch 默认 `execution_enabled:=false`，此时不会启动执行栈。只有 21 项门禁
+通过后，外层受控启动器才可显式设置 true；速度链固定为
+`controller_server → velocity_smoother → collision_monitor →
+/go2w/nav2_cmd_vel → arbiter → cmd_vel_bridge`。footprint 采用固定来源的 Unitree
+厂家站立外廓，但现场间隙和动态姿态尚未验证时，执行门禁仍不会开放。
 
 另一个终端执行：
 
@@ -2074,26 +2287,16 @@ bash scripts/run_nav2_plan_only.sh 1.0 0.0 0.0
 
 ### 执行模式与安全门控
 
-`execute` 必须同时通过环境门控和操作员门控：
+`execute` 必须通过 21 项实时能力门控和操作员二次确认。推荐只使用统一入口：
 
 ```bash
-NAV2_ALLOW_EXECUTE=true \
-NAV2_FOOTPRINT_CONFIRMED=true \
-NAV2_EMERGENCY_STOP_CONFIRMED=true \
-python run_demo.py --mock \
-  --enable-nav2 --nav2-mode execute \
-  --nav2-goal-x 1 --nav2-goal-y 0 \
-  --nav2-use-current-start \
-  --nav2-allow-execute \
-  --nav2-safety-confirmed \
-  --nav2-footprint-confirmed \
-  --nav2-estop-confirmed \
-  --nav2-wait
+bash scripts/go2w/start_search_session.sh \
+  --target "红色背包" --mode nav2_execute
 ```
 
-仓库中的 footprint、速度限制和 Collision Monitor 区域只是保守示例，不代表
-已经适配真实机器狗。真机前必须实测 footprint、LaserScan、速度链、急停和底层
-坐标方向。
+仓库中的 footprint 使用 Unitree 厂家站立外廓，Collision Monitor 区域保守包络
+该外廓；两者仍不代表现场动态间隙已经验收。直接构造旧式四复选框请求会因缺少
+`capability_gate_result.json` 被请求模型和 Worker 双重拒绝。
 
 ### 输出与验收
 
@@ -2117,3 +2320,238 @@ python -m unittest discover -s tests -p 'test_nav2_*.py'
 
 - [`docs/NAV2_INTEGRATION.md`](docs/NAV2_INTEGRATION.md)
 - [`docs/NAV2_WEBUI_TESTING.md`](docs/NAV2_WEBUI_TESTING.md)
+
+## Go2-W 内置 RGB + LiDAR 真机部署
+
+当前部署默认 fail-closed；小范围运动只在操作者明确授权
+（`GO2W_MOTION_READY`）并通过 `scripts/go2w/run_autonomous_loop.py` 时执行。
+已经实机通过的是内置 RGB 的只读采集、LiDAR/IMU 时间对齐、原子帧 Bundle，
+以及带轮式里程计校验的小范围前进/转向/自主搜索。Go2-W 尺寸与内置 LiDAR/IMU 静态 TF 已采用
+Unitree 官方产品页、固定提交的官方 URDF 和官方 LiDAR SDK，并通过隔离 ROS 域
+`/tf_static` 验证。LiDAR 现场方向、地面/自身过滤、`/scan` 和 300 ms stale
+门禁也已完成静止只读实机验收。官方 Unitree Point-LIO 固定版本已在隔离 Noetic
+环境中通过 5 分钟静止只读验收；CameraInfo 已用实测 9×6/15 mm 棋盘完成标定，
+相机外参、RGB-LiDAR 外参、移动里程计试验、地图和 Nav2 尚未完成物理验收。因此当前能力是
+Level A/B 部分能力（观察、扫描、搜索、靠近、每步 STOP），Level C--F 仍阻断，不能把软件模块存在解释为
+实机能力通过。
+
+固定厂家参考位于 `configs/go2w/official_reference.yaml`：站立外廓为
+`0.70 × 0.43 × 0.50 m`，`base_link -> utlidar_lidar` 为
+`xyz=(0.28945, 0, -0.046825) m, rpy=(0, 2.8782, 0) rad`，
+`utlidar_lidar -> utlidar_imu` 为纯平移
+`(-0.007698, -0.014655, 0.00667) m`。该文件明确不授权运动；相机位姿和
+`base_link` 离地高度没有在官方 Go2-W URDF 中公开，仍保持未知。
+
+传感器与派生话题：
+
+```text
+/camera/front/image_raw
+/camera/front/camera_info
+/utlidar/cloud
+/utlidar/imu
+/go2w/lio_input/cloud_raw
+/go2w/lio_input/imu_raw
+/go2w/lidar/scan                 # 静止只读实机验收已通过
+/lio/odom                        # Point-LIO 静止只读验收通过；默认不常驻启动
+```
+
+安装、构建和只读启动：
+
+```bash
+bash scripts/go2w/install_dependencies.sh
+bash scripts/go2w/build_ros2.sh
+bash scripts/go2w/start_live_perception.sh
+```
+
+启动器会先检查 `enp6s0` 的物理 carrier 和 `192.168.123.0/24` 主机地址；缺失时
+直接 fail closed。Bundle 默认按 1 Hz 输出并只保留当前会话最近 30 个，避免长时间
+运行无界写盘。计划要求的 10 分钟静止传输验收可用：
+
+```bash
+bash scripts/go2w/run_level_a_acceptance.sh
+```
+
+首轮 600 秒试验在约第 423 个 Bundle 后丢失有线 carrier，因此没有伪报 PASS；该
+历史失败已被下述修复后通过结果取代。完整相机内参和 RGB-LiDAR 外参流程见
+`docs/GO2W_REAL_ROBOT_DEPLOYMENT.md`。
+
+恢复载波并修复长测器的跨会话统计与限频漂移后，最终 603.24 秒复验通过全部传输
+门禁：489 帧、0.816 Hz、末帧 0.354 秒、30 帧/8.49 MiB、载波连续、内存稳定且
+清理无残留。CameraInfo 已为 true；总 Level A 仍只因
+`camera_tf_not_validated` 保持 false。证据位于
+`outputs/go2w_acceptance/level_a_stationary_soak_fixed/result.json`。
+
+当前内参来自 105 组 1920×1080 实拍，实时复验通过 10 组非零 K 的同步
+Image/CompressedImage/CameraInfo；独立棋盘帧的平均/RMS/最大重投影误差为
+0.859/1.024/3.375 px。证据位于
+`outputs/go2w_acceptance/camera_calibration_20260806/`。相机 TF 和相机—雷达外参
+仍保持未知，不能因 CameraInfo 通过而开启三维融合或导航。
+
+RGB-LiDAR ROS 节点已接入只读启动器，但当前只发布闭锁门禁与诊断，不发布伪造的
+三维目标。隔离回环验收连续收到 3 组
+`/perception/fusion_ready=false` 和
+`/perception/rgb_lidar_extrinsics_validated=false`，诊断同时给出
+`authorizes_motion=false`。证据位于
+`outputs/go2w_acceptance/rgb_lidar_fusion_blocked_runtime/result.json`。完成真实标定后，
+节点才会用标定的 LiDAR→相机变换生成相机相对三维位置；它不会用网络图片猜相机 TF。
+
+复现官方 TF/静止地面方向与 LiDAR 预处理验收：
+
+```bash
+/usr/bin/python3 scripts/go2w/audit_stationary_lidar_geometry.py \
+  --reference-file configs/go2w/official_reference.yaml \
+  --output outputs/go2w_acceptance/lidar_stationary_geometry/result.json
+bash scripts/go2w/test_lidar_preprocessor_live.sh
+bash scripts/go2w/setup_point_lio_noetic.sh
+bash scripts/go2w/test_point_lio_stationary_live.sh
+```
+
+Point-LIO 使用官方 `point_lio_unilidar` 提交
+`18ed5976d8fab2bd8a5148c26a40692bd3c0dc91`。最终 300 秒静止证据包含 4,615
+帧里程计，频率 15.385 Hz，最大消息间隔 68.6 ms，最终/最大漂移
+0.0785/0.0934 m，航向跨度 1.624°，桥丢包为 0；输入停止后 0.164 s 进入
+stale 且不重发旧位姿。证据位于
+`outputs/go2w_acceptance/point_lio_stationary/result_5min.json`。RKO-LIO 两组静止
+A/B 试验均产生明显假运动，已在 `configs/go2w/lio.yaml` 中禁用。
+
+该通过仅覆盖静止处理，不授权移动。直线、矩形、原地旋转、建图与 Nav2 验收均
+未执行；在当前“狗不能移动”的约束下继续保持阻断。
+
+生产入口固定使用只读 VideoHub RPC，最近联合验收得到 166 个 1920×1080 Bundle；
+内容门禁还会拒绝已观察到的 H.264/DDS 纯绿色损坏帧。`/frontvideostream` 只保留为
+显式诊断入口，不再由生产启动器自动选择。最新 Bundle 健康状态为
+`camera=true, lidar=true, camera_info_calibrated=false, lio=false, tf=false`。
+
+另一个终端可请求静止观察；当前传感器门禁关闭时会明确返回阻断项：
+
+```bash
+bash scripts/go2w/start_search_session.sh --target "手机" --mode observe_only
+```
+
+### 自主小范围运行与检测后端
+
+真机自主运行使用 `scripts/go2w/run_autonomous_loop.py`，默认调用**硅基流动视觉
+大模型 API**（`--detector llm`）做目标识别与场景理解，不再默认依赖
+GroundingDINO+SAM2（可通过 `--detector grounded_sam` 显式回退）。LLM 快速检测
+只请求“目标在不在 + 一个紧贴 bbox”，实测单次约 5–15 秒；完整场景理解（物体、
+关系、路线建议）由同一 API 的非 quick 模式提供。默认视觉模型为
+`Qwen/Qwen3-VL-30B-A3B-Instruct`，可用 `--llm-model
+Qwen/Qwen3-VL-8B-Instruct` 切回更高细节模型。
+
+```bash
+# 360° 扫描 → 选最佳命中方向 → 靠近（半径限制 1.0 m，录像）
+/usr/bin/python3 scripts/go2w/run_autonomous_loop.py \
+  --mode scan360_approach --target "黑色书包" --detector llm \
+  --max-radius 1.0 --max-seconds 420 \
+  --record-video outputs/live_sessions/scan360_llm.mp4 \
+  --output outputs/live_sessions/scan360_llm.jsonl
+
+# 摆动扫描 → 发现 → 对齐 → 靠近
+/usr/bin/python3 scripts/go2w/run_autonomous_loop.py \
+  --mode level_a_search --target "手机" --detector llm \
+  --max-radius 1.0 --max-seconds 300 \
+  --output outputs/live_sessions/level_a_llm.jsonl
+```
+
+自主循环每步都校验轮式里程计、前向净空与 `mode/error`，无位移自动重试/绕障，
+结束自动三次 STOP 并解除 arm。Bundle 超过 3 秒未更新时会拒绝继续动作并安全
+中止（相机偶发抖动时最多等待重试 6 次，确认断流才中止，防止拿旧图盲动）。
+每次发动作前会重新 arm，避免 LLM 检测耗时超过动作服务器 arm 时限后 goal 被拒；
+任何未处理异常也会先急停再 disarm。`run_live_robot_demo.py` 的默认检测后端也
+已改为 `llm`。
+
+相机桥（`go2w_camera_bridge`）内置 RPC 逐帧容错与自动重连：损坏帧只跳过不
+退出，子进程卡死超过 3 秒自动重启（退避 1→10 秒），避免相机流永久冻结。
+
+LLM 快速检测/复核已接入 `app/live_robot` 正式搜索状态机
+（`search_state_machine.py` + `step_planner.py` + `step_search_runner.py`），
+自主脚本可用 `--mode state_machine_search` 直接驱动该链路：
+
+```bash
+/usr/bin/python3 scripts/go2w/run_autonomous_loop.py \
+  --mode state_machine_search --target "灰色书包" --detector llm \
+  --reach-area-ratio 0.08 --max-radius 1.0 --max-seconds 300 \
+  --record-video outputs/live_sessions/sm_search.mp4 \
+  --output outputs/live_sessions/sm_search.jsonl
+```
+
+### wheel+LIO 融合里程计
+
+`go2w_wheel_odom` 同时发布：
+
+- `/go2w/odom/wheel`：纯轮式编码器 + Sport yaw（原语义）；
+- `/go2w/odom/fused`：轮式平移沿 Sport+LIO 融合航向积分（推荐小范围里程计）。
+
+融合航向 = Sport yaw delta + `lio_yaw_weight` ×（LIO yaw delta − Sport yaw
+delta），默认权重 0.35。LIO 航向只有在新鲜（按主机接收时刻，≤0.5 s）、位置
+范数 ≤5 m、数值有限且与 Sport 逐 tick 一致时才参与；任何违规自动回退 Sport，
+连续 3 次不一致只告警一次。诊断见 `/go2w/odom/fused/status`。Point-LIO 平移
+仍 BLOCKED，不参与融合；`navigation_gate.yaml` 保持 fail-closed。
+
+自主运行脚本支持 `--odom-topic` 选择位移校验来源：
+
+```bash
+/usr/bin/python3 scripts/go2w/run_autonomous_loop.py \
+  --mode scan360_approach --target "灰色书包" --detector llm \
+  --odom-topic /go2w/odom/fused \
+  --max-radius 1.0 --max-seconds 420 \
+  --output outputs/live_sessions/search_fused.jsonl
+```
+
+`--record-video` 输出使用 Noto Sans CJK 渲染中文标签（不再出现 `????`），并在
+视频左下角实时叠加当前运动指令（如“左转 30°”“前进 0.12 m/s × 2s”）、LLM
+检测状态和复核结论。到达判定（bbox 面积占比 ≥ `--reach-area-ratio`）前会再调用
+一次 `--verify` 复核，模型确认框内物体属于目标才写 `target_reached`；复核拒绝
+时记录 `target_verification` 事件并右转 15° 继续观察，避免把椅子等相似物体
+当成目标。360° 扫描遇到高分命中（score ≥ 0.80）会提前停止扫描、直接靠近，
+不再多转一圈后绕回来。
+
+短步搜索、Nav2 只规划和 Nav2 执行使用同一入口，但不会静默降级：
+
+```bash
+bash scripts/go2w/start_search_session.sh --target "手机" --mode step_search
+bash scripts/go2w/start_search_session.sh --target "红色背包" --mode nav2_plan_only
+bash scripts/go2w/start_search_session.sh --target "红色背包" --mode nav2_execute
+```
+
+`nav2_plan_only` 需要 Level D、厂家 footprint 的现场间隙复核、有效 `/scan`、
+LIO、地图、TF 和 ComputePathToPose 全部通过。`nav2_execute` 还需要 Collision Monitor、Velocity
+Smoother、lease、仲裁器、300 ms watchdog、急停、遥控器接管检测、零错误状态、
+操作员 arm 和二次确认。当前结果保存在：
+
+```text
+outputs/go2w_acceptance/navigation_gate/plan_only.json
+outputs/go2w_acceptance/navigation_gate/execute.json
+```
+
+执行速度链固定为：
+
+```text
+controller_server
+→ velocity_smoother
+→ collision_monitor
+→ /go2w/nav2_cmd_vel
+→ go2w_control_arbiter
+→ go2w_cmd_vel_bridge
+→ /go2w/motion（唯一 lease holder）
+```
+
+控制器上限为 `0.15 m/s` 和 `0.20 rad/s`，桥接器会再次限速/限加速度。完整
+执行 launch 默认 `execution_enabled:=false`，此时不启动 Nav2 执行节点；纯规划
+另有 `robot_scene_nav2_plan_only.launch.py`，其中不包含 controller、smoother、
+collision monitor 或任何 `cmd_vel` 发布节点。
+
+Streamlit 选择“Go2-W 实时目标搜索”可查看相机、LiDAR、LIO、TF、lease、控制源、
+搜索状态、证据和全部导航门禁。门禁失败时按钮禁用并显示阻断项。
+
+停止主机侧 Worker 并保留日志：
+
+```bash
+bash scripts/go2w/stop_all.sh
+```
+
+本次部署从未取得运动 lease，所以该脚本只停止项目自己的主机进程并写入取消/
+执行禁用标记，不会向机器人发送 `StopMove`，也不声称能停止外部进程管理的
+Sport lease。标定文件位于 `configs/go2w/`，会话
+输出位于 `outputs/live_sessions/`，ROS 日志位于 `runtime/go2w/sessions/`。详细分级
+状态和物理待办见 `reports/go2w_robot_scene_demo_deployment_report.md`。

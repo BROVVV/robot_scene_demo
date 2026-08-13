@@ -98,6 +98,29 @@ def safety_check(request):
     required = ("webui_confirmed", "environment_allowed", "footprint_confirmed", "emergency_stop_confirmed")
     if not all(safety.get(k) for k in required):
         raise RuntimeError("NAV2_SAFETY_CONFIRMATION_MISSING: 安全确认不完整")
+    gate = request.get("capability_gate_result")
+    if not isinstance(gate, dict):
+        raise RuntimeError("NAV2_CAPABILITY_GATE_MISSING: execution gate result is required")
+    if gate.get("schema_version") != "1.0" or gate.get("mode") != "nav2_execute":
+        raise RuntimeError("NAV2_CAPABILITY_GATE_INVALID: invalid execution gate result")
+    required_gate = (
+        "level_d_passed", "physical_geometry_confirmed", "footprint_confirmed",
+        "scan_frame_valid", "lidar_fresh", "lio_fresh", "map_valid", "tf_valid",
+        "compute_path_to_pose_ready", "nav2_allow_execute", "collision_monitor_active",
+        "velocity_smoother_active", "lease_valid", "arbiter_active",
+        "cmd_vel_bridge_active", "cmd_vel_watchdog_active", "operator_armed",
+        "second_confirmation", "emergency_stop_confirmed", "remote_override_clear",
+        "robot_error_zero",
+    )
+    if gate.get("required_conditions") != list(required_gate):
+        raise RuntimeError("NAV2_CAPABILITY_GATE_INVALID: execution requirements mismatch")
+    evidence = gate.get("evidence")
+    if not isinstance(evidence, dict) or not all(evidence.get(name) is True for name in required_gate):
+        raise RuntimeError("NAV2_CAPABILITY_GATE_INVALID: required live evidence is incomplete")
+    blockers = gate.get("blocking_conditions")
+    if gate.get("allowed") is not True or blockers != []:
+        detail = ",".join(str(item) for item in (blockers or ["gate_not_allowed"]))
+        raise RuntimeError(f"NAV2_CAPABILITY_GATE_BLOCKED: {detail}")
 
 
 def wait_for_action_server(client, timeout, name):

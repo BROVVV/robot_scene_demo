@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+!.env.go2w
 
 .venv/
 venv/
@@ -19,8 +20,26 @@ ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
 
+# Reproducible, locally built ROS 1 Point-LIO fallback workspace.
+point_lio_ws/
+
 outputs/*
 !outputs/.gitkeep
+
+runtime/go2w/spool/*
+!runtime/go2w/spool/.gitkeep
+runtime/go2w/sessions/*
+!runtime/go2w/sessions/.gitkeep
+runtime/go2w/status/*
+!runtime/go2w/status/.gitkeep
+runtime/go2w/locks/*
+!runtime/go2w/locks/.gitkeep
+runtime/go2w/pids/*
+runtime/go2w/CANCEL_*
+runtime/go2w/EXECUTION_DISABLED
+runtime/go2w/detection_result.json
+runtime/go2w/llm_detection_result.json
+runtime/go2w/llm_verify_result.json
 
 *.log
 
