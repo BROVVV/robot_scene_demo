@@ -10,6 +10,8 @@ from go2w_rgb_lidar_fusion.overlay_core import (
     LidarToCameraTransform,
     estimate_lidar_to_camera_pnp,
     load_camera_model,
+    load_confirmed_transform,
+    load_diagnostic_transform,
     project_camera_points,
     render_depth_overlay,
     reprojection_metrics,
@@ -89,6 +91,15 @@ def test_camera_model_rejects_uncalibrated_config(tmp_path):
     )
     with pytest.raises(CalibrationBlocked, match="not calibrated"):
         load_camera_model(candidate)
+
+
+def test_project_extrinsics_are_diagnostic_only():
+    root = Path(__file__).parents[4]
+    path = root / "configs/go2w/sensor_extrinsics.yaml"
+    transform = load_diagnostic_transform(path)
+    assert transform.source.endswith("sensor_extrinsics.yaml")
+    with pytest.raises(CalibrationBlocked, match="not navigation-grade"):
+        load_confirmed_transform(path)
 
 
 def test_pair_selection_uses_header_time_limit_and_even_spacing():

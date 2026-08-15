@@ -39,6 +39,28 @@ ip -4 -brief address show enp6s0
 `scripts/go2w/start_live_perception.sh` now refuses to start if carrier or the
 host subnet address is absent. It does not configure the interface silently.
 
+The externally mounted Hesai PandarXT-16 is at `192.168.123.20` and currently
+sends unicast UDP from source port 10000 to `192.168.123.99:2368`. Its isolated
+configuration is `configs/go2w/hesai_pandarxt16.yaml`. The frame is deliberately
+named `pandarxt16_link_unvalidated`: no `base_link` transform, body envelope, or
+motion authority is claimed.
+
+Run and validate it separately from the built-in Unitree LiDAR stack:
+
+```bash
+bash scripts/go2w/start_hesai_pandarxt16.sh
+# In a second terminal after sourcing ROS 2 and ros2_ws/install/setup.bash:
+/usr/bin/python3 scripts/go2w/validate_hesai_pandarxt16_ros.py \
+  --output outputs/go2w_acceptance/hesai_pandarxt16_20260813/result.json
+```
+
+The 2026-08-13 stationary result passed 20 frames at about 10 Hz, 64,000 points
+per frame, all 16 rings, strictly increasing timestamps, and zero reported UDP
+loss. About 95% of samples were valid returns above 5 cm. This confirms ROS
+reception only: zero returns still require filtering, PTP remains free-running,
+the optional firetime correction is absent, and the new mount invalidates all
+older physical rotation-clearance evidence.
+
 ## Build and read-only perception
 
 ```bash
@@ -152,14 +174,17 @@ The command writes a candidate YAML, depth-coloured overlays, and reprojection
 metrics. It deliberately sets `candidate_unvalidated`, `confirmed: false`,
 `authorizes_fusion: false`, and `authorizes_motion: false`.
 
-The installed ROS fusion node remains useful before calibration because it
-publishes explicit closed gates instead of fabricating 3D output. Its current
-loopback-only acceptance result is:
+The installed ROS fusion node remains useful before navigation-grade
+calibration. The current plane-based candidate may be loaded only for
+stationary diagnostic visualization; it cannot publish metric 3D targets. The
+current live acceptance result is:
 
 ```text
-outputs/go2w_acceptance/rgb_lidar_fusion_blocked_runtime/result.json
+outputs/go2w_acceptance/rgb_lidar_geometry_tier_20260813/result.json
+rgb_lidar_overlay_ready=true
 fusion_ready=false
 rgb_lidar_extrinsics_validated=false
+authorizes_3d_output=false
 authorizes_motion=false
 ```
 
@@ -175,6 +200,55 @@ stationary session, so RGB-LiDAR fusion remains blocked:
 ```bash
 bash scripts/go2w/validate_rgb_lidar_overlay.sh
 ```
+
+## Rotation-clearance observability
+
+Do not interpret an empty collision cloud as proof that the complete in-place
+turn envelope is visible. The current L2 minimum validated range is 0.37 m,
+while the manufacturer half-width is 0.215 m and the conservative rotation
+envelope radius is 0.511 m. The base and wheel self filters hide additional
+collision-height regions.
+
+The read-only validator now computes the swept-annulus observability directly:
+
+```bash
+source /opt/ros/humble/setup.bash
+source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source ros2_ws/install/setup.bash
+/usr/bin/python3 scripts/go2w/validate_lidar_preprocessor_ros.py \
+  --minimum-samples 60 --timeout-seconds 15 \
+  --output outputs/go2w_acceptance/lidar_rotation_observability_20260813/result.json
+```
+
+Current evidence reports unobservable free space in 720/720 sampled bearings:
+0.155 m along each lateral axis, 0.04 m along front/rear, and a worst sampled
+radial gap of about 0.291 m where bounded wheel/self filters overlap the swept
+annulus. Consequently, rotation remains unknown even when raw sector points
+are absent.
+
+Persistent `rotation_clearance_validation.valid=true` cannot be enabled by a boolean
+edit alone. Configuration loading additionally requires the documented
+physical-360-plus-LiDAR method, operator/time/posture, an accepted envelope at
+least as large as the configured one, evidence paths, and explicit passes for
+horizontal yaw, near-field mitigation, self-filter physical checks, full
+sector detection, and posture. Missing evidence closes the preprocessor safety
+gate. Every evidence path must also resolve to readable JSON whose robot model,
+operator, posture, envelope radius, five checks, pass state, and
+`robot_motion_commanded=false` agree with the configuration.
+Pose-bound human inspection evidence is deliberately rejected by this
+persistent gate. Persistent validity additionally requires complete
+sensor-only near-field observability after an additional coverage sensor or a
+physically revalidated LiDAR mounting change.
+
+For a single Stage-2 turn at the unchanged authorization pose, use the
+read-only `validate_rotation_clearance_physical_ros.py` workflow. It records a
+no-target baseline and controlled low-target captures at front/right/rear/left,
+checks wheel odometry stationarity, hashes all five source captures, and joins
+them with an operator-measured 0.511 m swept-circle inspection. The result is
+valid for at most 15 minutes and 0.03 m translation. It never changes the
+persistent safety topic. The runner may combine raw diagnostic side clearance
+with this lease only while LiDAR is fresh and the diagnostic sample is no more
+than 0.3 seconds old.
 
 ## Search and navigation gates
 

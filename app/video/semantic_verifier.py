@@ -9,7 +9,7 @@ from app.config import Settings, get_settings
 from app.detectors.crop_verifier import CropVerifier
 from app.video.models import FrameAnalysisResult
 from app.video.target_profile import TargetProfile
-from app.video.target_search import target_label_match_score
+from app.video.target_search import normalize_label, target_label_match_score
 from app.vision.crop_utils import save_candidate_crop
 from app.vision.schema import CandidateObject
 from app.vision.score_fusion import apply_score_fusion
@@ -81,9 +81,12 @@ def verify_video_candidates(
                 / f"video_f{frame.frame_id:06d}_{candidate.object_id}.jpg"
             )
             try:
+                verification_bbox, context_objects = _verification_region(
+                    obj, frame.objects, target_profile
+                )
                 saved, _ = save_candidate_crop(
                     frame.image_path,
-                    candidate.bbox or [],
+                    verification_bbox,
                     crop_path,
                     config.crop_verify_expand_ratio,
                 )
@@ -95,6 +98,9 @@ def verify_video_candidates(
                     context={
                         "frame_id": frame.frame_id,
                         "timestamp_sec": frame.timestamp_sec,
+                        "candidate_bbox": candidate.bbox,
+                        "verification_bbox": verification_bbox,
+                        "context_objects": context_objects,
                     },
                 )
             except (OSError, ValueError) as exc:
@@ -140,6 +146,83 @@ def verify_video_candidates(
         "verify_every_n_frames": interval,
         "results": results,
     }
+
+
+def _verification_region(
+    candidate: dict[str, Any],
+    frame_objects: list[dict[str, Any]],
+    target_profile: TargetProfile,
+) -> tuple[list[float], list[dict[str, Any]]]:
+    """Include the nearest explicit relation anchor without weakening the gate."""
+    bbox = _valid_bbox(candidate.get("bbox"))
+    if bbox is None:
+        return list(candidate.get("bbox") or []), []
+    if not target_profile.relation_constraints:
+        return bbox, []
+    context_terms = {
+        normalize_label(item)
+        for item in target_profile.context_terms()
+        if normalize_label(item)
+    }
+    if not context_terms:
+        return bbox, []
+    matches: list[tuple[float, dict[str, Any], list[float]]] = []
+    candidate_center = _bbox_center(bbox)
+    for obj in frame_objects:
+        if obj is candidate or obj.get("object_id") == candidate.get("object_id"):
+            continue
+        labels = {
+            normalize_label(str(obj.get("label") or "")),
+            normalize_label(str(obj.get("label_zh") or "")),
+        }
+        labels.discard("")
+        if not any(
+            term == label or term in label or label in term
+            for term in context_terms
+            for label in labels
+        ):
+            continue
+        context_bbox = _valid_bbox(obj.get("bbox"))
+        if context_bbox is None:
+            continue
+        center = _bbox_center(context_bbox)
+        distance = (center[0] - candidate_center[0]) ** 2 + (
+            center[1] - candidate_center[1]
+        ) ** 2
+        matches.append((distance, obj, context_bbox))
+    if not matches:
+        return bbox, []
+    _, anchor, anchor_bbox = min(matches, key=lambda item: item[0])
+    union = [
+        min(bbox[0], anchor_bbox[0]),
+        min(bbox[1], anchor_bbox[1]),
+        max(bbox[2], anchor_bbox[2]),
+        max(bbox[3], anchor_bbox[3]),
+    ]
+    return union, [
+        {
+            "object_id": anchor.get("object_id"),
+            "label": anchor.get("label"),
+            "label_zh": anchor.get("label_zh"),
+            "bbox": anchor_bbox,
+        }
+    ]
+
+
+def _valid_bbox(value: Any) -> list[float] | None:
+    if not isinstance(value, (list, tuple)) or len(value) != 4:
+        return None
+    try:
+        bbox = [float(item) for item in value]
+    except (TypeError, ValueError):
+        return None
+    if bbox[2] <= bbox[0] or bbox[3] <= bbox[1]:
+        return None
+    return bbox
+
+
+def _bbox_center(bbox: list[float]) -> tuple[float, float]:
+    return ((bbox[0] + bbox[2]) / 2.0, (bbox[1] + bbox[3]) / 2.0)
 
 
 def verify_grounded_candidates(

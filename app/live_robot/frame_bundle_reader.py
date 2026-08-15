@@ -89,8 +89,57 @@ class FrameBundleReader:
         for key in ("camera", "camera_info_calibrated", "lidar", "lio", "tf"):
             if not isinstance(payload["sensor_health"].get(key), bool):
                 raise ValueError(f"sensor_health.{key} must be boolean")
-        for key in ("rgb_lidar_extrinsics", "rgb_lidar_fusion"):
+        for key in (
+            "rgb_lidar_overlay",
+            "rgb_lidar_extrinsics",
+            "rgb_lidar_fusion",
+        ):
             if key in payload["sensor_health"] and not isinstance(
                 payload["sensor_health"][key], bool
             ):
                 raise ValueError(f"sensor_health.{key} must be boolean")
+        # Optional Pandar / dual-LiDAR sections are forward-compatible: when
+        # present they must be mappings, but old consumers must not crash when
+        # they are absent.
+        for optional in ("pandar", "dual_lidar"):
+            if optional in payload and not isinstance(payload[optional], dict):
+                raise ValueError(f"{optional} must be an object when present")
+
+
+def pandar_status(payload: dict) -> dict:
+    """Read the Pandar status section with fail-closed defaults when absent."""
+    return {
+        "raw_fresh": bool((payload.get("pandar") or {}).get("raw_fresh", False)),
+        "raw_rate_ok": bool((payload.get("pandar") or {}).get("raw_rate_ok", False)),
+        "zero_return_filter_ready": bool(
+            (payload.get("pandar") or {}).get("zero_return_filter_ready", False)
+        ),
+        "preprocessor_ready": bool(
+            (payload.get("pandar") or {}).get("preprocessor_ready", False)
+        ),
+        "clock_tier": str((payload.get("pandar") or {}).get("clock_tier", "unvalidated")),
+        "extrinsics_validated": bool(
+            (payload.get("pandar") or {}).get("extrinsics_validated", False)
+        ),
+        "self_occlusion_validated": bool(
+            (payload.get("pandar") or {}).get("self_occlusion_validated", False)
+        ),
+        "safety_integration_ready": bool(
+            (payload.get("pandar") or {}).get("safety_integration_ready", False)
+        ),
+    }
+
+
+def dual_lidar_status(payload: dict) -> dict:
+    """Read the dual-LiDAR status section with fail-closed defaults."""
+    return {
+        "diagnostic_ready": bool(
+            (payload.get("dual_lidar") or {}).get("diagnostic_ready", False)
+        ),
+        "rotation_observability_valid": bool(
+            (payload.get("dual_lidar") or {}).get("rotation_observability_valid", False)
+        ),
+        "rotation_clearance_valid": bool(
+            (payload.get("dual_lidar") or {}).get("rotation_clearance_valid", False)
+        ),
+    }

@@ -101,6 +101,11 @@ class FrameSceneParser:
 
 def observation_from_frame_analysis(frame: FrameAnalysisResult) -> FrameObservation:
     objects = [_normalize_object(frame, item) for item in frame.objects]
+    source_object_ids = {
+        str(item.get("source_object_id")): str(item.get("object_id"))
+        for item in frame.objects
+        if item.get("source_object_id") and item.get("object_id")
+    }
     free_space = [
         FreeSpaceRegion(
             frame_region_id=f"frame_{frame.frame_id:06d}_free_{index:03d}",
@@ -122,7 +127,9 @@ def observation_from_frame_analysis(frame: FrameAnalysisResult) -> FrameObservat
         for index, obj in enumerate(objects, start=1)
         if obj.is_obstacle
     ]
-    relations = [_normalize_relation(frame, item) for item in frame.relations]
+    relations = [
+        _normalize_relation(frame, item, source_object_ids) for item in frame.relations
+    ]
     return FrameObservation(
         frame_id=frame.frame_id,
         timestamp_sec=frame.timestamp_sec,
@@ -144,6 +151,10 @@ def _normalize_object(frame: FrameAnalysisResult, obj: dict[str, Any]) -> FrameO
     role = _navigation_role(label, label_zh, category)
     bbox = obj.get("bbox")
     evidence_type = "bbox" if bbox else "visual"
+    attributes = [str(item) for item in (obj.get("attributes") or [])]
+    color = str(obj.get("color") or "").strip().lower()
+    if color and color not in attributes:
+        attributes.append(color)
     return FrameObject(
         frame_object_id=str(obj.get("object_id") or f"frame_{frame.frame_id:06d}_{label}"),
         label=label,
@@ -153,7 +164,7 @@ def _normalize_object(frame: FrameAnalysisResult, obj: dict[str, Any]) -> FrameO
         mask_area_ratio=obj.get("mask_area_ratio"),
         confidence=_clamp(obj.get("final_score") or obj.get("confidence") or 0.0),
         position_2d=str(obj.get("image_position") or obj.get("position_2d") or "unknown"),
-        attributes=[str(item) for item in (obj.get("attributes") or [])],
+        attributes=attributes,
         navigation_role=role,
         is_obstacle=role == "obstacle",
         is_landmark=role in {"landmark", "passage", "room_anchor"},
@@ -161,10 +172,17 @@ def _normalize_object(frame: FrameAnalysisResult, obj: dict[str, Any]) -> FrameO
     )
 
 
-def _normalize_relation(frame: FrameAnalysisResult, relation: dict[str, Any]) -> FrameRelation:
+def _normalize_relation(
+    frame: FrameAnalysisResult,
+    relation: dict[str, Any],
+    source_object_ids: dict[str, str] | None = None,
+) -> FrameRelation:
+    source_object_ids = source_object_ids or {}
+    subject_id = relation.get("source_id") or relation.get("subject_id")
+    object_id = relation.get("target_id") or relation.get("object_id")
     return FrameRelation(
-        subject_id=relation.get("source_id") or relation.get("subject_id"),
-        object_id=relation.get("target_id") or relation.get("object_id"),
+        subject_id=source_object_ids.get(str(subject_id), subject_id),
+        object_id=source_object_ids.get(str(object_id), object_id),
         subject_label=str(relation.get("subject_label") or relation.get("source_id") or "unknown"),
         object_label=str(relation.get("object_label") or relation.get("target_id") or "unknown"),
         relation=str(relation.get("relation") or relation.get("relation_type") or "near"),

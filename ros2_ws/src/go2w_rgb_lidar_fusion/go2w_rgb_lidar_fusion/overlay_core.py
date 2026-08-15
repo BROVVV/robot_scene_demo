@@ -158,11 +158,22 @@ def rpy_from_rotation_matrix(rotation: np.ndarray) -> tuple[float, float, float]
     return roll, pitch, yaw
 
 
-def load_confirmed_transform(path: str | Path) -> LidarToCameraTransform:
+def _load_transform(path: str | Path, *, diagnostic: bool) -> LidarToCameraTransform:
     source = str(Path(path).expanduser().resolve())
     payload = yaml.safe_load(Path(source).read_text(encoding="utf-8")) or {}
-    if payload.get("calibration_status") != "calibrated" or not payload.get("confirmed"):
-        raise CalibrationBlocked("camera-LiDAR extrinsics are not calibrated and confirmed")
+    if diagnostic:
+        if not payload.get("diagnostic_overlay_accepted"):
+            raise CalibrationBlocked(
+                "camera-LiDAR diagnostic overlay candidate is not accepted"
+            )
+    elif (
+        payload.get("calibration_status") != "calibrated"
+        or not payload.get("confirmed")
+        or not payload.get("navigation_geometry_validated")
+    ):
+        raise CalibrationBlocked(
+            "camera-LiDAR extrinsics are not navigation-grade calibrated and confirmed"
+        )
     if payload.get("transform_parent") != "front_camera_optical_frame":
         raise CalibrationBlocked("extrinsic parent must be front_camera_optical_frame")
     if payload.get("transform_child") != "utlidar_lidar":
@@ -181,6 +192,18 @@ def load_confirmed_transform(path: str | Path) -> LidarToCameraTransform:
     return LidarToCameraTransform(
         rotation_matrix_from_rpy(*rpy), xyz, source
     )
+
+
+def load_diagnostic_transform(path: str | Path) -> LidarToCameraTransform:
+    """Load a candidate exclusively for stationary diagnostic visualization."""
+
+    return _load_transform(path, diagnostic=True)
+
+
+def load_confirmed_transform(path: str | Path) -> LidarToCameraTransform:
+    """Load a transform that is explicitly accepted for metric 3D output."""
+
+    return _load_transform(path, diagnostic=False)
 
 
 def transform_lidar_to_camera(

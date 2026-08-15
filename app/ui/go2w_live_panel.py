@@ -77,12 +77,30 @@ def render_go2w_live_workspace(config: dict, *, target: str) -> None:
         "lio",
         "tf",
         "camera_info_calibrated",
+        "rgb_lidar_overlay",
         "rgb_lidar_extrinsics",
         "rgb_lidar_fusion",
+        "pandar",
+        "dual_lidar",
     )
     cols = st.columns(len(names))
     for column, name in zip(cols, names):
         column.metric(name, "PASS" if status.sensor_health.get(name) else "BLOCKED")
+    with st.expander("Pandar / 双雷达诊断状态", expanded=False):
+        st.json(
+            {
+                "pandar": status.pandar_status or {"raw_fresh": False},
+                "dual_lidar": status.dual_lidar_status or {
+                    "diagnostic_ready": False,
+                    "rotation_observability_valid": False,
+                    "rotation_clearance_valid": False,
+                },
+            }
+        )
+        st.caption(
+            "Pandar raw cloud 通过只读验收不等于正式 TF/安全融合 PASS；"
+            "rotation_clearance_valid 仍由实时门禁决定。"
+        )
     st.json(
         {
             "latest_session_id": status.latest_session_id,

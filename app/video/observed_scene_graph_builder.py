@@ -243,7 +243,11 @@ def _add_frame_relations(
     tracks: list[ObjectTrack],
 ) -> None:
     track_by_frame_object = _track_lookup(observations, tracks)
-    allowed = {"near", "left_of", "right_of", "in_front_of", "behind", "blocks", "adjacent_to"}
+    allowed = {
+        "near", "left_of", "right_of", "in_front_of", "behind",
+        "on", "under", "above", "below", "in", "inside", "contains",
+        "attached_to", "blocks", "adjacent_to",
+    }
     for frame in observations:
         for relation in frame.relations:
             source_id = track_by_frame_object.get(relation.subject_id or "")

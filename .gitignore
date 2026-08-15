@@ -51,3 +51,9 @@ runtime/go2w/llm_verify_result.json
 *.onnx
 *.ckpt
 *.safetensors
+
+# Run/colcon logs, the nested official Hesai driver (cloned via README), and
+# local runtime JSON artifacts.
+log/
+ros2_ws/src/hesai_ros_driver/
+runtime/go2w/*.json

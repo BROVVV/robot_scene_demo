@@ -10,6 +10,7 @@ triple STOP plus disarm. No user commands are required while it runs.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import math
 import os
@@ -35,19 +36,62 @@ from app.live_robot.step_search_runner import (
     StepSearchRunner,
     VerificationResult,
 )
+from app.live_robot.semantic_observer import (
+    LiveSemanticObserver,
+    semantic_payload_from_quick_target_absence,
+)
+from app.config import get_settings
+from app.memory.observation_memory_store import ObservationMemoryStore
+from app.live_robot.motion_bounds import (
+    evaluate_dual_lidar_rotation_gate,
+    evaluate_lidar_motion_readiness,
+    evaluate_rotation_clearance,
+    evaluate_step_boundary,
+    position_within_boundary,
+)
+from app.live_robot.rotation_lease import (
+    build_rotation_lease_binding,
+    evaluate_rotation_lease,
+    evaluate_rotation_lease_step,
+    load_rotation_lease,
+    resolve_rotation_clearance_source,
+    rotation_lease_stage2_scope_errors,
+)
+from app.live_robot.current_hardware import (
+    geometry_hash,
+    load_current_hardware_geometry,
+    load_current_hardware_state,
+    state_hash,
+)
+from app.live_robot.pandar_clock import (
+    PandarClockTier,
+    DEFAULT_PANDAR_CLOCK_TIER,
+)
+from app.live_robot.stage2_readiness import (
+    compute_stage2_readiness,
+)
+from app.reasoning.unigoal.router import SemanticSearchController
+from app.reasoning.unigoal.semantic_memory import SemanticSearchMemory
+from app.reasoning.unigoal.auxiliary_hints import (
+    build_precomputed_situated_prior_hints,
+    build_psg_auxiliary_hints,
+)
+from app.video.target_profile import TargetProfileResolver
 
 import rclpy
 from go2w_motion_interfaces.action import MotionCommand
+from geometry_msgs.msg import Vector3Stamped
 from nav_msgs.msg import Odometry
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
-from std_msgs.msg import Float32
+from std_msgs.msg import Bool, Float32
 from std_srvs.srv import SetBool, Trigger
 from unitree_go.msg import LowState, SportModeState
 
 
 DEFAULT_PATTERN = ["f", "l20", "f", "r20", "f", "l20", "f", "r20", "f"]
+GO2W_ROTATION_ENVELOPE_RADIUS_M = 0.511
 
 PROMPT_MAP = {
     "手机": "phone. cellphone. mobile phone. smartphone",
@@ -59,6 +103,18 @@ PROMPT_MAP = {
     "书包": "gray backpack. grey backpack. rucksack",
     "灰色书包": "gray backpack. grey backpack. rucksack",
 }
+
+
+def strict_json_value(value):
+    """Recursively replace non-finite telemetry with JSON ``null``."""
+
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {key: strict_json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [strict_json_value(item) for item in value]
+    return value
 
 
 class BundleVideoRecorder:
@@ -254,6 +310,20 @@ class BundleVideoRecorder:
                 self._locked_score = score
                 self._tracker_ok = True
             except Exception:
+                # Fallback: when the CSRT tracker is unavailable, draw the
+                # detection box and label directly so the overlay still shows
+                # the detected object and its confidence.
+                cv2.rectangle(
+                    frame,
+                    (pixel_box[0], pixel_box[1]),
+                    (pixel_box[2], pixel_box[3]),
+                    (0, 255, 0), 2,
+                )
+                self._draw_cjk_text(
+                    frame, f"{label} {score:.2f}",
+                    (pixel_box[0], max(18, pixel_box[1] - 8)), 20,
+                    (0, 255, 0), (0, 0, 0, 160),
+                )
                 self._tracker = None
             self._pending = None
         if self._tracker is not None:
@@ -331,6 +401,12 @@ class AutonomousLoop(Node):
         self._scan360_turn_deg = scan360_turn_deg
         self._output = open(output, "a", encoding="utf-8")
         self._start_monotonic = time.monotonic()
+        self._motion_origin: tuple[float, float, float] | None = None
+        self._turn_only = False
+        self._front_half_plane_only = False
+        self._boundary_tolerance_m = 0.05
+        self._max_motion_steps = 0
+        self._min_rotation_clearance_m = 0.0
 
         self._client = ActionClient(self, MotionCommand, "/go2w/motion")
         self._arm_client = self.create_client(SetBool, "/go2w/arm")
@@ -342,6 +418,28 @@ class AutonomousLoop(Node):
         self._clearance: float | None = None
         self._left_clearance: float | None = None
         self._right_clearance: float | None = None
+        self._lidar_fresh: bool | None = None
+        self._rotation_clearance_valid: bool | None = None
+        self._diagnostic_left_clearance: float | None = None
+        # Dual-LiDAR safety fusion state (fail-closed while enabled).
+        self._dual_lidar_enabled = False
+        self._dual_lidar_fused_state: str | None = None
+        self._dual_lidar_unknown_is_clear = False
+        self._dual_lidar_occupied_sources: list[str] = []
+        # Current-hardware binding for any pose-bound rotation lease.
+        self._hardware_binding: dict | None = None
+        self._hardware_geometry_hash: str | None = None
+        self._hardware_state_hash: str | None = None
+        # Explicit operator authorization to allow turns without a rotation
+        # lease. Only relaxes the rotation-clearance/lease gate; every other
+        # safety gate stays active and every motion records this flag.
+        self._operator_authorized_rotation = False
+        self._diagnostic_right_clearance: float | None = None
+        self._diagnostic_clearance_receive_s: float | None = None
+        self._rotation_lease: dict | None = None
+        self._rotation_lease_path = ""
+        self._rotation_lease_error = ""
+        self._armed_by_runner = False
         qos = QoSProfile(depth=20, reliability=2)  # BEST_EFFORT
         self.create_subscription(SportModeState, "/lf/sportmodestate",
                                  self._on_sport, qos)
@@ -354,12 +452,61 @@ class AutonomousLoop(Node):
                                  self._on_left_clearance, qos)
         self.create_subscription(Float32, "/go2w/safety/right_clearance",
                                  self._on_right_clearance, qos)
+        self.create_subscription(
+            Bool,
+            "/go2w/safety/lidar_fresh",
+            self._on_lidar_fresh,
+            qos,
+        )
+        self.create_subscription(
+            Bool,
+            "/go2w/safety/rotation_clearance_valid",
+            self._on_rotation_clearance_valid,
+            qos,
+        )
+        self.create_subscription(
+            Vector3Stamped,
+            "/go2w/diagnostics/lidar_clearance_raw",
+            self._on_diagnostic_clearance,
+            qos,
+        )
+        # Pandar diagnostic status (only published when the diagnostic
+        # preprocessor is running). Missing topic keeps the field None which
+        # the fail-closed snapshot treats as not-fresh.
+        try:
+            from diagnostic_msgs.msg import DiagnosticArray
+
+            self._pandar_raw_fresh: bool | None = None
+            self.create_subscription(
+                DiagnosticArray,
+                "/go2w/hesai/status",
+                self._on_pandar_status,
+                qos,
+            )
+        except Exception:
+            self._pandar_raw_fresh: bool | None = None
+
+    def _on_pandar_status(self, msg) -> None:
+        fresh = False
+        for status in msg.status:
+            for value in status.values:
+                if value.key == "fresh":
+                    fresh = str(value.value).lower() == "true"
+                    break
+        self._pandar_raw_fresh = fresh
 
     def _host_s(self) -> float:
         return round(time.monotonic(), 6)
 
     def _write(self, row: dict) -> None:
-        self._output.write(json.dumps(row, ensure_ascii=False) + "\n")
+        self._output.write(
+            json.dumps(
+                strict_json_value(row),
+                ensure_ascii=False,
+                allow_nan=False,
+            )
+            + "\n"
+        )
         self._output.flush()
 
     def _on_sport(self, msg: SportModeState) -> None:
@@ -379,6 +526,22 @@ class AutonomousLoop(Node):
 
     def _on_right_clearance(self, msg: Float32) -> None:
         self._right_clearance = float(msg.data)
+
+    def _on_lidar_fresh(self, msg: Bool) -> None:
+        self._lidar_fresh = bool(msg.data)
+
+    def _on_rotation_clearance_valid(self, msg: Bool) -> None:
+        self._rotation_clearance_valid = bool(msg.data)
+
+    def _on_diagnostic_clearance(self, msg: Vector3Stamped) -> None:
+        if msg.header.frame_id != "base_link":
+            self._diagnostic_left_clearance = None
+            self._diagnostic_right_clearance = None
+            self._diagnostic_clearance_receive_s = None
+            return
+        self._diagnostic_left_clearance = float(msg.vector.y)
+        self._diagnostic_right_clearance = float(msg.vector.z)
+        self._diagnostic_clearance_receive_s = time.monotonic()
 
     def _yaw(self) -> float:
         if self._sport is None:
@@ -400,9 +563,13 @@ class AutonomousLoop(Node):
         if int(self._sport.mode) != 1 or int(self._sport.error_code) != 0:
             return False, (f"robot mode={self._sport.mode} "
                            f"error={self._sport.error_code}")
-        if (self._mode != "wander" and self._clearance is not None
-                and self._clearance < self._min_clearance):
-            return False, f"front clearance {self._clearance:.2f} m too low"
+        lidar = evaluate_lidar_motion_readiness(
+            lidar_fresh=self._lidar_fresh,
+            front_clearance_m=self._clearance,
+            minimum_clearance_m=self._min_clearance,
+        )
+        if not lidar.allowed:
+            return False, lidar.reason
         return True, ""
 
     def _call_service(self, client, request, label: str):
@@ -421,6 +588,7 @@ class AutonomousLoop(Node):
                                       "arm" if value else "disarm")
         if not response.success:
             raise RuntimeError(f"arm response failed: {response.message}")
+        self._armed_by_runner = bool(value)
 
     def _emergency_stop(self) -> None:
         response = self._call_service(self._stop_srv, Trigger.Request(),
@@ -470,7 +638,148 @@ class AutonomousLoop(Node):
         if self._video is not None:
             self._video.set_command(self._describe_step(step))
         self._write({"event": "step_start", "index": index, "step": step,
-                     "host_s": self._host_s(), "clearance": self._clearance})
+                     "host_s": self._host_s(), "clearance": self._clearance,
+                     "operator_authorized_rotation": self._operator_authorized_rotation})
+        origin = self._motion_origin or self._odom_snapshot()
+        current = self._odom_snapshot()
+        if self._rotation_lease is not None:
+            lease_step = evaluate_rotation_lease_step(step, maximum_turn_deg=30.0)
+            if not lease_step.allowed:
+                self._write({
+                    "event": "rotation_lease_step_reject",
+                    "index": index,
+                    "step": step,
+                    "reason": lease_step.reason,
+                    "host_s": self._host_s(),
+                })
+                self.get_logger().error(lease_step.reason)
+                return False, lease_step.reason
+        elif self._operator_authorized_rotation and (
+            step.startswith("l") or step.startswith("r")
+        ):
+            # Even without a lease, operator-authorized turns stay clamped to
+            # (0, 30] degrees so the search sweep cannot command a large spin.
+            lease_step = evaluate_rotation_lease_step(step, maximum_turn_deg=30.0)
+            if not lease_step.allowed:
+                self._write({
+                    "event": "operator_rotation_step_clamped",
+                    "index": index,
+                    "step": step,
+                    "reason": lease_step.reason,
+                    "host_s": self._host_s(),
+                })
+                self.get_logger().warning(
+                    f"operator-authorized turn clamped: {lease_step.reason}"
+                )
+                return False, lease_step.reason
+        boundary = evaluate_step_boundary(
+            step,
+            origin=origin,
+            current=current,
+            max_radius_m=self._max_radius,
+            front_half_plane_only=self._front_half_plane_only,
+            turn_only=self._turn_only,
+            forward_distance_m=self._forward_vx * self._forward_seconds,
+            tolerance_m=self._boundary_tolerance_m,
+        )
+        if not boundary.allowed:
+            self._write({
+                "event": "motion_boundary_reject",
+                "index": index,
+                "step": step,
+                "reason": boundary.reason,
+                "current": list(current),
+                "predicted_position": list(boundary.predicted_position or current[:2]),
+                "host_s": self._host_s(),
+            })
+            self.get_logger().error(
+                f"motion boundary rejected step {step}: {boundary.reason}"
+            )
+            return False, boundary.reason
+        raw_age = (
+            time.monotonic() - self._diagnostic_clearance_receive_s
+            if self._diagnostic_clearance_receive_s is not None
+            else math.inf
+        )
+        rotation_inputs = resolve_rotation_clearance_source(
+            formal_left_clearance_m=self._left_clearance,
+            formal_right_clearance_m=self._right_clearance,
+            formal_valid=self._rotation_clearance_valid,
+            lease=self._rotation_lease,
+            current_pose=current,
+            current_frame=(self._odom.header.frame_id if self._odom is not None else ""),
+            diagnostic_left_clearance_m=self._diagnostic_left_clearance,
+            diagnostic_right_clearance_m=self._diagnostic_right_clearance,
+            diagnostic_age_seconds=raw_age,
+            lidar_fresh=self._lidar_fresh,
+            now=datetime.now(timezone.utc),
+            expected_binding=self._hardware_binding,
+        )
+        rotation_clearance = evaluate_rotation_clearance(
+            step,
+            left_clearance_m=rotation_inputs.left_clearance_m,
+            right_clearance_m=rotation_inputs.right_clearance_m,
+            minimum_clearance_m=self._min_rotation_clearance_m,
+            clearance_valid=rotation_inputs.valid,
+        )
+        if not rotation_clearance.allowed:
+            reason = rotation_inputs.reason or rotation_clearance.reason
+            if self._operator_authorized_rotation:
+                # Operator explicitly authorized turns without a rotation lease.
+                # Every motion still passes mode/error, lidar fresh, front
+                # clearance, motion bounds, turn<=30deg and the emergency stop.
+                self._write({
+                    "event": "operator_authorized_rotation_applied",
+                    "index": index,
+                    "step": step,
+                    "overridden_reason": reason,
+                    "left_clearance_m": rotation_inputs.left_clearance_m,
+                    "right_clearance_m": rotation_inputs.right_clearance_m,
+                    "rotation_clearance_valid": rotation_inputs.valid,
+                    "host_s": self._host_s(),
+                })
+                self.get_logger().warning(
+                    f"operator-authorized rotation overrides step {step}: {reason}"
+                )
+            else:
+                self._write({
+                    "event": "rotation_clearance_reject",
+                    "index": index,
+                    "step": step,
+                    "reason": reason,
+                    "left_clearance_m": rotation_inputs.left_clearance_m,
+                    "right_clearance_m": rotation_inputs.right_clearance_m,
+                    "rotation_clearance_valid": rotation_inputs.valid,
+                    "rotation_clearance_source": rotation_inputs.source,
+                    "required_clearance_m": self._min_rotation_clearance_m,
+                    "host_s": self._host_s(),
+                })
+                self.get_logger().error(
+                    f"rotation clearance rejected step {step}: "
+                    f"{reason}"
+                )
+                return False, reason
+        if self._dual_lidar_enabled:
+            dual_gate = evaluate_dual_lidar_rotation_gate(
+                fused_state=self._dual_lidar_fused_state,
+                dual_lidar_enabled=True,
+                unknown_is_clear=self._dual_lidar_unknown_is_clear,
+                occupied_sources=self._dual_lidar_occupied_sources,
+            )
+            if not dual_gate.allowed:
+                self._write({
+                    "event": "dual_lidar_rotation_reject",
+                    "index": index,
+                    "step": step,
+                    "reason": dual_gate.reason,
+                    "fused_state": self._dual_lidar_fused_state,
+                    "host_s": self._host_s(),
+                })
+                self.get_logger().error(
+                    f"dual-lidar rotation gate rejected step {step}: "
+                    f"{dual_gate.reason}"
+                )
+                return False, dual_gate.reason
         ok, reason = self._safety_ok()
         if not ok:
             self._write({"event": "abort", "index": index, "step": step,
@@ -545,6 +854,24 @@ class AutonomousLoop(Node):
             time.sleep(1.0)
             rclpy.spin_once(self, timeout_sec=0.2)
             after = self._odom_snapshot()
+            actual_boundary = position_within_boundary(
+                origin=origin,
+                position=after[:2],
+                max_radius_m=self._max_radius,
+                front_half_plane_only=self._front_half_plane_only,
+                tolerance_m=self._boundary_tolerance_m,
+            )
+            if not actual_boundary.allowed:
+                self._write({
+                    "event": "motion_boundary_violation",
+                    "index": index,
+                    "step": step,
+                    "reason": actual_boundary.reason,
+                    "actual": list(after),
+                    "host_s": self._host_s(),
+                })
+                self._emergency_stop()
+                return False, actual_boundary.reason
             distance = math.hypot(after[0] - before[0], after[1] - before[1])
             yaw_delta = abs(after[2] - before[2])
             verified = (distance > 0.03) if step == "f" else (
@@ -1235,10 +1562,100 @@ class AutonomousLoop(Node):
         )
         state: dict[str, object] = {"image_path": None}
         step_index = [0]
+        settings = get_settings()
+        semantic_enabled = bool(getattr(self, "_semantic_reasoning", False))
+        semantic_controller = None
+        observation_store = (
+            ObservationMemoryStore(settings=settings)
+            if settings.live_search_reasoner_use_observation_memory
+            else None
+        )
+        semantic_memory = SemanticSearchMemory(
+            default_ttl_sec=settings.live_search_negative_memory_ttl_seconds,
+            observation_store=observation_store,
+        )
+        observation_memory: list[dict] = []
+        semantic_observer = None
+
+        if semantic_enabled:
+            profile = TargetProfileResolver().resolve(target, use_llm=False)
+            semantic_controller = SemanticSearchController(
+                profile,
+                backend=str(getattr(self, "_search_reasoner", "hybrid")),
+                partial_threshold=settings.live_search_graph_match_partial_threshold,
+                strong_threshold=settings.live_search_graph_match_strong_threshold,
+            )
+            observation_memory = semantic_memory.retrieve_long_term(
+                profile.canonical_name_zh,
+                top_k=settings.observation_memory_retrieval_top_k,
+            )
+            self._write({
+                "event": "semantic_memory_loaded",
+                "observation_memory_enabled": bool(observation_store),
+                "observation_memory_count": len(observation_memory),
+                "observation_memory_ids": [
+                    str(item.get("memory_id"))
+                    for item in observation_memory
+                    if isinstance(item, dict) and item.get("memory_id")
+                ],
+                "negative_memory_enabled": settings.live_search_negative_memory_enabled,
+                "persistent_write_attempted": False,
+                "host_s": self._host_s(),
+            })
+
+            def analyze_semantic(image_path: object, _profile: object) -> dict:
+                if not isinstance(image_path, str):
+                    raise RuntimeError("semantic observation has no stable image")
+                quick_reuse = semantic_payload_from_quick_target_absence(
+                    getattr(self, "_last_llm_detection_payload", None),
+                    image_path=image_path,
+                    frame_id=str(state.get("frame_id", "semantic_live")),
+                )
+                if quick_reuse is not None:
+                    return quick_reuse
+                python = env.get(
+                    "SILICONFLOW_PYTHON",
+                    env.get(
+                        "GROUNDED_SAM_PYTHON",
+                        "/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python",
+                    ),
+                )
+                worker = PROJECT_ROOT / "app/detectors/siliconflow_vision_worker.py"
+                output_path = PROJECT_ROOT / "runtime/go2w/llm_semantic_observation.json"
+                command = [
+                    python, str(worker), "--image", image_path,
+                    "--output", str(output_path), "--target", target,
+                    "--extra-instructions",
+                    "完整列出当前画面的可见物体与关系，供下一视角选择；不要确认目标。",
+                    "--model", getattr(self, "_llm_model", ""),
+                ]
+                completed = subprocess.run(
+                    command, cwd=str(PROJECT_ROOT), env=env, text=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    timeout=120.0, check=False,
+                )
+                if completed.returncode != 0:
+                    raise RuntimeError(
+                        "semantic observer worker failed "
+                        f"rc={completed.returncode}: {completed.stderr[-600:]}"
+                    )
+                payload = json.loads(output_path.read_text(encoding="utf-8"))
+                payload.update({
+                    "image_path": image_path,
+                    "frame_id": str(state.get("frame_id", "semantic_live")),
+                    "source": "siliconflow_full_scene_existing_pipeline",
+                })
+                return payload
+
+            semantic_observer = LiveSemanticObserver(
+                analyze_semantic,
+                ttl_seconds=settings.live_search_reasoner_scene_ttl_seconds,
+            )
 
         def detect() -> list[Detection]:
             image_path, frame_id = self._latest_bundle_image(spool_root)
             state["image_path"] = image_path
+            state["frame_id"] = frame_id
             self._write({"event": "camera_bundle", "frame_id": frame_id,
                          "host_s": self._host_s()})
             objects = self._detect(image_path, prompt, env)
@@ -1257,6 +1674,9 @@ class AutonomousLoop(Node):
                         bbox=(bbox[0], bbox[1], bbox[2], bbox[3]),
                     )
                 )
+            if detections:
+                best = max(detections, key=lambda item: item.score)
+                self._feed_detection(best.label, best.score, best.bbox)
             return detections
 
         def verify(bbox: tuple[float, float, float, float]
@@ -1280,9 +1700,72 @@ class AutonomousLoop(Node):
         def snapshot() -> SensorSnapshot:
             return SensorSnapshot(
                 camera_fresh=True,
-                lidar_fresh=self._clearance is not None,
+                lidar_fresh=self._lidar_fresh is True,
                 robot_stationary=True,
+                rotation_clearance_valid=self._rotation_clearance_valid is True,
+                dual_lidar_clearance_valid=(
+                    self._dual_lidar_enabled
+                    and self._dual_lidar_fused_state == "clear"
+                ),
+                pandar_raw_fresh=self._pandar_raw_fresh is True,
             )
+
+        def semantic_observe():
+            if semantic_observer is None or semantic_controller is None:
+                return None
+            x, y, yaw = self._odom_snapshot()
+            return semantic_observer.observe(
+                target_profile=semantic_controller.target_profile,
+                frame_or_bundle=state.get("image_path"),
+                robot_pose={
+                    "x": x, "y": y, "yaw_rad": yaw,
+                    "yaw_deg": math.degrees(yaw),
+                },
+            )
+
+        def reason_next_view(context):
+            if semantic_controller is None:
+                raise RuntimeError("semantic controller is disabled")
+            context.negative_memory = semantic_memory
+            if settings.live_search_negative_memory_enabled:
+                semantic_memory.add_negative(
+                    target_key=semantic_controller.target_profile.canonical_name_zh,
+                    heading_sector=int(round(context.robot_yaw_deg / 30.0)),
+                    reason="当前稳定观察未发现目标",
+                    source_event_id=f"not_seen_scan_{context.scan_index:04d}",
+                    observation_pose=context.robot_pose,
+                    confidence=0.65,
+                )
+            return semantic_controller.propose(context)
+
+        def build_auxiliary_hints(semantic):
+            scene_graph = getattr(semantic, "scene_graph", None)
+            if scene_graph is None and isinstance(semantic, dict):
+                scene_graph = semantic.get("scene_graph")
+            psg = build_psg_auxiliary_hints(
+                scene_graph,
+                enabled=settings.live_search_reasoner_use_psg,
+                max_predicted_nodes=settings.video_psg_max_predicted_nodes,
+                confidence_threshold=settings.video_psg_confidence_threshold,
+            )
+            situated = build_precomputed_situated_prior_hints(
+                getattr(self, "_last_llm_detection_payload", None),
+                enabled=settings.live_search_reasoner_use_llm_situated_prior,
+            )
+            return {
+                "hints": [
+                    *list(psg.get("hints") or []),
+                    *list(situated.get("hints") or []),
+                ],
+                "status": {
+                    "psg": psg.get("status") or {},
+                    "llm_situated_prior": situated.get("status") or {},
+                    "priority_contract": (
+                        "observed_graph_and_negative_memory_before_auxiliary"
+                    ),
+                    "duplicate_network_call_started": False,
+                },
+            }
 
         config = StepSearchConfig(
             target=target,
@@ -1294,6 +1777,18 @@ class AutonomousLoop(Node):
             reach_area_ratio=reach_area_ratio,
             scan_turn_deg=self._scan_turn_deg,
             scan_span=self._scan_span,
+            semantic_reasoning_enabled=semantic_enabled,
+            search_reasoner_backend=str(getattr(self, "_search_reasoner", "legacy")),
+            search_reasoner_mode=str(getattr(self, "_search_reasoner_mode", "shadow")),
+            reasoner_min_confidence=settings.live_search_reasoner_min_confidence,
+            reasoner_allow_forward=bool(getattr(self, "_semantic_allow_forward", False)),
+            reasoner_max_turn_deg=min(
+                30.0, settings.live_search_reasoner_max_turn_deg
+            ),
+            reasoner_min_replan_seconds=max(
+                0.0, settings.live_search_reasoner_min_replan_seconds
+            ),
+            max_motion_steps=self._max_motion_steps,
         )
         runner = StepSearchRunner(
             config,
@@ -1302,6 +1797,13 @@ class AutonomousLoop(Node):
             execute_step=execute_step,
             snapshot=snapshot,
             odometry=self._odom_snapshot,
+            reason_next_view=reason_next_view if semantic_enabled else None,
+            semantic_observe=semantic_observe if semantic_enabled else None,
+            observation_memory=observation_memory,
+            negative_memory=semantic_memory if semantic_enabled else None,
+            build_auxiliary_hints=(
+                build_auxiliary_hints if semantic_enabled else None
+            ),
         )
         result = runner.run()
         for event in result["events"]:
@@ -1478,6 +1980,7 @@ class AutonomousLoop(Node):
                 f"{completed.stderr[-600:]}"
             )
         payload = json.loads(output_path.read_text(encoding="utf-8"))
+        self._last_llm_detection_payload = payload
         scene_summary = str(payload.get("scene_summary_zh") or "")
         if scene_summary:
             self.get_logger().info(
@@ -1540,6 +2043,83 @@ class AutonomousLoop(Node):
         if not self._wait_for(lambda: self._sport is not None and self._odom is not None,
                               10.0, "sport/odom"):
             return 2
+        if not self._wait_for(
+            lambda: self._lidar_fresh is True and self._clearance is not None,
+            5.0,
+            "fresh LiDAR clearance",
+        ):
+            return 2
+        if (
+            self._mode == "state_machine_search"
+            and self._turn_only
+            and not self._wait_for(
+                lambda: self._rotation_clearance_valid is not None,
+                3.0,
+                "rotation-clearance validity",
+            )
+        ):
+            if self._operator_authorized_rotation:
+                self._write({
+                    "event": "rotation_clearance_wait_bypassed",
+                    "reason": "operator_authorized_rotation",
+                    "host_s": self._host_s(),
+                })
+                self.get_logger().warning(
+                    "operator-authorized rotation: skipping rotation-clearance "
+                    "validity wait"
+                )
+            else:
+                return 2
+        if self._rotation_lease_error:
+            if self._operator_authorized_rotation:
+                self._write({
+                    "event": "rotation_lease_error_bypassed",
+                    "reason": self._rotation_lease_error,
+                    "host_s": self._host_s(),
+                })
+                self.get_logger().warning(
+                    f"operator-authorized rotation overrides lease error: "
+                    f"{self._rotation_lease_error}"
+                )
+            else:
+                self._write({
+                    "event": "rotation_lease_reject",
+                    "reason": self._rotation_lease_error,
+                    "host_s": self._host_s(),
+                })
+                self.get_logger().error(self._rotation_lease_error)
+                return 2
+        if self._rotation_lease is not None and not self._wait_for(
+            lambda: self._diagnostic_clearance_receive_s is not None,
+            3.0,
+            "raw diagnostic rotation clearance",
+        ):
+            if not self._operator_authorized_rotation:
+                return 2
+        self._motion_origin = self._odom_snapshot()
+        if self._rotation_lease is not None:
+            lease = evaluate_rotation_lease(
+                self._rotation_lease,
+                current_pose=self._motion_origin,
+                current_frame=(self._odom.header.frame_id if self._odom is not None else ""),
+                now=datetime.now(timezone.utc),
+                expected_binding=self._hardware_binding,
+            )
+            if not lease.allowed:
+                self._write({
+                    "event": "rotation_lease_reject",
+                    "reason": lease.reason,
+                    "motion_origin": list(self._motion_origin),
+                    "host_s": self._host_s(),
+                })
+                if self._operator_authorized_rotation:
+                    self.get_logger().warning(
+                        f"operator-authorized rotation overrides lease invalidity: "
+                        f"{lease.reason}"
+                    )
+                else:
+                    self.get_logger().error(lease.reason)
+                    return 2
         if self._record_video:
             try:
                 self._video = BundleVideoRecorder(
@@ -1552,13 +2132,47 @@ class AutonomousLoop(Node):
                 )
             except RuntimeError as exc:
                 self.get_logger().warn(f"video recording disabled: {exc}")
-        self._write({"event": "start", "host_s": self._host_s(),
-                     "pattern": self._pattern, "mode": self._mode})
-        try:
-            self._arm(True)
-        except RuntimeError as exc:
-            self.get_logger().error(str(exc))
-            return 3
+        self._write({
+            "event": "start",
+            "host_s": self._host_s(),
+            "pattern": self._pattern,
+            "mode": self._mode,
+            "motion_origin": list(self._motion_origin),
+            "max_radius_m": self._max_radius,
+            "front_half_plane_only": self._front_half_plane_only,
+            "turn_only": self._turn_only,
+            "max_motion_steps": self._max_motion_steps,
+            "min_rotation_clearance_m": self._min_rotation_clearance_m,
+            "rotation_lease_path": self._rotation_lease_path or None,
+            "rotation_lease_active": self._rotation_lease is not None,
+        })
+        ready, reason = self._safety_ok()
+        if not ready:
+            self._write({
+                "event": "pre_arm_safety_reject",
+                "reason": reason,
+                "host_s": self._host_s(),
+            })
+            self.get_logger().error(f"pre-arm safety rejected: {reason}")
+            return 2
+        if self._mode == "state_machine_search":
+            # Detection and semantic reasoning can be slow, and each actual
+            # step already performs boundary, rotation-clearance and fresh
+            # LiDAR checks before idempotently arming.  Do not touch the
+            # control service when a proposed step will be rejected by those
+            # gates (the current rotation-unvalidated deployment is one such
+            # case).
+            self._write({
+                "event": "initial_arm_deferred",
+                "reason": "state_machine_steps_arm_only_after_motion_gates",
+                "host_s": self._host_s(),
+            })
+        else:
+            try:
+                self._arm(True)
+            except RuntimeError as exc:
+                self.get_logger().error(str(exc))
+                return 3
 
         if self._mode == "wander":
             started = time.monotonic()
@@ -1642,11 +2256,18 @@ class AutonomousLoop(Node):
                 self._write({"event": "pattern_complete",
                              "host_s": self._host_s()})
 
-        self._emergency_stop()
-        try:
-            self._arm(False)
-        except RuntimeError as exc:
-            self.get_logger().error(str(exc))
+        if self._armed_by_runner:
+            self._emergency_stop()
+            try:
+                self._arm(False)
+            except RuntimeError as exc:
+                self.get_logger().error(str(exc))
+        else:
+            self._write({
+                "event": "control_cleanup_skipped",
+                "reason": "runner_never_armed_or_sent_motion",
+                "host_s": self._host_s(),
+            })
         end = self._odom_snapshot()
         self._write({"event": "finish", "host_s": self._host_s(),
                      "odom": list(end), "clearance": self._clearance})
@@ -1706,6 +2327,34 @@ def main() -> None:
     parser.add_argument("--max-radius", type=float, default=1.5,
                         help="search/approach radius limit in metres; "
                              "0 disables the limit (free exploration)")
+    parser.add_argument(
+        "--front-half-plane-only",
+        action="store_true",
+        help="keep translation in the half-plane ahead of the initial pose",
+    )
+    parser.add_argument(
+        "--turn-only",
+        action="store_true",
+        help="reject every forward command at the final motion executor",
+    )
+    parser.add_argument(
+        "--max-motion-steps",
+        type=int,
+        default=0,
+        help="stop state-machine search after this many successful motion steps; 0 is unlimited",
+    )
+    parser.add_argument(
+        "--min-rotation-clearance",
+        type=float,
+        default=0.0,
+        help="require both live side-clearance topics to meet this full-body rotation envelope",
+    )
+    parser.add_argument(
+        "--rotation-clearance-evidence",
+        default="",
+        help="short-lived initial-pose physical cross-check JSON; enables "
+             "raw side clearance only while the lease remains valid",
+    )
     parser.add_argument("--scan-turn-deg", type=float, default=30.0)
     parser.add_argument("--scan-span", type=int, default=3)
     parser.add_argument(
@@ -1725,6 +2374,63 @@ def main() -> None:
     parser.add_argument("--video-scale", type=float, default=0.4)
     parser.add_argument("--scan360-steps", type=int, default=8)
     parser.add_argument("--scan360-turn-deg", type=float, default=45.0)
+    parser.add_argument(
+        "--semantic-reasoning", action="store_true",
+        help="enable event-driven UniGoal-style semantic next-view reasoning",
+    )
+    parser.add_argument(
+        "--search-reasoner", choices=("legacy", "unigoal", "hybrid"),
+        default="legacy",
+    )
+    parser.add_argument(
+        "--search-reasoner-mode", choices=("shadow", "active"),
+        default="shadow",
+    )
+    parser.add_argument(
+        "--semantic-no-forward", action="store_true",
+        help="force semantic forward requests off (forward is already off by default)",
+    )
+    parser.add_argument(
+        "--semantic-allow-forward", action="store_true",
+        help="allow semantic short-forward requests through all existing safety gates",
+    )
+    parser.add_argument(
+        "--dual-lidar-safety-config",
+        default="configs/go2w/dual_lidar_safety.yaml",
+        help="dual-LiDAR safety policy; enabled=true is fail-closed until evidence is provided",
+    )
+    parser.add_argument(
+        "--dual-lidar-evidence",
+        default="",
+        help="fused dual-LiDAR evidence JSON with a fused_state field; "
+             "required when dual-lidar safety is enabled",
+    )
+    parser.add_argument(
+        "--hardware-geometry-config",
+        default="configs/go2w/current_hardware_geometry.yaml",
+        help="current whole-machine geometry config (0.70 x 0.43 x 0.70 m)",
+    )
+    parser.add_argument(
+        "--hardware-state-config",
+        default="configs/go2w/current_hardware_state.yaml",
+        help="current hardware state manifest",
+    )
+    parser.add_argument(
+        "--stage2-readiness",
+        default="",
+        help="write a machine-readable Stage-2 readiness report to this JSON path "
+             "and exit; no motion is attempted",
+    )
+    parser.add_argument(
+        "--operator-authorized-rotation",
+        action="store_true",
+        help="EXPLICIT operator authorization to allow in-place turns WITHOUT a "
+             "four-direction pose-bound rotation lease. The operator must confirm "
+             "the swept envelope is clear and hold the remote emergency stop. All "
+             "other safety gates (mode/error, lidar fresh, front clearance, motion "
+             "bounds, turn<=30deg, single step, emergency stop) remain active. "
+             "Every motion event records operator_authorized_rotation=true.",
+    )
     args = parser.parse_args()
     pattern = [item for item in args.pattern.split(",") if item]
     rclpy.init()
@@ -1745,22 +2451,184 @@ def main() -> None:
     node._align_threshold = args.align_threshold
     node._align_yaw_max_deg = args.align_yaw_max_deg
     node._reach_area_ratio = args.reach_area_ratio
+    node._semantic_reasoning = args.semantic_reasoning
+    node._search_reasoner = args.search_reasoner
+    node._search_reasoner_mode = args.search_reasoner_mode
+    node._semantic_allow_forward = bool(
+        args.semantic_allow_forward and not args.semantic_no_forward
+    )
+    node._front_half_plane_only = bool(args.front_half_plane_only)
+    node._turn_only = bool(args.turn_only)
+    node._max_motion_steps = max(0, int(args.max_motion_steps))
+    node._min_rotation_clearance_m = max(0.0, float(args.min_rotation_clearance))
+    # ---- Dual-LiDAR safety gate (fail-closed) ----------------------------
+    hardware_binding: dict | None = None
+    dual_lidar_config = None
+    node._dual_lidar_enabled = False
+    node._dual_lidar_unknown_is_clear = False
+    node._dual_lidar_fused_state = None
+    node._dual_lidar_occupied_sources = []
+    try:
+        if Path(args.dual_lidar_safety_config).is_file():
+            sys.path.insert(
+                0, str(PROJECT_ROOT / "ros2_ws" / "src" / "go2w_lidar_preprocessor")
+            )
+            from go2w_lidar_preprocessor.dual_lidar_config import (
+                load_dual_lidar_safety_config,
+            )
+
+            dual_lidar_config = load_dual_lidar_safety_config(args.dual_lidar_safety_config)
+            node._dual_lidar_enabled = bool(dual_lidar_config.get("enabled", False))
+            node._dual_lidar_unknown_is_clear = bool(
+                dual_lidar_config.get("unknown_is_clear", False)
+            )
+            if node._dual_lidar_enabled:
+                if not args.dual_lidar_evidence:
+                    raise ValueError(
+                        "--dual-lidar-evidence is required when dual-lidar safety is enabled"
+                    )
+                evidence = json.loads(
+                    Path(args.dual_lidar_evidence).read_text(encoding="utf-8")
+                )
+                node._dual_lidar_fused_state = str(evidence.get("fused_state") or "unknown")
+                node._dual_lidar_occupied_sources = list(
+                    evidence.get("occupied_sources") or []
+                )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        node._rotation_lease_error = f"dual-lidar safety config rejected: {exc}"
+
+    # ---- Current hardware binding for the pose-bound lease ---------------
+    try:
+        geometry = load_current_hardware_geometry(args.hardware_geometry_config)
+        state = load_current_hardware_state(args.hardware_state_config)
+        hardware_binding = build_rotation_lease_binding(
+            hardware_state_hash=state_hash(state),
+            geometry_hash=geometry_hash(geometry),
+            extrinsic_version="hesai_pandarxt16_extrinsics_20260813_unconfirmed",
+            clock_tier=DEFAULT_PANDAR_CLOCK_TIER.value,
+        )
+        node._hardware_geometry_hash = geometry_hash(geometry)
+        node._hardware_state_hash = state_hash(state)
+        node._hardware_binding = hardware_binding
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        node._rotation_lease_error = f"current hardware binding rejected: {exc}"
+
+    node._operator_authorized_rotation = bool(args.operator_authorized_rotation)
+    if node._operator_authorized_rotation:
+        node._write({
+            "event": "operator_authorized_rotation_declared",
+            "host_s": node._host_s(),
+            "scope": "turn steps allowed without four-direction lease",
+            "remaining_gates": [
+                "sport_mode_error",
+                "lidar_fresh",
+                "front_clearance",
+                "motion_bounds",
+                "turn_le_30deg",
+                "single_step",
+                "emergency_stop",
+            ],
+        })
+        node.get_logger().warning(
+            "operator-authorized rotation: turns allowed without a rotation lease; "
+            "all other safety gates remain active and every motion is recorded"
+        )
+    node._rotation_lease_path = str(args.rotation_clearance_evidence or "")
+    if node._rotation_lease_path:
+        lease_scope_errors = rotation_lease_stage2_scope_errors(
+            mode=args.mode,
+            semantic_reasoning=args.semantic_reasoning,
+            search_reasoner=args.search_reasoner,
+            search_reasoner_mode=args.search_reasoner_mode,
+            turn_only=args.turn_only,
+            front_half_plane_only=args.front_half_plane_only,
+            max_motion_steps=args.max_motion_steps,
+            max_radius_m=args.max_radius,
+            semantic_allow_forward=args.semantic_allow_forward,
+        )
+        if lease_scope_errors:
+            node._rotation_lease_error = (
+                "pose-bound rotation evidence Stage-2 scope rejected: "
+                + "; ".join(lease_scope_errors)
+            )
+        elif args.odom_topic != "/go2w/odom/wheel":
+            node._rotation_lease_error = (
+                "pose-bound rotation evidence requires "
+                "--odom-topic /go2w/odom/wheel"
+            )
+        elif node._min_rotation_clearance_m + 1e-9 < GO2W_ROTATION_ENVELOPE_RADIUS_M:
+            node._rotation_lease_error = (
+                "pose-bound rotation evidence requires "
+                f"--min-rotation-clearance >= {GO2W_ROTATION_ENVELOPE_RADIUS_M:.3f}"
+            )
+        else:
+            try:
+                node._rotation_lease = load_rotation_lease(
+                    node._rotation_lease_path,
+                    required_envelope_radius_m=GO2W_ROTATION_ENVELOPE_RADIUS_M,
+                    project_root=PROJECT_ROOT,
+                    expected_binding=hardware_binding,
+                )
+            except (OSError, ValueError, json.JSONDecodeError) as exc:
+                node._rotation_lease_error = f"rotation evidence rejected: {exc}"
+
+    # ---- Machine-readable Stage-2 readiness (no motion attempted) ---------
+    if args.stage2_readiness:
+        readiness = compute_stage2_readiness(
+            semantic_v1_ready=True,
+            pandar_raw_ready=True,
+            pandar_preprocess_ready=True,
+            pandar_extrinsics_validated=False,
+            current_hardware_geometry_loaded=hardware_binding is not None,
+            dual_lidar_rotation_observability_valid=False,
+            current_hardware_four_direction_evidence_valid=False,
+            pose_bound_rotation_lease_valid=node._rotation_lease is not None
+            and not node._rotation_lease_error,
+            odom_fresh=True,
+            mode_ok=True,
+            motion_action_available=False,
+            no_stage2_error=not bool(node._rotation_lease_error),
+            reasons={
+                "stage2": (
+                    "Active turn-only is BLOCKED until the Pandar extrinsic, "
+                    "dual-lidar observability, four-direction evidence and a "
+                    "pose-bound lease all pass on the current hardware"
+                ),
+                "pandar_extrinsics_validated": "multi-scene extrinsic calibration pending",
+                "dual_lidar_rotation_observability_valid": "requires validated extrinsics + self-occlusion",
+                "current_hardware_four_direction_evidence_valid": "empty baseline + front/right/rear/left pending",
+                "pose_bound_rotation_lease_valid": node._rotation_lease_error or "no current lease",
+                "motion_action_available": "no /go2w/motion Action server on the current rig",
+            },
+        )
+        readiness_path = Path(args.stage2_readiness)
+        readiness_path.parent.mkdir(parents=True, exist_ok=True)
+        readiness_path.write_text(
+            json.dumps(readiness.to_dict(), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        print(json.dumps(readiness.to_dict(), ensure_ascii=False, indent=2))
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+        return
     try:
         code = node.run()
     except Exception as exc:
         node.get_logger().error(f"unhandled runner exception: {exc}")
-        try:
-            node._emergency_stop()
-        except Exception as stop_exc:
-            node.get_logger().error(
-                f"emergency stop during cleanup failed: {stop_exc}"
-            )
-        try:
-            node._arm(False)
-        except Exception as disarm_exc:
-            node.get_logger().error(
-                f"disarm during cleanup failed: {disarm_exc}"
-            )
+        if node._armed_by_runner:
+            try:
+                node._emergency_stop()
+            except Exception as stop_exc:
+                node.get_logger().error(
+                    f"emergency stop during cleanup failed: {stop_exc}"
+                )
+            try:
+                node._arm(False)
+            except Exception as disarm_exc:
+                node.get_logger().error(
+                    f"disarm during cleanup failed: {disarm_exc}"
+                )
         try:
             node._output.close()
         except Exception:

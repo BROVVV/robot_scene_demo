@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import math
 
 import numpy as np
 import rclpy
@@ -17,6 +18,7 @@ from tf2_ros import Buffer, TransformException, TransformListener
 
 from .config import load_safety_ready_config
 from .preprocess_core import (
+    collision_obstacles,
     directional_clearance,
     filter_points_base_link,
     laser_scan_ranges,
@@ -48,11 +50,17 @@ class LidarPreprocessor(Node):
         self._obstacles_pub = self.create_publisher(
             PointCloud2, "/go2w/lidar/obstacles", qos_profile_sensor_data
         )
+        self._collision_obstacles_pub = self.create_publisher(
+            PointCloud2, "/go2w/lidar/collision_obstacles", qos_profile_sensor_data
+        )
         self._scan_pub = self.create_publisher(
             LaserScan, "/go2w/lidar/scan", qos_profile_sensor_data
         )
         self._clearance_pub = self.create_publisher(
             Vector3Stamped, "/go2w/lidar/clearance", 10
+        )
+        self._diagnostic_clearance_pub = self.create_publisher(
+            Vector3Stamped, "/go2w/diagnostics/lidar_clearance_raw", 10
         )
         self._front_pub = self.create_publisher(
             Float32, "/go2w/safety/front_clearance", 10
@@ -62,6 +70,9 @@ class LidarPreprocessor(Node):
         )
         self._right_pub = self.create_publisher(
             Float32, "/go2w/safety/right_clearance", 10
+        )
+        self._rotation_clearance_valid_pub = self.create_publisher(
+            Bool, "/go2w/safety/rotation_clearance_valid", 10
         )
         self._fresh_pub = self.create_publisher(
             Bool, "/go2w/safety/lidar_fresh", 10
@@ -110,6 +121,7 @@ class LidarPreprocessor(Node):
             (rotation.x, rotation.y, rotation.z, rotation.w),
         )
         filtered, obstacles = filter_points_base_link(xyz, self._parameters)
+        collision_points = collision_obstacles(obstacles, self._parameters)
         header = copy.deepcopy(message.header)
         header.frame_id = "base_link"
         self._filtered_pub.publish(
@@ -118,17 +130,39 @@ class LidarPreprocessor(Node):
         self._obstacles_pub.publish(
             point_cloud2.create_cloud_xyz32(header, obstacles.tolist())
         )
-        clearance = directional_clearance(obstacles, self._parameters)
+        self._collision_obstacles_pub.publish(
+            point_cloud2.create_cloud_xyz32(header, collision_points.tolist())
+        )
+        clearance = directional_clearance(collision_points, self._parameters)
+        rotation_validation = self._config.get("rotation_clearance_validation") or {}
+        rotation_clearance_valid = bool(rotation_validation.get("valid", False))
         clearance_message = Vector3Stamped()
         clearance_message.header = header
         clearance_message.vector.x = clearance.front
-        clearance_message.vector.y = clearance.left
-        clearance_message.vector.z = clearance.right
+        clearance_message.vector.y = (
+            clearance.left if rotation_clearance_valid else math.nan
+        )
+        clearance_message.vector.z = (
+            clearance.right if rotation_clearance_valid else math.nan
+        )
         self._clearance_pub.publish(clearance_message)
+        diagnostic_clearance = Vector3Stamped()
+        diagnostic_clearance.header = header
+        diagnostic_clearance.vector.x = clearance.front
+        diagnostic_clearance.vector.y = clearance.left
+        diagnostic_clearance.vector.z = clearance.right
+        self._diagnostic_clearance_pub.publish(diagnostic_clearance)
         self._front_pub.publish(Float32(data=clearance.front))
-        self._left_pub.publish(Float32(data=clearance.left))
-        self._right_pub.publish(Float32(data=clearance.right))
-        self._publish_scan(header, obstacles)
+        self._left_pub.publish(
+            Float32(data=clearance.left if rotation_clearance_valid else math.nan)
+        )
+        self._right_pub.publish(
+            Float32(data=clearance.right if rotation_clearance_valid else math.nan)
+        )
+        self._rotation_clearance_valid_pub.publish(
+            Bool(data=rotation_clearance_valid)
+        )
+        self._publish_scan(header, collision_points)
         self._last_valid_ns = self.get_clock().now().nanoseconds
         self._fresh_pub.publish(Bool(data=True))
 

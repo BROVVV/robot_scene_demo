@@ -74,8 +74,14 @@ class VideoObjectTracker:
         time_gap = max(0.0, frame.timestamp_sec - state.last_frame.timestamp_sec)
         if time_gap > self.max_time_gap_sec:
             return 0.0
+        label_similarity = _label_similarity(last.label, obj.label)
+        # Spatial overlap alone must never merge different nearby objects. This
+        # is especially important for semantic relations such as bin-near-water-
+        # dispenser, where both boxes may overlap heavily in image space.
+        if label_similarity < 0.55:
+            return 0.0
         score = 0.0
-        if _label_similarity(last.label, obj.label) >= 0.82:
+        if label_similarity >= 0.82:
             score += 0.45
         iou = _bbox_iou(last.bbox, obj.bbox)
         if iou > 0.3:

@@ -202,6 +202,15 @@ def _build_fast_user_prompt(
 
 def _normalize_fast_result(raw: dict, target_text: str) -> dict:
     raw_objects = raw.get("objects") or []
+    raw_relations = raw.get("relations") or []
+    raw_decision = raw.get("target_decision") or {}
+    all_indices = [
+        relation.get(key)
+        for relation in raw_relations
+        for key in ("source_index", "target_index")
+    ]
+    all_indices.extend(raw_decision.get("matched_indices") or [])
+    zero_based_indices = _contains_zero_index(all_indices)
     objects = []
     for index, obj in enumerate(raw_objects, start=1):
         obj_id = f"obj_{index:03d}"
@@ -228,9 +237,13 @@ def _normalize_fast_result(raw: dict, target_text: str) -> dict:
         )
 
     relations = []
-    for relation in raw.get("relations") or []:
-        source_id = _relation_object_id(relation, "source", len(objects))
-        target_id = _relation_object_id(relation, "target", len(objects))
+    for relation in raw_relations:
+        source_id = _relation_object_id(
+            relation, "source", len(objects), zero_based=zero_based_indices
+        )
+        target_id = _relation_object_id(
+            relation, "target", len(objects), zero_based=zero_based_indices
+        )
         if source_id is None or target_id is None:
             continue
         relations.append(
@@ -246,17 +259,16 @@ def _normalize_fast_result(raw: dict, target_text: str) -> dict:
             }
         )
 
-    decision = raw.get("target_decision") or {}
+    decision = raw_decision
     target_is_present = bool(decision.get("is_present", False))
     matched_ids = []
     matched_indices = decision.get("matched_indices") or []
-    matched_zero_based = _contains_zero_index(matched_indices)
     for item in matched_indices:
         try:
             item_index = int(item)
         except (TypeError, ValueError):
             continue
-        object_id = _index_to_object_id(item_index, len(objects), matched_zero_based)
+        object_id = _index_to_object_id(item_index, len(objects), zero_based_indices)
         if object_id is not None:
             matched_ids.append(object_id)
 
@@ -316,7 +328,13 @@ def _horizontal_from_relative(relative: str) -> str:
     return "center"
 
 
-def _relation_object_id(relation: dict, side: str, object_count: int) -> str | None:
+def _relation_object_id(
+    relation: dict,
+    side: str,
+    object_count: int,
+    *,
+    zero_based: bool | None = None,
+) -> str | None:
     explicit = relation.get(f"{side}_id")
     if isinstance(explicit, str) and explicit.startswith("obj_"):
         return explicit
@@ -324,9 +342,10 @@ def _relation_object_id(relation: dict, side: str, object_count: int) -> str | N
         index = int(relation.get(f"{side}_index"))
     except (TypeError, ValueError):
         return None
-    zero_based = _contains_zero_index(
-        [relation.get("source_index"), relation.get("target_index")]
-    )
+    if zero_based is None:
+        zero_based = _contains_zero_index(
+            [relation.get("source_index"), relation.get("target_index")]
+        )
     return _index_to_object_id(index, object_count, zero_based)
 
 

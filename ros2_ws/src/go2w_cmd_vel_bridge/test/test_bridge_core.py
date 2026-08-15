@@ -7,6 +7,7 @@ def safe_state(**updates):
         "operator_armed": True,
         "lease_alive": True,
         "lidar_fresh": True,
+        "rotation_clearance_valid": True,
         "lio_fresh": True,
         "robot_error_zero": True,
         "emergency_stop": False,
@@ -25,6 +26,7 @@ def test_default_state_and_each_critical_gate_cancel_motion():
     for update in (
         {"lease_alive": False},
         {"lidar_fresh": False},
+        {"rotation_clearance_valid": False},
         {"robot_error_zero": False},
         {"emergency_stop": True},
         {"remote_override": True},
@@ -81,3 +83,19 @@ def test_speed_and_acceleration_limits_are_both_enforced():
     assert decision.allowed
     assert abs(decision.velocity.linear_x - 0.02) < 1e-9
     assert abs(decision.velocity.angular_z + 0.04) < 1e-9
+
+
+def test_unvalidated_rotation_still_allows_zero_yaw_forward_request():
+    forward = decide_velocity(
+        Velocity(0.1, 0.0), Velocity(), command_age_seconds=0.0,
+        dt_seconds=0.1, source="search",
+        safety=safe_state(rotation_clearance_valid=False),
+    )
+    assert forward.allowed
+    turn = decide_velocity(
+        Velocity(0.0, 0.1), Velocity(), command_age_seconds=0.0,
+        dt_seconds=0.1, source="search",
+        safety=safe_state(rotation_clearance_valid=False),
+    )
+    assert not turn.allowed
+    assert "rotation_clearance_unvalidated" in turn.reason

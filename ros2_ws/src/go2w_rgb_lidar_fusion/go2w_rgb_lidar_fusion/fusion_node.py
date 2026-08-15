@@ -22,9 +22,17 @@ from std_msgs.msg import Bool
 from tf2_ros import Buffer, TransformException, TransformListener
 from vision_msgs.msg import Detection2DArray, Detection3D, Detection3DArray
 
-from .config_gate import load_extrinsics_gate, load_fusion_gate
+from .config_gate import (
+    load_diagnostic_fusion_gate,
+    load_extrinsics_gate,
+    load_fusion_gate,
+)
 from .fusion_core import localize_mask_points
-from .overlay_core import load_confirmed_transform, transform_lidar_to_camera
+from .overlay_core import (
+    load_confirmed_transform,
+    load_diagnostic_transform,
+    transform_lidar_to_camera,
+)
 
 
 def message_stamp_ns(message) -> int:
@@ -109,6 +117,7 @@ class FusionNode(Node):
         self._infos = deque(maxlen=5)
         self._masks = deque(maxlen=5)
         self._clouds = deque(maxlen=10)
+        self._diagnostic_enabled = False
         self._enabled = False
         self._extrinsics_validated = False
         self._blocker = "fusion configuration has not been evaluated"
@@ -120,6 +129,16 @@ class FusionNode(Node):
         fusion_config = str(self.get_parameter("fusion_config").value or "")
         camera_config = str(self.get_parameter("camera_config").value or "")
         extrinsics_config = str(self.get_parameter("extrinsics_config").value or "")
+        try:
+            _, self._fusion_parameters = load_diagnostic_fusion_gate(
+                fusion_config,
+                camera_config,
+                extrinsics_config,
+            )
+            self._lidar_to_camera = load_diagnostic_transform(extrinsics_config)
+            self._diagnostic_enabled = True
+        except Exception as exc:
+            self._blocker = f"diagnostic overlay unavailable: {exc}"
         try:
             load_extrinsics_gate(camera_config, extrinsics_config)
             self._extrinsics_validated = True
@@ -133,6 +152,7 @@ class FusionNode(Node):
                 extrinsics_config,
             )
             self._lidar_to_camera = load_confirmed_transform(extrinsics_config)
+            self._diagnostic_enabled = True
             self._enabled = True
             self._blocker = ""
         except Exception as exc:
@@ -156,6 +176,9 @@ class FusionNode(Node):
         self._ready_pub = self.create_publisher(Bool, "/perception/fusion_ready", 10)
         self._extrinsics_pub = self.create_publisher(
             Bool, "/perception/rgb_lidar_extrinsics_validated", 10
+        )
+        self._overlay_ready_pub = self.create_publisher(
+            Bool, "/perception/rgb_lidar_overlay_ready", 10
         )
         self.create_subscription(
             Image, "/camera/front/image_raw", self._images.append, qos_profile_sensor_data
@@ -183,19 +206,36 @@ class FusionNode(Node):
     def _heartbeat(self) -> None:
         self._ready_pub.publish(Bool(data=self._enabled))
         self._extrinsics_pub.publish(Bool(data=self._extrinsics_validated))
+        self._overlay_ready_pub.publish(Bool(data=self._diagnostic_enabled))
+        level = (
+            DiagnosticStatus.OK
+            if self._enabled
+            else DiagnosticStatus.WARN
+            if self._diagnostic_enabled
+            else DiagnosticStatus.ERROR
+        )
+        message = (
+            "navigation-grade fusion gate open"
+            if self._enabled
+            else "diagnostic overlay ready; metric 3D gate closed"
+            if self._diagnostic_enabled
+            else "fusion gate closed"
+        )
         self._diagnostic(
-            DiagnosticStatus.OK if self._enabled else DiagnosticStatus.ERROR,
-            "fusion gate open" if self._enabled else "fusion gate closed",
+            level,
+            message,
             {
                 "blocker": self._blocker,
                 "extrinsics_blocker": self._extrinsics_blocker,
+                "diagnostic_overlay_ready": str(self._diagnostic_enabled).lower(),
+                "authorizes_3d_output": str(self._enabled).lower(),
                 "authorizes_motion": "false",
             },
         )
 
     def _detection(self, detections: Detection2DArray) -> None:
         if (
-            not self._enabled
+            not self._diagnostic_enabled
             or self._fusion_parameters is None
             or self._lidar_to_camera is None
         ):
@@ -264,6 +304,18 @@ class FusionNode(Node):
                         "reason": result.reason,
                         "point_count": result.point_count,
                         "timestamp_delta_ms": result.timestamp_delta_ms,
+                    },
+                )
+                return
+            if not self._enabled:
+                self._diagnostic(
+                    DiagnosticStatus.WARN,
+                    "diagnostic localization only; metric 3D output suppressed",
+                    {
+                        "point_count": result.point_count,
+                        "timestamp_delta_ms": result.timestamp_delta_ms,
+                        "authorizes_3d_output": "false",
+                        "authorizes_motion": "false",
                     },
                 )
                 return

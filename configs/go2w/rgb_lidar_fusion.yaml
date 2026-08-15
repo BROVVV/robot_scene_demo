@@ -1,9 +1,12 @@
 schema_version: 1
 enabled: true
-validation_status: validated
+validation_status: experimental
+diagnostic_overlay_enabled: true
+navigation_geometry_validated: false
+authorizes_3d_localization: false
 acceptance_override:
   requested_by: brov
-  reason: temporary experimental acceptance of the plane-based extrinsic candidate so remaining plan stages can continue; extrinsic threshold lowered from 5.0 px to 40.0 px
+  reason: temporary experimental acceptance of the plane-based extrinsic candidate for stationary diagnostic overlays; extrinsic threshold lowered from 5.0 px to 40.0 px
   fusion_limitation: extrinsic yaw/in-plane translation are weakly constrained; 3D localization is experimental and not trusted for navigation
 maximum_timestamp_delta_ms: 3000.0
 temporal_sync_note: live camera frames are ~2.33 s newer than the buffered /go2w/sensors/cloud frames; window widened experimentally so the fusion can pair them (static scene only)

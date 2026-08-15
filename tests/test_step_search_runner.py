@@ -146,6 +146,24 @@ class StepSearchRunnerTest(unittest.TestCase):
         self.assertEqual(result["status"], "time_limit")
         self.assertEqual(steps, [])
 
+    def test_operator_motion_step_limit_stops_after_one_successful_step(self):
+        steps: list[str] = []
+        runner = self._runner(
+            StepSearchConfig(
+                target="灰色书包",
+                max_seconds=30.0,
+                max_motion_steps=1,
+                scan_turn_deg=10.0,
+            ),
+            lambda: [],
+            lambda _bbox: VerificationResult("", False, 0.0),
+            steps,
+        )
+        result = runner.run()
+        self.assertEqual(result["status"], "motion_step_limit")
+        self.assertEqual(result["steps_executed"], 1)
+        self.assertEqual(steps, ["r10"])
+
 
 if __name__ == "__main__":
     unittest.main()

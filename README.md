@@ -25,7 +25,7 @@ footprint 与急停确认全部通过时，`execute` 模式才会请求 Nav2 执
 全局/局部规划交给 Nav2，最终硬件保护仍由 Collision Monitor、机器狗底层、
 厂商 SDK 和操作员急停共同负责。
 
-## Go2-W 真机项目当前进度还原指南（2026-08-13）
+## Go2-W 真机项目当前进度还原指南（2026-08-15）
 
 > 本节是“照着做就能还原当前真机进度”的权威步骤。项目其余章节保留离线/视频/
 > Nav2 软件流程。硬件证据（bag、录像、JSONL）体积大且含私人画面，**不进入
@@ -39,7 +39,12 @@ footprint 与急停确认全部通过时，`execute` 模式才会请求 Nav2 执
 | 相机内参（9×6，15 mm） | PASS | `configs/go2w/camera_intrinsics.yaml`；105 视角 |
 | LiDAR/IMU 时间桥 | PASS | `configs/go2w/time_sync.yaml`；云 RMSE <1 ms |
 | base→LiDAR TF | PASS（实机复核） | `official_reference.yaml`，pitch −15.09°（z-up） |
-| LiDAR 预处理 /scan / clearance | PASS（静止实测） | `lidar_preprocess.yaml`；自过滤、720-bin |
+| LiDAR 预处理 /scan / clearance | PARTIAL（静止实测） | 碰撞高度/轮组自滤/720-bin PASS；旋转包络 **BLOCKED** |
+| 外接 Hesai PandarXT-16 raw | PASS（隔离只读出云） | 10 Hz、64,000 点/帧、16 ring、累计丢包 0；正式外参 **BLOCKED** |
+| Pandar 诊断预处理 | CODE READY / PHYSICAL PENDING | `hesai_pandarxt16_preprocessor` 节点；zero-return（<=0.05 m）过滤；时钟 tier 默认 `host_receive_time_only` |
+| Pandar 正式外参 | **BLOCKED / CANDIDATE** | 照片+静态配准候选不发布 TF；需多场景配准 + self-occlusion 验收 |
+| Pandar 安全融合 | **BLOCKED** | `dual_lidar_safety.yaml` 默认 disabled；Pandar 只在 validated 后贡献正式 CLEAR |
+| 双雷达旋转可观测性 | **BLOCKED**（工具就绪） | 内置 L2 720/720 不可观测；Pandar validated 后可互补，仍按实时证据 |
 | 轮式里程计 `/go2w/odom/wheel` | EXPERIMENTAL | 四轮 dq×0.089 m + Sport yaw；转弯跳过平移 |
 | 融合里程计 `/go2w/odom/fused` | EXPERIMENTAL | 轮式平移 + Sport/LIO 融合航向；LIO 门禁自动回退 |
 | Point-LIO 转向（yaw） | PASS | ±10° 实测 89% 幅度、符号正确（yaw_reflect） |
@@ -47,18 +52,46 @@ footprint 与急停确认全部通过时，`execute` 模式才会请求 Nav2 执
 | USLAM `/uslam/*` | **BLOCKED** | 当前固件未启用 |
 | LLM 快速检测（硅基流动） | PASS | `--detector llm`，默认 30B-A3B，单次 5–15 s |
 | LLM 目标复核（`--verify`） | PASS | 到达前确认物体身份，防椅子/书包误判 |
-| 自主搜索 scan360/level_a | PASS（小范围） | 找到→对齐→靠近→复核→`target_reached` |
-| 状态机 `state_machine_search` | PASS（软件+真机） | `app/live_robot` 正式链路 |
-| RGB–LiDAR 外参/3D 定位 | EXPERIMENTAL（未几何确认） | 仅静止演示，不用于导航 |
+| UniGoal V1 software core | PASS | GoalGraph/GraphMatcher/Memory/Reasoner/Router 完整，KEEP 审计见 `reports/unigoal_v1_existing_implementation_audit_20260813.md` |
+| UniGoal Observe-only | PASS | 真实 Bundle/LLM/Graph/关系证据与 2D visual confirmation 通过 |
+| UniGoal Shadow | PASS（无运动） | `actual_shadow_behavior_matches_legacy=true`，`dangerous_forward_request_count=0` |
+| UniGoal Active turn-only | **BLOCKED（正式）** / 操作者授权单次转向已验证 | 2026-08-14：`--operator-authorized-rotation` 单次转向实测通过（reasoner 决策→实际转向 30°，odom 验证）；正式 Stage 2 仍需 readiness 12 项全真 |
+| UniGoal 语义决策→运动闭环 | **PASS（操作者授权单次）** | reasoner `inspect_anchor` 决策 30° 转向并实际执行 29.5°；证据 `outputs/go2w_acceptance/semantic_turn_execute.*` |
+| UniGoal Short-forward | **BLOCKED** | 严格依赖 Stage 2 PASS；semantic forward 默认关闭 |
+| 当前整机外廓 | `0.70 × 0.43 × 0.70 m` | `configs/go2w/current_hardware_geometry.yaml`；最高点 = PandarXT-16 固定保护框架 |
+| RGB–LiDAR 外参/3D 定位 | EXPERIMENTAL（未几何确认） | 诊断叠加可用；导航外参与 3D 输出门禁为 false |
+| Camera TF | **BLOCKED** | 官方 URDF 无相机 link，物理 TF 未测 |
 | Level D / 地图 / Nav2 | **BLOCKED** | `navigation_gate.yaml` fail-closed 未改动 |
+
+### 0.1.1 Go2-W Manual WASD Web Demo（独立手动 Demo）
+
+独立的浏览器手动控制 Demo：实时相机 + WASD+QE 小范围运动 + SiliconFlow 场景物体表。
+不使用 UniGoal/Nav2/3D；相机来自正式 camera bridge；W/S/A/D/Q/E 通过现有高层运动
+控制链（`/go2w/motion`）执行——W/S 前后、A/D 横移、Q/E 转向；直接复用项目现有
+SiliconFlow 视觉配置，后台异步列出主要物体。详见
+[`docs/GO2W_MANUAL_WASD_WEB_DEMO.md`](docs/GO2W_MANUAL_WASD_WEB_DEMO.md)。
+
+```bash
+# 相机 + LLM（键盘控制默认禁用）
+bash scripts/go2w/start_manual_web_demo.sh
+
+# 允许运动（需清场确认）
+bash scripts/go2w/start_manual_web_demo.sh --enable-motion
+
+# 停止
+bash scripts/go2w/stop_manual_web_demo.sh
+```
 
 ### 0.2 硬件与网络前置
 
 - Ubuntu 22.04 x86_64 + ROS2 Humble；至少 16 GB RAM；
 - 主机直连网口 `enp6s0`：`192.168.123.99/24`，机器人 `192.168.123.18`；
+  新增 PandarXT-16 为 `192.168.123.20`，点云只单播到工作站
+  `192.168.123.99:2368`；
 - 机器狗处于 `ai-w` 运动模式，`/lf/sportmodestate` 的 `mode=1, error_code=0`；
-- 运动授权：操作者明确授权 `GO2W_MOTION_READY`，小范围（半径 ≤1.0 m）活动与
-  转向；场地清空、遥控器可急停。
+- 运动授权：操作者明确授权 `GO2W_MOTION_READY`；任何运动必须位于授权时初始位姿
+  的固定正前方 180° 半平面内，且距该初始位置半径 ≤1.5 m；场地与门禁不满足时
+  fail-closed，遥控器可急停。
 
 ### 0.3 需要提前就位的项目（不在本仓库内）
 
@@ -70,7 +103,20 @@ footprint 与急停确认全部通过时，`execute` 模式才会请求 Nav2 执
 2. **unitree_ros2 / cyclonedds_ws**（Humble 消息 + CycloneDDS 配置）；
 3. **Grounded-SAM-2**（可选，`--detector grounded_sam` 才需要）；
 4. **Point-LIO 隔离环境**：`conda env go2w_point_lio_noetic` +
-   `point_lio_ws`（构建时应用 `patches/go2w/point_lio_noetic_pcl115.patch`）。
+   `point_lio_ws`（构建时应用 `patches/go2w/point_lio_noetic_pcl115.patch`）；
+5. **Hesai ROS 2.0 官方驱动**：位于 `ros2_ws/src/hesai_ros_driver`，固定提交
+   `e7e112f0809f0eed5e3c81c55a1a0376474db234`，SDK 子模块固定
+   `9d5dc4fc4ade5be5f6a6ca00e71dd4050b054168`。仅用于外接雷达隔离诊断。
+
+外接雷达照片与静态地面拟合已生成不发布 TF 的安装候选：`xyz=(+0.130,
++0.015,+0.014) m`，`rpy=(+0.385,+0.905,+11.357)°`。候选文件
+`configs/go2w/hesai_pandarxt16_mount_candidate.yaml` 明确设置全部授权为 false。
+
+**当前整机几何（操作者确认，2026-08-13）：`0.70 × 0.43 × 0.70 m`，最高点为
+PandarXT-16 固定保护框架（不是松弛电缆）。不再安排整机长宽高复测。** 该几何
+记录于 `configs/go2w/current_hardware_geometry.yaml`，仅描述当前加装后的整机
+外廓，`authorizes_motion=false`。正式外参仍需多场景配准和实测；诊断/时钟/自遮挡/
+双雷达可观测性工具已就绪，见 `docs/PANDARXT16_DUAL_LIDAR_SAFETY_INTEGRATION.md`。
 
 ### 0.4 环境与构建（一次性）
 
@@ -98,12 +144,47 @@ cp .env.example .env          # 填入 SILICONFLOW_API_KEY（不要提交）
 # .env.go2w 已在本仓库，按需使用
 ```
 
+如果当前副本缺少 Hesai 驱动，先固定安装官方版本再构建：
+
+```bash
+git clone --recurse-submodules https://github.com/HesaiTechnology/HesaiLidar_ROS_2.0.git \
+  ros2_ws/src/hesai_ros_driver
+git -C ros2_ws/src/hesai_ros_driver checkout \
+  e7e112f0809f0eed5e3c81c55a1a0376474db234
+git -C ros2_ws/src/hesai_ros_driver submodule update --init --recursive
+bash scripts/go2w/build_ros2.sh
+```
+
 ### 0.5 启动顺序（每次真机运行）
 
 ```bash
 # 终端 1：只读感知栈（相机/LiDAR/时间/融合/Bundle）
 cd /home/brov/robot/robot_scene_demo
 bash scripts/go2w/start_live_perception.sh
+
+# 可选终端：新增 PandarXT-16 隔离诊断；不接入 /go2w/lidar/* 或运动安全链
+# --with-preprocessor 额外启动 zero-return 过滤 + 诊断状态节点（/go2w/hesai/*）
+bash scripts/go2w/start_hesai_pandarxt16.sh --with-preprocessor
+
+# 另一个已 source ROS 工作区的终端：20 帧只读验收
+/usr/bin/python3 scripts/go2w/validate_hesai_pandarxt16_ros.py \
+  --output outputs/go2w_acceptance/hesai_pandarxt16_20260813/result.json
+
+# Pandar 时钟分级与双雷达旋转可观测性（只读，不授权运动）
+/usr/bin/python3 scripts/go2w/validate_pandarxt16_clock.py --samples 30 \
+  --output outputs/go2w_acceptance/pandarxt16_clock/result.json
+/usr/bin/python3 scripts/go2w/validate_dual_lidar_observability_ros.py \
+  --output outputs/go2w_acceptance/dual_lidar_observability/result.json
+
+# 多场景外参采集 -> 离线标定 -> 外参验证（全部 fail-closed，不发布 TF）
+/usr/bin/python3 scripts/go2w/capture_dual_lidar_calibration_ros.py --scene corner_01 --frames 8
+/usr/bin/python3 scripts/go2w/calibrate_pandarxt16_extrinsics.py \
+  --capture-dir outputs/go2w_acceptance/dual_lidar_calibration
+/usr/bin/python3 scripts/go2w/validate_pandarxt16_extrinsics.py --output <path>
+
+# Stage 2 machine-readable readiness（不运动；输出 JSON 后退出）
+/usr/bin/python3 scripts/go2w/run_autonomous_loop.py --stage2-readiness \
+  outputs/go2w_acceptance/stage2_readiness.json
 
 # 终端 2：轮式 + 融合里程计（/go2w/odom/wheel 与 /go2w/odom/fused）
 source /opt/ros/humble/setup.bash
@@ -176,30 +257,62 @@ export CYCLONEDDS_URI="file:///home/brov/robot/robot_scene_demo/configs/go2w/cyc
   --odom-topic /go2w/odom/fused \
   --record-video outputs/go2w_acceptance/sm_demo.mp4 \
   --output outputs/go2w_acceptance/sm_demo.jsonl
+
+# 语义 reasoner 决策 → 实际转向闭环（2026-08-14 验证，操作者授权）
+# 说明：目标未强确认时触发 UniGoal reasoner 自主决策转向方向；
+# --operator-authorized-rotation 是显式操作者授权，仅放宽"旋转需 lease"这一条门，
+# 其余安全门（mode/error、lidar fresh、前向净空、运动边界、≤30°、单步、急停）全部保留。
+# 必须在操作者确认场地安全 + 遥控器急停在手时使用。
+/usr/bin/python3 scripts/go2w/run_autonomous_loop.py \
+  --mode state_machine_search --target "绿色垃圾桶" --detector llm \
+  --llm-model Qwen/Qwen3-VL-30B-A3B-Instruct \
+  --semantic-reasoning --search-reasoner unigoal --search-reasoner-mode active \
+  --operator-authorized-rotation --turn-only --max-motion-steps 1 \
+  --max-radius 1.5 --front-half-plane-only --min-clearance 0.6 \
+  --target-score-min 0.99 --odom-topic /go2w/odom/wheel \
+  --record-video outputs/go2w_acceptance/semantic_turn_execute.mp4 \
+  --output outputs/go2w_acceptance/semantic_turn_execute.jsonl
 ```
 
 每次运动都满足：短步（前进 2 s×0.12 m/s、转向 ≤30°）、轮式/融合里程计校验、
 前向净空门禁、`mode/error` 检查、无位移自动重试/绕障、结束三次 STOP + disarm。
+`--operator-authorized-rotation` 的详细说明见
+`reports/go2w_unigoal_pandarxt16_stage2_stage3_handoff_20260813.md` 2026-08-14 续接章节。
 
 ### 0.7 关键配置与代码索引
 
 ```text
 configs/go2w/camera_intrinsics.yaml      # 相机内参（已标定）
-configs/go2w/official_reference.yaml     # 官方几何 / base→LiDAR
+configs/go2w/official_reference.yaml     # 官方几何 / base→LiDAR（厂商原始，不改）
+configs/go2w/current_hardware_geometry.yaml  # 当前整机 0.70×0.43×0.70 m（操作者确认）
+configs/go2w/current_hardware_state.yaml     # 硬件状态清单（绑定几何/外参/内置雷达配置）
 configs/go2w/time_sync.yaml              # LiDAR/IMU 时间桥
 configs/go2w/lidar_preprocess.yaml       # /scan、clearance、自过滤
 configs/go2w/wheel_odom.yaml             # 轮式 + 融合里程计参数
 configs/go2w/point_lio.yaml              # Point-LIO 桥接/门禁
 configs/go2w/point_lio_unilidar_l2.yaml  # 官方 L2 基线（identity 外参）
+configs/go2w/hesai_pandarxt16.yaml           # Pandar 驱动（diagnostic-only）
+configs/go2w/hesai_pandarxt16_preprocess.yaml # Pandar 诊断预处理配置
+configs/go2w/hesai_pandarxt16_extrinsics.yaml # Pandar 正式外参槽（未确认）
+configs/go2w/dual_lidar_safety.yaml      # 双雷达安全融合策略（默认 disabled）
 configs/go2w/navigation_gate.yaml        # fail-closed，未改动
 scripts/go2w/run_autonomous_loop.py      # pattern/wander/camera_guided/
                                          # level_a_search/scan360_approach/
-                                         # state_machine_search
+                                         # state_machine_search；--stage2-readiness
 app/detectors/siliconflow_vision_worker.py   # LLM quick/verify worker
 app/live_robot/step_planner.py               # 纯函数步进规划
 app/live_robot/step_search_runner.py         # 状态机编排器
+app/live_robot/current_hardware.py           # 当前硬件几何/状态加载与 hash
+app/live_robot/pandar_clock.py               # Pandar 时钟分级（默认 host_receive_time_only）
+app/live_robot/stage2_readiness.py           # Stage 2/3 machine-readable readiness
 ros2_ws/src/go2w_lio_bringup/.../wheel_odom.py  # 融合里程计
-reports/go2w_codex_handoff_20260807.md      # 最新交接报告（本机）
+ros2_ws/src/go2w_lidar_preprocessor/.../lidar_evidence.py          # 双雷达证据融合
+ros2_ws/src/go2w_lidar_preprocessor/.../dual_lidar_observability.py # 旋转可观测性
+ros2_ws/src/go2w_lidar_preprocessor/.../hesai_pandarxt16_preprocessor.py # Pandar 诊断节点
+reports/go2w_codex_handoff_20260813.md      # Go2-W 基础链最新交接
+reports/go2w_unigoal_semantic_search_handoff_20260813.md  # 语义搜索融合交接
+reports/unigoal_v1_existing_implementation_audit_20260813.md  # UniGoal V1 KEEP 审计
+docs/PANDARXT16_DUAL_LIDAR_SAFETY_INTEGRATION.md  # 双雷达安全集成说明
 ```
 
 ### 0.8 证据位置（本机，未入库）
@@ -2321,6 +2434,148 @@ python -m unittest discover -s tests -p 'test_nav2_*.py'
 - [`docs/NAV2_INTEGRATION.md`](docs/NAV2_INTEGRATION.md)
 - [`docs/NAV2_WEBUI_TESTING.md`](docs/NAV2_WEBUI_TESTING.md)
 
+## Go2-W UniGoal-style 语义搜索推理
+
+`state_machine_search` 的“目标未出现 / SELECT_NEXT_VIEW”分支现已支持一个可回滚、
+可审计的 UniGoal 风格语义搜索层。它只融合 Goal Graph、现有 Observed Scene Graph
+匹配、zero/partial/strong search policy 和 session negative memory；不是完整
+UniGoal runtime，也不替代检测器、运动控制或 Nav2。
+
+安全语义保持不变：graph strong match 不能确认目标；目标仍必须经过现有视觉证据
+和 LLM verify。V1 只记录 observation pose、heading、bbox 和 provenance，不依赖
+尚未验收的 RGB–LiDAR 外参，不生成 3D target/map goal。Reasoner 只能提供高层
+`SearchDirective`，实际动作仍经过状态机、`step_planner`、clearance、odom/radius、
+mode/error、motion Action、STOP/disarm；Nav2 gate 继续 fail-closed。
+
+真机状态机与 observe-only 现在使用同一套配置化 graph-match 阈值，并可只读检索现有
+`ObservationMemoryStore`。检索到的长期 observation 作为每次
+`SearchReasoningContext` 的输入，runner 事件只记录数量与 `memory_id`；本 session 的
+negative scan memory 仍只存在内存中，`persistent_write_attempted=false`，不会把失败
+扫描写回长期 JSONL。该路径已兼容 ROS 2 Humble 的系统 Python 3.10。
+
+`LIVE_SEARCH_REASONER_MIN_REPLAN_SECONDS` 也已进入真实 runner：只有 semantic observer
+明确复用同一稳定帧、机器人位姿未变且仍在最小间隔内时，才复用上次 directive；平移
+超过 0.05 m、heading sector/帧/错误状态变化都会重新推理。`hybrid` 还可以复用现有
+Video PSG 与已经由上游产生的 situated prior，但它们只在 `zero_match` 且候选方向在
+真实观察、visited/negative-memory 成本上同分时做末级 tie-break。PSG 必须由 observed
+node 支撑；LLM prior 必须声明 `can_confirm_target=false`。两者均被改写为 turn-only、
+`allow_forward=false` 的提示，不能确认目标，也不会在真机循环中额外触发网络调用。
+
+默认完全保持旧行为：
+
+```text
+LIVE_SEARCH_SEMANTIC_REASONING_ENABLED=false
+LIVE_SEARCH_REASONER_BACKEND=legacy
+LIVE_SEARCH_REASONER_MODE=shadow
+LIVE_SEARCH_REASONER_ALLOW_FORWARD=false
+```
+
+推荐先运行 shadow；此时会记录 hybrid/UniGoal 建议，但实际执行仍严格使用 legacy
+scan step：
+
+```bash
+/usr/bin/python3 scripts/go2w/run_autonomous_loop.py \
+  --mode state_machine_search \
+  --target "饮水机旁边的蓝色垃圾桶" \
+  --detector llm \
+  --semantic-reasoning \
+  --search-reasoner hybrid \
+  --search-reasoner-mode shadow \
+  --semantic-no-forward \
+  --max-radius 1.5 \
+  --front-half-plane-only --turn-only \
+  --max-motion-steps 1 --min-rotation-clearance 0.511 \
+  --odom-topic /go2w/odom/fused \
+  --output outputs/live_sessions/unigoal_shadow.jsonl
+```
+
+shadow 回放验证后才可将模式改为 `active`；V1 active 默认仅选择单步转向和重观测。
+狭窄现场的 `--turn-only` 是最终执行器硬门，legacy/active 均不能绕过。当前 L2
+近场与 0.511 m 全机身转向包络重叠，`rotation_clearance_valid=false`，左右 clearance
+发布为 `NaN`（unknown）；即使数值无回波或未设置最小距离，转向也会 fail-closed。
+Runner 还显式订阅 `/go2w/safety/lidar_fresh`：启动前和每一步都要求 freshness=true，
+旧 clearance、缺失值或 NaN 均不能通过；前向 `inf` 只在同一时刻 freshness=true 时
+表示当前没有碰撞高度内回波。
+Frame Bundle 用 `front/left/right_status` 区分 `measured`、`no_return` 和 `unknown`，
+同时携带 `rotation_clearance_valid`，不会再把前方无回波与左右近场未知都压成同一个
+JSON `null`。即使未来启用 leased `/cmd_vel` bridge，非零 yaw 也必须先通过旋转有效性门。
+
+2026-08-13 现场复核还识别出旧自滤遗漏的左前/左后轮低位回波：80 帧 A/B 中，持续
+0.39–0.51 m 的轮簇被两个局部实测掩码消除，修正后 80 帧只有 1 个单帧孤点落入
+0.511 m 转向包络。正前碰撞走廊 80/80 无回波；左前约 0.61–0.62 m 的剩余低位簇与
+相机画面左缘白色办公椅轮/支腿方向一致，因此保留为环境回波；右前最近约 0.96 m。
+这些 raw sector 数值只用于诊断，左右正式状态仍是 `unknown`，没有据此开放转向。
+证据为 `outputs/go2w_acceptance/lidar_wheel_self_filter_live_20260813/result.json`。
+
+旋转门现还有配置级防误解锁：永久的
+`rotation_clearance_validation.valid=true` 只有在同时记录
+360° 物理+LiDAR 交叉验证方法、操作者/时间/站姿、至少 0.511 m 的验收包络、证据路径，
+并明确通过水平 yaw、近场盲区缓解、自滤物理复核、全扇区检测和站姿五项检查时才可
+加载。每个证据路径还必须指向可读 JSON，且其机器人型号、操作者、站姿、包络、五项
+检查和 `robot_motion_commanded=false` 必须与配置一致。只改一个布尔值或填写不存在的
+路径都会使预处理器关闭安全门；人工检查生成的短时、位置绑定证据不能写入这个永久门，
+永久门还要求新增覆盖传感器或重新安装并物理复核后的完整 sensor-only 近场可观测性。
+最新几何审计显示，当前 720/720 个
+方向均含不可观测自由空间：左右轴向盲段 0.155 m，前后 0.04 m，局部最坏约
+0.291 m。因此 `rotation_clearance_valid=false` 有直接几何依据，而非把“无回波”误当
+障碍。证据为
+`outputs/go2w_acceptance/lidar_rotation_observability_20260813/result.json`。
+
+当前现场可使用只读四向工具生成一次性 Stage 2 证据。先在没有标定物时采集 baseline，
+再由人把同一个低矮、LiDAR 可见的宽目标依次放到前/右/后/左；机器狗全程不动：
+
+```bash
+source /opt/ros/humble/setup.bash
+source ros2_ws/install/setup.bash
+PY=/usr/bin/python3
+OUT=outputs/go2w_acceptance/rotation_physical_crosscheck_20260813
+$PY scripts/go2w/validate_rotation_clearance_physical_ros.py capture \
+  --role baseline --output $OUT/baseline.json
+# 根据 baseline 的 recommended_low_occupancy_distances_m 选择每个方向距离：
+$PY scripts/go2w/validate_rotation_clearance_physical_ros.py capture \
+  --role front --baseline $OUT/baseline.json \
+  --expected-distance-m 0.60 --output $OUT/front.json
+# right/rear/left 同理，分别写入 right.json、rear.json、left.json。
+$PY scripts/go2w/validate_rotation_clearance_physical_ros.py finalize \
+  --baseline $OUT/baseline.json --front $OUT/front.json \
+  --right $OUT/right.json --rear $OUT/rear.json --left $OUT/left.json \
+  --operator "现场操作者姓名" --physical-clearance-radius-m 0.60 \
+  --swept-clearance-confirmed --standing-posture-confirmed \
+  --output $OUT/rotation_lease.json
+# 仅在上述命令 PASS 且许可尚未过期时执行一次 Stage 2：
+$PY scripts/go2w/run_autonomous_loop.py \
+  --mode state_machine_search --target "手机" \
+  --semantic-reasoning --search-reasoner hybrid \
+  --search-reasoner-mode active --semantic-no-forward \
+  --turn-only --front-half-plane-only --max-radius 1.5 \
+  --max-motion-steps 1 --min-rotation-clearance 0.511 \
+  --odom-topic /go2w/odom/wheel \
+  --rotation-clearance-evidence $OUT/rotation_lease.json \
+  --output outputs/live_sessions/unigoal_stage2_active_turn.jsonl
+```
+
+`finalize` 还要求操作者实测完整 0.511 m 圆形扫掠范围（包括后方和四轮外侧）为空。
+每个非 baseline capture 会立即做 before/after 对照；目标没有稳定出现在指定方向/距离，
+或点数没有相对现场背景明显增加时，该次命令直接失败，不必等到 finalize 才发现。
+产物最长有效 15 分钟、绑定 `odom_wheel` 初始位置且允许平移不超过 3 cm；它只能通过
+Runner 的 `--rotation-clearance-evidence` 用于原地转向。实时原始侧向话题
+`/go2w/diagnostics/lidar_clearance_raw` 本身没有安全权威性，只有该许可有效且数据年龄
+不超过 0.3 s 时才被 Runner 采用。任何前进都会使这份原位许可失效。
+传入短时许可时，Runner 还会强制上述 Stage 2 参数组合，并在执行端拒绝非转向、超过
+30° 或多步命令；不能拿该 JSON 运行 pattern、wander 或 short-forward。
+
+真实传感器 shadow 的 fail-closed 验收也已完成：semantic 与 legacy 均提出 `r30`，但
+`rotation_clearance_valid=false` 在 arm 前拒绝该步，成功运动 0 步、起止 odom 完全
+一致，且没有启动运动控制图。状态机现在只在某一步通过全部运动门后才即时 arm；明确
+的 quick target-absent 结果可复用为不含伪造物体/关系的 zero-match 观察，避免重复
+full-scene API。证据为
+`outputs/go2w_acceptance/unigoal_shadow_fail_closed_20260813/result.json`。这不是成功转向
+PASS；active turn-only 与 short-forward 仍保持关闭。
+
+回滚只需去掉 `--semantic-reasoning` 或使用 `--search-reasoner legacy`。完整架构、
+输出、离线 A/B 和分级真机验收见
+[`docs/UNIGOAL_SEMANTIC_SEARCH_INTEGRATION.md`](docs/UNIGOAL_SEMANTIC_SEARCH_INTEGRATION.md)。
+
 ## Go2-W 内置 RGB + LiDAR 真机部署
 
 当前部署默认 fail-closed；小范围运动只在操作者明确授权
@@ -2328,8 +2583,10 @@ python -m unittest discover -s tests -p 'test_nav2_*.py'
 已经实机通过的是内置 RGB 的只读采集、LiDAR/IMU 时间对齐、原子帧 Bundle，
 以及带轮式里程计校验的小范围前进/转向/自主搜索。Go2-W 尺寸与内置 LiDAR/IMU 静态 TF 已采用
 Unitree 官方产品页、固定提交的官方 URDF 和官方 LiDAR SDK，并通过隔离 ROS 域
-`/tf_static` 验证。LiDAR 现场方向、地面/自身过滤、`/scan` 和 300 ms stale
-门禁也已完成静止只读实机验收。官方 Unitree Point-LIO 固定版本已在隔离 Noetic
+`/tf_static` 验证。LiDAR 现场方向、地面/自身过滤、碰撞高度带 `/scan` 和 300 ms
+stale 门禁已完成静止只读实机验收；全高度 `/go2w/lidar/obstacles` 保留给语义，安全
+扫描使用 `/go2w/lidar/collision_obstacles`。旋转包络近场仍未验收，因此不授权转向。
+官方 Unitree Point-LIO 固定版本已在隔离 Noetic
 环境中通过 5 分钟静止只读验收；CameraInfo 已用实测 9×6/15 mm 棋盘完成标定，
 相机外参、RGB-LiDAR 外参、移动里程计试验、地图和 Nav2 尚未完成物理验收。因此当前能力是
 Level A/B 部分能力（观察、扫描、搜索、靠近、每步 STOP），Level C--F 仍阻断，不能把软件模块存在解释为
@@ -2387,13 +2644,15 @@ Image/CompressedImage/CameraInfo；独立棋盘帧的平均/RMS/最大重投影�
 `outputs/go2w_acceptance/camera_calibration_20260806/`。相机 TF 和相机—雷达外参
 仍保持未知，不能因 CameraInfo 通过而开启三维融合或导航。
 
-RGB-LiDAR ROS 节点已接入只读启动器，但当前只发布闭锁门禁与诊断，不发布伪造的
-三维目标。隔离回环验收连续收到 3 组
-`/perception/fusion_ready=false` 和
-`/perception/rgb_lidar_extrinsics_validated=false`，诊断同时给出
+RGB-LiDAR ROS 节点已接入只读启动器。当前平面靶候选只通过静止诊断叠加门，明确没有
+通过导航级几何门：`/perception/rgb_lidar_overlay_ready=true`，同时
+`/perception/fusion_ready=false`、
+`/perception/rgb_lidar_extrinsics_validated=false`。连续 5 组真机状态与 3 个 metric 3D
+输出话题零消息的验收通过，诊断同时给出 `authorizes_3d_output=false` 和
 `authorizes_motion=false`。证据位于
-`outputs/go2w_acceptance/rgb_lidar_fusion_blocked_runtime/result.json`。完成真实标定后，
-节点才会用标定的 LiDAR→相机变换生成相机相对三维位置；它不会用网络图片猜相机 TF。
+`outputs/go2w_acceptance/rgb_lidar_geometry_tier_20260813/result.json`。完成真实标定、
+移动位置复核并显式晋级配置后，节点才会生成相机相对三维位置；它不会用实验候选或
+网络图片猜测导航几何。
 
 复现官方 TF/静止地面方向与 LiDAR 预处理验收：
 

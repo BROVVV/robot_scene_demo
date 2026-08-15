@@ -8,7 +8,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .frame_bundle_reader import FrameBundleReader, FrameBundleUnavailable
+from .frame_bundle_reader import (
+    FrameBundleReader,
+    FrameBundleUnavailable,
+    dual_lidar_status as dual_lidar_status_of,
+    pandar_status as pandar_status_of,
+)
 
 
 @dataclass(frozen=True)
@@ -20,6 +25,8 @@ class LiveUiStatus:
     execute_gate: dict[str, Any]
     latest_frame_id: int | None = None
     latest_session_id: str | None = None
+    pandar_status: dict[str, Any] | None = None
+    dual_lidar_status: dict[str, Any] | None = None
 
 
 def load_live_ui_status(
@@ -34,20 +41,27 @@ def load_live_ui_status(
         for name in (
             "camera",
             "camera_info_calibrated",
+            "rgb_lidar_overlay",
             "rgb_lidar_extrinsics",
             "rgb_lidar_fusion",
             "lidar",
             "lio",
             "tf",
+            "pandar",
+            "dual_lidar",
         )
     }
     frame_id = None
     session_id = None
+    pandar_status = None
+    dual_lidar_status = None
     try:
         bundle = FrameBundleReader(spool_root).read_latest()
         sensor.update({key: bool(value) for key, value in bundle.payload["sensor_health"].items() if key in sensor})
         frame_id = bundle.frame_id
         session_id = str(bundle.payload["session_id"])
+        pandar_status = pandar_status_of(bundle.payload)
+        dual_lidar_status = dual_lidar_status_of(bundle.payload)
     except FrameBundleUnavailable:
         pass
     root = Path(acceptance_root)
@@ -61,11 +75,29 @@ def load_live_ui_status(
             "control_source": "none",
             "execution_enabled": False,
         },
-        search={"state": "IDLE", "target_evidence": False, "safety_events": []},
+        search={
+            "state": "IDLE",
+            "target_evidence": False,
+            "safety_events": [],
+            "semantic_reasoning_enabled": _env_bool(
+                "LIVE_SEARCH_SEMANTIC_REASONING_ENABLED", False
+            ),
+            "reasoner_backend": os.environ.get(
+                "LIVE_SEARCH_REASONER_BACKEND", "legacy"
+            ),
+            "reasoner_mode": os.environ.get(
+                "LIVE_SEARCH_REASONER_MODE", "shadow"
+            ),
+            "semantic_forward_allowed": _env_bool(
+                "LIVE_SEARCH_REASONER_ALLOW_FORWARD", False
+            ),
+        },
         plan_gate=_read_json(root / "plan_only.json"),
         execute_gate=_read_json(root / "execute.json"),
         latest_frame_id=frame_id,
         latest_session_id=session_id,
+        pandar_status=pandar_status,
+        dual_lidar_status=dual_lidar_status,
     )
 
 
@@ -92,3 +124,10 @@ def _read_json(path: Path) -> dict[str, Any]:
         return value if isinstance(value, dict) else {}
     except (OSError, ValueError, json.JSONDecodeError):
         return {}
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}

@@ -44,6 +44,11 @@ class SensorSnapshot:
     tf_ready: bool = False
     extrinsics_ready: bool = False
     lio_fresh: bool = False
+    # Fail-closed rotation/dual-LiDAR gate data (optional, default False so
+    # existing callers that do not provide them remain safe).
+    rotation_clearance_valid: bool = False
+    dual_lidar_clearance_valid: bool = False
+    pandar_raw_fresh: bool = False
 
 
 @dataclass(frozen=True)
@@ -163,7 +168,24 @@ class SearchStateMachine:
         self._require(SearchState.SELECT_NEXT_VIEW)
         if self.mode == SearchMode.OBSERVE_ONLY:
             return self._transition(SearchState.FINISH, "observe_only_no_motion")
-        return self._transition(SearchState.CHECK_SAFETY, "next_view_selected")
+        return self.next_view_selected(
+            source="legacy", directive_id="legacy_unavailable", confidence=1.0
+        )
+
+    def next_view_selected(
+        self, *, source: str, directive_id: str, confidence: float
+    ) -> SearchState:
+        """Record an auditable semantic/legacy next-view choice."""
+        self._require(SearchState.SELECT_NEXT_VIEW)
+        if self.mode == SearchMode.OBSERVE_ONLY:
+            return self._transition(SearchState.FINISH, "observe_only_no_motion")
+        return self._transition(
+            SearchState.CHECK_SAFETY,
+            "next_view_selected",
+            source=str(source),
+            directive_id=str(directive_id),
+            confidence=max(0.0, min(1.0, float(confidence))),
+        )
 
     def safety_checked(self, safe: bool) -> SearchState:
         self._require(SearchState.CHECK_SAFETY)

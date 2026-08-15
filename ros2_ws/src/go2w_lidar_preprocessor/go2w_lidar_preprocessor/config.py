@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 
@@ -7,6 +8,15 @@ import yaml
 from go2w_description.description_config import load_official_reference
 
 from .preprocess_core import PreprocessParameters
+
+
+_ROTATION_VALIDATION_CHECKS = (
+    "horizontal_frame_yaw_validated",
+    "near_field_blind_zone_mitigated",
+    "self_filter_regions_physically_validated",
+    "full_360_sector_detection_validated",
+    "standing_posture_validated",
+)
 
 
 def load_safety_ready_config(lidar_path: str, geometry_path: str):
@@ -22,6 +32,7 @@ def load_safety_ready_config(lidar_path: str, geometry_path: str):
         envelope = (reference.get("dimensions") or {}).get("standing_envelope_m") or {}
         footprint_length = float(envelope.get("length", 0.0))
         footprint_width = float(envelope.get("width", 0.0))
+        standing_height = float(envelope.get("height", 0.0))
     else:
         if geometry.get("measurement_status") != "measured" or not geometry.get(
             "confirmed"
@@ -37,11 +48,13 @@ def load_safety_ready_config(lidar_path: str, geometry_path: str):
 
         footprint_length = measured("wheel_outer_envelope_length_m")
         footprint_width = measured("wheel_outer_envelope_width_m")
+        standing_height = measured("stationary_standing_height_m")
 
     required = (
         (lidar.get("height_m") or {}).get("minimum"),
         (lidar.get("height_m") or {}).get("maximum"),
         lidar.get("ground_separation_height_m"),
+        (lidar.get("collision_height_m") or {}).get("maximum"),
         lidar.get("self_filter_margin_m"),
         lidar.get("front_corridor_half_width_m"),
         lidar.get("rotation_envelope_radius_m"),
@@ -56,6 +69,7 @@ def load_safety_ready_config(lidar_path: str, geometry_path: str):
         maximum_range,
         footprint_length,
         footprint_width,
+        standing_height,
     )
     if not all(math.isfinite(value) for value in all_numeric):
         raise ValueError("LiDAR preprocessing parameters must be finite")
@@ -65,12 +79,21 @@ def load_safety_ready_config(lidar_path: str, geometry_path: str):
         or numeric[1] <= numeric[0]
         or footprint_length <= 0.0
         or footprint_width <= 0.0
-        or numeric[3] < 0.0
-        or numeric[4] <= footprint_width / 2.0
-        or numeric[5]
+        or numeric[3] <= numeric[2]
+        or numeric[3] > numeric[1]
+        or standing_height <= 0.0
+        or numeric[4] < 0.0
+        or numeric[5] <= footprint_width / 2.0
+        or numeric[6]
         < math.hypot(footprint_length / 2.0, footprint_width / 2.0)
     ):
         raise ValueError("LiDAR preprocessing geometry is unsafe or inconsistent")
+    expected_collision_maximum = numeric[2] + standing_height
+    if not math.isclose(numeric[3], expected_collision_maximum, abs_tol=1e-6):
+        raise ValueError(
+            "collision height must equal ground separation height plus "
+            "the standing robot height"
+        )
     self_regions: list[tuple[float, float, float, float, float, float]] = []
     for region in lidar.get("self_regions") or []:
         if not isinstance(region, dict):
@@ -94,11 +117,117 @@ def load_safety_ready_config(lidar_path: str, geometry_path: str):
         minimum_height=numeric[0],
         maximum_height=numeric[1],
         ground_height=numeric[2],
+        collision_maximum_height=numeric[3],
         self_half_length=footprint_length / 2.0,
         self_half_width=footprint_width / 2.0,
-        self_filter_margin=numeric[3],
-        front_corridor_half_width=numeric[4],
-        rotation_envelope_radius=numeric[5],
+        self_filter_margin=numeric[4],
+        front_corridor_half_width=numeric[5],
+        rotation_envelope_radius=numeric[6],
         self_regions=tuple(self_regions),
     )
+    _validate_rotation_clearance_claim(
+        lidar, parameters, lidar_path=Path(lidar_path)
+    )
     return lidar, parameters
+
+
+def _validate_rotation_clearance_claim(
+    lidar: dict,
+    parameters: PreprocessParameters,
+    *,
+    lidar_path: Path,
+) -> None:
+    """Prevent a bare YAML boolean from authorizing rotation clearance."""
+
+    claim = lidar.get("rotation_clearance_validation") or {}
+    if not bool(claim.get("valid", False)):
+        return
+    if claim.get("validation_method") != "physical_360_clearance_with_lidar_crosscheck":
+        raise ValueError("rotation clearance validation method is missing or unsupported")
+    for key in ("validated_at", "operator", "posture"):
+        if not str(claim.get(key) or "").strip():
+            raise ValueError(f"rotation clearance validation requires {key}")
+    if claim.get("posture") != "stationary_standing":
+        raise ValueError("rotation clearance validation posture is unsupported")
+    radius = claim.get("validated_rotation_envelope_radius_m")
+    if radius is None or not math.isfinite(float(radius)):
+        raise ValueError("rotation clearance validation requires a finite envelope radius")
+    if float(radius) + 1e-9 < parameters.rotation_envelope_radius:
+        raise ValueError("validated rotation envelope is smaller than configured envelope")
+    evidence = claim.get("evidence_paths") or []
+    if not isinstance(evidence, list) or not evidence or not all(
+        isinstance(path, str) and path.strip() for path in evidence
+    ):
+        raise ValueError("rotation clearance validation requires evidence paths")
+    checks = claim.get("checks") or {}
+    missing = [key for key in _ROTATION_VALIDATION_CHECKS if checks.get(key) is not True]
+    if missing:
+        raise ValueError(
+            "rotation clearance validation checks are incomplete: " + ", ".join(missing)
+        )
+    project_root = lidar_path.resolve().parents[2]
+    for evidence_path in evidence:
+        path = Path(evidence_path)
+        if not path.is_absolute():
+            path = project_root / path
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            raise ValueError(
+                f"rotation clearance evidence is unreadable: {path}"
+            ) from exc
+        _validate_rotation_evidence_payload(payload, claim, parameters)
+
+
+def _validate_rotation_evidence_payload(
+    payload: dict, claim: dict, parameters: PreprocessParameters
+) -> None:
+    if not isinstance(payload, dict):
+        raise ValueError("rotation clearance evidence must be a JSON object")
+    required_values = {
+        "validation_type": "go2w_rotation_clearance_physical_crosscheck",
+        "robot_model": "Unitree Go2-W",
+        "passed": True,
+        "robot_motion_commanded": False,
+        "operator": claim["operator"],
+        "posture": claim["posture"],
+    }
+    mismatched = [
+        key for key, expected in required_values.items()
+        if payload.get(key) != expected
+    ]
+    if mismatched:
+        raise ValueError(
+            "rotation clearance evidence contract mismatch: "
+            + ", ".join(mismatched)
+        )
+    radius = payload.get("validated_rotation_envelope_radius_m")
+    if radius is None or float(radius) + 1e-9 < parameters.rotation_envelope_radius:
+        raise ValueError("rotation clearance evidence envelope is insufficient")
+    evidence_checks = payload.get("checks") or {}
+    missing = [
+        key for key in _ROTATION_VALIDATION_CHECKS
+        if evidence_checks.get(key) is not True
+    ]
+    if missing:
+        raise ValueError(
+            "rotation clearance evidence checks are incomplete: "
+            + ", ".join(missing)
+        )
+    scope = payload.get("authorization_scope") or {}
+    if scope.get("type") != "persistent_sensor_coverage":
+        raise ValueError(
+            "pose-bound rotation evidence cannot enable the persistent "
+            "LiDAR preprocessor gate"
+        )
+    mitigation = payload.get("near_field_mitigation") or {}
+    if mitigation.get("sensor_only_observability_complete") is not True:
+        raise ValueError(
+            "persistent rotation clearance requires complete sensor-only "
+            "near-field observability"
+        )
+    if mitigation.get("method") not in {
+        "additional_coverage_sensor",
+        "physically_revalidated_lidar_mount",
+    }:
+        raise ValueError("persistent near-field mitigation method is unsupported")

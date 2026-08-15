@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Go2-W Camera Demo</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Go2-W 手动相机 Demo</div>
+    <div class="status-lights">
+      <span class="light" id="light-camera"><i></i>Camera</span>
+      <span class="light" id="light-motion"><i></i>Motion</span>
+      <span class="light" id="light-llm"><i></i>LLM</span>
+    </div>
+    <button id="btn-estop" class="estop" disabled>紧急停止</button>
+  </header>
+
+  <main class="main">
+    <section class="camera-pane">
+      <div class="camera-wrap">
+        <img id="camera" src="/api/camera.mjpeg" alt="实时相机" />
+        <div class="camera-overlay">
+          <span id="cam-fps">-- FPS</span>
+          <span id="cam-age">帧年龄 --s</span>
+          <span id="cam-key">按键: -</span>
+          <span id="cam-cmd">当前: --</span>
+        </div>
+        <div id="camera-stale" class="stale-banner hidden">相机断流 / 画面非实时</div>
+      </div>
+    </section>
+
+    <section class="objects-pane">
+      <div class="pane-title">当前场景主要物体
+        <button id="btn-llm" class="llm-toggle">大模型分析: 关</button>
+      </div>
+      <div id="scene-summary" class="scene-summary">—</div>
+      <table id="object-table">
+        <thead>
+          <tr><th>物体</th><th>数量</th><th>位置</th><th>置信</th></tr>
+        </thead>
+        <tbody id="object-tbody">
+          <tr><td colspan="4" class="empty">等待识别…</td></tr>
+        </tbody>
+      </table>
+      <div id="llm-meta" class="llm-meta">
+        <div>最近识别：<span id="llm-last">--</span></div>
+        <div>状态：<span id="llm-status">--</span></div>
+      </div>
+      <div id="llm-error" class="llm-error hidden"></div>
+    </section>
+  </main>
+
+  <footer class="control-bar">
+    <div class="keys">
+      <div class="key-grid">
+        <button class="keybtn" data-key="w" title="前进">W</button>
+        <button class="keybtn" data-key="a" title="左移">A</button>
+        <button class="keybtn" data-key="s" title="后退">S</button>
+        <button class="keybtn" data-key="d" title="右移">D</button>
+        <button class="keybtn" data-key="q" title="左转">Q</button>
+        <button class="keybtn" data-key="e" title="右转">E</button>
+      </div>
+      <div class="key-help">
+        <span>W 前进</span><span>S 后退</span><span>A 左移</span>
+        <span>D 右移</span><span>Q 左转</span><span>E 右转</span>
+        <span class="sp">Space 停止</span><span class="esc">Esc 急停</span>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="btn-enable" class="enable">启用键盘控制</button>
+      <button id="btn-disable" class="disable hidden">停用控制</button>
+      <div class="motion-state" id="motion-state">当前：STOP</div>
+      <div id="blocked-note" class="blocked-note"></div>
+    </div>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

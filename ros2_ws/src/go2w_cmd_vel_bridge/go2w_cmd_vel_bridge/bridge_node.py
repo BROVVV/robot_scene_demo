@@ -42,6 +42,7 @@ class CmdVelBridge(Node):
         self._operator_armed = False
         self._lease_alive = False
         self._lidar_fresh = False
+        self._rotation_clearance_valid = False
         self._lio_fresh = False
         self._robot_error_zero = False
         self._emergency = True
@@ -56,6 +57,10 @@ class CmdVelBridge(Node):
             ("/go2w/software_arm", "_operator_armed"),
             ("/go2w/sport_lease/alive", "_lease_alive"),
             ("/go2w/safety/lidar_fresh", "_lidar_fresh"),
+            (
+                "/go2w/safety/rotation_clearance_valid",
+                "_rotation_clearance_valid",
+            ),
             ("/lio/valid", "_lio_fresh"),
             ("/go2w/robot_error_zero", "_robot_error_zero"),
             ("/go2w/emergency_stop", "_emergency"),
@@ -93,6 +98,7 @@ class CmdVelBridge(Node):
                 operator_armed=self._operator_armed,
                 lease_alive=self._lease_alive,
                 lidar_fresh=self._lidar_fresh,
+                rotation_clearance_valid=self._rotation_clearance_valid,
                 lio_fresh=self._lio_fresh,
                 robot_error_zero=self._robot_error_zero,
                 emergency_stop=self._emergency,

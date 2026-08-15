@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 import re
-from typing import Any
-
-from openai import OpenAI
+from typing import TYPE_CHECKING, Any
 
 from app.config import Settings, get_settings
-from app.task_understanding.schemas import GroundingPromptPlan
 from app.utils.json_utils import extract_json_from_text
 from app.vision.vocab import COLOR_TERMS, COMMON_OBJECT_VOCAB
+
+if TYPE_CHECKING:
+    from app.task_understanding.schemas import GroundingPromptPlan
 
 
 @dataclass(frozen=True)
@@ -137,6 +137,8 @@ class TargetProfileResolver:
         if not use_llm or not self.settings.siliconflow_api_key:
             return fallback
         try:
+            from openai import OpenAI
+
             client = self.client or OpenAI(
                 api_key=self.settings.siliconflow_api_key,
                 base_url=self.settings.siliconflow_base_url,
@@ -245,14 +247,17 @@ def _fallback_profile(query: str) -> TargetProfile:
         if cleaned.startswith(prefix) and len(cleaned) > len(prefix):
             cleaned = cleaned[len(prefix) :].strip(" ：:，,。")
             break
-    known = _known_profile(cleaned)
-    if known is not None:
-        return TargetProfile(raw_query=query, resolver_source="fallback", **known)
     colors = [
         english
         for chinese, english in COLOR_TERMS.items()
         if chinese in cleaned
     ]
+    known = _known_profile(cleaned)
+    if known is not None:
+        return TargetProfile(
+            raw_query=query, resolver_source="fallback",
+            **{**known, "colors": colors},
+        )
     if "打印" in cleaned or "A3" in cleaned.upper():
         return TargetProfile(
             raw_query=query,

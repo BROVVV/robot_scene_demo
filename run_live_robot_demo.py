@@ -36,6 +36,15 @@ def parse_args(argv=None):
         help="Resolve the target profile with the deterministic fallback and do not call any external LLM.",
     )
     parser.add_argument("--no-annotate", action="store_true")
+    parser.add_argument("--semantic-reasoning", action="store_true")
+    parser.add_argument(
+        "--search-reasoner", choices=["legacy", "unigoal", "hybrid"],
+        default="legacy",
+    )
+    parser.add_argument(
+        "--search-reasoner-mode", choices=["shadow", "active"],
+        default="shadow",
+    )
     return parser.parse_args(argv)
 
 
@@ -94,6 +103,9 @@ def main(argv=None) -> int:
             annotate=not args.no_annotate,
             enable_crop_verify=not args.disable_crop_verify,
             use_llm_profile=not args.disable_llm_profile,
+            semantic_reasoning=args.semantic_reasoning,
+            search_reasoner=args.search_reasoner,
+            search_reasoner_mode=args.search_reasoner_mode,
         )
         result["requested_features"] = {
             "video_memory": args.enable_video_memory,

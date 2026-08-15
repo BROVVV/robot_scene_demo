@@ -3,6 +3,15 @@
 Audit date: 2026-08-06 (Asia/Shanghai)  
 Constraint: robot movement is prohibited
 
+> 2026-08-13 addendum: later authorized work is documented in
+> `reports/go2w_unigoal_semantic_search_handoff_20260813.md`. In particular,
+> current rotation observability is still BLOCKED: a deterministic 720-bearing
+> audit finds unobservable swept-annulus space in every bearing (0.155 m on
+> the lateral axes; worst sampled gap 0.290780 m). A bare
+> `rotation_clearance_validation.valid=true` is now rejected unless the full
+> physical evidence contract is present. This addendum supersedes any earlier
+> implication that a no-return side sector alone validates rotation.
+
 This audit maps the plan's final checklist to current evidence. `PASS` means
 the stated scope is directly evidenced; `PARTIAL` does not satisfy a broader
 requirement; `BLOCKED` identifies the missing physical or runtime evidence.

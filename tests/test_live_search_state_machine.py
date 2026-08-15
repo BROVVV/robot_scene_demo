@@ -79,6 +79,22 @@ class LiveSearchStateMachineTests(unittest.TestCase):
             SearchState.OBSERVE,
         )
 
+    def test_semantic_next_view_selection_is_traced_and_keeps_safety_gate(self):
+        machine = SearchStateMachine(mode="step_search", motion_allowed=True)
+        machine.start()
+        machine.sensors(SensorSnapshot(True, True, True))
+        machine.observation_elapsed(0.8)
+        machine.scene_understood()
+        machine.detection(False)
+        self.assertEqual(
+            machine.next_view_selected(
+                source="hybrid", directive_id="directive_1", confidence=0.8
+            ),
+            SearchState.CHECK_SAFETY,
+        )
+        self.assertEqual(machine.trace[-1]["source"], "hybrid")
+        self.assertEqual(machine.safety_checked(True), SearchState.PLAN_STEP)
+
     def test_unverified_motion_still_enters_reobserve(self):
         machine = SearchStateMachine(
             mode="step_search", motion_allowed=True

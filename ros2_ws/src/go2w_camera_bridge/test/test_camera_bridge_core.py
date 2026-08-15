@@ -3,6 +3,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
+import yaml
 
 from go2w_camera_bridge.camera_bridge_core import (
     FrameDecoder,
@@ -30,11 +31,33 @@ def test_decode_jpeg_and_payload_selection():
     assert decoded.shape == (12, 16, 3)
 
 
-def test_placeholder_calibration_is_not_accepted():
-    config = Path(__file__).resolve().parents[4] / "configs/go2w/camera_intrinsics.yaml"
+def test_placeholder_calibration_is_not_accepted(tmp_path):
+    config = tmp_path / "placeholder_intrinsics.yaml"
+    config.write_text(yaml.safe_dump({
+        "calibration_status": "unmeasured",
+        "image_width": 1920,
+        "image_height": 1080,
+        "distortion_model": "plumb_bob",
+        "distortion_coefficients": {"data": [0.0, 0.0, 0.0, 0.0, 0.0]},
+        "camera_matrix": {"data": [0.0] * 9},
+        "rectification_matrix": {
+            "data": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        },
+        "projection_matrix": {"data": [0.0] * 12},
+    }), encoding="utf-8")
     calibration = load_calibration(config)
     assert not calibration.calibrated
     assert calibration.k[0] == 0.0
+
+
+def test_measured_project_calibration_is_accepted():
+    config = Path(__file__).resolve().parents[4] / "configs/go2w/camera_intrinsics.yaml"
+    calibration = load_calibration(config)
+    assert calibration.calibrated
+    assert calibration.width == 1920
+    assert calibration.height == 1080
+    assert calibration.k[0] > 0.0
+    assert calibration.k[4] > 0.0
 
 
 def test_empty_payload_is_rejected():

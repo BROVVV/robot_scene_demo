@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,13 @@ from app.live_robot.search_state_machine import (
     SensorSnapshot,
     VisualEvidence,
 )
+from app.reasoning.unigoal.goal_graph_builder import GoalGraphBuilder
+from app.reasoning.unigoal.graph_matcher import UniGoalGraphMatcher
+from app.reasoning.unigoal.models import GraphMatchState, SearchReasoningContext
+from app.reasoning.unigoal.router import SemanticSearchController
+from app.reasoning.unigoal.semantic_memory import SemanticSearchMemory
+from app.reasoning.unigoal.auxiliary_hints import build_psg_auxiliary_hints
+from app.memory.observation_memory_store import ObservationMemoryStore
 from app.video.frame_analyzer import FrameAnalyzer
 from app.video.frame_scene_parser import observation_from_frame_analysis
 from app.video.models import VideoFrame, VideoMetadata
@@ -41,6 +49,9 @@ def run_live_bundle_search(
     annotate: bool = True,
     enable_crop_verify: bool = True,
     use_llm_profile: bool = True,
+    semantic_reasoning: bool = False,
+    search_reasoner: str = "legacy",
+    search_reasoner_mode: str = "shadow",
 ) -> dict[str, Any]:
     if not bundles:
         raise ValueError("at least one complete frame bundle is required")
@@ -71,6 +82,9 @@ def run_live_bundle_search(
         machine=machine,
         snapshot=snapshot,
         use_llm_profile=use_llm_profile,
+        semantic_reasoning=semantic_reasoning,
+        search_reasoner=search_reasoner,
+        search_reasoner_mode=search_reasoner_mode,
     )
 
 
@@ -99,6 +113,9 @@ def _run_after_sensor_snapshot(
     machine: SearchStateMachine,
     snapshot: SensorSnapshot,
     use_llm_profile: bool = True,
+    semantic_reasoning: bool = False,
+    search_reasoner: str = "legacy",
+    search_reasoner_mode: str = "shadow",
 ) -> dict[str, Any]:
     machine.sensors(snapshot)
     if machine.state.value == "WAIT_FOR_SENSORS":
@@ -106,6 +123,9 @@ def _run_after_sensor_snapshot(
             output, target, detector, latest_health, machine, "camera_or_lidar_not_fresh"
         )
 
+    # The ROS bridge prunes old spool bundles while remote inference is running.
+    # Preserve the accepted sensor evidence before any potentially slow API call.
+    frames = _video_frames(bundles, snapshot_dir=output / "input_frames")
     machine.observation_elapsed(machine.stop_settle_seconds)
     machine.scene_understood()
     profile = TargetProfileResolver().resolve(
@@ -113,7 +133,6 @@ def _run_after_sensor_snapshot(
         use_llm=bool(use_llm_profile) and detector in {"llm", "grounded_sam"},
     )
     write_json(profile.to_dict(), output / "target_profile.json")
-    frames = _video_frames(bundles)
     analyzer = FrameAnalyzer(
         detector=detector,
         target=target.strip(),
@@ -157,7 +176,11 @@ def _run_after_sensor_snapshot(
         target_profile=profile,
         require_confirmed_tracks=True,
     )
+    observations = [observation_from_frame_analysis(item) for item in frame_results]
+    graph_tracks = VideoObjectTracker().build_tracks(observations)
+    scene_graph = ObservedSceneGraphBuilder().build(observations, graph_tracks)
     gate = evaluate_video_search_evidence(search, frame_results, settings)
+    gate = enforce_relation_evidence_gate(gate, profile, scene_graph)
     search["evidence_gating"] = gate
     search["target_found"] = bool(gate.get("target_found"))
     apply_target_state(search)
@@ -178,9 +201,66 @@ def _run_after_sensor_snapshot(
     search["runtime_source"] = "live_frame_bundle"
     search["detector_runtime_is_mock"] = detector == "mock"
 
-    observations = [observation_from_frame_analysis(item) for item in frame_results]
-    graph_tracks = VideoObjectTracker().build_tracks(observations)
-    scene_graph = ObservedSceneGraphBuilder().build(observations, graph_tracks)
+    if semantic_reasoning and search_reasoner in {"unigoal", "hybrid"}:
+        controller = SemanticSearchController(
+            profile,
+            backend=search_reasoner,
+            partial_threshold=settings.live_search_graph_match_partial_threshold,
+            strong_threshold=settings.live_search_graph_match_strong_threshold,
+        )
+        semantic_memory = SemanticSearchMemory(
+            default_ttl_sec=settings.live_search_negative_memory_ttl_seconds,
+            observation_store=(
+                ObservationMemoryStore(settings=settings)
+                if settings.live_search_reasoner_use_observation_memory
+                else None
+            ),
+        )
+        psg_auxiliary = build_psg_auxiliary_hints(
+            scene_graph,
+            enabled=settings.live_search_reasoner_use_psg,
+            max_predicted_nodes=settings.video_psg_max_predicted_nodes,
+            confidence_threshold=settings.video_psg_confidence_threshold,
+        )
+        context = SearchReasoningContext(
+            target_profile=profile,
+            goal_graph=controller.goal_graph,
+            scene_graph=scene_graph,
+            observation_memory=semantic_memory.retrieve_long_term(
+                profile.canonical_name_zh
+            ),
+            negative_memory=semantic_memory,
+            auxiliary_hints=list(psg_auxiliary.get("hints") or []),
+            auxiliary_status={
+                "psg": psg_auxiliary.get("status") or {},
+                "llm_situated_prior": {
+                    "enabled": settings.live_search_reasoner_use_llm_situated_prior,
+                    "available": False,
+                    "reason": "no_precomputed_prior_in_observe_only_snapshot",
+                    "used_for_target_confirmation": False,
+                },
+            },
+            safety_context={
+                "mode": "observe_only",
+                "forward_allowed": False,
+                "reasoner_mode": search_reasoner_mode,
+            },
+        )
+        directive = controller.propose(context)
+        write_json(controller.goal_graph.to_dict(), output / "goal_graph.json")
+        write_json(
+            context.graph_match.to_dict() if context.graph_match else {},
+            output / "unigoal_match.json",
+        )
+        write_json(directive.to_dict(), output / "search_directive.json")
+        write_json(
+            {
+                "hints": context.auxiliary_hints,
+                "status": context.auxiliary_status,
+                "can_confirm_target": False,
+            },
+            output / "unigoal_auxiliary_hints.json",
+        )
     topology = VideoNavigationTopologyBuilder(observed_only=True).build(scene_graph, [])
     candidates = [
         item for item in search.get("timeline", []) if item.get("type") == "direct_detection"
@@ -224,22 +304,48 @@ def _run_after_sensor_snapshot(
         "state": machine.state.value,
         "output_dir": str(output),
         "target_found": bool(search.get("target_found")),
+        "semantic_reasoning": bool(semantic_reasoning),
+        "search_reasoner": search_reasoner,
+        "search_reasoner_mode": search_reasoner_mode,
     }
 
 
-def _video_frames(bundles: list[FrameBundle]) -> list[VideoFrame]:
+def _video_frames(
+    bundles: list[FrameBundle], *, snapshot_dir: Path | None = None
+) -> list[VideoFrame]:
     ordered = sorted(bundles, key=lambda item: int(item.payload["image_receive_time_ns"]))
     origin = int(ordered[0].payload["image_receive_time_ns"])
-    return [
-        VideoFrame(
-            frame_id=int(item.payload["frame_id"]),
-            timestamp_sec=(int(item.payload["image_receive_time_ns"]) - origin) / 1e9,
-            image_path=item.image_path,
-            width=int(item.payload["camera_info"]["width"]),
-            height=int(item.payload["camera_info"]["height"]),
+    if snapshot_dir is not None:
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+    frames: list[VideoFrame] = []
+    for item in ordered:
+        image_path = item.image_path
+        if snapshot_dir is not None:
+            suffix = image_path.suffix or ".jpg"
+            destination = snapshot_dir / f"frame_{item.frame_id:012d}{suffix}"
+            temporary = destination.with_suffix(f"{destination.suffix}.tmp")
+            try:
+                shutil.copyfile(image_path, temporary)
+                if temporary.stat().st_size == 0:
+                    raise OSError(f"copied frame is empty: {image_path}")
+                temporary.replace(destination)
+            except OSError as exc:
+                temporary.unlink(missing_ok=True)
+                raise RuntimeError(
+                    f"failed to snapshot live frame {item.frame_id} before inference: "
+                    f"{image_path}"
+                ) from exc
+            image_path = destination
+        frames.append(
+            VideoFrame(
+                frame_id=int(item.payload["frame_id"]),
+                timestamp_sec=(int(item.payload["image_receive_time_ns"]) - origin) / 1e9,
+                image_path=image_path,
+                width=int(item.payload["camera_info"]["width"]),
+                height=int(item.payload["camera_info"]["height"]),
+            )
         )
-        for item in ordered
-    ]
+    return frames
 
 
 def _visual_evidence(search, gate, tracks, frame_results) -> VisualEvidence:
@@ -266,6 +372,49 @@ def _visual_evidence(search, gate, tracks, frame_results) -> VisualEvidence:
         frame_available=bool(best.get("frame_path")),
         source="visual_detector",
     )
+
+
+def enforce_relation_evidence_gate(gate, profile, scene_graph):
+    """Require observed graph support for every explicit relation target.
+
+    Crop verification establishes the candidate's visual identity. For a
+    request such as "the blue bin next to the water cooler", confirmation
+    additionally needs the observed SceneGraph relation; reasoner output alone
+    is never used as confirming evidence.
+    """
+
+    if not getattr(profile, "relation_constraints", None):
+        return gate
+    goal_graph = GoalGraphBuilder().build(profile)
+    match = UniGoalGraphMatcher().match(
+        goal_graph,
+        scene_graph,
+        target_profile=profile,
+    )
+    relation_ok = bool(
+        match.state == GraphMatchState.STRONG
+        and match.matched_relations
+        and not match.unmatched_relations
+    )
+    result = {
+        **gate,
+        "relation_evidence": match.to_dict(),
+    }
+    passed = list(result.get("passed_rules") or [])
+    blocked = list(result.get("blocking_rules") or [])
+    rule = "TARGET_CONFIRMATION_REQUIRE_RELATION_EVIDENCE"
+    if relation_ok:
+        if rule not in passed:
+            passed.append(rule)
+    else:
+        result["target_found"] = False
+        result["best_evidence"] = None
+        if rule not in blocked:
+            blocked.append(rule)
+        result["reason_zh"] = "目标主体有视觉候选，但显式空间关系缺少强观察证据。"
+    result["passed_rules"] = passed
+    result["blocking_rules"] = blocked
+    return result
 
 
 def _track_summary(tracks: list[dict[str, Any]]) -> dict[str, Any]:

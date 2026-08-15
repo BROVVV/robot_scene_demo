@@ -98,6 +98,29 @@ class LLMPromptContractTest(unittest.TestCase):
         self.assertEqual(result.relations[0].relation_type, "near")
         self.assertEqual(result.route_plan.steps[0].action, "stop")
 
+    def test_zero_based_index_signal_applies_to_all_relations_and_target_matches(self) -> None:
+        normalized = _normalize_fast_result(
+            {
+                "objects": [
+                    {"name": "bin", "name_zh": "垃圾桶"},
+                    {"name": "dispenser", "name_zh": "饮水机"},
+                    {"name": "chair", "name_zh": "椅子"},
+                ],
+                "relations": [
+                    {"source_index": 0, "target_index": 1, "relation_type": "next_to"},
+                    {"source_index": 1, "target_index": 2, "relation_type": "behind"},
+                ],
+                "target_decision": {"is_present": True, "matched_indices": [1]},
+            },
+            "饮水机",
+        )
+
+        result = SceneAnalysisResult.model_validate(normalized)
+        self.assertEqual(result.relations[0].source_id, "obj_001")
+        self.assertEqual(result.relations[1].source_id, "obj_002")
+        self.assertEqual(result.relations[1].target_id, "obj_003")
+        self.assertEqual(result.target_decision.matched_object_ids, ["obj_002"])
+
 
 if __name__ == "__main__":
     unittest.main()

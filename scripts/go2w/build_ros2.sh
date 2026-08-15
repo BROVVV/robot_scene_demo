@@ -25,7 +25,10 @@ cd "$PROJECT_ROOT/ros2_ws"
 colcon build \
   --symlink-install \
   --event-handlers console_cohesion+ \
-  --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
+  --cmake-args \
+    -DPython3_EXECUTABLE=/usr/bin/python3 \
+    -DPYTHON_EXECUTABLE=/usr/bin/python3 \
+    -DWITH_PTCS_USE=OFF
 
 printf 'ROS 2 workspace built with system Python: %s\n' \
   "$PROJECT_ROOT/ros2_ws/install/setup.bash"

@@ -236,6 +236,7 @@ def _object_payload(frame: VideoFrame, obj: dict[str, Any]) -> dict[str, Any]:
         "label": obj.get("name", "object"),
         "label_zh": obj.get("name_zh", "物体"),
         "category": obj.get("category", "unknown"),
+        "color": obj.get("color"),
         "confidence": float(obj.get("confidence", 0.0)),
         "detector_score": obj.get("detector_score") or obj.get("confidence"),
         "text_score": obj.get("text_score"),

@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from app.config import Settings, get_settings
-from app.schemas import SceneAnalysisResult
+
+if TYPE_CHECKING:
+    from app.schemas import SceneAnalysisResult
 
 
 class ObservationMemoryStore:
@@ -89,7 +91,7 @@ def build_scene_memory_updates(
                 "confirmed_by_visual_gate": bool(
                     confirmed and candidate_report.get("target_found")
                 ),
-                "created_at": datetime.now(UTC).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
             }
         )
     return updates

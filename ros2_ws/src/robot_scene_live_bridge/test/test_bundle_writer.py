@@ -3,7 +3,10 @@ import json
 import pytest
 
 from robot_scene_live_bridge.bundle_writer import AtomicBundleWriter
-from robot_scene_live_bridge.live_bridge_node import scheduled_bundle_deadline
+from robot_scene_live_bridge.live_bridge_node import (
+    clearance_status,
+    scheduled_bundle_deadline,
+)
 
 
 def payload(frame_id):
@@ -74,3 +77,11 @@ def test_scheduled_rate_limit_does_not_accumulate_frame_quantization_drift():
             next_deadline = candidate
     assert len(accepted) == 10
     assert accepted[-1] - accepted[0] < 9.5 * period
+
+
+def test_clearance_status_distinguishes_no_return_from_unknown():
+    assert clearance_status(1.2, source_fresh=True) == "measured"
+    assert clearance_status(float("inf"), source_fresh=True) == "no_return"
+    assert clearance_status(float("nan"), source_fresh=True) == "unknown"
+    assert clearance_status(1.2, source_fresh=False) == "unknown"
+    assert clearance_status(float("inf"), source_fresh=True, valid=False) == "unknown"

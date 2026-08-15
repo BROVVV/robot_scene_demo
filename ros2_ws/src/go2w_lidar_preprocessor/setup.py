@@ -21,6 +21,8 @@ setup(
     entry_points={
         "console_scripts": [
             "lidar_preprocessor = go2w_lidar_preprocessor.preprocessor_node:main",
+            "hesai_pandarxt16_preprocessor = "
+            "go2w_lidar_preprocessor.hesai_pandarxt16_preprocessor:main",
         ]
     },
 )

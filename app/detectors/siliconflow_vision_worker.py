@@ -360,6 +360,17 @@ def main() -> int:
     else:
         payload = {
             "objects": _matched_objects(result, args.target),
+            # Preserve the full factual observation for the event-driven
+            # semantic observer. The legacy target-only ``objects`` contract
+            # above remains unchanged.
+            "scene_objects": [
+                item.model_dump(mode="json") if hasattr(item, "model_dump") else item
+                for item in (result.get("objects") or [])
+            ],
+            "scene_relations": [
+                item.model_dump(mode="json") if hasattr(item, "model_dump") else item
+                for item in (result.get("relations") or [])
+            ],
             "scene_summary_zh": result.get("scene_summary_zh", ""),
             "target_decision": result.get("target_decision", {}),
             "all_objects_count": len(result.get("objects") or []),

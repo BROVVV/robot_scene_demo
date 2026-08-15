@@ -62,9 +62,13 @@ def main() -> int:
     health = payload.get("sensor_health") or {}
     if health.get("camera") is not True:
         errors.append("camera_health_false")
-    # Camera calibration/LIO/full TF remain closed; LiDAR now has live evidence.
+    # Intrinsics and diagnostic overlay are usable; navigation-grade geometry,
+    # LIO and the full camera TF chain remain fail-closed.
+    if health.get("camera_info_calibrated") is not True:
+        errors.append("camera_intrinsics_health_false")
+    if health.get("rgb_lidar_overlay") is not True:
+        errors.append("rgb_lidar_diagnostic_overlay_health_false")
     for key in (
-        "camera_info_calibrated",
         "rgb_lidar_extrinsics",
         "rgb_lidar_fusion",
         "lio",
@@ -83,6 +87,20 @@ def main() -> int:
         value = clearance.get(key)
         if value is not None and not isinstance(value, (int, float)):
             errors.append(f"invalid_clearance_value:{key}")
+    expected_statuses = {
+        "front_status": {"measured", "no_return"},
+        "left_status": {"measured", "no_return", "unknown"},
+        "right_status": {"measured", "no_return", "unknown"},
+    }
+    for key, allowed in expected_statuses.items():
+        if clearance.get(key) not in allowed:
+            errors.append(f"invalid_clearance_status:{key}")
+    if clearance.get("rotation_clearance_valid") is not False:
+        errors.append("rotation_clearance_should_be_fail_closed")
+    if clearance.get("left_status") != "unknown" or clearance.get(
+        "right_status"
+    ) != "unknown":
+        errors.append("unvalidated_side_clearance_was_not_marked_unknown")
     result = {
         "passed": not errors,
         "errors": errors,

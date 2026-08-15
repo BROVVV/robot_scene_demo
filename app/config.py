@@ -7,7 +7,11 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:  # ROS system Python may intentionally omit dotenv.
+    def load_dotenv(*_args, **_kwargs):
+        return False
 
 
 DEFAULT_SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
@@ -111,6 +115,22 @@ DEFAULT_VIDEO_ENABLE_MEMORY_RETRIEVAL = True
 DEFAULT_VIDEO_MEMORY_RETRIEVAL_TOP_K = 10
 DEFAULT_VIDEO_SCENE_REASONER_BACKEND = "llm"
 DEFAULT_VIDEO_FORCE_JSON_OUTPUT = True
+DEFAULT_LIVE_SEARCH_SEMANTIC_REASONING_ENABLED = False
+DEFAULT_LIVE_SEARCH_REASONER_BACKEND = "legacy"
+DEFAULT_LIVE_SEARCH_REASONER_MODE = "shadow"
+DEFAULT_LIVE_SEARCH_REASONER_MIN_CONFIDENCE = 0.55
+DEFAULT_LIVE_SEARCH_REASONER_ALLOW_FORWARD = False
+DEFAULT_LIVE_SEARCH_REASONER_MAX_TURN_DEG = 30.0
+DEFAULT_LIVE_SEARCH_REASONER_MIN_REPLAN_SECONDS = 5.0
+DEFAULT_LIVE_SEARCH_REASONER_SCENE_TTL_SECONDS = 10.0
+DEFAULT_LIVE_SEARCH_GRAPH_MATCH_PARTIAL_THRESHOLD = 0.30
+DEFAULT_LIVE_SEARCH_GRAPH_MATCH_STRONG_THRESHOLD = 0.72
+DEFAULT_LIVE_SEARCH_NEGATIVE_MEMORY_ENABLED = True
+DEFAULT_LIVE_SEARCH_NEGATIVE_MEMORY_TTL_SECONDS = 300.0
+DEFAULT_LIVE_SEARCH_REASONER_USE_PSG = True
+DEFAULT_LIVE_SEARCH_REASONER_USE_OBSERVATION_MEMORY = True
+DEFAULT_LIVE_SEARCH_REASONER_USE_LLM_SITUATED_PRIOR = True
+DEFAULT_LIVE_SEARCH_REASONER_DEBUG_OUTPUT_DIR = "outputs/live_reasoning"
 DEFAULT_VIDEO_NAVIGATION_ENABLED = True
 DEFAULT_VIDEO_NAVIGATION_MODE = "visual_preview"
 DEFAULT_VIDEO_POSE_BACKEND = "auto"
@@ -202,6 +222,28 @@ DEFAULT_GROUNDING_PROMPT_MAX_TERMS = 24
 DEFAULT_GROUNDING_PROMPT_MIN_TERMS = 3
 DEFAULT_GROUNDING_PROMPT_DEBUG_OUTPUT = "outputs/grounding_prompt_plan.json"
 DEFAULT_GROUNDING_PROMPT_RETRY_DEBUG_OUTPUT = "outputs/grounding_prompt_retry_plan.json"
+
+# ---- PandarXT-16 and dual-LiDAR safety (all fail-closed by default) ----
+DEFAULT_PANDARXT16_ENABLED = False
+DEFAULT_PANDARXT16_DIAGNOSTIC_PREPROCESS_ENABLED = False
+DEFAULT_PANDARXT16_ZERO_RETURN_MAX_M = 0.05
+DEFAULT_PANDARXT16_CLOCK_REQUIRE_VALIDATED_FOR_METRIC = True
+
+DEFAULT_DUAL_LIDAR_SAFETY_ENABLED = False
+DEFAULT_DUAL_LIDAR_REQUIRE_VALIDATED_EXTRINSICS = True
+DEFAULT_DUAL_LIDAR_UNKNOWN_IS_CLEAR = False
+DEFAULT_DUAL_LIDAR_MAX_EVIDENCE_AGE_SECONDS = 0.5
+
+# Current operator-confirmed whole-machine geometry (2026-08-13). The highest
+# point is the fixed PandarXT-16 protective frame, not a loose cable, and the
+# machine is NOT scheduled for re-measurement.
+DEFAULT_GO2W_CURRENT_LENGTH_M = 0.70
+DEFAULT_GO2W_CURRENT_WIDTH_M = 0.43
+DEFAULT_GO2W_CURRENT_HEIGHT_M = 0.70
+DEFAULT_GO2W_CURRENT_HIGHEST_POINT = "pandarxt16_protective_frame"
+DEFAULT_GO2W_CURRENT_GEOMETRY_CONFIG = "configs/go2w/current_hardware_geometry.yaml"
+DEFAULT_GO2W_CURRENT_STATE_CONFIG = "configs/go2w/current_hardware_state.yaml"
+DEFAULT_GO2W_PANDAR_PREPROCESS_CONFIG = "configs/go2w/hesai_pandarxt16_preprocess.yaml"
 
 
 class SettingsError(RuntimeError):
@@ -462,6 +504,69 @@ class Settings:
     grounding_prompt_retry_debug_output: str = (
         DEFAULT_GROUNDING_PROMPT_RETRY_DEBUG_OUTPUT
     )
+    live_search_semantic_reasoning_enabled: bool = (
+        DEFAULT_LIVE_SEARCH_SEMANTIC_REASONING_ENABLED
+    )
+    live_search_reasoner_backend: str = DEFAULT_LIVE_SEARCH_REASONER_BACKEND
+    live_search_reasoner_mode: str = DEFAULT_LIVE_SEARCH_REASONER_MODE
+    live_search_reasoner_min_confidence: float = (
+        DEFAULT_LIVE_SEARCH_REASONER_MIN_CONFIDENCE
+    )
+    live_search_reasoner_allow_forward: bool = (
+        DEFAULT_LIVE_SEARCH_REASONER_ALLOW_FORWARD
+    )
+    live_search_reasoner_max_turn_deg: float = DEFAULT_LIVE_SEARCH_REASONER_MAX_TURN_DEG
+    live_search_reasoner_min_replan_seconds: float = (
+        DEFAULT_LIVE_SEARCH_REASONER_MIN_REPLAN_SECONDS
+    )
+    live_search_reasoner_scene_ttl_seconds: float = (
+        DEFAULT_LIVE_SEARCH_REASONER_SCENE_TTL_SECONDS
+    )
+    live_search_graph_match_partial_threshold: float = (
+        DEFAULT_LIVE_SEARCH_GRAPH_MATCH_PARTIAL_THRESHOLD
+    )
+    live_search_graph_match_strong_threshold: float = (
+        DEFAULT_LIVE_SEARCH_GRAPH_MATCH_STRONG_THRESHOLD
+    )
+    live_search_negative_memory_enabled: bool = (
+        DEFAULT_LIVE_SEARCH_NEGATIVE_MEMORY_ENABLED
+    )
+    live_search_negative_memory_ttl_seconds: float = (
+        DEFAULT_LIVE_SEARCH_NEGATIVE_MEMORY_TTL_SECONDS
+    )
+    live_search_reasoner_use_psg: bool = DEFAULT_LIVE_SEARCH_REASONER_USE_PSG
+    live_search_reasoner_use_observation_memory: bool = (
+        DEFAULT_LIVE_SEARCH_REASONER_USE_OBSERVATION_MEMORY
+    )
+    live_search_reasoner_use_llm_situated_prior: bool = (
+        DEFAULT_LIVE_SEARCH_REASONER_USE_LLM_SITUATED_PRIOR
+    )
+    live_search_reasoner_debug_output_dir: str = (
+        DEFAULT_LIVE_SEARCH_REASONER_DEBUG_OUTPUT_DIR
+    )
+    pandarxt16_enabled: bool = DEFAULT_PANDARXT16_ENABLED
+    pandarxt16_diagnostic_preprocess_enabled: bool = (
+        DEFAULT_PANDARXT16_DIAGNOSTIC_PREPROCESS_ENABLED
+    )
+    pandarxt16_zero_return_max_m: float = DEFAULT_PANDARXT16_ZERO_RETURN_MAX_M
+    pandarxt16_clock_require_validated_for_metric: bool = (
+        DEFAULT_PANDARXT16_CLOCK_REQUIRE_VALIDATED_FOR_METRIC
+    )
+    dual_lidar_safety_enabled: bool = DEFAULT_DUAL_LIDAR_SAFETY_ENABLED
+    dual_lidar_require_validated_extrinsics: bool = (
+        DEFAULT_DUAL_LIDAR_REQUIRE_VALIDATED_EXTRINSICS
+    )
+    dual_lidar_unknown_is_clear: bool = DEFAULT_DUAL_LIDAR_UNKNOWN_IS_CLEAR
+    dual_lidar_max_evidence_age_seconds: float = (
+        DEFAULT_DUAL_LIDAR_MAX_EVIDENCE_AGE_SECONDS
+    )
+    go2w_current_length_m: float = DEFAULT_GO2W_CURRENT_LENGTH_M
+    go2w_current_width_m: float = DEFAULT_GO2W_CURRENT_WIDTH_M
+    go2w_current_height_m: float = DEFAULT_GO2W_CURRENT_HEIGHT_M
+    go2w_current_highest_point: str = DEFAULT_GO2W_CURRENT_HIGHEST_POINT
+    go2w_current_geometry_config: str = DEFAULT_GO2W_CURRENT_GEOMETRY_CONFIG
+    go2w_current_state_config: str = DEFAULT_GO2W_CURRENT_STATE_CONFIG
+    go2w_pandar_preprocess_config: str = DEFAULT_GO2W_PANDAR_PREPROCESS_CONFIG
 
 
 def _project_root() -> Path:
@@ -1152,5 +1257,115 @@ def get_settings() -> Settings:
         grounding_prompt_retry_debug_output=_env_value(
             "GROUNDING_PROMPT_RETRY_DEBUG_OUTPUT",
             DEFAULT_GROUNDING_PROMPT_RETRY_DEBUG_OUTPUT,
+        ),
+        live_search_semantic_reasoning_enabled=_env_bool(
+            "LIVE_SEARCH_SEMANTIC_REASONING_ENABLED",
+            DEFAULT_LIVE_SEARCH_SEMANTIC_REASONING_ENABLED,
+        ),
+        live_search_reasoner_backend=_env_value(
+            "LIVE_SEARCH_REASONER_BACKEND", DEFAULT_LIVE_SEARCH_REASONER_BACKEND
+        ),
+        live_search_reasoner_mode=_env_value(
+            "LIVE_SEARCH_REASONER_MODE", DEFAULT_LIVE_SEARCH_REASONER_MODE
+        ),
+        live_search_reasoner_min_confidence=_env_float(
+            "LIVE_SEARCH_REASONER_MIN_CONFIDENCE",
+            DEFAULT_LIVE_SEARCH_REASONER_MIN_CONFIDENCE,
+        ),
+        live_search_reasoner_allow_forward=_env_bool(
+            "LIVE_SEARCH_REASONER_ALLOW_FORWARD",
+            DEFAULT_LIVE_SEARCH_REASONER_ALLOW_FORWARD,
+        ),
+        live_search_reasoner_max_turn_deg=_env_float(
+            "LIVE_SEARCH_REASONER_MAX_TURN_DEG",
+            DEFAULT_LIVE_SEARCH_REASONER_MAX_TURN_DEG,
+        ),
+        live_search_reasoner_min_replan_seconds=_env_float(
+            "LIVE_SEARCH_REASONER_MIN_REPLAN_SECONDS",
+            DEFAULT_LIVE_SEARCH_REASONER_MIN_REPLAN_SECONDS,
+        ),
+        live_search_reasoner_scene_ttl_seconds=_env_float(
+            "LIVE_SEARCH_REASONER_SCENE_TTL_SECONDS",
+            DEFAULT_LIVE_SEARCH_REASONER_SCENE_TTL_SECONDS,
+        ),
+        live_search_graph_match_partial_threshold=_env_float(
+            "LIVE_SEARCH_GRAPH_MATCH_PARTIAL_THRESHOLD",
+            DEFAULT_LIVE_SEARCH_GRAPH_MATCH_PARTIAL_THRESHOLD,
+        ),
+        live_search_graph_match_strong_threshold=_env_float(
+            "LIVE_SEARCH_GRAPH_MATCH_STRONG_THRESHOLD",
+            DEFAULT_LIVE_SEARCH_GRAPH_MATCH_STRONG_THRESHOLD,
+        ),
+        live_search_negative_memory_enabled=_env_bool(
+            "LIVE_SEARCH_NEGATIVE_MEMORY_ENABLED",
+            DEFAULT_LIVE_SEARCH_NEGATIVE_MEMORY_ENABLED,
+        ),
+        live_search_negative_memory_ttl_seconds=_env_float(
+            "LIVE_SEARCH_NEGATIVE_MEMORY_TTL_SECONDS",
+            DEFAULT_LIVE_SEARCH_NEGATIVE_MEMORY_TTL_SECONDS,
+        ),
+        live_search_reasoner_use_psg=_env_bool(
+            "LIVE_SEARCH_REASONER_USE_PSG", DEFAULT_LIVE_SEARCH_REASONER_USE_PSG
+        ),
+        live_search_reasoner_use_observation_memory=_env_bool(
+            "LIVE_SEARCH_REASONER_USE_OBSERVATION_MEMORY",
+            DEFAULT_LIVE_SEARCH_REASONER_USE_OBSERVATION_MEMORY,
+        ),
+        live_search_reasoner_use_llm_situated_prior=_env_bool(
+            "LIVE_SEARCH_REASONER_USE_LLM_SITUATED_PRIOR",
+            DEFAULT_LIVE_SEARCH_REASONER_USE_LLM_SITUATED_PRIOR,
+        ),
+        live_search_reasoner_debug_output_dir=_env_value(
+            "LIVE_SEARCH_REASONER_DEBUG_OUTPUT_DIR",
+            DEFAULT_LIVE_SEARCH_REASONER_DEBUG_OUTPUT_DIR,
+        ),
+        pandarxt16_enabled=_env_bool(
+            "PANDARXT16_ENABLED", DEFAULT_PANDARXT16_ENABLED
+        ),
+        pandarxt16_diagnostic_preprocess_enabled=_env_bool(
+            "PANDARXT16_DIAGNOSTIC_PREPROCESS_ENABLED",
+            DEFAULT_PANDARXT16_DIAGNOSTIC_PREPROCESS_ENABLED,
+        ),
+        pandarxt16_zero_return_max_m=_env_float(
+            "PANDARXT16_ZERO_RETURN_MAX_M", DEFAULT_PANDARXT16_ZERO_RETURN_MAX_M
+        ),
+        pandarxt16_clock_require_validated_for_metric=_env_bool(
+            "PANDARXT16_CLOCK_REQUIRE_VALIDATED_FOR_METRIC",
+            DEFAULT_PANDARXT16_CLOCK_REQUIRE_VALIDATED_FOR_METRIC,
+        ),
+        dual_lidar_safety_enabled=_env_bool(
+            "DUAL_LIDAR_SAFETY_ENABLED", DEFAULT_DUAL_LIDAR_SAFETY_ENABLED
+        ),
+        dual_lidar_require_validated_extrinsics=_env_bool(
+            "DUAL_LIDAR_REQUIRE_VALIDATED_EXTRINSICS",
+            DEFAULT_DUAL_LIDAR_REQUIRE_VALIDATED_EXTRINSICS,
+        ),
+        dual_lidar_unknown_is_clear=_env_bool(
+            "DUAL_LIDAR_UNKNOWN_IS_CLEAR", DEFAULT_DUAL_LIDAR_UNKNOWN_IS_CLEAR
+        ),
+        dual_lidar_max_evidence_age_seconds=_env_float(
+            "DUAL_LIDAR_MAX_EVIDENCE_AGE_SECONDS",
+            DEFAULT_DUAL_LIDAR_MAX_EVIDENCE_AGE_SECONDS,
+        ),
+        go2w_current_length_m=_env_float(
+            "GO2W_CURRENT_LENGTH_M", DEFAULT_GO2W_CURRENT_LENGTH_M
+        ),
+        go2w_current_width_m=_env_float(
+            "GO2W_CURRENT_WIDTH_M", DEFAULT_GO2W_CURRENT_WIDTH_M
+        ),
+        go2w_current_height_m=_env_float(
+            "GO2W_CURRENT_HEIGHT_M", DEFAULT_GO2W_CURRENT_HEIGHT_M
+        ),
+        go2w_current_highest_point=_env_value(
+            "GO2W_CURRENT_HIGHEST_POINT", DEFAULT_GO2W_CURRENT_HIGHEST_POINT
+        ),
+        go2w_current_geometry_config=_env_value(
+            "GO2W_CURRENT_GEOMETRY_CONFIG", DEFAULT_GO2W_CURRENT_GEOMETRY_CONFIG
+        ),
+        go2w_current_state_config=_env_value(
+            "GO2W_CURRENT_STATE_CONFIG", DEFAULT_GO2W_CURRENT_STATE_CONFIG
+        ),
+        go2w_pandar_preprocess_config=_env_value(
+            "GO2W_PANDAR_PREPROCESS_CONFIG", DEFAULT_GO2W_PANDAR_PREPROCESS_CONFIG
         ),
     )

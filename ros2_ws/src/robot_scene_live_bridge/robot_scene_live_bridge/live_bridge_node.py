@@ -38,6 +38,19 @@ def finite_or_none(value: float) -> float | None:
     return value if math.isfinite(value) else None
 
 
+def clearance_status(value: float, *, source_fresh: bool, valid: bool = True) -> str:
+    """Preserve measured/no-return/unknown semantics in finite JSON."""
+
+    if not source_fresh or not valid:
+        return "unknown"
+    value = float(value)
+    if math.isnan(value):
+        return "unknown"
+    if math.isinf(value):
+        return "no_return"
+    return "measured"
+
+
 def scheduled_bundle_deadline(
     next_stamp_ns: int | None, current_stamp_ns: int, period_ns: int
 ) -> tuple[bool, int]:
@@ -86,8 +99,12 @@ class LiveBridge(Node):
         self._clearance_receive_ns = None
         self._lidar_fresh = False
         self._lidar_fresh_receive_ns = None
+        self._rotation_clearance_valid = False
+        self._rotation_clearance_valid_receive_ns = None
         self._extrinsics_validated = False
         self._extrinsics_receive_ns = None
+        self._rgb_lidar_overlay_ready = False
+        self._rgb_lidar_overlay_receive_ns = None
         self._fusion_ready = False
         self._fusion_receive_ns = None
         self._tf_buffer = Buffer(cache_time=Duration(seconds=10.0))
@@ -110,8 +127,20 @@ class LiveBridge(Node):
         )
         self.create_subscription(
             Bool,
+            "/go2w/safety/rotation_clearance_valid",
+            self._on_rotation_clearance_valid,
+            10,
+        )
+        self.create_subscription(
+            Bool,
             "/perception/rgb_lidar_extrinsics_validated",
             self._on_extrinsics_validated,
+            10,
+        )
+        self.create_subscription(
+            Bool,
+            "/perception/rgb_lidar_overlay_ready",
+            self._on_rgb_lidar_overlay_ready,
             10,
         )
         self.create_subscription(
@@ -138,9 +167,19 @@ class LiveBridge(Node):
         self._lidar_fresh = bool(message.data)
         self._lidar_fresh_receive_ns = self.get_clock().now().nanoseconds
 
+    def _on_rotation_clearance_valid(self, message: Bool) -> None:
+        self._rotation_clearance_valid = bool(message.data)
+        self._rotation_clearance_valid_receive_ns = (
+            self.get_clock().now().nanoseconds
+        )
+
     def _on_extrinsics_validated(self, message: Bool) -> None:
         self._extrinsics_validated = bool(message.data)
         self._extrinsics_receive_ns = self.get_clock().now().nanoseconds
+
+    def _on_rgb_lidar_overlay_ready(self, message: Bool) -> None:
+        self._rgb_lidar_overlay_ready = bool(message.data)
+        self._rgb_lidar_overlay_receive_ns = self.get_clock().now().nanoseconds
 
     def _on_fusion_ready(self, message: Bool) -> None:
         self._fusion_ready = bool(message.data)
@@ -194,10 +233,32 @@ class LiveBridge(Node):
             and self._lidar_fresh_receive_ns is not None
             and 0 <= now_ns - self._lidar_fresh_receive_ns <= timeout_ns
         )
+        rotation_clearance_valid = bool(
+            clearance_fresh
+            and self._rotation_clearance_valid
+            and self._rotation_clearance_valid_receive_ns is not None
+            and 0
+            <= now_ns - self._rotation_clearance_valid_receive_ns
+            <= timeout_ns
+        )
+        front_clearance = (
+            float(self._clearance.vector.x) if self._clearance is not None else math.nan
+        )
+        left_clearance = (
+            float(self._clearance.vector.y) if self._clearance is not None else math.nan
+        )
+        right_clearance = (
+            float(self._clearance.vector.z) if self._clearance is not None else math.nan
+        )
         extrinsics_fresh = (
             self._extrinsics_validated
             and self._extrinsics_receive_ns is not None
             and 0 <= now_ns - self._extrinsics_receive_ns <= timeout_ns
+        )
+        rgb_lidar_overlay_fresh = (
+            self._rgb_lidar_overlay_ready
+            and self._rgb_lidar_overlay_receive_ns is not None
+            and 0 <= now_ns - self._rgb_lidar_overlay_receive_ns <= timeout_ns
         )
         fusion_fresh = (
             self._fusion_ready
@@ -242,11 +303,26 @@ class LiveBridge(Node):
                 "right_m": finite_or_none(self._clearance.vector.z)
                 if clearance_fresh
                 else None,
+                "front_status": clearance_status(
+                    front_clearance, source_fresh=clearance_fresh
+                ),
+                "left_status": clearance_status(
+                    left_clearance,
+                    source_fresh=clearance_fresh,
+                    valid=rotation_clearance_valid,
+                ),
+                "right_status": clearance_status(
+                    right_clearance,
+                    source_fresh=clearance_fresh,
+                    valid=rotation_clearance_valid,
+                ),
                 "lidar_fresh": clearance_fresh,
+                "rotation_clearance_valid": rotation_clearance_valid,
             },
             "sensor_health": {
                 "camera": True,
                 "camera_info_calibrated": calibrated,
+                "rgb_lidar_overlay": rgb_lidar_overlay_fresh,
                 "rgb_lidar_extrinsics": extrinsics_fresh,
                 "rgb_lidar_fusion": fusion_fresh,
                 "lidar": clearance_fresh,

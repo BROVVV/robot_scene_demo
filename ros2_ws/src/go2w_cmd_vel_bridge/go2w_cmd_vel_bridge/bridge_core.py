@@ -29,6 +29,7 @@ class SafetyState:
     operator_armed: bool = False
     lease_alive: bool = False
     lidar_fresh: bool = False
+    rotation_clearance_valid: bool = False
     lio_fresh: bool = False
     robot_error_zero: bool = False
     emergency_stop: bool = True
@@ -62,6 +63,8 @@ def decide_velocity(
         blockers.append("lease_unavailable")
     if not safety.lidar_fresh:
         blockers.append("lidar_stale")
+    if abs(requested.angular_z) > 1e-9 and not safety.rotation_clearance_valid:
+        blockers.append("rotation_clearance_unvalidated")
     if source == "nav2" and not safety.lio_fresh:
         blockers.append("lio_stale_for_nav2")
     if not safety.robot_error_zero:
