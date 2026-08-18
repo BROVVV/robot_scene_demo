@@ -76,6 +76,11 @@ def build_argv(params: dict[str, Any]) -> list[str]:
     ]
     if params.get("enable_autonomous_motion"):
         argv.append("--operator-supervised-experiment")
+        # Plan §90: enable_autonomous_motion=true + turn_only=false means the
+        # high-level explorer may use short forward relocations.  No hidden
+        # semantic_allow_forward gate should keep the robot permanently turning.
+        if not params.get("turn_only") and not params.get("dry_run_motion"):
+            argv.append("--semantic-allow-forward")
     if params.get("dry_run_motion"):
         argv.append("--dry-run-motion")
     if params.get("turn_only"):
@@ -92,6 +97,14 @@ def build_argv(params: dict[str, Any]) -> list[str]:
         value = params.get(key)
         if value is not None:
             argv += [flag, str(value)]
+    if params.get("rgbd_source"):
+        argv.append("--rgbd-source")
+        if params.get("rgbd_base_url"):
+            argv += ["--rgbd-base-url", str(params["rgbd_base_url"])]
+    if params.get("spatial_v2"):
+        argv.append("--spatial-v2")
+    if params.get("rtabmap"):
+        argv.append("--rtabmap")
     for key, flag in (
         ("llm_model", "--llm-model"),
         ("detector", "--detector"),

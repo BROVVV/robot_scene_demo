@@ -20,18 +20,29 @@ from app.live_robot.search_event import (
     ACTION_STARTED,
     CANDIDATES_GENERATED,
     ERROR,
+    FRONTIERS_UPDATED,
     GOAL_SELECTED,
+    LOCAL_GOAL_PROGRESS,
+    LONG_TERM_GOAL_SELECTED,
     MAP_UPDATED,
     OBJECTS_UPDATED,
     OBSERVATION_UPDATED,
     OPERATOR_STOP,
     PAUSED,
+    PLACE_CREATED,
+    PLACE_UPDATED,
+    PSG_PRIOR_UPDATED,
     RESUMED,
+    RGBD_FRAME_UPDATED,
     SEARCH_EXHAUSTED,
     SEARCH_FINISHED,
     SEARCH_STATE_CHANGED,
+    SEMANTIC_OBJECT_LOCALIZED,
+    SEMANTIC_REGION_CREATED,
     SESSION_CREATED,
     SESSION_STARTED,
+    SPATIAL_MAP_UPDATED,
+    SPATIAL_POSE_UPDATED,
     TARGET_CONFIRMED,
     TARGET_MATCH_UPDATED,
     VERIFICATION_FINISHED,
@@ -77,6 +88,12 @@ def _empty_snapshot() -> dict[str, Any]:
             "heading_sector": None,
             "pose": None,
             "image_ref": None,
+            "depth_ref": None,
+            "rgbd_frame_id": None,
+            "intrinsics": None,
+            "depth_scale": None,
+            "spatial_quality": "RGB_ONLY",
+            "camera_xyz": None,
             "sensor_health": {},
         },
         "objects": {
@@ -110,6 +127,17 @@ def _empty_snapshot() -> dict[str, Any]:
             "nodes": [],
             "edges": [],
             "observed_sectors": [],
+        },
+        "spatial": {
+            "rgbd_frame": None,
+            "spatial_pose": None,
+            "spatial_map": None,
+            "frontiers": [],
+            "place_graph": None,
+            "semantic_objects": [],
+            "psg_prior": None,
+            "long_term_goal": None,
+            "local_goal_progress": None,
         },
         "health": {},
         "timeline": [],
@@ -166,6 +194,17 @@ class SearchStateStore:
             ACTION_STARTED: self._on_action_started,
             ACTION_FINISHED: self._on_action_finished,
             MAP_UPDATED: self._on_map_updated,
+            RGBD_FRAME_UPDATED: self._on_rgbd_frame,
+            SPATIAL_POSE_UPDATED: self._on_spatial_pose,
+            SPATIAL_MAP_UPDATED: self._on_spatial_map,
+            FRONTIERS_UPDATED: self._on_frontiers,
+            PLACE_CREATED: self._on_place_created,
+            PLACE_UPDATED: self._on_place_updated,
+            SEMANTIC_OBJECT_LOCALIZED: self._on_semantic_object_localized,
+            PSG_PRIOR_UPDATED: self._on_psg_prior,
+            SEMANTIC_REGION_CREATED: self._on_semantic_region_created,
+            LONG_TERM_GOAL_SELECTED: self._on_long_term_goal_selected,
+            LOCAL_GOAL_PROGRESS: self._on_local_goal_progress,
             PAUSED: self._on_paused,
             RESUMED: self._on_resumed,
             SEARCH_EXHAUSTED: self._on_search_exhausted,
@@ -189,6 +228,10 @@ class SearchStateStore:
     def map_snapshot(self) -> dict[str, Any]:
         with self._lock:
             return copy.deepcopy(self._snapshot["map"])
+
+    def spatial_snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            return copy.deepcopy(self._snapshot["spatial"])
 
     def objects_snapshot(self) -> dict[str, Any]:
         with self._lock:
@@ -234,6 +277,12 @@ class SearchStateStore:
         observation["heading_sector"] = payload.get("heading_sector")
         observation["pose"] = payload.get("pose")
         observation["image_ref"] = payload.get("image_ref")
+        observation["depth_ref"] = payload.get("depth_ref")
+        observation["rgbd_frame_id"] = payload.get("rgbd_frame_id")
+        observation["intrinsics"] = payload.get("intrinsics")
+        observation["depth_scale"] = payload.get("depth_scale")
+        observation["spatial_quality"] = payload.get("spatial_quality")
+        observation["camera_xyz"] = payload.get("camera_xyz")
         observation["sensor_health"] = dict(payload.get("sensor_health") or {})
         if event.cycle is not None:
             self._snapshot["cycle"] = max(self._snapshot["cycle"], event.cycle)
@@ -346,6 +395,69 @@ class SearchStateStore:
             "SUCCEEDED" if status == "succeeded" else "FAILED"
         )
         self._snapshot["phase"] = "WAIT_RESULT"
+
+    def _on_rgbd_frame(self, event: SearchEvent) -> None:
+        payload = event.payload
+        self._snapshot["spatial"]["rgbd_frame"] = {
+            "frame_id": payload.get("frame_id"),
+            "depth_ref": payload.get("depth_ref"),
+            "intrinsics": payload.get("intrinsics"),
+            "depth_scale": payload.get("depth_scale"),
+            "spatial_quality": payload.get("spatial_quality"),
+        }
+
+    def _on_spatial_pose(self, event: SearchEvent) -> None:
+        payload = event.payload
+        self._snapshot["spatial"]["spatial_pose"] = payload.get("pose")
+        self._snapshot["robot"]["pose_quality"] = payload.get("quality") or self._snapshot["robot"]["pose_quality"]
+
+    def _on_spatial_map(self, event: SearchEvent) -> None:
+        self._snapshot["spatial"]["spatial_map"] = event.payload.get("map")
+
+    def _on_frontiers(self, event: SearchEvent) -> None:
+        self._snapshot["spatial"]["frontiers"] = list(event.payload.get("frontiers") or [])
+
+    def _on_place_created(self, event: SearchEvent) -> None:
+        place_graph = dict(self._snapshot["spatial"]["place_graph"] or {})
+        places = list(place_graph.get("places") or [])
+        places.append(event.payload.get("place") or {})
+        place_graph["places"] = places
+        self._snapshot["spatial"]["place_graph"] = place_graph
+
+    def _on_place_updated(self, event: SearchEvent) -> None:
+        place_graph = dict(self._snapshot["spatial"]["place_graph"] or {})
+        places = list(place_graph.get("places") or [])
+        place = event.payload.get("place") or {}
+        place_id = place.get("place_id")
+        if place_id is not None:
+            places = [p if p.get("place_id") != place_id else place for p in places]
+        place_graph["places"] = places
+        self._snapshot["spatial"]["place_graph"] = place_graph
+
+    def _on_semantic_object_localized(self, event: SearchEvent) -> None:
+        obj = event.payload.get("object") or {}
+        objects = list(self._snapshot["spatial"]["semantic_objects"] or [])
+        object_id = obj.get("object_id")
+        if object_id is not None:
+            objects = [item for item in objects if item.get("object_id") != object_id]
+        objects.append(obj)
+        self._snapshot["spatial"]["semantic_objects"] = objects
+
+    def _on_psg_prior(self, event: SearchEvent) -> None:
+        self._snapshot["spatial"]["psg_prior"] = event.payload.get("prior")
+
+    def _on_semantic_region_created(self, event: SearchEvent) -> None:
+        prior = dict(self._snapshot["spatial"]["psg_prior"] or {})
+        regions = list(prior.get("region_hypotheses") or [])
+        regions.append(event.payload.get("region") or {})
+        prior["region_hypotheses"] = regions
+        self._snapshot["spatial"]["psg_prior"] = prior
+
+    def _on_long_term_goal_selected(self, event: SearchEvent) -> None:
+        self._snapshot["spatial"]["long_term_goal"] = event.payload.get("intent")
+
+    def _on_local_goal_progress(self, event: SearchEvent) -> None:
+        self._snapshot["spatial"]["local_goal_progress"] = event.payload.get("progress")
 
     def _on_map_updated(self, event: SearchEvent) -> None:
         payload = event.payload

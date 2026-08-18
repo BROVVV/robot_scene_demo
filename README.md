@@ -169,9 +169,9 @@ bash scripts/go2w/stop_autonomous_search_web.sh                      # 停止（
 关键接口（详见 `docs/GO2W_AUTONOMOUS_SEARCH_WEBUI.md`）：
 
 ```text
-POST /api/search/start   {target, reasoner, backend, enable_autonomous_motion, ...}  → 立即返回 session_id
+POST /api/search/start   {target, reasoner, backend, enable_autonomous_motion, rgbd_source, ...}  → 立即返回 session_id
 POST /api/search/pause | resume | stop | estop
-GET  /api/search/state | map | objects | events | history | readiness | executor
+GET  /api/search/state | map | spatial-map | place-graph | frontiers | semantic-map | objects | events | history | readiness | executor
 WS   /ws/search         连接即发 snapshot → 随后增量 SearchEvent（心跳 15s，自动重连）
 ```
 
@@ -183,6 +183,55 @@ WS   /ws/search         连接即发 snapshot → 随后增量 SearchEvent（心
 控制权互斥由 `ControlOwner` 保证，急停同时停止搜索与会话。
 
 输出：`outputs/live_runs/<session_id>/{events.jsonl, summary.json, exploration_graph.json}`。
+
+## RGB-D Spatial Semantic Exploration（2026-08-18 新增）
+
+当前项目已把 D435 作为主 RGB-D 传感器，并新增 UniGoal V2 空间探索所需的核心模块：
+
+```text
+D435 /rgbd/latest.json + /rgbd/frame/<id>/{color.jpg,depth.png}
+  → RGBDSource → DepthObjectLocalizer → 3D SemanticObjectMap
+  → SpatialProvider / FrontierExtractor / PlaceGraph
+  → PSG SemanticPriorProvider → UniGoal V2 SpatialReasoner
+  → LongTermGoalSelector → LocalGoalExecutor → RobotBackend
+```
+
+关键入口：
+
+```bash
+# 真机语义搜索时使用 D435 主 RGB（WebUI 默认已开启 rgbd_source）
+bash scripts/go2w/start_autonomous_search_web.sh --enable-autonomous-motion
+
+# 直接 CLI 使用 D435 RGB-D + UniGoal V2 空间探索
+/usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
+  --target "饮水机旁边的蓝色垃圾桶" \
+  --backend go2w_experimental --reasoner unigoal \
+  --operator-supervised-experiment --rgbd-source --spatial-v2 \
+  --output outputs/live_sessions/rgbd_spatial_exploration.jsonl
+
+# 无运动 dry-run 验证 V2 链路（D435 + PlaceGraph + Frontier + LocalExecutor）
+/usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
+  --target "绿色垃圾桶" --backend go2w_experimental --reasoner unigoal \
+  --rgbd-source --spatial-v2 --dry-run-motion \
+  --max-seconds 60 --max-planning-cycles 2 \
+  --output outputs/live_sessions/rgbd_v2_dryrun.jsonl
+
+# 使用 RTAB-Map（需先 start_rgbd_spatial_stack.sh start）
+/usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
+  --target "不存在的红色独角兽" --backend go2w_experimental --reasoner unigoal \
+  --rgbd-source --spatial-v2 --rtabmap --operator-supervised-experiment \
+  --turn-only --max-planning-cycles 1 \
+  --output outputs/live_sessions/rgbd_v2_rtabmap.jsonl
+
+# 纯软件验证 D435 原子帧 + 深度有效比例
+/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python \
+  scripts/go2w/validate_rgbd_spatial_stack.py
+
+# 启动 RTAB-Map + D435 ROS2 Bridge（可选，供 --rtabmap 使用）
+bash scripts/go2w/start_rgbd_spatial_stack.sh start
+```
+
+详细文档：`docs/RGBD_UNIGOAL_V2_SPATIAL_EXPLORATION.md`。
 
 ### WebUI 真机验证结果（2026-08-17，机器狗重启后）
 

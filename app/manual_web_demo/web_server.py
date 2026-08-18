@@ -18,6 +18,7 @@ import json
 import queue
 import threading
 import time
+import urllib.request
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
@@ -448,6 +449,22 @@ def create_app(
             media_type="multipart/x-mixed-replace; boundary=frame",
         )
 
+    d435_base = getattr(config, "d435_base_url", None) or "http://192.168.123.18:8080"
+
+    @app.get("/api/d435.mjpeg")
+    async def api_d435_mjpeg() -> StreamingResponse:
+        return StreamingResponse(
+            _d435_proxy_mjpeg(d435_base, "/color"),
+            media_type="multipart/x-mixed-replace; boundary=frame",
+        )
+
+    @app.get("/api/d435.depth.mjpeg")
+    async def api_d435_depth_mjpeg() -> StreamingResponse:
+        return StreamingResponse(
+            _d435_proxy_mjpeg(d435_base, "/depth"),
+            media_type="multipart/x-mixed-replace; boundary=frame",
+        )
+
     app.include_router(search_router)
     app.websocket("/ws/search")(ws_search_handler)
 
@@ -544,6 +561,22 @@ async def _mjpeg_generator(runtime: DemoRuntime, request: Request | None = None)
                 + b"\r\n"
             )
         await asyncio.sleep(frame_interval)
+
+
+def _d435_proxy_mjpeg(base_url: str, path: str):
+    """Proxy D435 MJPEG stream from the robot's RealSense HTTP service."""
+    url = base_url.rstrip("/") + path
+    while True:
+        try:
+            with urllib.request.urlopen(url, timeout=5.0) as resp:
+                while True:
+                    chunk = resp.read(65536)
+                    if not chunk:
+                        break
+                    yield chunk
+        except Exception:  # noqa: BLE001 - keep trying so browser auto-recovers
+            time.sleep(0.5)
+            continue
 
 
 _solid_jpeg_cache: bytes | None = None

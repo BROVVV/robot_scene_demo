@@ -24,6 +24,7 @@ import os
 import threading
 import time
 import traceback
+from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote
 
@@ -37,6 +38,7 @@ import pyrealsense2 as rs
 ARGS = None
 BUFFER = {}          # 最新帧缓存: color_jpg, depth_jpg, depth_raw_png, depth_raw, shape, stamp, info
 BUFFER_LOCK = threading.Lock()
+FRAME_CACHE = deque(maxlen=32)  # 原子 RGB-D frame 缓存（color/depth 来自同一 frameset）
 STREAM_ACTIVE = threading.Event()
 DEVICE_INFO = {}     # 设备/内参/外参缓存（由采集线程启动后填充一次）
 
@@ -171,9 +173,14 @@ def rs_capture_loop():
                     continue
 
                 stamp = time.time()
+                frame_id = str(frames.frame_number)
+                device_timestamp_ms = _safe_frame_timestamp_ms(color)
+                color_intr = ((DEVICE_INFO.get("color_intrinsics") or {}) if DEVICE_INFO else {})
                 info = {
                     "stamp": stamp,
                     "frame_number": frames.frame_number,
+                    "frame_id": frame_id,
+                    "device_timestamp_ms": device_timestamp_ms,
                     "color": {"width": color.get_width(), "height": color.get_height(),
                               "fps": ARGS.fps, "format": "bgr8"},
                     "depth": {"width": depth.get_width(), "height": depth.get_height(),
@@ -183,7 +190,37 @@ def rs_capture_loop():
                         "min": float(np.min(z_m)), "max": float(np.max(z_m)),
                         "mean": float(np.mean(z_m)),
                     },
+                    "intrinsics": {
+                        "fx": float(color_intr.get("fx", 0.0)),
+                        "fy": float(color_intr.get("fy", 0.0)),
+                        "cx": float(color_intr.get("ppx", 0.0)),
+                        "cy": float(color_intr.get("ppy", 0.0)),
+                        "width": int(color.get_width()),
+                        "height": int(color.get_height()),
+                    },
+                    "depth_aligned_to_color": True,
+                    "depth_unit_m": 0.001,
                     "sensor": sensor_info,
+                }
+                rgbd_frame = {
+                    "frame_id": frame_id,
+                    "device_timestamp_ms": device_timestamp_ms,
+                    "host_timestamp": stamp,
+                    "color_url": f"/rgbd/frame/{frame_id}/color.jpg",
+                    "depth_url": f"/rgbd/frame/{frame_id}/depth.png",
+                    "depth_aligned_to_color": True,
+                    "depth_unit_m": 0.001,
+                    "width": int(color.get_width()),
+                    "height": int(color.get_height()),
+                    "intrinsics": {
+                        "fx": float(color_intr.get("fx", 0.0)),
+                        "fy": float(color_intr.get("fy", 0.0)),
+                        "cx": float(color_intr.get("ppx", 0.0)),
+                        "cy": float(color_intr.get("ppy", 0.0)),
+                    },
+                    "info": info,
+                    "color_jpg": cjpg.tobytes(),
+                    "depth_raw_png": d16png.tobytes(),
                 }
                 with BUFFER_LOCK:
                     BUFFER.update({
@@ -195,6 +232,7 @@ def rs_capture_loop():
                         "stamp": stamp,
                         "info": info,
                     })
+                    FRAME_CACHE.append(rgbd_frame)
         except rs.error as e:
             print("[rs] realsense error: %s, retry in 5s" % e, flush=True)
             STREAM_ACTIVE.clear()
@@ -208,6 +246,15 @@ def rs_capture_loop():
 # ---------------------------------------------------------------------------
 # 设备/内参/外参信息
 # ---------------------------------------------------------------------------
+def _safe_frame_timestamp_ms(frame):
+    """Best-effort device timestamp in milliseconds; never blocks the loop."""
+    try:
+        value = float(frame.get_timestamp())
+        return value if value == value else 0.0  # NaN guard
+    except Exception:
+        return 0.0
+
+
 def build_device_info():
     """返回采集线程缓存的设备级信息（不二次打开设备，避免 Device busy）"""
     if DEVICE_INFO:
@@ -352,6 +399,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(page)))
                 self.end_headers()
                 self.wfile.write(page)
+            elif path == "/rgbd/latest.json":
+                self._send_rgbd_latest()
+            elif path.startswith("/rgbd/frame/"):
+                self._send_rgbd_frame(path)
             elif path == "/color":
                 self._stream_mjpeg("color_jpg", "stamp")
             elif path == "/depth":
@@ -395,6 +446,53 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json({"error": traceback.format_exc()}, 500)
             except Exception:
                 pass
+
+    def _rgbd_meta(self, frame: dict) -> dict:
+        """Return the JSON-safe metadata view of one atomic RGB-D frame."""
+        info = frame.get("info") or {}
+        return {
+            "frame_id": frame["frame_id"],
+            "device_timestamp_ms": frame.get("device_timestamp_ms"),
+            "host_timestamp": frame.get("host_timestamp"),
+            "color_url": frame.get("color_url"),
+            "depth_url": frame.get("depth_url"),
+            "depth_aligned_to_color": bool(frame.get("depth_aligned_to_color", True)),
+            "depth_unit_m": frame.get("depth_unit_m", 0.001),
+            "width": frame.get("width"),
+            "height": frame.get("height"),
+            "intrinsics": frame.get("intrinsics") or {},
+            "health": {
+                "age_s": round(max(0.0, time.time() - float(frame.get("host_timestamp", 0.0))), 3),
+                "streaming": STREAM_ACTIVE.is_set(),
+                "center_depth_mm": info.get("center_depth_mm"),
+                "depth_stats_m": info.get("depth_stats_m"),
+            },
+        }
+
+    def _send_rgbd_latest(self):
+        with BUFFER_LOCK:
+            if not FRAME_CACHE:
+                self._send_json({"error": "no frame yet"}, 503)
+                return
+            frame = FRAME_CACHE[-1]
+        self._send_json(self._rgbd_meta(frame))
+
+    def _send_rgbd_frame(self, path: str):
+        parts = path[len("/rgbd/frame/"):].split("/", 1)
+        if len(parts) != 2:
+            self._send_json({"error": "expected /rgbd/frame/<id>/color.jpg|depth.png"}, 400)
+            return
+        frame_id, name = parts
+        if name not in {"color.jpg", "depth.png"}:
+            self._send_json({"error": "only color.jpg and depth.png are served"}, 404)
+            return
+        with BUFFER_LOCK:
+            frame = next((item for item in FRAME_CACHE if item["frame_id"] == frame_id), None)
+        if frame is None:
+            self._send_json({"error": f"frame {frame_id} not in cache"}, 404)
+            return
+        data = frame.get("color_jpg" if name == "color.jpg" else "depth_raw_png")
+        self._send_bytes(data, "image/jpeg" if name == "color.jpg" else "image/png")
 
     def _do_snapshot(self):
         with BUFFER_LOCK:

@@ -17,20 +17,31 @@ from app.live_robot.search_event import (
     ACTION_STARTED,
     CANDIDATES_GENERATED,
     ERROR,
+    FRONTIERS_UPDATED,
     GOAL_SELECTED,
+    LOCAL_GOAL_PROGRESS,
+    LONG_TERM_GOAL_SELECTED,
     MAP_UPDATED,
     MEMORY_UPDATED,
     OBJECTS_UPDATED,
     OBSERVATION_UPDATED,
     OPERATOR_STOP,
     PAUSED,
+    PLACE_CREATED,
+    PLACE_UPDATED,
+    PSG_PRIOR_UPDATED,
     REPLAN,
     RESUMED,
+    RGBD_FRAME_UPDATED,
     SEARCH_EXHAUSTED,
     SEARCH_FINISHED,
     SEARCH_STATE_CHANGED,
+    SEMANTIC_OBJECT_LOCALIZED,
+    SEMANTIC_REGION_CREATED,
     SESSION_CREATED,
     SESSION_STARTED,
+    SPATIAL_MAP_UPDATED,
+    SPATIAL_POSE_UPDATED,
     TARGET_CONFIRMED,
     TARGET_MATCH_UPDATED,
     VERIFICATION_FINISHED,
@@ -147,6 +158,12 @@ class ExplorerSearchAdapter:
                     "heading_sector": payload.get("heading_sector"),
                     "pose": payload.get("pose"),
                     "image_ref": payload.get("image_ref"),
+                    "depth_ref": payload.get("depth_ref"),
+                    "rgbd_frame_id": payload.get("rgbd_frame_id"),
+                    "intrinsics": payload.get("intrinsics"),
+                    "depth_scale": payload.get("depth_scale"),
+                    "spatial_quality": payload.get("spatial_quality"),
+                    "camera_xyz": payload.get("camera_xyz"),
                     "sensor_health": payload.get("sensor_health") or {},
                     "detections": payload.get("detections") or [],
                     "phase": "OBSERVE",
@@ -266,6 +283,28 @@ class ExplorerSearchAdapter:
                     "phase": "RECOVER",
                 })
             ]
+        if name == "rgbd_frame_updated":
+            return [self._emit(RGBD_FRAME_UPDATED, payload=payload)]
+        if name == "spatial_pose_updated":
+            return [self._emit(SPATIAL_POSE_UPDATED, payload=payload)]
+        if name == "spatial_map_updated":
+            return [self._emit(SPATIAL_MAP_UPDATED, payload=payload)]
+        if name == "frontiers_updated":
+            return [self._emit(FRONTIERS_UPDATED, payload=payload)]
+        if name == "place_created":
+            return [self._emit(PLACE_CREATED, payload=payload)]
+        if name == "place_updated":
+            return [self._emit(PLACE_UPDATED, payload=payload)]
+        if name == "semantic_object_localized":
+            return [self._emit(SEMANTIC_OBJECT_LOCALIZED, payload=payload)]
+        if name == "psg_prior_updated":
+            return [self._emit(PSG_PRIOR_UPDATED, payload=payload)]
+        if name == "semantic_region_created":
+            return [self._emit(SEMANTIC_REGION_CREATED, payload=payload)]
+        if name == "long_term_goal_selected":
+            return [self._emit(LONG_TERM_GOAL_SELECTED, payload=payload)]
+        if name == "local_goal_progress":
+            return [self._emit(LOCAL_GOAL_PROGRESS, payload=payload)]
         if name == "paused":
             return [self._emit(PAUSED, payload={"phase": "PAUSED"})]
         if name == "resumed":

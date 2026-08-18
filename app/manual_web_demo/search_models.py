@@ -23,6 +23,13 @@ class SearchStartRequest:
     turn_only: bool = False
     enable_autonomous_motion: bool = False
     dry_run_motion: bool = False
+    # RGB-D spatial exploration (D435 atomic HTTP source)
+    rgbd_source: bool = False
+    rgbd_base_url: str = "http://192.168.123.18:8080"
+    # UniGoal V2 spatial exploration loop
+    spatial_v2: bool = False
+    # Use RTAB-Map ROS2 topics as the SpatialProvider
+    rtabmap: bool = False
     # optional budget overrides
     max_seconds: float | None = None
     max_planning_cycles: int | None = None
@@ -48,6 +55,12 @@ class SearchStartRequest:
                 )
             ),
             dry_run_motion=bool(value.get("dry_run_motion", False)),
+            rgbd_source=bool(value.get("rgbd_source", defaults["rgbd_source"])),
+            rgbd_base_url=str(
+                value.get("rgbd_base_url") or defaults["rgbd_base_url"]
+            ),
+            spatial_v2=bool(value.get("spatial_v2", defaults.get("spatial_v2", False))),
+            rtabmap=bool(value.get("rtabmap", defaults.get("rtabmap", False))),
             max_seconds=_optional_float(value.get("max_seconds")),
             max_planning_cycles=_optional_int(value.get("max_planning_cycles")),
             max_motion_steps=_optional_int(value.get("max_motion_steps")),
@@ -104,6 +117,10 @@ def load_search_defaults() -> dict[str, Any]:
     defaults: dict[str, Any] = {
         "backend": "go2w_experimental",
         "enable_autonomous_motion": False,
+        "rgbd_source": False,
+        "rgbd_base_url": "http://192.168.123.18:8080",
+        "spatial_v2": False,
+        "rtabmap": False,
         "max_search_seconds": None,
         "max_planning_cycles": None,
         "max_motion_steps": None,
@@ -118,6 +135,14 @@ def load_search_defaults() -> dict[str, Any]:
             for key in ("backend",):
                 if search.get(key):
                     defaults[key] = str(search[key])
+            if search.get("rgbd_source") is not None:
+                defaults["rgbd_source"] = bool(search["rgbd_source"])
+            if search.get("rgbd_base_url"):
+                defaults["rgbd_base_url"] = str(search["rgbd_base_url"])
+            if search.get("spatial_v2") is not None:
+                defaults["spatial_v2"] = bool(search["spatial_v2"])
+            if search.get("rtabmap") is not None:
+                defaults["rtabmap"] = bool(search["rtabmap"])
             for key in ("max_search_seconds", "max_planning_cycles",
                         "max_motion_steps"):
                 if search.get(key) is not None:

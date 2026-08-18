@@ -42,13 +42,26 @@
     this.data = null;
   }
 
-  SearchMapRenderer.prototype.render = function (mapData) {
+  SearchMapRenderer.prototype.render = function (mapData, spatialData) {
     this.data = mapData || this.data || {};
     var map = this.data;
-    var nodes = Array.isArray(map.nodes) ? map.nodes : [];
-    var edges = Array.isArray(map.edges) ? map.edges : [];
+    var nodes = Array.isArray(map.nodes) ? map.nodes.slice() : [];
+    var edges = Array.isArray(map.edges) ? map.edges.slice() : [];
     var robot = map.robot || {};
     var currentId = map.current_node_id || null;
+
+    // Merge PlaceGraph places into the node set so the SVG viewBox and base
+    // topology include real spatial Places (plan §91-§95).
+    var spatial = spatialData || null;
+    if (spatial && spatial.place_graph && Array.isArray(spatial.place_graph.places)) {
+      spatial.place_graph.places.forEach(function (place) {
+        var node = placeToNode(place);
+        if (!nodes.some(function (n) { return n.node_id === node.node_id; })) {
+          nodes.push(node);
+        }
+      });
+    }
+
     var layout = computeLayout(nodes, robot);
 
     // fit
@@ -134,6 +147,11 @@
       this.svg.appendChild(dot);
     }
 
+    // spatial overlays (frontiers / semantic objects / PSG regions / goal)
+    if (spatial) {
+      this.drawSpatialOverlay(spatial, layout, robot);
+    }
+
     // arrow marker def
     var defs = document.createElementNS(ns, "defs");
     var marker = document.createElementNS(ns, "marker");
@@ -147,6 +165,119 @@
     marker.appendChild(path);
     defs.appendChild(marker);
     this.svg.insertBefore(defs, this.svg.firstChild);
+  };
+
+  SearchMapRenderer.prototype.drawSpatialOverlay = function (spatial, layout, robot) {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = this.svg;
+
+    // Occupancy / explored background (plan §92)
+    var smap = spatial.spatial_map;
+    if (smap && smap.origin && smap.resolution_m > 0) {
+      var ox = smap.origin[0];
+      var oy = smap.origin[1];
+      var res = smap.resolution_m;
+      var totalCells = (Array.isArray(smap.free) ? smap.free.length : 0) +
+                       (Array.isArray(smap.occupied) ? smap.occupied.length : 0);
+      if (totalCells > 0 && totalCells < 4000) {
+        function cellRect(cell, fill) {
+          var rect = document.createElementNS(ns, "rect");
+          var x = ox + (cell[0] + 0.5) * res;
+          var y = oy + (cell[1] + 0.5) * res;
+          rect.setAttribute("x", x - res / 2);
+          rect.setAttribute("y", -y - res / 2);
+          rect.setAttribute("width", res);
+          rect.setAttribute("height", res);
+          rect.setAttribute("fill", fill);
+          rect.setAttribute("opacity", "0.35");
+          svg.appendChild(rect);
+        }
+        (smap.free || []).forEach(function (cell) { cellRect(cell, "#1e293b"); });
+        (smap.occupied || []).forEach(function (cell) { cellRect(cell, "#f87171"); });
+      }
+    }
+
+    // Frontiers (plan §94)
+    var frontiers = Array.isArray(spatial.frontiers) ? spatial.frontiers : [];
+    frontiers.forEach(function (f) {
+      if (!f.position) return;
+      var g = document.createElementNS(ns, "g");
+      g.setAttribute("transform", "translate(" + f.position[0] + "," + (-f.position[1]) + ")");
+      var circle = document.createElementNS(ns, "circle");
+      circle.setAttribute("r", "7");
+      circle.setAttribute("fill", "#fbbf24");
+      circle.setAttribute("fill-opacity", "0.25");
+      circle.setAttribute("stroke", "#fbbf24");
+      circle.setAttribute("stroke-width", "1.5");
+      g.appendChild(circle);
+      var text = document.createElementNS(ns, "text");
+      text.setAttribute("text-anchor", "middle");
+      text.setAttribute("dominant-baseline", "central");
+      text.setAttribute("fill", "#fbbf24");
+      text.setAttribute("font-size", "8");
+      text.textContent = f.frontier_id.replace("frontier_", "F").replace("relative_f_", "F");
+      g.appendChild(text);
+      svg.appendChild(g);
+    });
+
+    // Semantic objects with a real map position (plan §95)
+    var objects = Array.isArray(spatial.semantic_objects) ? spatial.semantic_objects : [];
+    objects.forEach(function (obj) {
+      if (!obj.map_xyz) return;
+      var x = obj.map_xyz[0];
+      var y = -obj.map_xyz[1];
+      var g = document.createElementNS(ns, "g");
+      g.setAttribute("transform", "translate(" + x + "," + y + ")");
+      var diamond = document.createElementNS(ns, "rect");
+      diamond.setAttribute("x", "-4"); diamond.setAttribute("y", "-4");
+      diamond.setAttribute("width", "8"); diamond.setAttribute("height", "8");
+      diamond.setAttribute("transform", "rotate(45)");
+      diamond.setAttribute("fill", obj.spatial_quality === "METRIC_RGBD" ? "#34d399" : "#38bdf8");
+      diamond.setAttribute("fill-opacity", "0.6");
+      g.appendChild(diamond);
+      var label = document.createElementNS(ns, "text");
+      label.setAttribute("y", "12");
+      label.setAttribute("text-anchor", "middle");
+      label.setAttribute("fill", "#8b95a3");
+      label.setAttribute("font-size", "8");
+      label.textContent = String(obj.label || "").slice(0, 8);
+      g.appendChild(label);
+      svg.appendChild(g);
+    });
+
+    // PSG predicted regions (plan §96)
+    var prior = spatial.psg_prior || {};
+    var regions = Array.isArray(prior.region_hypotheses) ? prior.region_hypotheses : [];
+    regions.forEach(function (region) {
+      if (!region.center || region.state === "REJECTED") return;
+      var circle = document.createElementNS(ns, "circle");
+      circle.setAttribute("cx", region.center[0]);
+      circle.setAttribute("cy", -region.center[1]);
+      var radius = (region.radius_max_m || 1.0) * 40;
+      circle.setAttribute("r", radius);
+      circle.setAttribute("fill", "#c084fc");
+      circle.setAttribute("fill-opacity", "0.08");
+      circle.setAttribute("stroke", "#c084fc");
+      circle.setAttribute("stroke-dasharray", "4 3");
+      svg.appendChild(circle);
+    });
+
+    // Selected long-term goal (plan §97)
+    var goal = spatial.long_term_goal;
+    if (goal && goal.preferred_position) {
+      var x = goal.preferred_position[0];
+      var y = -goal.preferred_position[1];
+      var g = document.createElementNS(ns, "g");
+      g.setAttribute("transform", "translate(" + x + "," + y + ")");
+      var star = document.createElementNS(ns, "text");
+      star.setAttribute("text-anchor", "middle");
+      star.setAttribute("dominant-baseline", "central");
+      star.setAttribute("fill", "#f472b6");
+      star.setAttribute("font-size", "16");
+      star.textContent = "★";
+      g.appendChild(star);
+      svg.appendChild(g);
+    }
   };
 
   SearchMapRenderer.prototype.showDetail = function (node) {
@@ -255,6 +386,21 @@
       hline.setAttribute("stroke-width", "0.5");
       svg.appendChild(hline);
     }
+  }
+
+  function placeToNode(place) {
+    return {
+      node_id: place.place_id,
+      pose: place.pose || null,
+      objects: place.observed_object_ids || [],
+      visited_count: place.visit_count || 0,
+      reachable_state: place.target_confirmed ? "TARGET_CONFIRMED" : (place.visit_count > 0 ? "VISITED" : "OBSERVED"),
+      heading_sector: null,
+      timestamp: (place.provenance && place.provenance.created_at) || null,
+      pose_quality: place.pose_quality || "unavailable",
+      negative_evidence_count: place.negative_evidence || 0,
+      target_match_level: place.target_candidate ? "candidate" : "none",
+    };
   }
 
   function shortNodeLabel(node) {

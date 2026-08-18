@@ -14,6 +14,18 @@ search:
   backend: go2w_experimental     # go2w_experimental | mock | mock_metric
   finish_on_visual_confirmation: true
 
+  # D435 is the primary RGB-D camera; the WebUI start request can still opt
+  # out by passing rgbd_source=false.
+  rgbd_source: true
+  rgbd_base_url: http://192.168.123.18:8080
+
+  # UniGoal V2 spatial exploration loop (PlaceGraph + Frontier +
+  # LongTermGoalSelector + LocalGoalExecutor).
+  spatial_v2: true
+
+  # Use RTAB-Map ROS2 topics when the D435 bridge + rtabmap_slam are running.
+  rtabmap: false
+
   max_search_seconds: 600
   max_planning_cycles: 100
   max_motion_steps: 50

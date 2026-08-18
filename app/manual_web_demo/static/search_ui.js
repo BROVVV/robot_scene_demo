@@ -165,6 +165,7 @@
     appState.selectedGoal = state.selected_goal || null;
     appState.candidates = state.candidates || [];
     appState.map = state.map || {};
+    appState.spatial = state.spatial || {};
     state.timeline = state.timeline || [];
     renderAll();
   }
@@ -292,6 +293,58 @@
           edges: (payload.graph || {}).edges || [],
         };
         break;
+      case "RGBD_FRAME_UPDATED":
+        appState.spatial = appState.spatial || {};
+        appState.spatial.rgbd_frame = payload;
+        break;
+      case "SPATIAL_POSE_UPDATED":
+        appState.spatial = appState.spatial || {};
+        appState.spatial.spatial_pose = payload.pose || null;
+        break;
+      case "SPATIAL_MAP_UPDATED":
+        appState.spatial = appState.spatial || {};
+        appState.spatial.spatial_map = payload.map || null;
+        break;
+      case "FRONTIERS_UPDATED":
+        appState.spatial = appState.spatial || {};
+        appState.spatial.frontiers = payload.frontiers || [];
+        break;
+      case "PLACE_CREATED":
+      case "PLACE_UPDATED":
+        appState.spatial = appState.spatial || {};
+        appState.spatial.place_graph = appState.spatial.place_graph || { places: [], edges: [] };
+        var place = payload.place || {};
+        var places = appState.spatial.place_graph.places || [];
+        var idx = places.findIndex(function (p) { return p.place_id === place.place_id; });
+        if (idx >= 0) { places[idx] = place; } else { places.push(place); }
+        appState.spatial.place_graph.places = places;
+        break;
+      case "SEMANTIC_OBJECT_LOCALIZED":
+        appState.spatial = appState.spatial || {};
+        appState.spatial.semantic_objects = appState.spatial.semantic_objects || [];
+        var obj = payload.object || {};
+        var objs = appState.spatial.semantic_objects;
+        var oidx = objs.findIndex(function (o) { return o.object_id === obj.object_id; });
+        if (oidx >= 0) { objs[oidx] = obj; } else { objs.push(obj); }
+        break;
+      case "PSG_PRIOR_UPDATED":
+        appState.spatial = appState.spatial || {};
+        appState.spatial.psg_prior = payload.prior || null;
+        break;
+      case "SEMANTIC_REGION_CREATED":
+        appState.spatial = appState.spatial || {};
+        appState.spatial.psg_prior = appState.spatial.psg_prior || { region_hypotheses: [] };
+        appState.spatial.psg_prior.region_hypotheses = appState.spatial.psg_prior.region_hypotheses || [];
+        appState.spatial.psg_prior.region_hypotheses.push(payload.region || {});
+        break;
+      case "LONG_TERM_GOAL_SELECTED":
+        appState.spatial = appState.spatial || {};
+        appState.spatial.long_term_goal = payload.intent || null;
+        break;
+      case "LOCAL_GOAL_PROGRESS":
+        appState.spatial = appState.spatial || {};
+        appState.spatial.local_goal_progress = payload.progress || null;
+        break;
       case "SEARCH_FINISHED":
         appState.search.status = payload.result === "TARGET_FOUND" ? "TARGET_FOUND"
           : payload.result === "OPERATOR_STOP" ? "OPERATOR_STOP"
@@ -365,11 +418,17 @@
     renderTimeline();
     renderButtons();
     renderDebug();
-    if (appState.map && appState.map.nodes && appState.map.nodes.length) {
-      mapRenderer.render(appState.map);
-      els.mapMeta.textContent = "rev " + (appState.map.revision || 0) +
-        " nodes " + appState.map.nodes.length +
-        " edges " + (appState.map.edges || []).length;
+    var spatial = appState.spatial || null;
+    var hasOldMap = appState.map && Array.isArray(appState.map.nodes) && appState.map.nodes.length;
+    var hasPlaces = spatial && spatial.place_graph &&
+      Array.isArray(spatial.place_graph.places) && spatial.place_graph.places.length;
+    if (hasOldMap || hasPlaces) {
+      mapRenderer.render(appState.map || {}, spatial);
+      var placeCount = hasPlaces ? spatial.place_graph.places.length : 0;
+      els.mapMeta.textContent = "rev " + ((appState.map || {}).revision || 0) +
+        " nodes " + ((appState.map || {}).nodes || []).length +
+        " places " + placeCount +
+        " frontiers " + ((spatial && spatial.frontiers) || []).length;
     }
     drawOverlay();
   }
@@ -717,7 +776,7 @@
             appState.search = {};
             appState.search.session_id = state.session_id;
             applyStateSnapshot(state);
-            if (fresh) mapRenderer.render(appState.map);
+            if (fresh) mapRenderer.render(appState.map, appState.spatial);
           }
         } else if (appState.search.session_id && !ws) {
           appState.search = {};

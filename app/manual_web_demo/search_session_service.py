@@ -110,6 +110,9 @@ class SearchSessionService:
     def map_snapshot(self) -> dict[str, Any]:
         return self._store.map_snapshot()
 
+    def spatial_snapshot(self) -> dict[str, Any]:
+        return self._store.spatial_snapshot()
+
     def objects_snapshot(self) -> dict[str, Any]:
         return self._store.objects_snapshot()
 
@@ -196,6 +199,10 @@ class SearchSessionService:
                 "turn_only": request.turn_only,
                 "enable_autonomous_motion": request.enable_autonomous_motion,
                 "dry_run_motion": request.dry_run_motion,
+                "rgbd_source": request.rgbd_source,
+                "rgbd_base_url": request.rgbd_base_url,
+                "spatial_v2": request.spatial_v2,
+                "rtabmap": request.rtabmap,
                 "session_dir": str(session_dir_path),
                 "output": str(run_dir / "events.jsonl"),
             }

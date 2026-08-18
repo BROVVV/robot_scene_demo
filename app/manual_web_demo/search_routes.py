@@ -149,6 +149,22 @@ def create_search_router(
     async def search_map() -> dict[str, Any]:
         return service.map_snapshot()
 
+    @router.get("/spatial-map")
+    async def search_spatial_map() -> dict[str, Any]:
+        return service.spatial_snapshot()
+
+    @router.get("/place-graph")
+    async def search_place_graph() -> dict[str, Any]:
+        return (service.spatial_snapshot() or {}).get("place_graph") or {}
+
+    @router.get("/frontiers")
+    async def search_frontiers() -> dict[str, Any]:
+        return {"frontiers": (service.spatial_snapshot() or {}).get("frontiers") or []}
+
+    @router.get("/semantic-map")
+    async def search_semantic_map() -> dict[str, Any]:
+        return {"semantic_objects": (service.spatial_snapshot() or {}).get("semantic_objects") or []}
+
     @router.get("/objects")
     async def search_objects() -> dict[str, Any]:
         return service.objects_snapshot()

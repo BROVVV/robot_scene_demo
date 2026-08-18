@@ -198,6 +198,13 @@ def semantic_observation_to_live(
     sensor_health: dict[str, Any] | None = None,
     timestamp: float | None = None,
     image_ref: str | None = None,
+    depth_ref: str | None = None,
+    rgbd_frame_id: str | None = None,
+    intrinsics: dict[str, Any] | None = None,
+    depth_scale: float | None = None,
+    spatial_quality: str = "RGB_ONLY",
+    camera_xyz: list[float] | None = None,
+    map_xyz: list[float] | None = None,
 ) -> "LiveObservation":
     """Normalize a SemanticObservation into the explorer's LiveObservation.
 
@@ -211,6 +218,14 @@ def semantic_observation_to_live(
         bundle_id=bundle_id,
         timestamp=timestamp if timestamp is not None else semantic.timestamp_sec,
         image_ref=image_ref or str(semantic.frame_id),
+        depth_ref=depth_ref,
+        rgbd_frame_id=rgbd_frame_id,
+        intrinsics=intrinsics,
+        depth_scale=depth_scale,
+        depth_aligned_to_rgb=True,
+        spatial_quality=spatial_quality,
+        camera_xyz=camera_xyz,
+        map_xyz=map_xyz,
         detections=list(detections),
         scene_graph=(
             semantic.scene_graph.to_dict() if semantic.scene_graph is not None else None

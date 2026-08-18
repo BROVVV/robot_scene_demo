@@ -78,6 +78,9 @@
 | `/depth_raw` | 原始 16-bit 深度 PNG（z16，单位毫米） |
 | `/info.json` | 设备信息、彩色+深度内参、depth↔color 外参、传感器选项、帧统计 |
 | `/health` | 服务健康：`ok/streaming/age_s/fps` |
+| `/rgbd/latest.json` | 原子 RGB-D 帧元数据（frame_id/color_url/depth_url/intrinsics） |
+| `/rgbd/frame/<id>/color.jpg` | 与 depth.png 同一 frameset 的彩色 JPEG |
+| `/rgbd/frame/<id>/depth.png` | 与 color.jpg 同一 frameset 的 16-bit 深度 PNG |
 | `/snapshot` | 保存一帧快照到机器狗 `/home/unitree/realsense_snapshots/<时间戳>/` |
 | `/snap/` | 快照目录浏览/下载 |
 

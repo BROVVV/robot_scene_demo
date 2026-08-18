@@ -126,6 +126,16 @@ class LiveObservation:
     timestamp: float
     image_ref: str | None = None
 
+    # RGB-D atomic frame fields (D435 primary camera)
+    depth_ref: str | None = None
+    rgbd_frame_id: str | None = None
+    intrinsics: dict[str, Any] | None = None
+    depth_scale: float | None = None
+    depth_aligned_to_rgb: bool = True
+    spatial_quality: str = "RGB_ONLY"
+    camera_xyz: list[float] | None = None
+    map_xyz: list[float] | None = None
+
     detections: list[dict[str, Any]] = field(default_factory=list)
     scene_graph: dict[str, Any] | None = None
     scene_objects: list[dict[str, Any]] = field(default_factory=list)
@@ -158,6 +168,14 @@ class LiveObservation:
             "bundle_id": self.bundle_id,
             "timestamp": self.timestamp,
             "image_ref": self.image_ref,
+            "depth_ref": self.depth_ref,
+            "rgbd_frame_id": self.rgbd_frame_id,
+            "intrinsics": self.intrinsics,
+            "depth_scale": self.depth_scale,
+            "depth_aligned_to_rgb": self.depth_aligned_to_rgb,
+            "spatial_quality": self.spatial_quality,
+            "camera_xyz": self.camera_xyz,
+            "map_xyz": self.map_xyz,
             "detections": self.detections,
             "scene_graph": self.scene_graph,
             "scene_objects": self.scene_objects,
@@ -175,6 +193,14 @@ class LiveObservation:
             bundle_id=str(value.get("bundle_id") or "bundle"),
             timestamp=float(value.get("timestamp", 0.0)),
             image_ref=value.get("image_ref"),
+            depth_ref=value.get("depth_ref"),
+            rgbd_frame_id=value.get("rgbd_frame_id"),
+            intrinsics=value.get("intrinsics"),
+            depth_scale=value.get("depth_scale"),
+            depth_aligned_to_rgb=bool(value.get("depth_aligned_to_rgb", True)),
+            spatial_quality=str(value.get("spatial_quality") or "RGB_ONLY"),
+            camera_xyz=value.get("camera_xyz"),
+            map_xyz=value.get("map_xyz"),
             detections=list(value.get("detections") or []),
             scene_graph=value.get("scene_graph"),
             scene_objects=list(value.get("scene_objects") or []),

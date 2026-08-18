@@ -60,3 +60,8 @@ runtime/go2w/*.json
 
 # Live semantic observation frame cache (camera JPEGs, not source).
 runtime/go2w/semantic_observe_cache/
+# RGB-D HTTP source local frame cache and validation artifacts.
+runtime/go2w/rgbd_cache/
+runtime/go2w/rgbd_validate/
+runtime/go2w/rgbd_quick/
+runtime/go2w/rgbd_bridge_cache/

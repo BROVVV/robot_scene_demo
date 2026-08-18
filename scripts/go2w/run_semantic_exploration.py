@@ -58,7 +58,11 @@ from app.memory.observation_memory_store import ObservationMemoryStore
 from app.navigation.backend_factory import create_backend
 from app.navigation.exploration_config import load_exploration_policy
 from app.navigation.exploration_graph import ExplorationGraph
-from app.navigation.models import LiveObservation
+from app.navigation.models import (
+    GOAL_ROTATE_VIEW,
+    ExplorationGoal,
+    LiveObservation,
+)
 from app.reasoning.unigoal.models import SearchReasoningContext
 from app.reasoning.unigoal.router import SemanticSearchController
 from app.reasoning.unigoal.semantic_memory import SemanticSearchMemory
@@ -121,6 +125,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--detector", choices=("llm", "grounded_sam"), default="llm")
     parser.add_argument("--llm-model", default="Qwen/Qwen3-VL-30B-A3B-Instruct")
     parser.add_argument("--spool-root", default="runtime/go2w/spool")
+    parser.add_argument("--rgbd-source", action="store_true",
+                        help="use the D435 atomic RGB-D HTTP source as the primary "
+                             "camera for observation (color+depth attached to LiveObservation)")
+    parser.add_argument("--rgbd-base-url", default="http://192.168.123.18:8080")
+    parser.add_argument("--spatial-v2", action="store_true",
+                        help="enable UniGoal V2 spatial exploration loop: PlaceGraph, "
+                             "frontier selection, LongTermGoalSelector and LocalGoalExecutor")
+    parser.add_argument("--rtabmap", action="store_true",
+                        help="use RTAB-Map ROS2 topics (/rtabmap/map, /rtabmap/odom) "
+                             "as the SpatialProvider; requires the D435 RGB-D bridge "
+                             "and rtabmap_slam to be running")
+    parser.add_argument("--max-local-rotations", type=int, default=3,
+                        help="bounded LOCAL_SCAN rotation quota per Place (plan §57)")
     parser.add_argument("--odom-topic", default="/go2w/odom/fused")
     parser.add_argument("--max-radius", type=float, default=0.0,
                         help="search radius limit in metres; 0 = unlimited")
@@ -555,6 +572,82 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     )
     observed_sectors: set[int] = set()
 
+    # Optional D435 atomic RGB-D source (plan §17/§22).
+    rgbd_source = None
+    depth_localizer = None
+    if args.rgbd_source:
+        from app.perception.depth_object_localizer import DepthObjectLocalizer
+        from app.perception.realsense_http_rgbd_source import RealSenseHTTPRGBDSource
+
+        rgbd_source = RealSenseHTTPRGBDSource(
+            args.rgbd_base_url,
+            cache_dir=str(PROJECT_ROOT / "runtime/go2w/rgbd_cache"),
+        )
+        depth_localizer = DepthObjectLocalizer()
+
+    # Optional UniGoal V2 spatial exploration state (plan §62-§90).
+    place_graph = None
+    semantic_map = None
+    spatial_memory = None
+    camera_provider = None
+    bev_mapper = None
+    frontier_extractor = None
+    psg_provider = None
+    spatial_reasoner = None
+    local_executor = None
+    if args.spatial_v2:
+        from app.navigation.local_goal_executor import LocalGoalExecutor
+        from app.navigation.long_term_goal_selector import LongTermGoalSelector
+        from app.reasoning.unigoal.semantic_prior_provider import RuleSemanticPriorProvider
+        from app.reasoning.unigoal.spatial_reasoner import SpatialSearchReasoner
+        from app.spatial.camera_local_spatial_provider import CameraLocalSpatialProvider
+        from app.spatial.frontier_extractor import FrontierExtractor
+        from app.spatial.lightweight_depth_bev import LightweightDepthBEVMapper
+        from app.spatial.place_graph import PlaceGraph
+        from app.spatial.semantic_object_map import SemanticObjectMap
+        from app.spatial.spatial_memory import SpatialMemory
+
+        place_graph = PlaceGraph(
+            merge_distance_m=0.25,
+            relocation_min_displacement_m=0.10,
+        )
+        semantic_map = SemanticObjectMap()
+        spatial_memory = SpatialMemory()
+        if args.rtabmap:
+            from app.spatial.rtabmap_spatial_provider import RtabmapSpatialProvider
+
+            camera_provider = RtabmapSpatialProvider(
+                enable_ros=True,
+                map_topic="/rtabmap/map",
+                odom_topic="/rtabmap/odom",
+            )
+        else:
+            camera_provider = CameraLocalSpatialProvider(
+                relocate_distance_m=args.forward_step_m or 0.25,
+            )
+        bev_mapper = LightweightDepthBEVMapper()
+        frontier_extractor = FrontierExtractor(min_component_size=1)
+        psg_provider = RuleSemanticPriorProvider()
+        spatial_reasoner = SpatialSearchReasoner(
+            LongTermGoalSelector(
+                psg_zero_weight=1.0,
+                psg_partial_weight=0.7,
+                psg_strong_weight=0.2,
+                psg_verify_weight=0.0,
+            )
+        )
+        local_executor = LocalGoalExecutor(
+            forward_step_m=args.forward_step_m or 0.25,
+            max_turn_deg=args.max_turn_deg,
+            turn_only=bool(args.turn_only),
+        )
+        state["spatial_v2"] = {
+            "place_graph": place_graph,
+            "semantic_map": semantic_map,
+            "spatial_memory": spatial_memory,
+            "local_executor": local_executor,
+        }
+
     # ---- observer -----------------------------------------------------------
     observe_cache_dir = PROJECT_ROOT / "runtime/go2w/semantic_observe_cache"
     observe_cache_dir.mkdir(parents=True, exist_ok=True)
@@ -582,12 +675,22 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     def observe() -> LiveObservation:
         for _ in range(4):
             rclpy.spin_once(node, timeout_sec=0.05)
-        image_path, frame_id = node._latest_bundle_image(spool_root)
-        stable_image = _cached_image(image_path, frame_id)
-        state["image_path"] = stable_image
-        state["frame_id"] = frame_id
-        node._write({"event": "camera_bundle", "frame_id": frame_id,
-                     "host_s": node._host_s()})
+        rgbd_frame = None
+        if rgbd_source is not None:
+            rgbd_frame = rgbd_source.get_latest(timeout_seconds=5.0)
+            frame_id = rgbd_frame.frame_id
+            stable_image = _cached_image(rgbd_frame.color_ref, frame_id)
+            state["image_path"] = stable_image
+            state["frame_id"] = frame_id
+            node._write({"event": "camera_bundle", "frame_id": frame_id,
+                         "source": "d435", "host_s": node._host_s()})
+        else:
+            image_path, frame_id = node._latest_bundle_image(spool_root)
+            stable_image = _cached_image(image_path, frame_id)
+            state["image_path"] = stable_image
+            state["frame_id"] = frame_id
+            node._write({"event": "camera_bundle", "frame_id": frame_id,
+                         "host_s": node._host_s()})
         objects = node._detect(stable_image, prompt, env)
         detections = []
         for item in objects:
@@ -613,13 +716,66 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         state["semantic"] = semantic
         if semantic.heading_sector is not None:
             observed_sectors.add(semantic.heading_sector)
-        return semantic_observation_to_live(
+
+        spatial_quality = "RGB_ONLY"
+        camera_xyz = None
+        depth_ref = None
+        intrinsics = None
+        depth_scale = None
+        localized: list[Any] = []
+        if rgbd_frame is not None and depth_localizer is not None:
+            localized = depth_localizer.localize(semantic.objects, rgbd_frame)
+            # Enrich object dicts with spatial fields and remember the best
+            # camera-local 3D position for the LiveObservation payload.
+            enriched_objects: list[dict[str, Any]] = []
+            for index, obj in enumerate(semantic.objects):
+                item = dict(obj)
+                if index < len(localized):
+                    spatial = localized[index]
+                    item["depth_m"] = spatial.depth_m
+                    item["bearing_deg"] = spatial.bearing_deg
+                    item["camera_xyz"] = list(spatial.camera_xyz) if spatial.camera_xyz else None
+                    item["spatial_quality"] = spatial.spatial_quality
+                enriched_objects.append(item)
+            semantic.objects = enriched_objects
+            # Also publish 3D fields into the observed SceneGraph node
+            # attributes so PSG can bind hypotheses to real anchors.
+            if semantic.scene_graph is not None:
+                for sg_node in semantic.scene_graph.nodes:
+                    label = str(getattr(sg_node, "label_zh", None) or getattr(sg_node, "label", None) or "")
+                    for obj in enriched_objects:
+                        if str(obj.get("label_zh") or obj.get("label") or "") == label:
+                            attrs = dict(getattr(sg_node, "attributes", {}) or {})
+                            for key in ("depth_m", "bearing_deg", "camera_xyz", "spatial_quality"):
+                                if obj.get(key) is not None:
+                                    attrs[key] = obj[key]
+                            sg_node.attributes = attrs
+                            break
+            localized_with_xyz = [item for item in localized if item.camera_xyz is not None]
+            if localized_with_xyz:
+                best_spatial = max(localized_with_xyz, key=lambda item: item.confidence)
+                camera_xyz = list(best_spatial.camera_xyz)
+                spatial_quality = best_spatial.spatial_quality
+            depth_ref = rgbd_frame.depth_ref
+            intrinsics = {
+                "fx": rgbd_frame.fx, "fy": rgbd_frame.fy,
+                "cx": rgbd_frame.cx, "cy": rgbd_frame.cy,
+            }
+            depth_scale = rgbd_frame.depth_unit_m
+
+        observation = semantic_observation_to_live(
             semantic,
             bundle_id=f"bundle_{frame_id}",
             detections=detections,
             target_present=target_present,
             pose=pose,
             image_ref=stable_image,
+            depth_ref=depth_ref,
+            rgbd_frame_id=frame_id if rgbd_frame is not None else None,
+            intrinsics=intrinsics,
+            depth_scale=depth_scale,
+            spatial_quality=spatial_quality,
+            camera_xyz=camera_xyz,
             sensor_health={
                 "camera": True,
                 "lidar": node._lidar_fresh is True,
@@ -630,6 +786,42 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 ),
             },
         )
+
+        # ---- UniGoal V2 spatial state update -------------------------------
+        if place_graph is not None and pose is not None:
+            from app.spatial.models import SpatialPose
+
+            spatial_pose = SpatialPose(
+                x=float(pose["x"]),
+                y=float(pose["y"]),
+                yaw=float(pose["yaw_rad"]),
+                frame_id="odom",
+                quality="relative",
+                source="go2w_wheel_odom",
+            )
+            place_id, created = place_graph.register_observation(
+                observation_id=observation.bundle_id,
+                heading_sector=semantic.heading_sector,
+                objects=observation.object_labels,
+                rgbd_frame_id=observation.rgbd_frame_id,
+                pose=spatial_pose,
+                timestamp=observation.timestamp,
+                target_candidate=observation.target_present,
+            )
+            state["place_id"] = place_id
+            state["created_place"] = created
+            if semantic_map is not None:
+                semantic_map.update(localized, place_id=place_id, now=observation.timestamp)
+            if camera_provider is not None:
+                spin = getattr(camera_provider, "spin_once", None)
+                if spin is not None:
+                    spin()
+                camera_provider.set_pose(spatial_pose)
+            if bev_mapper is not None and rgbd_frame is not None:
+                bev_mapper.update(rgbd_frame, spatial_pose)
+            state["localized"] = localized
+
+        return observation
 
     # ---- matcher -------------------------------------------------------------
     def matcher(observation: LiveObservation) -> SemanticMatch:
@@ -657,7 +849,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 label = getattr(node, "label_zh", None) or getattr(node, "label", None)
                 if node_id in anchor_ids and label:
                     anchor_labels.append(str(label))
-        return SemanticMatch(
+        match = SemanticMatch(
             has_candidate=bool(observation.target_present),
             graph_match=graph_match,
             directive=directive,
@@ -669,6 +861,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             ),
             provenance={"source": "unigoal_matcher"},
         )
+        state["match"] = match
+        return match
 
     # ---- verifier -------------------------------------------------------------
     def verifier(observation: LiveObservation,
@@ -691,6 +885,136 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             attempts=1,
             reason_zh=str(result.get("reason_zh", "")),
             details=result,
+        )
+
+    # ---- UniGoal V2 spatial candidate generator / planner ------------------
+    def spatial_candidate_generator(**kwargs: Any) -> list[Any]:
+        """V2 candidate generator: selects a long-term spatial intent and
+        returns the next local primitive for the current intent."""
+        observation = kwargs.get("observation")
+        capabilities = kwargs.get("capabilities")
+        current_yaw_deg = float(kwargs.get("current_yaw_deg") or 0.0)
+
+        # Continue an active local intent if it still has primitives.
+        if local_executor is not None and local_executor.active:
+            goal = local_executor.next_goal(
+                current_yaw_deg=current_yaw_deg, capabilities=capabilities
+            )
+            if goal is not None:
+                return [goal]
+            local_executor.finish()
+
+        if place_graph is None or spatial_reasoner is None:
+            return []
+
+        match = state.get("match")
+        graph_match = getattr(match, "graph_match", None) if match is not None else None
+        match_state = (
+            graph_match.state.value if graph_match is not None else "zero_match"
+        )
+
+        # ---- bounded LOCAL_SCAN (plan §57-§58) ---------------------------
+        # Before selecting a long-term spatial goal, allow at most
+        # max_local_rotations in-place observations at the current Place.
+        if match_state in {"zero_match", "partial_match"} and place_graph is not None:
+            current_place = place_graph.current_place()
+            if current_place is not None:
+                max_local_rotations = max(0, int(args.max_local_rotations))
+                covered = len(current_place.heading_coverage)
+                if covered < max_local_rotations:
+                    sector_deg = 30.0
+                    current_sector = int(round(current_yaw_deg / sector_deg)) % 12
+                    for delta_sector in (1, -1, 2, -2):
+                        sector = (current_sector + delta_sector) % 12
+                        if str(sector) not in current_place.heading_coverage:
+                            state["local_scan_count"] = state.get("local_scan_count", 0) + 1
+                            goal = ExplorationGoal(
+                                goal_id=f"local_scan_{state['local_scan_count']:03d}",
+                                goal_type=GOAL_ROTATE_VIEW,
+                                relative_dyaw=float(delta_sector * sector_deg),
+                                semantic_reason=(
+                                    f"bounded local scan at {current_place.place_id} "
+                                    f"sector {sector} (covered {covered}/{max_local_rotations})"
+                                ),
+                                expected_information_gain=0.2,
+                                provenance={
+                                    "source": "local_scan",
+                                    "place_id": current_place.place_id,
+                                    "sector": sector,
+                                },
+                            )
+                            return [goal]
+                    # All nearby sectors covered; fall through to long-term goal.
+
+        # Real frontier from RTAB-Map when available, otherwise BEV fallback,
+        # otherwise relative frontier.
+        frontiers: list[Any] = []
+        if args.rtabmap and camera_provider is not None:
+            spin = getattr(camera_provider, "spin_once", None)
+            if spin is not None:
+                spin()
+            map_snap = camera_provider.get_map()
+            if map_snap is not None:
+                pose = camera_provider.get_pose()
+                frontiers = frontier_extractor.extract(map_snap, pose) if frontier_extractor else []
+        if not frontiers and bev_mapper is not None:
+            map_snap = bev_mapper.get_map()
+            if map_snap is not None and map_snap.revision > 0:
+                pose = camera_provider.get_pose() if camera_provider is not None else None
+                frontiers = frontier_extractor.extract(map_snap, pose) if frontier_extractor else []
+        if not frontiers and camera_provider is not None:
+            frontiers = camera_provider.get_frontiers()
+
+        semantic = state.get("semantic")
+        scene_graph = getattr(semantic, "scene_graph", None) if semantic is not None else None
+        psg_prior = (
+            psg_provider.predict(
+                controller.goal_graph,
+                scene_graph,
+                camera_provider,
+                semantic_map,
+            )
+            if psg_provider is not None else None
+        )
+        frontier_memory = (
+            {key: value.to_dict() for key, value in spatial_memory.frontiers.items()}
+            if spatial_memory is not None else {}
+        )
+        scored = spatial_reasoner.propose(
+            graph_match=graph_match,
+            frontiers=frontiers,
+            place_graph=place_graph,
+            semantic_map=semantic_map,
+            psg_prior=psg_prior,
+            frontier_memory=frontier_memory,
+        )
+        if scored is None:
+            return []
+        intent = scored.intent
+        if intent.target_frontier_id and spatial_memory is not None:
+            spatial_memory.mark_frontier_selected(intent.target_frontier_id)
+        local_executor.begin(intent)
+        goal = local_executor.next_goal(
+            current_yaw_deg=current_yaw_deg, capabilities=capabilities
+        )
+        if goal is None:
+            local_executor.finish()
+            return []
+        goal.semantic_relevance = max(0.0, min(1.0, scored.score))
+        goal.expected_information_gain = intent.spatial_gain
+        goal.provenance = {**goal.provenance, "intent": intent.to_dict()}
+        return [goal]
+
+    def spatial_planner(candidates: list[Any], **kwargs: Any) -> Any:
+        from app.navigation.exploration_planner import ScoredGoal
+
+        if not candidates:
+            return None
+        return ScoredGoal(
+            goal=candidates[0],
+            score=1.0,
+            components={"spatial_v2": 1.0},
+            reasons=["UniGoal V2 spatial intent"],
         )
 
     # ---- backend ---------------------------------------------------------------
@@ -778,6 +1102,10 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         events.append(event)
         node._write(event)
 
+    explorer_kwargs: dict[str, Any] = {}
+    if args.spatial_v2:
+        explorer_kwargs["candidate_generator"] = spatial_candidate_generator
+        explorer_kwargs["planner"] = spatial_planner
     explorer = AutonomousExplorer(
         target=args.target,
         observer=observe,
@@ -792,6 +1120,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         finish_on_visual_confirmation=args.finish_on_visual_confirmation,
         turn_only=bool(args.turn_only),
         session_id=graph.session_id,
+        **explorer_kwargs,
     )
     holder["explorer"] = explorer
     node.get_logger().info(
@@ -805,7 +1134,28 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             node._arm(False)
         except RuntimeError as exc:
             node.get_logger().error(str(exc))
+    if camera_provider is not None:
+        close = getattr(camera_provider, "close", None)
+        if close is not None:
+            close()
     _write_session_artifacts(args, explorer, result, events)
+    if place_graph is not None:
+        run_dir = Path(args.session_dir) / explorer.session_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "place_graph.json").write_text(
+            json.dumps(place_graph.to_dict(), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        if semantic_map is not None:
+            (run_dir / "semantic_map.json").write_text(
+                json.dumps(semantic_map.to_dict(), ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        if spatial_memory is not None:
+            (run_dir / "spatial_memory.json").write_text(
+                json.dumps(spatial_memory.to_dict(), ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
     return 0 if result.result == "TARGET_FOUND" else 3
 
 
