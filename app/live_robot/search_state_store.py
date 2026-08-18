@@ -1,0 +1,429 @@
+"""SearchStateStore: authoritative latest-snapshot of the current search
+session (plan book §20-§21, §96).
+
+The store is updated exclusively from SearchEvents so the WebUI (page load,
+F5, WebSocket reconnect) can always recover the full state without replaying
+the whole stream.  All reads take a lock and return deep copies; the store
+never half-updates a snapshot.
+"""
+
+from __future__ import annotations
+
+import copy
+import threading
+import time
+from collections import Counter, deque
+from typing import Any
+
+from app.live_robot.search_event import (
+    ACTION_FINISHED,
+    ACTION_STARTED,
+    CANDIDATES_GENERATED,
+    ERROR,
+    GOAL_SELECTED,
+    MAP_UPDATED,
+    OBJECTS_UPDATED,
+    OBSERVATION_UPDATED,
+    OPERATOR_STOP,
+    PAUSED,
+    RESUMED,
+    SEARCH_EXHAUSTED,
+    SEARCH_FINISHED,
+    SEARCH_STATE_CHANGED,
+    SESSION_CREATED,
+    SESSION_STARTED,
+    TARGET_CONFIRMED,
+    TARGET_MATCH_UPDATED,
+    VERIFICATION_FINISHED,
+    SearchEvent,
+)
+
+TIMELINE_LIMIT = 500
+MAP_SCHEMA_VERSION = "live_exploration_graph_v1"
+
+# Search-session status values (plan book §38).
+STATUS_IDLE = "IDLE"
+STATUS_STARTING = "STARTING"
+STATUS_RUNNING = "RUNNING"
+STATUS_PAUSED = "PAUSED"
+STATUS_STOPPING = "STOPPING"
+STATUS_TARGET_FOUND = "TARGET_FOUND"
+STATUS_SEARCH_EXHAUSTED = "SEARCH_EXHAUSTED"
+STATUS_FAILED = "FAILED"
+STATUS_OPERATOR_STOP = "OPERATOR_STOP"
+STATUS_FINISHED = "FINISHED"
+
+
+def _empty_snapshot() -> dict[str, Any]:
+    return {
+        "session_id": "",
+        "status": STATUS_IDLE,
+        "result": "",
+        "target": "",
+        "reasoner": "unigoal",
+        "backend": "",
+        "phase": "",
+        "cycle": 0,
+        "elapsed_seconds": 0.0,
+        "started_at": None,
+        "finished_at": None,
+        "finish_reason": "",
+        "observation": {
+            "bundle_id": None,
+            "timestamp": None,
+            "objects": [],
+            "detections": [],
+            "target_present": False,
+            "heading_sector": None,
+            "pose": None,
+            "image_ref": None,
+            "sensor_health": {},
+        },
+        "objects": {
+            "current": [],
+            "session_seen": [],
+            "target_evidence": {},
+        },
+        "target_match": {
+            "level": "none",
+            "target_confirmed": False,
+            "explicit_anchor_found": False,
+            "anchor_labels": [],
+            "target_score": 0.0,
+            "directive": None,
+            "graph_match": None,
+        },
+        "goal_graph": None,
+        "selected_goal": None,
+        "candidates": [],
+        "robot": {
+            "motion_status": "IDLE",
+            "pose_quality": "unavailable",
+            "pose": None,
+        },
+        "map": {
+            "schema_version": MAP_SCHEMA_VERSION,
+            "revision": 0,
+            "map_mode": "topological",
+            "current_node_id": None,
+            "robot": None,
+            "nodes": [],
+            "edges": [],
+            "observed_sectors": [],
+        },
+        "health": {},
+        "timeline": [],
+        "error": None,
+    }
+
+
+class SearchStateStore:
+    """Thread-safe latest-snapshot store for one search session."""
+
+    def __init__(self, *, max_timeline: int = TIMELINE_LIMIT) -> None:
+        self._lock = threading.Lock()
+        self._snapshot: dict[str, Any] = _empty_snapshot()
+        self._map_revision = 0
+        self._session_seen: Counter[str] = Counter()
+        self._current_objects: list[dict[str, Any]] = []
+        self._timeline: deque[dict[str, Any]] = deque(maxlen=max(1, int(max_timeline)))
+        self._last_goal: dict[str, Any] | None = None
+
+    # ------------------------------------------------------------------ #
+    # lifecycle                                                          #
+    # ------------------------------------------------------------------ #
+    def reset(self, *, session_id: str, target: str, reasoner: str = "unigoal",
+              backend: str = "mock") -> None:
+        with self._lock:
+            self._snapshot = _empty_snapshot()
+            self._snapshot["session_id"] = session_id
+            self._snapshot["target"] = target
+            self._snapshot["reasoner"] = reasoner
+            self._snapshot["backend"] = backend
+            self._snapshot["status"] = STATUS_STARTING
+            self._snapshot["started_at"] = time.time()
+            self._map_revision = 0
+            self._session_seen = Counter()
+            self._current_objects = []
+            self._timeline = deque(maxlen=self._timeline.maxlen)
+            self._last_goal = None
+
+    # ------------------------------------------------------------------ #
+    # event application                                                  #
+    # ------------------------------------------------------------------ #
+    def apply(self, event: SearchEvent) -> None:
+        handler = {
+            SESSION_CREATED: self._on_session_created,
+            SESSION_STARTED: self._on_session_started,
+            SEARCH_STATE_CHANGED: self._on_search_state_changed,
+            OBSERVATION_UPDATED: self._on_observation,
+            OBJECTS_UPDATED: self._on_objects,
+            TARGET_MATCH_UPDATED: self._on_target_match,
+            VERIFICATION_FINISHED: self._on_verification,
+            TARGET_CONFIRMED: self._on_target_confirmed,
+            CANDIDATES_GENERATED: self._on_candidates,
+            GOAL_SELECTED: self._on_goal_selected,
+            ACTION_STARTED: self._on_action_started,
+            ACTION_FINISHED: self._on_action_finished,
+            MAP_UPDATED: self._on_map_updated,
+            PAUSED: self._on_paused,
+            RESUMED: self._on_resumed,
+            SEARCH_EXHAUSTED: self._on_search_exhausted,
+            OPERATOR_STOP: self._on_operator_stop,
+            ERROR: self._on_error,
+            SEARCH_FINISHED: self._on_search_finished,
+        }.get(event.event_type)
+        if handler is None:
+            return
+        with self._lock:
+            handler(event)
+            self._append_timeline_locked(event)
+
+    # ------------------------------------------------------------------ #
+    # snapshots                                                          #
+    # ------------------------------------------------------------------ #
+    def snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            return copy.deepcopy(self._snapshot)
+
+    def map_snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            return copy.deepcopy(self._snapshot["map"])
+
+    def objects_snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            return copy.deepcopy(self._snapshot["objects"])
+
+    # ------------------------------------------------------------------ #
+    # handlers (callers hold the lock)                                   #
+    # ------------------------------------------------------------------ #
+    def _on_session_created(self, event: SearchEvent) -> None:
+        payload = event.payload
+        if not self._snapshot["session_id"]:
+            self._snapshot["session_id"] = event.session_id
+        self._snapshot["target"] = payload.get("target") or self._snapshot["target"]
+        self._snapshot["phase"] = payload.get("phase") or "STARTING"
+        if not self._snapshot["started_at"]:
+            self._snapshot["started_at"] = event.timestamp
+        self._snapshot["health"] = dict(payload.get("health") or self._snapshot["health"])
+
+    def _on_session_started(self, event: SearchEvent) -> None:
+        self._snapshot["status"] = STATUS_RUNNING
+        self._snapshot["phase"] = event.payload.get("phase") or "OBSERVE"
+        if not self._snapshot["started_at"]:
+            self._snapshot["started_at"] = event.timestamp
+
+    def _on_search_state_changed(self, event: SearchEvent) -> None:
+        payload = event.payload
+        self._snapshot["phase"] = payload.get("phase") or self._snapshot["phase"]
+        if payload.get("health"):
+            health = dict(self._snapshot["health"])
+            health.update(payload["health"])
+            self._snapshot["health"] = health
+        if payload.get("robot"):
+            self._snapshot["robot"].update(payload["robot"])
+
+    def _on_observation(self, event: SearchEvent) -> None:
+        payload = event.payload
+        observation = self._snapshot["observation"]
+        observation["bundle_id"] = payload.get("bundle_id") or observation["bundle_id"]
+        observation["timestamp"] = payload.get("timestamp") or event.timestamp
+        observation["objects"] = list(payload.get("scene_objects") or payload.get("objects") or [])
+        observation["detections"] = list(payload.get("detections") or [])
+        observation["target_present"] = bool(payload.get("target_present", False))
+        observation["heading_sector"] = payload.get("heading_sector")
+        observation["pose"] = payload.get("pose")
+        observation["image_ref"] = payload.get("image_ref")
+        observation["sensor_health"] = dict(payload.get("sensor_health") or {})
+        if event.cycle is not None:
+            self._snapshot["cycle"] = max(self._snapshot["cycle"], event.cycle)
+        self._snapshot["phase"] = payload.get("phase") or self._snapshot["phase"]
+        if payload.get("pose"):
+            self._snapshot["robot"]["pose"] = payload["pose"]
+            self._snapshot["robot"]["pose_quality"] = (
+                payload.get("pose_quality") or "relative"
+            )
+
+    def _on_objects(self, event: SearchEvent) -> None:
+        payload = event.payload
+        current = list(payload.get("current") or [])
+        self._current_objects = current
+        for item in current:
+            label = str(item.get("label_zh") or item.get("label") or item.get("name") or "")
+            if label:
+                self._session_seen[label] += 1
+        seen = [
+            {"label": label, "observations": count}
+            for label, count in sorted(
+                self._session_seen.items(), key=lambda kv: (-kv[1], kv[0])
+            )
+        ]
+        self._snapshot["objects"] = {
+            "current": current,
+            "session_seen": seen,
+            "target_evidence": dict(payload.get("target_evidence") or {}),
+        }
+
+    def _on_target_match(self, event: SearchEvent) -> None:
+        payload = event.payload
+        match = self._snapshot["target_match"]
+        match["level"] = payload.get("target_match_level") or match["level"]
+        match["target_score"] = float(payload.get("target_score", match["target_score"]))
+        match["explicit_anchor_found"] = bool(
+            payload.get("explicit_anchor_found", match["explicit_anchor_found"])
+        )
+        anchors = list(payload.get("anchor_labels") or [])
+        if anchors:
+            match["anchor_labels"] = anchors
+        if payload.get("directive") is not None:
+            match["directive"] = payload["directive"]
+        if payload.get("graph_match") is not None:
+            match["graph_match"] = payload["graph_match"]
+        if payload.get("goal_graph") is not None:
+            self._snapshot["goal_graph"] = payload["goal_graph"]
+        self._snapshot["phase"] = payload.get("phase") or self._snapshot["phase"]
+        evidence = self._snapshot["objects"]["target_evidence"]
+        evidence.update(
+            {
+                "target_match_level": match["level"],
+                "target_score": match["target_score"],
+                "anchor_labels": match["anchor_labels"],
+                "explicit_anchor_found": match["explicit_anchor_found"],
+            }
+        )
+
+    def _on_verification(self, event: SearchEvent) -> None:
+        payload = event.payload
+        if payload.get("confirmed"):
+            self._snapshot["target_match"]["target_confirmed"] = True
+        self._snapshot["phase"] = "VERIFY"
+
+    def _on_target_confirmed(self, event: SearchEvent) -> None:
+        self._snapshot["status"] = STATUS_TARGET_FOUND
+        self._snapshot["phase"] = "TARGET_FOUND"
+        self._snapshot["result"] = "TARGET_FOUND"
+        self._snapshot["finish_reason"] = "TARGET_FOUND"
+        self._snapshot["target_match"]["target_confirmed"] = True
+        self._snapshot["target_match"]["level"] = "confirmed"
+        self._snapshot["objects"]["target_evidence"]["target_confirmed"] = True
+
+    def _on_candidates(self, event: SearchEvent) -> None:
+        candidates = list(event.payload.get("candidates") or [])
+        if candidates:
+            self._snapshot["candidates"] = candidates
+        if event.payload.get("selected_goal_id"):
+            for candidate in candidates:
+                if candidate.get("goal", {}).get("goal_id") == event.payload["selected_goal_id"]:
+                    candidate["selected"] = True
+        self._snapshot["phase"] = event.payload.get("phase") or self._snapshot["phase"]
+
+    def _on_goal_selected(self, event: SearchEvent) -> None:
+        payload = event.payload
+        goal = dict(payload.get("goal") or {})
+        selected = {
+            "goal": goal,
+            "score": payload.get("score"),
+            "components": dict(payload.get("components") or {}),
+            "reasons": list(payload.get("reasons") or []),
+            "planning_cycles": payload.get("planning_cycles"),
+        }
+        self._last_goal = selected
+        self._snapshot["selected_goal"] = selected
+        if payload.get("planning_cycles") is not None:
+            self._snapshot["cycle"] = max(
+                self._snapshot["cycle"], int(payload["planning_cycles"])
+            )
+        self._snapshot["phase"] = "PLAN"
+
+    def _on_action_started(self, event: SearchEvent) -> None:
+        self._snapshot["robot"]["motion_status"] = "EXECUTING"
+        self._snapshot["phase"] = "EXECUTE"
+
+    def _on_action_finished(self, event: SearchEvent) -> None:
+        payload = event.payload
+        status = str(payload.get("status") or "")
+        self._snapshot["robot"]["motion_status"] = (
+            "SUCCEEDED" if status == "succeeded" else "FAILED"
+        )
+        self._snapshot["phase"] = "WAIT_RESULT"
+
+    def _on_map_updated(self, event: SearchEvent) -> None:
+        payload = event.payload
+        graph = payload.get("graph") or {}
+        self._map_revision += 1
+        self._snapshot["map"] = {
+            "schema_version": MAP_SCHEMA_VERSION,
+            "revision": self._map_revision,
+            "map_mode": payload.get("map_mode") or "topological",
+            "current_node_id": payload.get("current_node_id"),
+            "robot": payload.get("robot"),
+            "nodes": list(graph.get("nodes") or []),
+            "edges": list(graph.get("edges") or []),
+            "observed_sectors": list(graph.get("observed_sectors") or []),
+        }
+
+    def _on_paused(self, event: SearchEvent) -> None:
+        self._snapshot["status"] = STATUS_PAUSED
+        self._snapshot["phase"] = "PAUSED"
+
+    def _on_resumed(self, event: SearchEvent) -> None:
+        self._snapshot["status"] = STATUS_RUNNING
+        self._snapshot["phase"] = "OBSERVE"
+
+    def _on_search_exhausted(self, event: SearchEvent) -> None:
+        self._snapshot["status"] = STATUS_SEARCH_EXHAUSTED
+        self._snapshot["phase"] = "SEARCH_EXHAUSTED"
+        self._snapshot["result"] = "SEARCH_EXHAUSTED"
+        self._snapshot["finish_reason"] = "SEARCH_EXHAUSTED"
+
+    def _on_operator_stop(self, event: SearchEvent) -> None:
+        self._snapshot["status"] = STATUS_OPERATOR_STOP
+        self._snapshot["phase"] = "OPERATOR_STOP"
+        self._snapshot["result"] = "OPERATOR_STOP"
+        self._snapshot["finish_reason"] = "OPERATOR_STOP"
+
+    def _on_error(self, event: SearchEvent) -> None:
+        payload = event.payload
+        self._snapshot["status"] = STATUS_FAILED
+        self._snapshot["result"] = "FAILED"
+        self._snapshot["error"] = {
+            "error_type": payload.get("error_type") or "SEARCH_ERROR",
+            "message": payload.get("message") or "",
+        }
+
+    def _on_search_finished(self, event: SearchEvent) -> None:
+        payload = event.payload
+        result = str(payload.get("result") or "")
+        self._snapshot["result"] = result
+        self._snapshot["finish_reason"] = str(payload.get("finish_reason") or result)
+        self._snapshot["finished_at"] = event.timestamp
+        self._snapshot["summary"] = dict(payload)
+        if result == "TARGET_FOUND":
+            self._snapshot["status"] = STATUS_TARGET_FOUND
+        elif result == "OPERATOR_STOP":
+            self._snapshot["status"] = STATUS_OPERATOR_STOP
+        elif result == "SEARCH_EXHAUSTED":
+            self._snapshot["status"] = STATUS_SEARCH_EXHAUSTED
+        else:
+            self._snapshot["status"] = STATUS_FINISHED
+        for key in (
+            "planning_cycles", "motion_steps", "observations", "unique_nodes",
+            "replans", "navigation_failures", "verify_attempts", "duration_s",
+        ):
+            if key in payload:
+                self._snapshot[key] = payload[key]
+
+    def _append_timeline_locked(self, event: SearchEvent) -> None:
+        self._timeline.append(
+            {
+                "event_type": event.event_type,
+                "timestamp": event.timestamp,
+                "cycle": event.cycle,
+            }
+        )
+        self._snapshot["timeline"] = list(self._timeline)
+        elapsed = 0.0
+        started = self._snapshot.get("started_at")
+        if started is not None:
+            elapsed = max(0.0, event.timestamp - float(started))
+        self._snapshot["elapsed_seconds"] = round(elapsed, 2)

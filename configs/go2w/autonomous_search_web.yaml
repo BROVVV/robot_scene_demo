@@ -1,0 +1,32 @@
+# Go2-W autonomous semantic search WebUI configuration (plan book §117).
+#
+# Everything here is optional: environment variables (AUTONOMOUS_SEARCH_*)
+# and API request fields override these defaults.  Manual calibration items
+# never block the WebUI (plan book §2).
+
+web:
+  host: 127.0.0.1
+  port: 8765
+  search_event_buffer: 500
+
+search:
+  reasoner: unigoal
+  backend: go2w_experimental     # go2w_experimental | mock | mock_metric
+  finish_on_visual_confirmation: true
+
+  max_search_seconds: 600
+  max_planning_cycles: 100
+  max_motion_steps: 50
+  verify_min_confidence: 0.6
+  llm_model: Qwen/Qwen3-VL-30B-A3B-Instruct
+
+map:
+  mode: auto                     # topological (current Go2-W) / metric (future)
+
+supervision:
+  operator_supervised: true
+  stop_search_on_last_browser_disconnect: false
+
+outputs:
+  session_dir: outputs/live_runs
+  events_jsonl: outputs/live_sessions

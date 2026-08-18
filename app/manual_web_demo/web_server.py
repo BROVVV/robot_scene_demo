@@ -27,6 +27,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.manual_web_demo.config import ManualDemoSettings, get_manual_demo_settings
+from app.manual_web_demo.control_ownership import ControlOwner, OwnerState
 from app.manual_web_demo.manual_drive_controller import (
     KEY_MAP,
     ManualDriveController,
@@ -34,10 +35,13 @@ from app.manual_web_demo.manual_drive_controller import (
 from app.manual_web_demo.models import CameraStatus, SafetySnapshot
 from app.manual_web_demo.ros_worker_client import RosWorkerClient
 from app.manual_web_demo.scene_object_analyzer import SceneObjectAnalyzer
+from app.manual_web_demo.search_routes import create_search_router
+from app.manual_web_demo.search_session_service import SearchSessionService
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 INDEX_HTML = PACKAGE_DIR / "templates" / "index.html"
 STATIC_DIR = PACKAGE_DIR / "static"
+_DEFAULT_SEARCH_SESSION_DIR = "outputs/live_runs"
 
 
 # --------------------------------------------------------------------------- #
@@ -130,9 +134,12 @@ class DemoRuntime:
         worker: RosWorkerClient | None = None,
         analyzer_fn: Callable[[str], dict[str, Any]] | None = None,
         camera_fresh: Callable[[], bool] | None = None,
+        search_executor_factory: Callable[[], Any] | None = None,
+        search_session_dir: str | None = None,
     ) -> None:
         self.config = config
         self.broadcaster = WebSocketBroadcaster()
+        self.owner = ControlOwner()
         self.worker = worker or RosWorkerClient(
             cmd=config.ros_worker_cmd,
             cwd=config.project_root,
@@ -145,13 +152,18 @@ class DemoRuntime:
             config=config,
             safety_provider=self._safety_snapshot,
             camera_fresh_provider=camera_fresh or self._camera_fresh,
-            on_event=self.broadcaster.publish,
+            on_event=self._on_controller_event,
         )
         self.analyzer = SceneObjectAnalyzer(
             config=config,
             frame_provider=self._frame_provider,
             camera_fresh_provider=camera_fresh or self._camera_fresh,
             analyzer_fn=analyzer_fn,
+        )
+        self.search_service = SearchSessionService(
+            owner=self.owner,
+            executor_factory=search_executor_factory,
+            session_dir=search_session_dir or _DEFAULT_SEARCH_SESSION_DIR,
         )
         self._last_camera_msg_time = 0.0
         self._camera_info: dict[str, Any] = {}
@@ -231,6 +243,16 @@ class DemoRuntime:
         elif msg_type == "error":
             self.controller.disable(reason="worker_error")
 
+    def _on_controller_event(self, message: dict[str, Any]) -> None:
+        """Controller events -> broadcaster, with ControlOwner reconciliation
+        (plan book §43): manual ownership ends when control is disabled or
+        estop latches."""
+        self.broadcaster.publish(message)
+        if message.get("type") == "state":
+            status = str((message.get("state") or {}).get("status") or "")
+            if status in {"DISABLED", "ESTOP"} and self.owner.is_manual():
+                self.owner.release(OwnerState.MANUAL)
+
     # -- snapshots -------------------------------------------------------- #
     def camera_snapshot(self) -> CameraStatus:
         age = (
@@ -279,6 +301,50 @@ class DemoRuntime:
                 "alive": self.worker.alive(),
                 "last_error": worker_status.get("last_error"),
             },
+            "owner": self.owner.snapshot(),
+            "search": self.search_service.executor_state(),
+        }
+
+    def search_readiness(self) -> dict[str, Any]:
+        """ExperimentSearchReadiness (plan book §59): automatic checks only,
+        no manual calibration may gate the WebUI.  Camera / worker / motion /
+        robot-mode / estop are blocking; LLM toggle and search worker are
+        informational (degraded-only) because they are user-toggleable."""
+        status = self.status_snapshot()
+        camera = status.get("camera") or {}
+        worker = status.get("worker") or {}
+        motion = status.get("motion") or {}
+        llm = status.get("llm") or {}
+        search = status.get("search") or {}
+        checks = {
+            "camera_fresh": bool(camera.get("fresh", False)),
+            "camera_available": bool(camera.get("available", False)),
+            "ros_worker_alive": bool(worker.get("alive", False)),
+            "motion_action_available": bool(motion.get("available", False)),
+            "robot_mode_ok": bool(
+                motion.get("robot_mode") == 1 and motion.get("robot_error_code") == 0
+            ),
+            "emergency_stop_available": bool(motion.get("available", False)),
+            "llm_available": bool(llm.get("enabled", False)),
+            "search_worker_available": bool(
+                search.get("state") not in (None, "stopped") or search.get("alive")
+            ),
+        }
+        blocking = (
+            "camera_fresh", "camera_available", "ros_worker_alive",
+            "motion_action_available", "robot_mode_ok",
+            "emergency_stop_available",
+        )
+        blocked = [key for key in blocking if not checks[key]]
+        degraded = [key for key in checks if not checks[key] and key not in blocking]
+        ready = not blocked
+        return {
+            "ready": ready,
+            "checks": checks,
+            "blocking": list(blocking),
+            "degraded": degraded,
+            "reason": "" if ready else "readiness failed: " + "; ".join(blocked),
+            "owner": self.owner.snapshot(),
         }
 
 
@@ -288,9 +354,18 @@ class DemoRuntime:
 def create_app(
     config: ManualDemoSettings | None = None,
     runtime: DemoRuntime | None = None,
+    *,
+    search_executor_factory: Callable[[], Any] | None = None,
 ) -> FastAPI:
     config = config or get_manual_demo_settings()
-    runtime = runtime or DemoRuntime(config)
+    runtime = runtime or DemoRuntime(
+        config, search_executor_factory=search_executor_factory
+    )
+    search_router, search_hub, ws_search_handler = create_search_router(
+        runtime.search_service,
+        on_estop=lambda: runtime.controller.estop(),
+        readiness_provider=runtime.search_readiness,
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -299,12 +374,15 @@ def create_app(
         drain_task = asyncio.create_task(runtime.broadcaster.drain())
         runtime.register_task(tick_task)
         runtime.register_task(drain_task)
+        search_hub.start()
         yield
+        search_hub.stop()
+        runtime.search_service.shutdown()
         for task in (tick_task, drain_task):
             task.cancel()
         runtime.stop()
 
-    app = FastAPI(title="Go2-W Manual WASD+QE Demo", lifespan=lifespan)
+    app = FastAPI(title="Go2-W Manual + Autonomous Search Console", lifespan=lifespan)
 
     if STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
@@ -333,7 +411,12 @@ def create_app(
 
     @app.post("/api/control/enable")
     async def api_control_enable() -> JSONResponse:
+        ok_owner, owner_reason = runtime.owner.try_manual()
+        if not ok_owner:
+            return JSONResponse({"ok": False, "reason": owner_reason})
         ok = runtime.controller.enable()
+        if not ok:
+            runtime.owner.release(OwnerState.MANUAL)
         return JSONResponse(
             {
                 "ok": ok,
@@ -346,11 +429,16 @@ def create_app(
     @app.post("/api/control/disable")
     async def api_control_disable() -> JSONResponse:
         runtime.controller.disable(reason="user_disabled")
+        runtime.owner.release(OwnerState.MANUAL)
         return JSONResponse({"ok": True})
 
     @app.post("/api/estop")
     async def api_estop() -> JSONResponse:
+        # Estop overrides every owner: manual controller AND search session
+        # both stop (plan book §42); no new motion may follow.
+        runtime.owner.estop()
         runtime.controller.estop()
+        runtime.search_service.estop_search()
         return JSONResponse({"ok": True})
 
     @app.get("/api/camera.mjpeg")
@@ -359,6 +447,9 @@ def create_app(
             _mjpeg_generator(runtime, request),
             media_type="multipart/x-mixed-replace; boundary=frame",
         )
+
+    app.include_router(search_router)
+    app.websocket("/ws/search")(ws_search_handler)
 
     @app.websocket("/ws/control")
     async def ws_control(websocket: WebSocket) -> None:
@@ -498,7 +589,19 @@ async def _dispatch_ws_message(runtime: DemoRuntime, message: dict[str, Any]) ->
             {"type": "state", "state": controller.state.to_dict()}
         )
     elif msg_type == "enable_control":
+        ok_owner, owner_reason = runtime.owner.try_manual()
+        if not ok_owner:
+            runtime.broadcaster.publish(
+                {
+                    "type": "enable_result",
+                    "ok": False,
+                    "reason": owner_reason,
+                }
+            )
+            return
         ok = controller.enable()
+        if not ok:
+            runtime.owner.release(OwnerState.MANUAL)
         runtime.broadcaster.publish(
             {
                 "type": "enable_result",
@@ -517,7 +620,9 @@ async def _dispatch_ws_message(runtime: DemoRuntime, message: dict[str, Any]) ->
     elif msg_type == "release_all":
         controller.on_release_all()
     elif msg_type == "estop":
+        runtime.owner.estop()
         controller.estop()
+        runtime.search_service.estop_search()
     # Unknown message types are ignored.
 
 

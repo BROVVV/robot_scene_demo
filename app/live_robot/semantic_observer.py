@@ -188,6 +188,46 @@ def _from_payload(payload: dict[str, Any], *, robot_pose: dict[str, Any] | None,
     )
 
 
+def semantic_observation_to_live(
+    semantic: SemanticObservation,
+    *,
+    bundle_id: str,
+    detections: list[dict[str, Any]],
+    target_present: bool,
+    pose: dict[str, Any] | None,
+    sensor_health: dict[str, Any] | None = None,
+    timestamp: float | None = None,
+    image_ref: str | None = None,
+) -> "LiveObservation":
+    """Normalize a SemanticObservation into the explorer's LiveObservation.
+
+    ``SemanticObservation.objects/relations`` are already dicts (normalized by
+    the observer); callers must not call ``.to_dict()`` on them again.
+    ``image_ref`` should be the stable image path used for later verify crops.
+    """
+    from app.navigation.models import LiveObservation
+
+    return LiveObservation(
+        bundle_id=bundle_id,
+        timestamp=timestamp if timestamp is not None else semantic.timestamp_sec,
+        image_ref=image_ref or str(semantic.frame_id),
+        detections=list(detections),
+        scene_graph=(
+            semantic.scene_graph.to_dict() if semantic.scene_graph is not None else None
+        ),
+        scene_objects=list(semantic.objects),
+        scene_relations=list(semantic.relations),
+        target_match={
+            "target_present": bool(target_present),
+            "score": max((item.get("score", 0.0) for item in detections), default=0.0),
+        },
+        pose=pose,
+        heading_sector=semantic.heading_sector,
+        sensor_health=dict(sensor_health or {}),
+        provenance={"source": str(semantic.source)},
+    )
+
+
 def _numeric_frame_id(value: str) -> int:
     try:
         return int(value)

@@ -1,0 +1,856 @@
+#!/usr/bin/env python3
+"""High-level autonomous semantic exploration entry point (plan section 23).
+
+Runs the platform-independent AutonomousExplorer against a chosen backend:
+
+* ``--backend go2w_experimental`` (default): real Go2-W via the audited
+  ``/go2w/motion`` executor from ``run_autonomous_loop.py``; requires
+  ``--operator-supervised-experiment`` (operator with remote present) and the
+  perception / odometry / motion stacks running.
+* ``--backend mock`` / ``--backend mock_metric``: offline E2E with scripted
+  vision and simulated motion (no robot needed).
+* ``--replay <session.jsonl>``: deterministic replay of a previous session's
+  observations with the mock backend.
+
+Outputs: session JSONL events, ``outputs/live_runs/<session_id>/``
+(exploration_graph.json + summary.json).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any, Callable
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from app.config import get_settings
+from app.live_robot.autonomous_explorer import (
+    AutonomousExplorer,
+    PerceptionFailure,
+    SemanticMatch,
+    VerificationOutcome,
+)
+from app.live_robot.experiment_readiness import compute_experiment_readiness
+from app.live_robot.mock_observation_scene import (
+    MockObservationScene,
+    scenario_anchor_then_target,
+    scenario_no_target,
+    scenario_target_appears_after,
+)
+from app.live_robot.semantic_observer import (
+    LiveSemanticObserver,
+    semantic_observation_to_live,
+    semantic_payload_from_quick_target_absence,
+)
+from app.memory.observation_memory_store import ObservationMemoryStore
+from app.navigation.backend_factory import create_backend
+from app.navigation.exploration_config import load_exploration_policy
+from app.navigation.exploration_graph import ExplorationGraph
+from app.navigation.models import LiveObservation
+from app.reasoning.unigoal.models import SearchReasoningContext
+from app.reasoning.unigoal.router import SemanticSearchController
+from app.reasoning.unigoal.semantic_memory import SemanticSearchMemory
+from app.video.target_profile import TargetProfileResolver
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Operator-supervised high-level autonomous semantic exploration"
+    )
+    parser.add_argument("--target", required=True, help="自然语言搜索目标，如 饮水机旁边的蓝色垃圾桶")
+    parser.add_argument(
+        "--backend", choices=("go2w_experimental", "mock", "mock_metric"),
+        default="go2w_experimental",
+        help="robot backend: real Go2-W / offline mocks",
+    )
+    parser.add_argument(
+        "--reasoner", choices=("legacy", "unigoal", "hybrid"),
+        default="unigoal",
+    )
+    parser.add_argument(
+        "--operator-supervised-experiment", action="store_true",
+        help="operator present with remote; enables the experiment profile "
+             "(authorizes <=30deg turns without a rotation lease; all other "
+             "safety gates stay active)",
+    )
+    parser.add_argument(
+        "--operator-authorized-rotation", action="store_true",
+        help="legacy alias of --operator-supervised-experiment for the motion gate",
+    )
+    parser.add_argument("--max-seconds", type=float, default=600.0)
+    parser.add_argument("--max-planning-cycles", type=int, default=100)
+    parser.add_argument("--max-motion-steps", type=int, default=50)
+    parser.add_argument("--finish-on-visual-confirmation", action="store_true",
+                        default=True,
+                        help="2D visual confirmation + relation evidence + verify PASS "
+                             "ends the task (no metric 3D required)")
+    parser.add_argument("--no-finish-on-visual-confirmation", action="store_true")
+    parser.add_argument("--turn-only", action="store_true",
+                        help="reject forward steps at the motion executor")
+    parser.add_argument("--dry-run-motion", action="store_true",
+                        help="run the full real pipeline (camera/LLM/UniGoal/"
+                             "planner) but never send motion commands "
+                             "(REOBSERVE-only backend)")
+    parser.add_argument("--output", default="outputs/live_sessions/semantic_exploration.jsonl")
+    parser.add_argument("--session-dir", default="outputs/live_runs")
+    parser.add_argument("--record-video", default="",
+                        help="record camera stream to MP4 (go2w backend only)")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="offline run with scripted vision (alias of --backend mock)")
+    parser.add_argument("--replay", default="",
+                        help="replay observations from a previous session JSONL")
+    parser.add_argument("--mock-scenario",
+                        choices=("target_appears_after_n", "no_target", "anchor_then_target"),
+                        default="anchor_then_target")
+    parser.add_argument("--mock-target-after", type=int, default=3,
+                        help="observations before the target appears (mock scenario)")
+    parser.add_argument("--mock-confirm-after-seen", type=int, default=1)
+    parser.add_argument("--verify-min-confidence", type=float, default=0.6)
+    parser.add_argument("--detector", choices=("llm", "grounded_sam"), default="llm")
+    parser.add_argument("--llm-model", default="Qwen/Qwen3-VL-30B-A3B-Instruct")
+    parser.add_argument("--spool-root", default="runtime/go2w/spool")
+    parser.add_argument("--odom-topic", default="/go2w/odom/fused")
+    parser.add_argument("--max-radius", type=float, default=0.0,
+                        help="search radius limit in metres; 0 = unlimited")
+    parser.add_argument("--target-score-min", type=float, default=0.15)
+    parser.add_argument("--reach-area-ratio", type=float, default=0.15)
+    parser.add_argument("--max-turn-deg", type=float, default=30.0)
+    parser.add_argument("--forward-step-m", type=float, default=0.20)
+    parser.add_argument("--semantic-allow-forward", action="store_true")
+    parser.add_argument("--allow-degraded", action="store_true",
+                        help="continue when non-critical readiness checks degrade")
+    parser.add_argument("--exploration-config", default="configs/exploration/default.yaml")
+    parser.add_argument("--profile-config", default="configs/go2w/high_level_experiment.yaml")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.no_finish_on_visual_confirmation:
+        args.finish_on_visual_confirmation = False
+    if args.dry_run and args.backend == "go2w_experimental":
+        args.backend = "mock"
+    if args.replay:
+        return run_replay(args)
+    if args.backend == "go2w_experimental":
+        return run_go2w(args)
+    return _run_offline(args)
+
+
+# ---------------------------------------------------------------------------
+# shared artifacts
+# ---------------------------------------------------------------------------
+
+
+def _write_session_artifacts(args, explorer: AutonomousExplorer,
+                             result, events: list[dict[str, Any]]) -> Path:
+    session_id = explorer.session_id
+    run_dir = Path(args.session_dir) / session_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    graph_path = explorer.save_artifacts(Path(args.session_dir))
+    summary_path = run_dir / "summary.json"
+    summary_path.write_text(
+        json.dumps(result.to_dict(), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    jsonl_path = Path(args.output)
+    jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+    with jsonl_path.open("a", encoding="utf-8") as handle:
+        for event in events:
+            handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+        handle.write(
+            json.dumps(
+                {"event": "session_summary", "session_id": session_id,
+                 **result.to_dict()},
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+    print(json.dumps(result.to_dict(), ensure_ascii=False))
+    print(f"session_dir={run_dir}")
+    print(f"graph={graph_path}")
+    print(f"jsonl={jsonl_path}")
+    return run_dir
+
+
+def _build_offline_components(args):
+    if args.mock_scenario == "target_appears_after_n":
+        scene = scenario_target_appears_after(max(1, args.mock_target_after))
+    elif args.mock_scenario == "no_target":
+        scene = scenario_no_target()
+    else:
+        scene = scenario_anchor_then_target()
+    scene.confirm_after_seen = max(1, args.mock_confirm_after_seen)
+    return scene
+
+
+# Explorer events that carry map meaning; the live WebUI worker augments
+# these with the full exploration-graph snapshot for the SVG map.
+_MAP_RELEVANT_EVENTS = ("observation", "memory_update", "navigation_result")
+
+
+def _run_offline(args, event_hook=None) -> int:
+    policy = load_exploration_policy(args.exploration_config, overrides={
+        "exploration": {
+            "budget": {
+                "max_search_seconds": args.max_seconds,
+                "max_planning_cycles": args.max_planning_cycles,
+                "max_motion_steps": args.max_motion_steps,
+            },
+        },
+    })
+    scene = _build_offline_components(args)
+    backend_kind = "mock_metric" if args.backend == "mock_metric" else "mock"
+    backend = create_backend(backend_kind)
+    graph = ExplorationGraph(session_id=time.strftime("explore_offline_%Y%m%d_%H%M%S"))
+    holder: dict[str, Any] = {"explorer": None}
+
+    def on_event(event: dict[str, Any]) -> None:
+        if event_hook is not None:
+            explorer = holder.get("explorer")
+            if explorer is not None and event.get("event") in _MAP_RELEVANT_EVENTS:
+                event = {**event, "graph": explorer.graph.to_dict()}
+            event = event_hook(event, holder)
+        if event is None:
+            return
+        explorer = holder.get("explorer")
+        if explorer is not None:
+            explorer.events.append(event)
+
+    explorer = AutonomousExplorer(
+        target=args.target,
+        observer=scene.observer(),
+        matcher=scene.matcher(),
+        verifier=scene.verifier(),
+        backend=backend,
+        policy=policy,
+        graph=graph,
+        negative_target_key=args.target,
+        finish_on_visual_confirmation=args.finish_on_visual_confirmation,
+        turn_only=args.turn_only,
+        session_id=graph.session_id,
+        on_event=on_event,
+    )
+    holder["explorer"] = explorer
+    result = explorer.run()
+    _write_session_artifacts(args, explorer, result, explorer.events)
+    return 0 if result.result == "TARGET_FOUND" else 3
+
+
+def run_replay(args, event_hook=None) -> int:
+    """Deterministic replay of a previous session's observation events."""
+    jsonl_path = Path(args.replay)
+    if not jsonl_path.is_file():
+        print(json.dumps({"status": "failed", "error": f"replay file missing: {jsonl_path}"},
+                         ensure_ascii=False))
+        return 2
+    observations: list[LiveObservation] = []
+    for line in jsonl_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("event") == "observation":
+            observation = LiveObservation.from_dict(event)
+            observation.target_match = {
+                "target_present": bool(event.get("target_present", False)),
+                "score": (
+                    float((event.get("target_match") or {}).get("score", 0.0))
+                    if isinstance(event.get("target_match"), dict) else 0.0
+                ),
+            }
+            observations.append(observation)
+    if not observations:
+        print(json.dumps({"status": "failed", "error": "no observation events in replay file"},
+                         ensure_ascii=False))
+        return 2
+    policy = load_exploration_policy(args.exploration_config)
+    backend = create_backend("mock")
+    index = [0]
+
+    def observe() -> LiveObservation:
+        obs = observations[min(index[0], len(observations) - 1)]
+        index[0] += 1
+        return obs
+
+    def matcher(observation: LiveObservation) -> SemanticMatch:
+        return SemanticMatch(
+            has_candidate=bool(observation.target_present),
+            target_match=observation.target_match,
+            target_score=float((observation.target_match or {}).get("score", 0.0)),
+            target_match_level="candidate" if observation.target_present else "none",
+            provenance={"source": "replay"},
+        )
+
+    def verifier(observation: LiveObservation,
+                 match: SemanticMatch) -> VerificationOutcome:
+        return VerificationOutcome(
+            confirmed=bool(observation.target_present),
+            attempts=1,
+            reason_zh="replay verify",
+        )
+
+    graph = ExplorationGraph(session_id=f"replay_{time.strftime('%Y%m%d_%H%M%S')}")
+    holder: dict[str, Any] = {"explorer": None}
+
+    def on_event(event: dict[str, Any]) -> None:
+        if event_hook is not None:
+            explorer = holder.get("explorer")
+            if explorer is not None and event.get("event") in _MAP_RELEVANT_EVENTS:
+                event = {**event, "graph": explorer.graph.to_dict()}
+            event = event_hook(event, holder)
+        if event is None:
+            return
+        explorer = holder.get("explorer")
+        if explorer is not None:
+            explorer.events.append(event)
+
+    explorer = AutonomousExplorer(
+        target=args.target,
+        observer=observe,
+        matcher=matcher,
+        verifier=verifier,
+        backend=backend,
+        policy=policy,
+        graph=graph,
+        negative_target_key=args.target,
+        finish_on_visual_confirmation=args.finish_on_visual_confirmation,
+        turn_only=args.turn_only,
+        session_id=graph.session_id,
+        on_event=on_event,
+    )
+    holder["explorer"] = explorer
+    result = explorer.run()
+    _write_session_artifacts(args, explorer, result, explorer.events)
+    return 0 if result.result == "TARGET_FOUND" else 3
+
+
+# ---------------------------------------------------------------------------
+# real Go2-W
+# ---------------------------------------------------------------------------
+
+
+def run_go2w(args, event_hook=None) -> int:
+    if not (args.operator_supervised_experiment or args.operator_authorized_rotation):
+        if args.dry_run_motion:
+            # WebUI dry-run (plan book §60): the full real perception /
+            # reasoning pipeline runs but no motion command is ever sent, so
+            # operator rotation authorization is not required.
+            print(json.dumps({"status": "dry_run_motion", "note": "no motion commands will be sent"},
+                             ensure_ascii=False))
+        else:
+            print(
+                json.dumps(
+                    {
+                        "status": "blocked",
+                        "reason": (
+                            "go2w_experimental backend requires "
+                            "--operator-supervised-experiment (operator with remote "
+                            "present); turns are blocked without operator authorization "
+                            "because rotation clearance is fail-closed"
+                        ),
+                    },
+                    ensure_ascii=False,
+                )
+            )
+            return 3
+    try:
+        import rclpy
+    except ImportError as exc:
+        print(json.dumps({"status": "failed", "error": f"rclpy unavailable: {exc}"}))
+        return 2
+    from run_autonomous_loop import AutonomousLoop, PROMPT_MAP  # noqa: E402
+
+    policy = load_exploration_policy(args.exploration_config, overrides={
+        "exploration": {
+            "budget": {
+                "max_search_seconds": args.max_seconds,
+                "max_planning_cycles": args.max_planning_cycles,
+                "max_motion_steps": args.max_motion_steps,
+            },
+            "candidates": {"fallback_turn_deg": args.max_turn_deg},
+        },
+    })
+    rclpy.init()
+    output_path = str(Path(args.output))
+    node = AutonomousLoop(
+        pattern=["f"], output=output_path, forward_vx=0.12,
+        forward_seconds=2.0, max_yaw_rate=0.15, min_clearance_m=0.30,
+        mode="state_machine_search", max_seconds=args.max_seconds,
+        wander_front_go_m=0.45, wander_turn_deg=30.0,
+        max_radius_m=args.max_radius, scan_turn_deg=30.0, scan_span=3,
+        pre_scan_turns=0, record_video=args.record_video,
+        video_fps=15.0, video_scale=0.4, scan360_steps=8,
+        scan360_turn_deg=45.0, odom_topic=args.odom_topic,
+    )
+    node._target = args.target
+    node._detector = args.detector
+    node._llm_model = args.llm_model
+    node._spool_root = args.spool_root
+    node._target_score_min = args.target_score_min
+    node._align_threshold = 0.08
+    node._align_yaw_max_deg = 25.0
+    node._reach_area_ratio = args.reach_area_ratio
+    node._semantic_reasoning = True
+    node._search_reasoner = args.reasoner
+    node._search_reasoner_mode = "active"
+    node._semantic_allow_forward = bool(args.semantic_allow_forward)
+    node._front_half_plane_only = False
+    node._turn_only = bool(args.turn_only)
+    node._max_motion_steps = 0
+    node._min_rotation_clearance_m = 0.0
+    node._operator_authorized_rotation = bool(
+        args.operator_supervised_experiment or args.operator_authorized_rotation
+    )
+    node._rotation_lease_path = ""
+    node._rotation_lease_error = ""
+
+    try:
+        return _run_go2w_explorer(args, node, policy, PROMPT_MAP, event_hook)
+    except Exception as exc:
+        node.get_logger().error(f"semantic exploration failed: {exc}")
+        try:
+            node._emergency_stop()
+        except Exception:
+            pass
+        try:
+            node._arm(False)
+        except Exception:
+            pass
+        return 4
+    finally:
+        try:
+            node._output.close()
+        except Exception:
+            pass
+        if args.record_video and node._video is not None:
+            try:
+                node._video.stop()
+            except Exception:
+                pass
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
+    import rclpy  # noqa: F401  (used by the observer closure; rclpy.init already done)
+    settings = get_settings()
+    env = node._load_detector_env()
+    spool_root = args.spool_root
+    state: dict[str, Any] = {"image_path": None, "semantic": None}
+    operator_authorized = bool(
+        args.operator_supervised_experiment or args.operator_authorized_rotation
+    )
+
+    # ---- pre-run sensor waits (mirrors the audited runner) ------------------
+    if not node._wait_for(lambda: node._sport is not None and node._odom is not None,
+                          10.0, "sport/odom"):
+        print(json.dumps({"status": "failed", "error": "sport/odom unavailable"},
+                         ensure_ascii=False))
+        return 2
+    if not node._wait_for(
+        lambda: node._lidar_fresh is True and node._clearance is not None,
+        5.0, "fresh LiDAR clearance",
+    ):
+        print(json.dumps({"status": "failed", "error": "LiDAR clearance unavailable"},
+                         ensure_ascii=False))
+        return 2
+    node._motion_origin = node._odom_snapshot()
+    ready, reason = node._safety_ok()
+    if not ready:
+        node._write({"event": "pre_arm_safety_reject", "reason": reason,
+                     "host_s": node._host_s()})
+        print(json.dumps({"status": "blocked", "reason": reason}, ensure_ascii=False))
+        return 2
+
+    # ---- automatic experiment readiness ------------------------------------
+    readiness = _probe_readiness(args, node)
+    print(json.dumps(readiness.to_dict(), ensure_ascii=False))
+    node._write({"event": "experiment_readiness", "host_s": node._host_s(),
+                 **readiness.to_dict()})
+    if not readiness.ready and not args.allow_degraded:
+        print(json.dumps({"status": "blocked", "reason": readiness.reason},
+                         ensure_ascii=False))
+        return 3
+
+    # ---- semantic stack -----------------------------------------------------
+    semantic_memory = SemanticSearchMemory(
+        default_ttl_sec=policy.budget.negative_memory_ttl_seconds,
+        observation_store=(
+            ObservationMemoryStore(settings=settings)
+            if settings.live_search_reasoner_use_observation_memory else None
+        ),
+    )
+    profile = TargetProfileResolver().resolve(args.target, use_llm=False)
+    controller = SemanticSearchController(
+        profile,
+        backend=args.reasoner,
+        partial_threshold=settings.live_search_graph_match_partial_threshold,
+        strong_threshold=settings.live_search_graph_match_strong_threshold,
+    )
+    prompt = prompt_map.get(args.target.strip(),
+                            f"{args.target.strip()}. {args.target.strip()} object")
+
+    def analyze_semantic(image_path: object, _profile: object) -> dict:
+        if not isinstance(image_path, str):
+            raise RuntimeError("semantic observation has no stable image")
+        quick_reuse = semantic_payload_from_quick_target_absence(
+            getattr(node, "_last_llm_detection_payload", None),
+            image_path=image_path,
+            frame_id=str(state.get("frame_id", "semantic_live")),
+        )
+        if quick_reuse is not None:
+            return quick_reuse
+        python = env.get(
+            "SILICONFLOW_PYTHON",
+            env.get(
+                "GROUNDED_SAM_PYTHON",
+                "/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python",
+            ),
+        )
+        worker = PROJECT_ROOT / "app/detectors/siliconflow_vision_worker.py"
+        output_path = PROJECT_ROOT / "runtime/go2w/llm_semantic_observation.json"
+        command = [
+            python, str(worker), "--image", image_path,
+            "--output", str(output_path), "--target", args.target,
+            "--extra-instructions",
+            "完整列出当前画面的可见物体与关系，供下一视角选择；不要确认目标。",
+            "--model", args.llm_model,
+        ]
+        completed = subprocess.run(
+            command, cwd=str(PROJECT_ROOT), env=env, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=180.0, check=False,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError(
+                f"semantic observer worker failed rc={completed.returncode}: "
+                f"{completed.stderr[-600:]}"
+            )
+        payload = json.loads(output_path.read_text(encoding="utf-8"))
+        payload.update({
+            "image_path": image_path,
+            "frame_id": str(state.get("frame_id", "semantic_live")),
+            "source": "siliconflow_full_scene_existing_pipeline",
+        })
+        return payload
+
+    semantic_observer = LiveSemanticObserver(
+        analyze_semantic,
+        ttl_seconds=settings.live_search_reasoner_scene_ttl_seconds,
+    )
+    observed_sectors: set[int] = set()
+
+    # ---- observer -----------------------------------------------------------
+    observe_cache_dir = PROJECT_ROOT / "runtime/go2w/semantic_observe_cache"
+    observe_cache_dir.mkdir(parents=True, exist_ok=True)
+
+    def _cached_image(image_path: str, frame_id: Any) -> str:
+        """Copy the bundle image to a stable path so later LLM steps (which can
+        take minutes) never lose it to spool rotation."""
+        import shutil
+
+        target = observe_cache_dir / f"bundle_{frame_id}.jpg"
+        try:
+            shutil.copy2(image_path, target)
+        except OSError:
+            return image_path
+        # keep only the newest 60 cached frames
+        cached = sorted(observe_cache_dir.glob("bundle_*.jpg"),
+                        key=lambda p: p.stat().st_mtime, reverse=True)
+        for old in cached[60:]:
+            try:
+                old.unlink()
+            except OSError:
+                pass
+        return str(target)
+
+    def observe() -> LiveObservation:
+        for _ in range(4):
+            rclpy.spin_once(node, timeout_sec=0.05)
+        image_path, frame_id = node._latest_bundle_image(spool_root)
+        stable_image = _cached_image(image_path, frame_id)
+        state["image_path"] = stable_image
+        state["frame_id"] = frame_id
+        node._write({"event": "camera_bundle", "frame_id": frame_id,
+                     "host_s": node._host_s()})
+        objects = node._detect(stable_image, prompt, env)
+        detections = []
+        for item in objects:
+            bbox = [float(v) for v in item.get("bbox_2d", [0.0, 0.0, 1.0, 1.0])]
+            detections.append({
+                "label": str(item.get("label", "object")),
+                "score": float(item.get("score", 0.0)),
+                "bbox_2d": bbox,
+            })
+        if detections:
+            best = max(detections, key=lambda item: item["score"])
+            node._feed_detection(best["label"], best["score"], best["bbox_2d"])
+        target_present = bool(detections)
+        x, y, yaw = node._odom_snapshot()
+        pose = {"x": x, "y": y, "yaw_rad": yaw,
+                "yaw_deg": math.degrees(yaw)}
+        semantic = semantic_observer.observe(
+            target_profile=controller.target_profile,
+            frame_or_bundle=stable_image,
+            robot_pose=pose,
+            force=not target_present,
+        )
+        state["semantic"] = semantic
+        if semantic.heading_sector is not None:
+            observed_sectors.add(semantic.heading_sector)
+        return semantic_observation_to_live(
+            semantic,
+            bundle_id=f"bundle_{frame_id}",
+            detections=detections,
+            target_present=target_present,
+            pose=pose,
+            image_ref=stable_image,
+            sensor_health={
+                "camera": True,
+                "lidar": node._lidar_fresh is True,
+                "sport_mode_ok": (
+                    node._sport is not None
+                    and int(node._sport.mode) == 1
+                    and int(node._sport.error_code) == 0
+                ),
+            },
+        )
+
+    # ---- matcher -------------------------------------------------------------
+    def matcher(observation: LiveObservation) -> SemanticMatch:
+        semantic = state.get("semantic")
+        scene_graph = getattr(semantic, "scene_graph", None)
+        context = SearchReasoningContext(
+            target_profile=controller.target_profile,
+            scene_graph=scene_graph,
+            negative_memory=semantic_memory,
+            robot_pose=observation.pose,
+            robot_yaw_deg=float((observation.pose or {}).get("yaw_deg", 0.0)),
+            observed_heading_sectors=sorted(observed_sectors),
+        )
+        directive = controller.propose(context)
+        graph_match = context.graph_match
+        anchor_labels: list[str] = []
+        if graph_match is not None:
+            anchor_ids = set(graph_match.supporting_anchor_scene_node_ids)
+            nodes = (
+                scene_graph.nodes if scene_graph is not None
+                and hasattr(scene_graph, "nodes") else []
+            )
+            for node in nodes:
+                node_id = getattr(node, "node_id", None)
+                label = getattr(node, "label_zh", None) or getattr(node, "label", None)
+                if node_id in anchor_ids and label:
+                    anchor_labels.append(str(label))
+        return SemanticMatch(
+            has_candidate=bool(observation.target_present),
+            graph_match=graph_match,
+            directive=directive,
+            target_profile=controller.target_profile,
+            anchor_labels=anchor_labels,
+            target_score=graph_match.score if graph_match is not None else 0.0,
+            target_match_level=(
+                graph_match.state.value if graph_match is not None else "none"
+            ),
+            provenance={"source": "unigoal_matcher"},
+        )
+
+    # ---- verifier -------------------------------------------------------------
+    def verifier(observation: LiveObservation,
+                 match: SemanticMatch) -> VerificationOutcome:
+        image_path = observation.image_ref
+        if not isinstance(image_path, str):
+            return VerificationOutcome(confirmed=False, attempts=1,
+                                       reason_zh="no image for verification")
+        best = max(observation.detections, key=lambda item: item["score"],
+                   default=None)
+        if best is None:
+            return VerificationOutcome(confirmed=False, attempts=1,
+                                       reason_zh="no detection to verify")
+        result = node._verify_target(image_path, list(best["bbox_2d"]), env)
+        confirmed = bool(result.get("is_target", False)) and float(
+            result.get("confidence", 0.0)
+        ) >= args.verify_min_confidence
+        return VerificationOutcome(
+            confirmed=confirmed,
+            attempts=1,
+            reason_zh=str(result.get("reason_zh", "")),
+            details=result,
+        )
+
+    # ---- backend ---------------------------------------------------------------
+    from app.navigation.go2w_experimental_backend import (
+        Go2WBackendConfig,
+        Go2WExperimentalBackend,
+    )
+    step_index = [0]
+
+    def execute_step(step: str) -> tuple[bool, str, dict[str, Any]]:
+        if args.dry_run_motion:
+            # WebUI dry-run: run the full real perception / reasoning pipeline
+            # but never send a motion command (plan book §60).
+            return True, "dry_run_motion", {"step": step, "dry_run": True}
+        index = step_index[0]
+        step_index[0] += 1
+        ok, reason = node._execute_step(index, step)
+        return ok, reason, {"step": step, "index": index}
+
+    def stop() -> None:
+        node._emergency_stop()
+
+    def cancel() -> None:
+        node._emergency_stop()
+
+    def health_probe() -> dict[str, Any]:
+        try:
+            motion_ready = bool(node._client.server_is_ready())
+        except Exception:
+            motion_ready = False
+        try:
+            arm_ready = bool(node._arm_client.service_is_ready())
+            stop_ready = bool(node._stop_srv.service_is_ready())
+        except Exception:
+            arm_ready = stop_ready = False
+        mode_ok = bool(
+            node._sport is not None
+            and int(node._sport.mode) == 1
+            and int(node._sport.error_code) == 0
+        )
+        return {
+            "motion_action_available": motion_ready,
+            "arm_service_available": arm_ready,
+            "emergency_stop_service_available": stop_ready,
+            "robot_mode_error": not mode_ok,
+            "lidar_fresh": node._lidar_fresh is True,
+            "operator_authorized_rotation": operator_authorized,
+        }
+
+    backend = Go2WExperimentalBackend(
+        execute_step=execute_step,
+        odometry=node._odom_snapshot,
+        stop=stop,
+        cancel=cancel,
+        health_probe=health_probe,
+        config=Go2WBackendConfig(
+            max_turn_deg_per_action=args.max_turn_deg,
+            forward_step_m=args.forward_step_m,
+            max_forward_step_m=min(0.30, args.forward_step_m * 1.5),
+        ),
+    )
+
+    if args.record_video:
+        try:
+            from run_autonomous_loop import BundleVideoRecorder
+            node._video = BundleVideoRecorder(args.record_video, 15.0, 0.4)
+            node._video.start()
+            node.get_logger().info(f"recording camera to {args.record_video}")
+        except RuntimeError as exc:
+            node.get_logger().warn(f"video recording disabled: {exc}")
+
+    # ---- explorer ---------------------------------------------------------------
+    graph = ExplorationGraph(session_id=time.strftime("explore_go2w_%Y%m%d_%H%M%S"))
+    events: list[dict[str, Any]] = []
+    holder: dict[str, Any] = {"explorer": None}
+
+    def on_event(event: dict[str, Any]) -> None:
+        if event_hook is not None:
+            explorer = holder.get("explorer")
+            if explorer is not None and event.get("event") in _MAP_RELEVANT_EVENTS:
+                event = {**event, "graph": explorer.graph.to_dict()}
+            event = event_hook(event, holder)
+        if event is None:
+            return
+        events.append(event)
+        node._write(event)
+
+    explorer = AutonomousExplorer(
+        target=args.target,
+        observer=observe,
+        matcher=matcher,
+        verifier=verifier,
+        backend=backend,
+        policy=policy,
+        graph=graph,
+        negative_memory=semantic_memory,
+        negative_target_key=profile.canonical_name_zh,
+        on_event=on_event,
+        finish_on_visual_confirmation=args.finish_on_visual_confirmation,
+        turn_only=bool(args.turn_only),
+        session_id=graph.session_id,
+    )
+    holder["explorer"] = explorer
+    node.get_logger().info(
+        f"starting semantic exploration target={args.target} "
+        f"session={graph.session_id}"
+    )
+    result = explorer.run()
+    if node._armed_by_runner:
+        node._emergency_stop()
+        try:
+            node._arm(False)
+        except RuntimeError as exc:
+            node.get_logger().error(str(exc))
+    _write_session_artifacts(args, explorer, result, events)
+    return 0 if result.result == "TARGET_FOUND" else 3
+
+
+def _probe_readiness(args, node):
+    """Automatic health probe for the experiment profile (plan section 17)."""
+    from app.live_robot.frame_bundle_reader import FrameBundleReader
+    bundle_ok = False
+    camera_ok = False
+    try:
+        reader = FrameBundleReader(args.spool_root)
+        bundle = reader.read_latest(timeout_seconds=2.0)
+        bundle_ok = bundle is not None
+        camera_ok = bool((bundle.payload.get("sensor_health") or {}).get("camera"))
+    except Exception:
+        pass
+    try:
+        motion_ready = bool(node._client.server_is_ready())
+    except Exception:
+        motion_ready = False
+    try:
+        arm_ready = bool(node._arm_client.service_is_ready())
+        stop_ready = bool(node._stop_srv.service_is_ready())
+    except Exception:
+        arm_ready = stop_ready = False
+    mode_ok = bool(
+        node._sport is not None
+        and int(node._sport.mode) == 1
+        and int(node._sport.error_code) == 0
+    )
+    pose_fresh = bool(node._odom is not None)
+    return compute_experiment_readiness(
+        camera_fresh=camera_ok,
+        bundle_fresh=bundle_ok,
+        llm_available=bool(os.getenv("SILICONFLOW_API_KEY")),
+        motion_action_available=motion_ready,
+        robot_mode_ok=mode_ok,
+        emergency_stop_available=stop_ready,
+        backend_healthy=True,
+        pose_freshness_if_available=pose_fresh,
+        capabilities=(
+            None
+        ),
+        check_llm_key=True,
+    )
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

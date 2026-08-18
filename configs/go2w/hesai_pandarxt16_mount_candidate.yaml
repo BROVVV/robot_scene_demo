@@ -50,21 +50,20 @@ evidence:
       mounting foot is close to the longitudinal centerline and behind the
       front shoulder pair, approximately 65--75 percent of the way from the
       rear shoulder axis to the front shoulder axis. Perspective and sensor
-      height were considered from the mounting foot, not the displaced top
-      ellipse.
+      height were considered from the mounting foot, not the display
     confidence: medium_for_x_y_low_for_yaw
   go2w_geometry:
     sources:
       - configs/go2w/official_reference.yaml
       - configs/go2w/lidar_preprocess.yaml
-    standing_envelope_m: [0.70, 0.43, 0.50]
+    standing_envelope_m: null
     base_collision_box_m: [0.3762, 0.0935, 0.114]
     nominal_base_link_ground_height_m: 0.528
   pandar_floor_plane:
     topic: /hesai/pandarxt16/points_raw
     fitted_equation_sensor_frame: "z = 0.01579893*x - 0.00672136*y - 0.54194777"
     sensor_height_above_floor_m: 0.541868
-    inlier_count: 3433
+    inlier_count: 2578
     fit_rmse_m: 0.005402
     horizontal_range_quantiles_m: [1.8548, 1.9128, 2.1830, 3.8666, 5.4037]
     occupied_10deg_azimuth_bins: 22
@@ -99,7 +98,7 @@ envelope_candidate:
   vertical_assessment: >
     The external sensor and cable visibly exceed the manufacturer 0.50 metre
     standing height. Use 0.65 metre only as a conservative planning candidate
-    until the highest fixed point is measured.
+    until the highest fixed point is measured
 
 promotion_requirements:
   - Secure the cable loop so its envelope cannot change during motion.

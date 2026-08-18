@@ -25,6 +25,175 @@ footprint 与急停确认全部通过时，`execute` 模式才会请求 Nav2 执
 全局/局部规划交给 Nav2，最终硬件保护仍由 Collision Monitor、机器狗底层、
 厂商 SDK 和操作员急停共同负责。
 
+## Operator-Supervised High-Level Semantic Exploration（2026-08-17 新增）
+
+> 本节描述本仓库新增的**高层自主语义探索实验系统**：自然语言目标 → 实时观察 →
+> SceneGraph/GoalGraph → UniGoal 语义匹配 → 空间语义记忆 → 候选探索目标 →
+> 平台无关 RobotBackend → 连续执行 → 重规划 → 视觉确认 → TARGET_FOUND。
+> 详细设计见 `docs/HIGH_LEVEL_AUTONOMOUS_SEMANTIC_EXPLORATION.md`。
+
+### 用途
+
+- 把已有的 UniGoal / SceneGraph / 搜索状态机 / 探索骨架收敛为**连续长周期闭环**：
+  `observe → match → verify → update memory → plan → execute → replan → …`。
+- 当前 Go2-W 以 `go2w_experimental`（Relative + Topological）backend 运行；
+  未来成熟机器狗只需实现 `RobotBackend`（metric 模式），高层代码不变。
+
+### 这不是 production safety mode
+
+- 实验 profile 为 `operator_supervised_experiment`（`configs/go2w/high_level_experiment.yaml`）：
+  `production_safe: false`、`research_only: true`、`operator_present: true`。
+- **不要求** Pandar 正式外参 / Stage2 readiness / 四方向物理证据 / Nav2 gate。
+- 转向仍受既有运动门禁约束：无旋转 lease 时转向需要
+  `--operator-supervised-experiment`（等价操作者授权，单次 ≤30°，其余安全门全部保留）。
+- 禁止 LowCmd / 关节控制 / 固件修改；所有运动走 `/go2w/motion` + `/go2w/arm` +
+  `/go2w/emergency_stop`。
+
+### 启动条件
+
+1. 机器狗已上电，网线接通（本机 `192.168.123.99/24` ↔ 狗 `192.168.123.18`），
+   遥控器在手可随时急停。
+2. 操作者全程在场监督，只负责急停，不给方向建议。
+3. `.env` 已配置 `SILICONFLOW_API_KEY`。
+
+上电后先跑一键健康检查（验证机器狗各项功能：网络/sport 模式/里程计/相机/
+安全话题/motion Action/急停服务/Bundle 新鲜度/LLM key，输出机器可读 JSON）：
+
+```bash
+bash scripts/go2w/check_go2w_ready.sh          # 人类可读 + JSON
+bash scripts/go2w/check_go2w_ready.sh --json   # 只输出 JSON
+# 退出码：0=ready 1=degraded(非阻塞项缺失) 2=unreachable(未连接/未上电)
+```
+
+### 一键命令
+
+```bash
+cd /home/brov/robot/robot_scene_demo
+bash scripts/go2w/start_semantic_exploration.sh --target "饮水机旁边的蓝色垃圾桶"
+```
+
+launcher 自动：网络预检 → source ROS 环境 → 启动只读感知栈与轮式里程计（如未运行）→
+校验 `/go2w/motion` Action server（不可用则输出 `MOTION_BACKEND_UNAVAILABLE` 并退出）→
+运行探索 CLI。也可直接：
+
+```bash
+/usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
+  --target "饮水机旁边的蓝色垃圾桶" \
+  --backend go2w_experimental --reasoner unigoal \
+  --operator-supervised-experiment --finish-on-visual-confirmation \
+  --max-seconds 600 --max-motion-steps 50 \
+  --output outputs/live_sessions/high_level_semantic_exploration.jsonl
+```
+
+离线（不需要机器狗）验证同一闭环：
+
+```bash
+/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python \
+  scripts/go2w/run_semantic_exploration.py --target "饮水机旁边的蓝色垃圾桶" \
+  --backend mock --mock-scenario anchor_then_target
+```
+
+### 真机验证结果（2026-08-17）
+
+| 实验 | 目标 | 结果 |
+| --- | --- | --- |
+| 健康检查 `check_go2w_ready.sh` | — | `state=ready`（sport mode=1/error=0、odom 20Hz、相机 16.7Hz、lidar_fresh、motion/arm/急停、Bundle、LLM key） |
+| Trial 1 turn-only | 绿色垃圾桶 | 8 个自主规划周期、8 次转向全部 odom 验证（MAX_STEPS_REACHED，6/8 由 UniGoal 选向） |
+| Trial 2 转向+短步 | 绿色垃圾桶 | **13 个自主规划周期、12 次运动**、1 次导航失败自动 replan（MAX_STEPS_REACHED） |
+| Trial 4 普通目标 | 蓝色垃圾桶 | **TARGET_FOUND（84 s，0 运动）** |
+| Trial 5 关系目标 | 饮水机旁边的蓝色垃圾桶 | **TARGET_FOUND（86 s，0 运动）**，verify 确认“位于饮水机旁边” |
+
+真机 JSONL/graph/summary：`outputs/live_sessions/go2w_trial*.jsonl`、
+`outputs/live_runs/explore_go2w_*/`。
+
+### 输出目录
+
+- 会话事件 JSONL：`outputs/live_sessions/*.jsonl`（含每次 observation/match/verify/
+  memory_update/selected_goal/navigation_result/replan，可完全回放）。
+- `outputs/live_runs/<session_id>/exploration_graph.json`（节点/边/扇区覆盖/失败计数）。
+- `outputs/live_runs/<session_id>/summary.json`（TARGET_FOUND/TIMEOUT/SEARCH_EXHAUSTED/
+  OPERATOR_STOP 等终止原因与统计）。
+
+### 停止方式
+
+- 遥控器急停（物理最高优先级）。
+- Ctrl-C 会走既有清理路径：紧急停止 → disarm → 关闭输出。
+- 会话内 `request_stop()`（`OPERATOR_STOP`）会立即 `backend.stop()` 并结束，不自动继续。
+
+### 未来机器狗接入（RobotBackend）
+
+高层（UniGoal/SceneGraph/Memory/Planner/Explorer）只依赖
+`app/navigation/robot_backend.py` 的协议与 `app/navigation/models.py` 的
+`ExplorationGoal`。未来机器人实现：
+
+```python
+class ProductionRobotBackend(RobotBackend):
+    def capabilities(self): ...      # supports_global_pose=true, supports_metric_navigation=true
+    def get_pose(self): ...          # PoseQuality.METRIC, frame=map
+    def execute_goal(self, goal): ...  # NAVIGATE_POSE → 底层 SLAM/规划/避障/轨迹跟踪
+    ...
+```
+
+`backend_factory.create_backend("...")` 注册新 backend 后，CLI/Explorer 无需改动。
+离线用 `--backend mock_metric` 即可验证 metric 路径（同一 Explorer 生成
+`NAVIGATE_POSE` 目标）。
+
+## Go2-W Autonomous Semantic Search WebUI（2026-08-17 新增）
+
+在既有 Manual WASD Demo 的同一个 FastAPI 服务上叠加"真机自主语义搜索 Web 控制台"
+（计划书 `robot_scene_demo_真机自主语义搜索_WebUI_一次性实施计划书_20260817.md`）。
+
+三个 Tab：
+
+- **自主搜索**：输入自然语言目标 → 开始/暂停/继续/停止/急停；实时显示相机
+  （含检测框 overlay）、当前物体、Session 累计物体、目标/锚点/关系证据、搜索阶段、
+  下一步决策（意图 + 理由 + 评分分量）、Candidates 排名、SVG 探索拓扑地图、
+  事件时间线；调试视图显示 GoalGraph / SceneGraph / Candidates / 原始状态。
+- **手动控制**：保留原有 WASD+QE 手动控制与场景物体表。
+- **系统状态**：Camera / ROS Worker / Motion / Control Owner / Search / LLM /
+  搜索就绪检查 / 历史会话。
+
+一键启动（与手动 Demo 同端口 8765，会先停掉项目自有的旧 Web 进程）：
+
+```bash
+cd /home/brov/robot/robot_scene_demo
+bash scripts/go2w/start_autonomous_search_web.sh                     # 只读启动（相机+LLM+手动，搜索可 dry-run）
+bash scripts/go2w/start_autonomous_search_web.sh --enable-autonomous-motion  # 授权自主运动（<=30°转向/<=0.30m 前进）
+bash scripts/go2w/start_autonomous_search_web.sh --mock              # 离线前端开发（mock 后端，无需 ROS）
+bash scripts/go2w/stop_autonomous_search_web.sh                      # 停止（只停项目自有 web.pid）
+```
+
+然后浏览器打开 `http://127.0.0.1:8765`，在"自主搜索"Tab 输入目标并点击"开始搜索"。
+页面左上角"自主运动"勾选框按次授权机器狗运动（对应服务端 `enable_autonomous_motion`）。
+
+关键接口（详见 `docs/GO2W_AUTONOMOUS_SEARCH_WEBUI.md`）：
+
+```text
+POST /api/search/start   {target, reasoner, backend, enable_autonomous_motion, ...}  → 立即返回 session_id
+POST /api/search/pause | resume | stop | estop
+GET  /api/search/state | map | objects | events | history | readiness | executor
+WS   /ws/search         连接即发 snapshot → 随后增量 SearchEvent（心跳 15s，自动重连）
+```
+
+架构：浏览器只负责发任务/暂停/停止/展示；决策全部来自后端
+`AutonomousExplorer`（OBSERVE→MATCH→VERIFY→UPDATE_MEMORY→PLAN→EXECUTE→REPLAN），
+事件经 `SearchEventBus` → WebSocket；真机搜索在独立子进程
+（`scripts/go2w/autonomous_search_worker.py`，ROS2 系统 Python，JSONL stdin/stdout IPC）
+中运行，FastAPI 进程保持 Conda 环境（计划书 §12/§86）。Manual / Autonomous 运动
+控制权互斥由 `ControlOwner` 保证，急停同时停止搜索与会话。
+
+输出：`outputs/live_runs/<session_id>/{events.jsonl, summary.json, exploration_graph.json}`。
+
+### WebUI 真机验证结果（2026-08-17，机器狗重启后）
+
+| 验收项 | 结果 |
+| --- | --- |
+| A 相机/状态 Web 启动 | PASS（camera fresh、readiness ready） |
+| B 搜索 dry-run（真实相机+LLM+UniGoal+Planner，零运动） | **TARGET_FOUND**（50 s，1 cycle，识别 blue_plastic_basket） |
+| C turn-only 真机搜索（≤30° 转向） | **TARGET_FOUND**：1 次真实自主转向（UniGoal 选向）后第 2 周期命中"绿色垃圾桶" |
+| D 连续自主循环（12 周期） | **8 次真实转向全部成功**、8/8 由 UniGoal 选向、覆盖 8 个朝向扇区、MAX_STEPS_REACHED 正常收尾 |
+| Pause/Resume 真机验证 | 真实搜索中暂停 → 当前转向完成后停车（零运动保持）→ 恢复继续 |
+
 ## Go2-W 真机项目当前进度还原指南（2026-08-15）
 
 > 本节是“照着做就能还原当前真机进度”的权威步骤。项目其余章节保留离线/视频/

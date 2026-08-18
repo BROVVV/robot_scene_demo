@@ -57,3 +57,6 @@ runtime/go2w/llm_verify_result.json
 log/
 ros2_ws/src/hesai_ros_driver/
 runtime/go2w/*.json
+
+# Live semantic observation frame cache (camera JPEGs, not source).
+runtime/go2w/semantic_observe_cache/

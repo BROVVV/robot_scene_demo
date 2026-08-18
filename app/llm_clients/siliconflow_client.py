@@ -117,6 +117,8 @@ def _load_resized_image_bytes(path: Path, max_side: int) -> tuple[bytes, str]:
             image.save(buffer, format="JPEG", quality=JPEG_QUALITY, optimize=True)
             return buffer.getvalue(), "image/jpeg"
     except OSError:
+        # Image.open accepts both str and Path; normalize before attribute use.
+        path = Path(path)
         mime_type, _ = mimetypes.guess_type(path.name)
         if mime_type is None:
             mime_type = "application/octet-stream"

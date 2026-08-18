@@ -1,0 +1,152 @@
+"""Request / response / session models for the autonomous search WebUI
+(plan book §10, §21, §37).  The project uses plain dataclasses, not pydantic.
+"""
+
+from __future__ import annotations
+
+import time
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any
+
+MAX_TARGET_LENGTH = 500
+
+
+@dataclass
+class SearchStartRequest:
+    """Body of ``POST /api/search/start`` (plan book §10)."""
+
+    target: str
+    reasoner: str = "unigoal"
+    backend: str = "go2w_experimental"  # go2w_experimental | mock | mock_metric
+    finish_on_visual_confirmation: bool = True
+    turn_only: bool = False
+    enable_autonomous_motion: bool = False
+    dry_run_motion: bool = False
+    # optional budget overrides
+    max_seconds: float | None = None
+    max_planning_cycles: int | None = None
+    max_motion_steps: int | None = None
+    llm_model: str | None = None
+    verify_min_confidence: float | None = None
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "SearchStartRequest":
+        defaults = load_search_defaults()
+        return cls(
+            target=str(value.get("target") or "").strip(),
+            reasoner=str(value.get("reasoner") or "unigoal"),
+            backend=str(value.get("backend") or defaults["backend"]),
+            finish_on_visual_confirmation=bool(
+                value.get("finish_on_visual_confirmation", True)
+            ),
+            turn_only=bool(value.get("turn_only", False)),
+            enable_autonomous_motion=bool(
+                value.get(
+                    "enable_autonomous_motion",
+                    defaults["enable_autonomous_motion"],
+                )
+            ),
+            dry_run_motion=bool(value.get("dry_run_motion", False)),
+            max_seconds=_optional_float(value.get("max_seconds")),
+            max_planning_cycles=_optional_int(value.get("max_planning_cycles")),
+            max_motion_steps=_optional_int(value.get("max_motion_steps")),
+            llm_model=value.get("llm_model"),
+            verify_min_confidence=_optional_float(value.get("verify_min_confidence")),
+        )
+
+    def validate(self) -> str | None:
+        """Return an error message or None when the request is acceptable."""
+        if not self.target:
+            return "target is required"
+        if len(self.target) > MAX_TARGET_LENGTH:
+            return f"target too long (max {MAX_TARGET_LENGTH} chars)"
+        if self.reasoner not in {"legacy", "unigoal", "hybrid"}:
+            return f"unsupported reasoner: {self.reasoner}"
+        if self.backend not in {"go2w_experimental", "mock", "mock_metric"}:
+            return f"unsupported backend: {self.backend}"
+        return None
+
+
+@dataclass
+class SearchSessionInfo:
+    """Lightweight session record for history / state endpoints."""
+
+    session_id: str
+    target: str
+    status: str
+    result: str = ""
+    started_at: float | None = None
+    finished_at: float | None = None
+    backend: str = ""
+    reasoner: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def new_session_id() -> str:
+    return time.strftime("search_%Y%m%d_%H%M%S")
+
+
+_DEFAULT_SEARCH_CONFIG = "configs/go2w/autonomous_search_web.yaml"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def load_search_defaults() -> dict[str, Any]:
+    """Defaults for a start request (plan book §117).
+
+    Precedence: request fields > AUTONOMOUS_SEARCH_* env vars >
+    ``configs/go2w/autonomous_search_web.yaml`` > built-in defaults.
+    """
+    import os
+
+    defaults: dict[str, Any] = {
+        "backend": "go2w_experimental",
+        "enable_autonomous_motion": False,
+        "max_search_seconds": None,
+        "max_planning_cycles": None,
+        "max_motion_steps": None,
+    }
+    config_path = _PROJECT_ROOT / _DEFAULT_SEARCH_CONFIG
+    if config_path.is_file():
+        try:
+            import yaml
+
+            data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+            search = data.get("search") or {}
+            for key in ("backend",):
+                if search.get(key):
+                    defaults[key] = str(search[key])
+            for key in ("max_search_seconds", "max_planning_cycles",
+                        "max_motion_steps"):
+                if search.get(key) is not None:
+                    defaults[key] = search[key]
+        except Exception:  # noqa: BLE001 - config must never break startup
+            pass
+    if os.getenv("AUTONOMOUS_SEARCH_DEFAULT_BACKEND"):
+        defaults["backend"] = os.getenv("AUTONOMOUS_SEARCH_DEFAULT_BACKEND")
+    motion_env = os.getenv("AUTONOMOUS_SEARCH_ENABLE_AUTONOMOUS_MOTION")
+    if motion_env is not None:
+        defaults["enable_autonomous_motion"] = motion_env.strip().lower() in {
+            "1", "true", "yes", "on",
+        }
+    return defaults
+
+
+def _optional_float(value: Any) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_int(value: Any) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
