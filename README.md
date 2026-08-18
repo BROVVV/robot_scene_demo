@@ -25,6 +25,149 @@ footprint 与急停确认全部通过时，`execute` 模式才会请求 Nav2 执
 全局/局部规划交给 Nav2，最终硬件保护仍由 Collision Monitor、机器狗底层、
 厂商 SDK 和操作员急停共同负责。
 
+---
+
+# 从零开始完整部署（Zero-to-Run Quickstart）
+
+> 如果你拿到本仓库 GitHub 链接，想让一个 AI 从零部署并实现全部功能，按下面顺序执行。
+> 详细硬件/ROS/真机说明见本文档后续章节。
+
+## 0. 环境要求
+
+- 工作站：Ubuntu 22.04，x86_64，16GB+ 内存
+- Python：推荐 `miniconda` + `python 3.11`
+- ROS：`ros-humble-desktop`（含 `ros2`、`rclpy`、`cv_bridge`）
+- 机器狗：Unitree Go2-W，网线直连工作站 `192.168.123.99/24 ↔ 192.168.123.18`
+- D435：Intel RealSense D435 通过 USB 接到 Go2-W Jetson，机器狗上运行
+  `realsense-stream.service`（HTTP :8080）
+- 操作员：真机运动时必须持遥控器监督
+
+## 1. 克隆仓库
+
+```bash
+git clone https://github.com/BROVVV/robot_scene_demo.git
+cd robot_scene_demo
+```
+
+## 2. 创建 Python 环境并安装依赖
+
+```bash
+conda create -n go2_robot_scene_demo python=3.11 -y
+conda activate go2_robot_scene_demo
+pip install -r requirements.txt
+```
+
+如果要用 GroundingDINO + SAM2 本地检测，还需要安装
+`Grounded-SAM-2` 依赖（见 `docs/` 或仓库根目录说明）。
+
+## 3. 安装/准备 ROS Humble
+
+```bash
+sudo apt install -y ros-humble-desktop ros-humble-cv-bridge
+# 项目 ROS2 工作空间
+cd ros2_ws
+colcon build --symlink-install
+cd ..
+```
+
+RTAB-Map（RGB-D 空间探索需要）：
+
+```bash
+sudo apt install -y ros-humble-rtabmap-ros
+```
+
+## 4. 配置环境变量
+
+```bash
+cp .env.example .env
+# 编辑 .env，至少填入：
+# SILICONFLOW_API_KEY=你的硅基流动 API Key
+```
+
+真机模式可参考 `.env.go2w`。
+
+## 5. 机器狗与 D435 部署
+
+```bash
+# 机器狗上电、网线连通后，先做健康检查
+bash scripts/go2w/check_go2w_ready.sh --json
+
+# 部署 D435 HTTP 流服务（首次/更新）
+bash scripts/go2w/start_realsense_stream.sh install
+
+# 验证 D435 原子 RGB-D
+python scripts/go2w/validate_rgbd_spatial_stack.py
+```
+
+## 6. 先跑离线/纯软件功能
+
+```bash
+# Mock 场景理解 + UniGoal V2 空间探索
+python scripts/go2w/run_semantic_exploration.py --target "饮水机旁边的蓝色垃圾桶" \
+  --backend mock --max-seconds 30 --max-planning-cycles 5
+
+# 视频目标搜索
+python run_video_demo.py --input 你的视频.mp4 --target "蓝色垃圾桶"
+```
+
+## 7. 启动 WebUI（离线 mock 或真机）
+
+```bash
+# Mock 前端（不需要机器狗）
+bash scripts/go2w/start_autonomous_search_web.sh --mock
+
+# 真机只读 WebUI
+bash scripts/go2w/start_autonomous_search_web.sh
+
+# 真机 + 自主运动授权（操作员持遥控器）
+bash scripts/go2w/start_autonomous_search_web.sh --enable-autonomous-motion
+```
+
+浏览器打开：`http://127.0.0.1:8765`
+
+## 8. 启动 RGB-D 空间探索栈（D435 + RTAB-Map）
+
+```bash
+# 启动 D435 ROS2 Bridge + static TF + RTAB-Map
+bash scripts/go2w/start_rgbd_spatial_stack.sh start
+
+# 真机 UniGoal V2 空间搜索（dry-run，不运动）
+/usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
+  --target "不存在的红色独角兽" \
+  --backend go2w_experimental --reasoner unigoal \
+  --rgbd-source --spatial-v2 --rtabmap --dry-run-motion \
+  --max-planning-cycles 1 --max-motion-steps 1
+
+# 真机 UniGoal V2 空间搜索（真实运动，需操作员持遥控器）
+/usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
+  --target "不存在的红色独角兽" \
+  --backend go2w_experimental --reasoner unigoal \
+  --rgbd-source --spatial-v2 --rtabmap \
+  --operator-supervised-experiment \
+  --max-local-rotations 1 \
+  --max-seconds 600 --max-planning-cycles 5 --max-motion-steps 5
+```
+
+## 9. 运行测试
+
+```bash
+cd robot_scene_demo
+python -m pytest tests/ -q
+```
+
+> 注意：`tests/` 目录下部分测试需要 ROS2/GPU 环境；纯 Python 核心测试可单独跑：
+> `pytest tests/test_rgbd_source.py tests/test_depth_object_localizer.py ...`
+
+## 10. 停止
+
+```bash
+bash scripts/go2w/stop_autonomous_search_web.sh
+bash scripts/go2w/start_rgbd_spatial_stack.sh stop
+bash scripts/go2w/check_go2w_ready.sh --json
+```
+
+---
+
 ## Operator-Supervised High-Level Semantic Exploration（2026-08-17 新增）
 
 > 本节描述本仓库新增的**高层自主语义探索实验系统**：自然语言目标 → 实时观察 →
