@@ -8,6 +8,7 @@ constructs SportClient, MotionSwitcherClient, or any command publisher.
 from __future__ import annotations
 
 import argparse
+import os
 import signal
 import struct
 import sys
@@ -15,8 +16,15 @@ import time
 from pathlib import Path
 
 
+project_root = Path(__file__).resolve().parents[2]
+control_root = Path(
+    os.environ.get("GO2W_CONTROL_ROOT", str(project_root / "unitree_go2w_control"))
+)
 VENDOR_ROOT = Path(
-    "/home/brov/unitree_go2w_control/vendor/unitree_sdk2_python"
+    os.environ.get(
+        "GO2W_UNITREE_SDK_ROOT",
+        str(control_root / "vendor" / "unitree_sdk2_python"),
+    )
 )
 sys.path.insert(0, str(VENDOR_ROOT))
 

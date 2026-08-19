@@ -7,12 +7,14 @@ PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 set +u
 # shellcheck disable=SC1091
 source /opt/ros/humble/setup.bash
-UNITREE_SETUP="${GO2W_UNITREE_SETUP:-/home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash}"
+UNITREE_ROOT="${GO2W_UNITREE_ROOT:-$HOME/unitree_ros2}"
+UNITREE_SETUP="${GO2W_UNITREE_SETUP:-$UNITREE_ROOT/cyclonedds_ws/install/setup.bash}"
 if [[ -f "$UNITREE_SETUP" ]]; then
   # shellcheck disable=SC1090
   source "$UNITREE_SETUP"
 fi
-CONTROL_SETUP="${GO2W_CONTROL_SETUP:-/home/brov/robot/unitree_go2w_control/ros2_ws/install/setup.bash}"
+CONTROL_ROOT="${GO2W_CONTROL_ROOT:-$PROJECT_ROOT/unitree_go2w_control}"
+CONTROL_SETUP="${GO2W_CONTROL_SETUP:-$CONTROL_ROOT/ros2_ws/install/setup.bash}"
 if [[ -f "$CONTROL_SETUP" ]]; then
   # Provides the existing leased MotionCommand Action interface only.
   # Sourcing it does not start the lease holder or any control node.

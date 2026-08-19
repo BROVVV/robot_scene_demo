@@ -15,7 +15,7 @@ STALE_RESULT_NAME=${POINT_LIO_STALE_RESULT_NAME:-stale_timeout.json}
 mkdir -p "$EVIDENCE_ROOT" "$LOG_ROOT"
 
 source /opt/ros/humble/setup.bash
-source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source "${GO2W_UNITREE_ROOT:-$HOME/unitree_ros2}/cyclonedds_ws/install/setup.bash"
 source "$PROJECT_ROOT/ros2_ws/install/setup.bash"
 set -u
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp

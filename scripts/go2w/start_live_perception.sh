@@ -5,6 +5,7 @@ set -eo pipefail
 # cmd_vel bridge, or Nav2 controller is launched by this script.
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "${script_dir}/../.." && pwd)"
+unitree_root="${GO2W_UNITREE_ROOT:-${HOME}/unitree_ros2}"
 session_id="live_$(date +%Y%m%d_%H%M%S)"
 spool_root="${GO2W_FRAME_SPOOL_DIR:-${project_root}/runtime/go2w/spool}"
 log_root="${project_root}/runtime/go2w/sessions/${session_id}"
@@ -12,7 +13,7 @@ pid_root="${project_root}/runtime/go2w/pids"
 mkdir -p "${spool_root}" "${log_root}" "${pid_root}"
 
 source /opt/ros/humble/setup.bash
-source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source "${unitree_root}/cyclonedds_ws/install/setup.bash"
 source "${project_root}/ros2_ws/install/setup.bash"
 set -u
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp

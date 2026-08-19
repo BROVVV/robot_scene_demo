@@ -21,12 +21,16 @@ packages=(
   cmake
   git
   jq
+  python3-pip
+  python3-venv
+  libyaml-cpp-dev
   python3-opencv
   python3-av
   python3-yaml
   python3-numpy
   python3-colcon-common-extensions
   ros-humble-rmw-cyclonedds-cpp
+  ros-humble-rosidl-generator-dds-idl
   ros-humble-rclcpp
   ros-humble-rclpy
   ros-humble-sensor-msgs

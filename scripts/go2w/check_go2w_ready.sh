@@ -21,6 +21,8 @@ set -uo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "${script_dir}/../.." && pwd)"
+unitree_root="${GO2W_UNITREE_ROOT:-${HOME}/unitree_ros2}"
+control_root="${GO2W_CONTROL_ROOT:-${project_root}/unitree_go2w_control}"
 json_only="0"
 for arg in "$@"; do
   case "$arg" in
@@ -67,12 +69,12 @@ else
   # shellcheck disable=SC1091
   source /opt/ros/humble/setup.bash 2>/dev/null
   # shellcheck disable=SC1091
-  source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash 2>/dev/null
+  source "${unitree_root}/cyclonedds_ws/install/setup.bash" 2>/dev/null
   # shellcheck disable=SC1091
   source "${project_root}/ros2_ws/install/setup.bash" 2>/dev/null
-  if [[ -f /home/brov/robot/unitree_go2w_control/ros2_ws/install/setup.bash ]]; then
+  if [[ -f "${control_root}/ros2_ws/install/setup.bash" ]]; then
     # shellcheck disable=SC1091
-    source /home/brov/robot/unitree_go2w_control/ros2_ws/install/setup.bash 2>/dev/null
+    source "${control_root}/ros2_ws/install/setup.bash" 2>/dev/null
   fi
   set -u
   export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp

@@ -9,7 +9,7 @@ log_root="${evidence_root}/logs"
 mkdir -p "${evidence_root}" "${log_root}"
 
 source /opt/ros/humble/setup.bash
-source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source "${GO2W_UNITREE_ROOT:-$HOME/unitree_ros2}/cyclonedds_ws/install/setup.bash"
 source "${project_root}/ros2_ws/install/setup.bash"
 set -u
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp

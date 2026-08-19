@@ -3,11 +3,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
-FIXTURE="${1:-/home/brov/unitree_go2w_control/robot_capability_audit/captures/20260805_124143/images/sample_frame_001.jpg}"
+FIXTURE="${1:-}"
 OUTPUT_DIR="${GO2W_CAMERA_TEST_OUTPUT_DIR:-$PROJECT_ROOT/outputs/go2w_acceptance/camera_bridge_bag}"
 
-if [[ ! -f "$FIXTURE" ]]; then
-  printf 'ERROR: saved JPEG fixture not found: %s\n' "$FIXTURE" >&2
+if [[ -z "$FIXTURE" || ! -f "$FIXTURE" ]]; then
+  printf 'ERROR: pass a saved JPEG fixture as the first argument.\n' >&2
   exit 2
 fi
 mkdir -p "$OUTPUT_DIR"
@@ -16,7 +16,7 @@ set +u
 # shellcheck disable=SC1091
 source /opt/ros/humble/setup.bash
 # shellcheck disable=SC1091
-source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source "${GO2W_UNITREE_ROOT:-$HOME/unitree_ros2}/cyclonedds_ws/install/setup.bash"
 # shellcheck disable=SC1091
 source "$PROJECT_ROOT/ros2_ws/install/setup.bash"
 set -u

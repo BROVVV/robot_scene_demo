@@ -76,6 +76,27 @@ RTAB-Map（RGB-D 空间探索需要）：
 sudo apt install -y ros-humble-rtabmap-ros
 ```
 
+### 3.1 部署 Go2-W 高层运动控制（本仓库已内置）
+
+截图中缺少的 `go2w_motion_interfaces`、`go2w_motion_control`、
+`/go2w/motion` Action、`/go2w/arm` 和 `/go2w/emergency_stop` 已随本仓库放在
+`unitree_go2w_control/`。新电脑只需执行一次：
+
+```bash
+bash scripts/go2w/install_dependencies.sh
+bash scripts/go2w/setup_go2w_control.sh
+```
+
+脚本会从 Unitree 官方仓库准备 `unitree_ros2` 消息依赖并编译控制包；它只安装和
+编译，不会启动节点、申请 lease 或让机器狗运动。启动控制服务使用：
+
+```bash
+bash scripts/go2w/start_motion_control.sh
+```
+
+硅基流动 API 密钥不在 GitHub 中。请复制 `.env.example` 为 `.env`，只在本机填写
+`SILICONFLOW_API_KEY`，不要把 `.env` 提交到仓库。
+
 ## 4. 配置环境变量
 
 ```bash
@@ -454,14 +475,12 @@ bash scripts/go2w/stop_manual_web_demo.sh
   的固定正前方 180° 半平面内，且距该初始位置半径 ≤1.5 m；场地与门禁不满足时
   fail-closed，遥控器可急停。
 
-### 0.3 需要提前就位的项目（不在本仓库内）
+### 0.3 依赖与当前仓库边界
 
-1. **unitree_go2w_control**（当前在 `/home/brov/robot/unitree_go2w_control`，
-   软链 `/home/brov/unitree_go2w_control`）：提供
-   `scripts/setup_go2w_ros2.sh`、`hold_sport_lease.py`、
-   `go2w_motion_control`（Action `/go2w/motion`、服务 `/go2w/arm`、
-   `/go2w/emergency_stop`）、`go2w_motion_interfaces`；
-2. **unitree_ros2 / cyclonedds_ws**（Humble 消息 + CycloneDDS 配置）；
+1. **unitree_go2w_control 已内置**：源码、ROS 2 Action/服务包、启动脚本和
+   BSD 许可的 Unitree SDK Python 源码位于仓库 `unitree_go2w_control/`；
+2. **unitree_ros2 / cyclonedds_ws**：由 `scripts/go2w/setup_go2w_control.sh` 从
+   Unitree 官方仓库自动克隆并编译，不把官方构建产物复制进本项目；
 3. **Grounded-SAM-2**（可选，`--detector grounded_sam` 才需要）；
 4. **Point-LIO 隔离环境**：`conda env go2w_point_lio_noetic` +
    `point_lio_ws`（构建时应用 `patches/go2w/point_lio_noetic_pcl115.patch`）；
@@ -492,10 +511,8 @@ bash scripts/go2w/build_ros2.sh
 # Point-LIO（Noetic 隔离；首次需要 clone 上游 + 打补丁）
 bash scripts/go2w/setup_point_lio_noetic.sh
 
-# 运动控制工作区（unitree_go2w_control 内）
-cd /home/brov/robot/unitree_go2w_control
-source /opt/ros/humble/setup.bash
-colcon build --packages-select go2w_motion_interfaces go2w_motion_control
+# 运动控制工作区（源码已在本仓库内）
+bash scripts/go2w/setup_go2w_control.sh
 ```
 
 配置模板（**不含任何密钥**）：
@@ -549,16 +566,14 @@ bash scripts/go2w/start_hesai_pandarxt16.sh --with-preprocessor
 
 # 终端 2：轮式 + 融合里程计（/go2w/odom/wheel 与 /go2w/odom/fused）
 source /opt/ros/humble/setup.bash
-source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source "${GO2W_UNITREE_ROOT:-$HOME/unitree_ros2}/cyclonedds_ws/install/setup.bash"
 source /home/brov/robot/robot_scene_demo/ros2_ws/install/setup.bash
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI="file:///home/brov/robot/robot_scene_demo/configs/go2w/cyclonedds_go2w.xml"
 ros2 launch go2w_lio_bringup wheel_odom.launch.py
 
 # 终端 3：运动控制（lease holder + Action server）
-cd /home/brov/robot/unitree_go2w_control
-source scripts/setup_go2w_ros2.sh
-ros2 launch go2w_motion_control go2w_motion_control.launch.py
+bash scripts/go2w/start_motion_control.sh
 
 # 终端 4（可选，供融合航向）：Point-LIO + 桥
 cd /home/brov/robot/robot_scene_demo
@@ -588,8 +603,8 @@ ros2 topic echo /lf/sportmodestate --once  # mode=1 error_code=0
 ```bash
 cd /home/brov/robot/robot_scene_demo
 source /opt/ros/humble/setup.bash
-source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
-source /home/brov/robot/unitree_go2w_control/ros2_ws/install/setup.bash
+source "${GO2W_UNITREE_ROOT:-$HOME/unitree_ros2}/cyclonedds_ws/install/setup.bash"
+source unitree_go2w_control/ros2_ws/install/setup.bash
 source /home/brov/robot/robot_scene_demo/ros2_ws/install/setup.bash
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI="file:///home/brov/robot/robot_scene_demo/configs/go2w/cyclonedds_go2w.xml"

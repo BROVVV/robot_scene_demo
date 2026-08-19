@@ -12,6 +12,7 @@ import struct
 import subprocess
 import threading
 import time
+from pathlib import Path
 
 import cv2
 import rclpy
@@ -34,6 +35,12 @@ from .camera_bridge_core import (
 class CameraBridge(Node):
     def __init__(self) -> None:
         super().__init__("go2w_camera_bridge")
+        project_root = Path(__file__).resolve().parents[4]
+        control_root = Path(
+            os.environ.get(
+                "GO2W_CONTROL_ROOT", str(project_root / "unitree_go2w_control")
+            )
+        )
         # The robot's VideoHub RPC is read-only and has proven reliable.  The
         # custom DDS/H.264 topic remains available only when explicitly chosen.
         self.declare_parameter("source", "rpc")
@@ -43,15 +50,15 @@ class CameraBridge(Node):
         self.declare_parameter("interface", "enp6s0")
         self.declare_parameter(
             "sdk_python_path",
-            "/home/brov/unitree_go2w_control/vendor/unitree_sdk2_python",
+            str(control_root / "vendor" / "unitree_sdk2_python"),
         )
         self.declare_parameter(
             "rpc_worker_python",
-            "/home/brov/unitree_go2w_control/.venv/bin/python",
+            str(control_root / ".venv" / "bin" / "python"),
         )
         self.declare_parameter(
             "rpc_worker_script",
-            "/home/brov/robot/robot_scene_demo/scripts/go2w/videohub_rpc_worker.py",
+            str(project_root / "scripts" / "go2w" / "videohub_rpc_worker.py"),
         )
         self.declare_parameter("rpc_timeout_sec", 3.0)
         self.declare_parameter("topic_fallback_timeout_sec", 2.0)

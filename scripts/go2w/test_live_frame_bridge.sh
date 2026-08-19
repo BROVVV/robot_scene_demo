@@ -8,7 +8,7 @@ spool_root="${output_dir}/spool/${session_id}"
 mkdir -p "${output_dir}" "${spool_root}"
 
 source /opt/ros/humble/setup.bash
-source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source "${GO2W_UNITREE_ROOT:-$HOME/unitree_ros2}/cyclonedds_ws/install/setup.bash"
 source "${repo_root}/ros2_ws/install/setup.bash"
 set -u
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp

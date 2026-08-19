@@ -14,7 +14,7 @@ set +u
 # shellcheck disable=SC1091
 source /opt/ros/humble/setup.bash
 # shellcheck disable=SC1091
-source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source "${GO2W_UNITREE_ROOT:-$HOME/unitree_ros2}/cyclonedds_ws/install/setup.bash"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/setup_environment.sh"
 set -u

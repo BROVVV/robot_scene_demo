@@ -57,7 +57,7 @@ set +u
 # shellcheck disable=SC1091
 source /opt/ros/humble/setup.bash
 # shellcheck disable=SC1091
-source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source "${GO2W_UNITREE_ROOT:-$HOME/unitree_ros2}/cyclonedds_ws/install/setup.bash"
 if [[ -f "$PROJECT_ROOT/ros2_ws/install/setup.bash" ]]; then
   # shellcheck disable=SC1091
   source "$PROJECT_ROOT/ros2_ws/install/setup.bash"

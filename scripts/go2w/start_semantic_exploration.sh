@@ -14,6 +14,8 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "${script_dir}/../.." && pwd)"
+unitree_root="${GO2W_UNITREE_ROOT:-${HOME}/unitree_ros2}"
+control_root="${GO2W_CONTROL_ROOT:-${project_root}/unitree_go2w_control}"
 conda_python="/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python"
 system_python="/usr/bin/python3"
 log_root="${project_root}/runtime/go2w/sessions"
@@ -101,12 +103,12 @@ if ! command -v ros2 >/dev/null 2>&1; then
     exit 2
   }
   # shellcheck disable=SC1091
-  source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash 2>/dev/null || true
+  source "${unitree_root}/cyclonedds_ws/install/setup.bash" 2>/dev/null || true
   # shellcheck disable=SC1091
   source "${project_root}/ros2_ws/install/setup.bash" 2>/dev/null || true
-  if [[ -f /home/brov/robot/unitree_go2w_control/ros2_ws/install/setup.bash ]]; then
+  if [[ -f "${control_root}/ros2_ws/install/setup.bash" ]]; then
     # shellcheck disable=SC1091
-    source /home/brov/robot/unitree_go2w_control/ros2_ws/install/setup.bash 2>/dev/null || true
+    source "${control_root}/ros2_ws/install/setup.bash" 2>/dev/null || true
   fi
   set -u
   if ! command -v ros2 >/dev/null 2>&1; then
@@ -116,7 +118,7 @@ if ! command -v ros2 >/dev/null 2>&1; then
 fi
 
 # --- network check ----------------------------------------------------------
-iface="$(/home/brov/unitree_go2w_control/scripts/detect_unitree_interface.sh 2>/dev/null || true)"
+iface="$("${control_root}/scripts/detect_unitree_interface.sh" 2>/dev/null || true)"
 if [[ -n "${iface}" ]]; then
   printf 'Robot interface: %s\n' "${iface}"
 else
@@ -132,12 +134,12 @@ set +u
 # shellcheck disable=SC1091
 source /opt/ros/humble/setup.bash
 # shellcheck disable=SC1091
-source /home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash
+source "${unitree_root}/cyclonedds_ws/install/setup.bash"
 # shellcheck disable=SC1091
 source "${project_root}/ros2_ws/install/setup.bash"
-if [[ -f /home/brov/robot/unitree_go2w_control/ros2_ws/install/setup.bash ]]; then
+if [[ -f "${control_root}/ros2_ws/install/setup.bash" ]]; then
   # shellcheck disable=SC1091
-  source /home/brov/robot/unitree_go2w_control/ros2_ws/install/setup.bash
+  source "${control_root}/ros2_ws/install/setup.bash"
 fi
 set -u
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
@@ -215,7 +217,7 @@ fi
 if ! timeout 5 ros2 action info /go2w/motion >/dev/null 2>&1; then
   printf '%s\n' 'MOTION_BACKEND_UNAVAILABLE: /go2w/motion action server is not running.' >&2
   printf '%s\n' 'Start it in another terminal:' >&2
-  printf '%s\n' '  cd /home/brov/robot/unitree_go2w_control' >&2
+  printf '  cd %s\n' "${control_root}" >&2
   printf '%s\n' '  source scripts/setup_go2w_ros2.sh' >&2
   printf '%s\n' '  ros2 launch go2w_motion_control go2w_motion_control.launch.py' >&2
   exit 3
