@@ -32,7 +32,11 @@ def main() -> int:
     signal.signal(signal.SIGINT, request_stop)
     signal.signal(signal.SIGTERM, request_stop)
 
-    ChannelFactoryInitialize(0, args.interface)
+    # setup_go2w_ros2 exports the route-specific address.  Passing it through
+    # the SDK avoids name-only binding to an unrelated address on a
+    # multi-address Ethernet NIC.
+    sdk_network = os.environ.get("GO2W_ROBOT_HOST_IP", args.interface)
+    ChannelFactoryInitialize(0, sdk_network)
     client = SportClient(enableLease=True)
     client.SetTimeout(5.0)
     client.Init()

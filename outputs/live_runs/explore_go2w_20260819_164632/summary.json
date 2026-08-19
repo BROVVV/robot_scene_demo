@@ -1,0 +1,31 @@
+{
+  "result": "OPERATOR_STOP",
+  "target": "黑色沙发",
+  "duration_s": 108.836,
+  "planning_cycles": 7,
+  "motion_steps": 6,
+  "observations": 7,
+  "unique_nodes": 7,
+  "replans": 0,
+  "navigation_failures": 0,
+  "verify_attempts": 0,
+  "semantic_goal_selection_count": 0,
+  "fallback_goal_selection_count": 7,
+  "finish_reason": "OPERATOR_STOP",
+  "session_id": "explore_go2w_20260819_164632",
+  "summary": {
+    "result": "OPERATOR_STOP",
+    "target": "黑色沙发",
+    "duration_s": 108.836,
+    "planning_cycles": 7,
+    "motion_steps": 6,
+    "observations": 7,
+    "unique_nodes": 7,
+    "replans": 0,
+    "navigation_failures": 0,
+    "verify_attempts": 0,
+    "semantic_goal_selection_count": 0,
+    "fallback_goal_selection_count": 7,
+    "finish_reason": "OPERATOR_STOP"
+  }
+}

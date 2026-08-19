@@ -1,0 +1,31 @@
+{
+  "result": "MAX_STEPS_REACHED",
+  "target": "不存在的红色独角兽",
+  "duration_s": 60.428,
+  "planning_cycles": 4,
+  "motion_steps": 4,
+  "observations": 4,
+  "unique_nodes": 4,
+  "replans": 0,
+  "navigation_failures": 0,
+  "verify_attempts": 0,
+  "semantic_goal_selection_count": 0,
+  "fallback_goal_selection_count": 4,
+  "finish_reason": "MAX_STEPS_REACHED",
+  "session_id": "explore_go2w_20260819_132459",
+  "summary": {
+    "result": "MAX_STEPS_REACHED",
+    "target": "不存在的红色独角兽",
+    "duration_s": 60.428,
+    "planning_cycles": 4,
+    "motion_steps": 4,
+    "observations": 4,
+    "unique_nodes": 4,
+    "replans": 0,
+    "navigation_failures": 0,
+    "verify_attempts": 0,
+    "semantic_goal_selection_count": 0,
+    "fallback_goal_selection_count": 4,
+    "finish_reason": "MAX_STEPS_REACHED"
+  }
+}

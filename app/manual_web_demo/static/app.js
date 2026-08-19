@@ -27,6 +27,7 @@
     lightMotion: document.getElementById("light-motion"),
     lightLlm: document.getElementById("light-llm"),
     btnEstop: document.getElementById("btn-estop"),
+    btnEstopReset: document.getElementById("btn-estop-reset"),
     btnEnable: document.getElementById("btn-enable"),
     btnDisable: document.getElementById("btn-disable"),
     motionState: document.getElementById("motion-state"),
@@ -125,6 +126,21 @@
     note("急停已触发，需要重新启用控制");
     setControlEnabled(false);
     renderMotionState({ command: "stop", motion_in_flight: false });
+  }
+
+  function resetEmergencyStop() {
+    fetch("/api/estop/reset", { method: "POST" })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        if (!data.ok) {
+          note(data.error || "解除急停前置检查未通过");
+          return;
+        }
+        estopLatched = false;
+        setControlEnabled(false);
+        note("急停已解除；如需手动控制请重新启用，搜索可重新开始");
+      })
+      .catch(function () { note("解除急停请求失败"); });
   }
 
   // ------------------------------------------------------------------ //
@@ -261,6 +277,10 @@
       setLight(els.lightMotion, "gray");
     }
     els.btnEstop.disabled = !motion.available;
+    var owner = status.owner || {};
+    var estopActive = owner.owner === "ESTOP" || motion.state === "ESTOP";
+    els.btnEstopReset.disabled = !estopActive || !motion.available;
+    if (!estopActive) estopLatched = false;
     renderMotionState(motion);
 
     // LLM light + toggle state.
@@ -384,6 +404,7 @@
   els.btnEnable.addEventListener("click", enableControl);
   els.btnDisable.addEventListener("click", disableControl);
   els.btnEstop.addEventListener("click", emergencyStop);
+  els.btnEstopReset.addEventListener("click", resetEmergencyStop);
   els.btnLlm.addEventListener("click", function () {
     var on = els.btnLlm.classList.contains("on");
     fetch(on ? "/api/llm/disable" : "/api/llm/enable", { method: "POST" })

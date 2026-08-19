@@ -1,0 +1,224 @@
+{
+  "places": [
+    {
+      "place_id": "P1",
+      "pose": {
+        "x": 0.24660483059798263,
+        "y": 0.9411704301537286,
+        "yaw": 1.4221868254244328,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "pose_quality": "relative",
+      "observation_ids": [
+        "bundle_51009",
+        "bundle_51471",
+        "bundle_51849"
+      ],
+      "heading_coverage": {
+        "3": 1,
+        "4": 1,
+        "5": 1
+      },
+      "observed_object_ids": [],
+      "semantic_interest": 0.0,
+      "visit_count": 3,
+      "negative_evidence": 0,
+      "target_candidate": false,
+      "target_confirmed": false,
+      "provenance": {
+        "created_at": 1787129199.3531783,
+        "from_place": null
+      }
+    },
+    {
+      "place_id": "P2",
+      "pose": {
+        "x": 0.033843920249839524,
+        "y": 1.2959277211315012,
+        "yaw": 1.957553718239069,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "pose_quality": "relative",
+      "observation_ids": [
+        "bundle_52323",
+        "bundle_52593",
+        "bundle_52970",
+        "bundle_53507"
+      ],
+      "heading_coverage": {
+        "4": 2,
+        "5": 1,
+        "6": 1
+      },
+      "observed_object_ids": [],
+      "semantic_interest": 0.0,
+      "visit_count": 4,
+      "negative_evidence": 0,
+      "target_candidate": false,
+      "target_confirmed": false,
+      "provenance": {
+        "created_at": 1787129239.4768746,
+        "from_place": "P1"
+      }
+    }
+  ],
+  "observations": [
+    {
+      "observation_id": "bundle_51009",
+      "heading_sector": 3,
+      "timestamp": 1787129199.3471887,
+      "objects": [],
+      "rgbd_frame_id": "51009",
+      "pose": {
+        "x": 0.24660483059798263,
+        "y": 0.9411704301537286,
+        "yaw": 1.4221868254244328,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "provenance": {
+        "place_id": "P1"
+      }
+    },
+    {
+      "observation_id": "bundle_51471",
+      "heading_sector": 4,
+      "timestamp": 1787129212.1338792,
+      "objects": [],
+      "rgbd_frame_id": "51471",
+      "pose": {
+        "x": 0.23570601025912702,
+        "y": 1.0571344401704301,
+        "yaw": 1.9430253244936466,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "provenance": {
+        "place_id": "P1"
+      }
+    },
+    {
+      "observation_id": "bundle_51849",
+      "heading_sector": 5,
+      "timestamp": 1787129223.5833058,
+      "objects": [],
+      "rgbd_frame_id": "51849",
+      "pose": {
+        "x": 0.14787808704067498,
+        "y": 1.1468712173512394,
+        "yaw": 2.4733491875231266,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "provenance": {
+        "place_id": "P1"
+      }
+    },
+    {
+      "observation_id": "bundle_52323",
+      "heading_sector": 4,
+      "timestamp": 1787129239.4727826,
+      "objects": [],
+      "rgbd_frame_id": "52323",
+      "pose": {
+        "x": 0.033843920249839524,
+        "y": 1.2959277211315012,
+        "yaw": 1.957553718239069,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "provenance": {
+        "place_id": "P2"
+      }
+    },
+    {
+      "observation_id": "bundle_52593",
+      "heading_sector": 4,
+      "timestamp": 1787129248.5189512,
+      "objects": [],
+      "rgbd_frame_id": "52593",
+      "pose": {
+        "x": 0.014755401952229363,
+        "y": 1.3433588061419355,
+        "yaw": 1.9605818726122382,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "provenance": {
+        "place_id": "P2"
+      }
+    },
+    {
+      "observation_id": "bundle_52970",
+      "heading_sector": 5,
+      "timestamp": 1787129261.0766318,
+      "objects": [],
+      "rgbd_frame_id": "52970",
+      "pose": {
+        "x": -0.041340071244377115,
+        "y": 1.4187970126362808,
+        "yaw": 2.4990850426256657,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "provenance": {
+        "place_id": "P2"
+      }
+    },
+    {
+      "observation_id": "bundle_53507",
+      "heading_sector": 6,
+      "timestamp": 1787129281.5013473,
+      "objects": [],
+      "rgbd_frame_id": "53507",
+      "pose": {
+        "x": -0.05629755151632968,
+        "y": 1.4346820499207653,
+        "yaw": 3.0635546185076237,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "provenance": {
+        "place_id": "P2"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "E1",
+      "from_place": "P1",
+      "to_place": "P2",
+      "requested_goal": {},
+      "executed_local_actions": [],
+      "observed_displacement_m": null,
+      "observed_yaw_delta_deg": null,
+      "navigation_result": "succeeded",
+      "provenance": {
+        "source": "place_graph_relocation"
+      }
+    }
+  ],
+  "current_place_id": "P2",
+  "merge_distance_m": 0.25,
+  "relocation_min_displacement_m": 0.1
+}

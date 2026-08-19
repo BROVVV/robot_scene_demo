@@ -64,6 +64,10 @@ class LocalGoalExecutor:
         if self._intent is None:
             return None
         capabilities = capabilities or RobotCapabilities()
+        allowed = {
+            str(item).upper()
+            for item in (capabilities.allowed_motion_primitives or ())
+        }
         intent = self._intent
         self._goal_seq += 1
         if self._phase == "rotate":
@@ -96,7 +100,11 @@ class LocalGoalExecutor:
             )
         if self._phase == "move":
             self._phase = "done"
-            if self.turn_only or not capabilities.supports_relative_translation:
+            if (
+                self.turn_only
+                or not capabilities.supports_relative_translation
+                or (allowed and "FORWARD" not in allowed)
+            ):
                 return None
             return ExplorationGoal(
                 goal_id=f"local_{self._goal_seq:03d}",

@@ -40,32 +40,78 @@ if curl -fsS "http://${host}:${port}/api/status" >/dev/null 2>&1; then
   for pidfile in \
     "${project_root}/outputs/manual_web_demo/runtime/web.pid" \
     "${runtime_root}/web.pid"; do
-    if [[ -f "$pidfile" ]]; then
-      pid="$(<"$pidfile")"
-      if kill -0 "$pid" 2>/dev/null; then
-        printf 'Stopping previous project-owned web server (pid %s) ...\n' "$pid" >&2
-        kill "$pid" || true
+      if [[ -f "$pidfile" ]]; then
+        pid="$(<"$pidfile")"
+        if kill -0 "$pid" 2>/dev/null; then
+          printf 'Stopping previous project-owned web server (pid %s) ...\n' "$pid" >&2
+          pgid="$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
+          if [[ "$pgid" == "$pid" ]]; then
+            kill -INT -- "-$pid" || true
+          else
+            kill "$pid" || true
+          fi
         for _ in $(seq 1 40); do
-          kill -0 "$pid" 2>/dev/null || break
+          if [[ "$pgid" == "$pid" ]]; then
+            kill -0 -- "-$pid" 2>/dev/null || break
+          else
+            kill -0 "$pid" 2>/dev/null || break
+          fi
           sleep 0.25
-        done
+          done
+        # Uvicorn may not exit on the first group SIGINT when a worker is in
+        # a blocking request.  Escalate only within the verified, project-
+        # owned process group so a stale server cannot survive a restart.
+        if [[ "$pgid" == "$pid" ]] && kill -0 -- "-$pid" 2>/dev/null; then
+          kill -TERM -- "-$pid" || true
+          for _ in $(seq 1 20); do
+            kill -0 -- "-$pid" 2>/dev/null || break
+            sleep 0.25
+          done
+        fi
+        if [[ "$pgid" == "$pid" ]] && kill -0 -- "-$pid" 2>/dev/null; then
+          kill -KILL -- "-$pid" || true
+        fi
+        fi
       fi
+    done
+fi
+
+# ---- 1. Network preflight ------------------------------------------------ #
+go2w_interface="${GO2W_INTERFACE:-}"
+if [[ -z "$go2w_interface" ]]; then
+  for candidate in enp6s0 enp3s0 enp4s0 enp5s0; do
+    if [[ -r "/sys/class/net/${candidate}/carrier" ]] \
+      && [[ "$(< "/sys/class/net/${candidate}/carrier")" == "1" ]] \
+      && ip -4 -o address show dev "$candidate" 2>/dev/null \
+        | awk '$4 ~ /^192[.]168[.]123[.][0-9]+\// { found=1 } END { exit !found }'; then
+      go2w_interface="$candidate"
       break
     fi
   done
 fi
-
-# ---- 1. Network preflight ------------------------------------------------ #
-if [[ ! -r /sys/class/net/enp6s0/carrier ]] \
-  || [[ "$(< /sys/class/net/enp6s0/carrier)" != "1" ]]; then
-  printf 'WARNING: enp6s0 has no Ethernet carrier; camera/motion will be unavailable.\n' >&2
+go2w_interface="${go2w_interface:-enp6s0}"
+export GO2W_INTERFACE="$go2w_interface"
+if [[ ! -r "/sys/class/net/${go2w_interface}/carrier" ]] \
+  || [[ "$(< "/sys/class/net/${go2w_interface}/carrier")" != "1" ]]; then
+  printf 'WARNING: %s has no Ethernet carrier; camera/motion will be unavailable.\n' "$go2w_interface" >&2
 fi
 
 # ---- 2. Source ROS environment for the worker subprocess ----------------- #
 source "${script_dir}/setup_environment.sh"
 
 # ---- 3. Camera bridge check (read-only) ---------------------------------- #
-if ! ros2 topic list 2>/dev/null | grep -q '^/camera/front/image_raw/compressed$'; then
+# DDS discovery can take a moment after the environment is sourced.  Wait
+# briefly so a healthy bridge is not reported as missing during startup.
+camera_topic_found=0
+for _ in $(seq 1 40); do
+  if ros2 topic list 2>/dev/null \
+      | grep -Eq '^/camera/front/image_raw(/compressed)?$'; then
+    camera_topic_found=1
+    break
+  fi
+  sleep 0.25
+done
+if [[ "$camera_topic_found" != 1 ]]; then
   printf 'WARNING: /camera/front/image_raw/compressed not found.\n' >&2
   printf '         Start the read-only perception stack first:\n' >&2
   printf '           bash %s/start_live_perception.sh\n' "${script_dir}" >&2
@@ -73,9 +119,30 @@ fi
 
 # ---- 4. Autonomous motion authorization ---------------------------------- #
 if [[ "$ENABLE_MOTION" == 1 && "$MOCK" == 0 ]]; then
-  for service in /go2w/motion /go2w/arm /go2w/emergency_stop; do
-    if ! ros2 service list 2>/dev/null | grep -qx "${service}"; then
-      printf 'ERROR: %s is not available; autonomous motion cannot start.\n' "${service}" >&2
+  service_server_available() {
+    local service="$1" node info
+    while IFS= read -r node; do
+      [[ -z "$node" ]] && continue
+      info="$(timeout 5 ros2 node info "$node" 2>/dev/null || true)"
+      if awk -v service="$service" '
+        /^  Service Servers:/ { in_servers=1; next }
+        /^  Service Clients:/ { in_servers=0 }
+        in_servers && $1 == service ":" { found=1 }
+        END { exit !found }
+      ' <<<"$info"; then
+        return 0
+      fi
+    done < <(timeout 5 ros2 node list 2>/dev/null || true)
+    return 1
+  }
+  if ! ros2 action info /go2w/motion 2>/dev/null \
+    | grep -Eq 'Action servers:[[:space:]]*[1-9][0-9]*'; then
+    printf 'ERROR: /go2w/motion Action server is not available; autonomous motion cannot start.\n' >&2
+    exit 2
+  fi
+  for service in /go2w/arm /go2w/emergency_stop; do
+    if ! service_server_available "$service"; then
+      printf 'ERROR: %s service server is not available; autonomous motion cannot start.\n' "$service" >&2
       exit 2
     fi
   done
@@ -94,8 +161,12 @@ fi
 # ---- 5. Resolve the Conda Python for Web/LLM ----------------------------- #
 conda_python=""
 for candidate in \
+  "${GO2W_CONDA_PYTHON:-}" \
+  "$HOME/anaconda3/envs/go2_robot_scene_demo/bin/python" \
+  "$HOME/miniconda3/envs/go2_robot_scene_demo/bin/python" \
+  /home/mxt/anaconda3/envs/go2_robot_scene_demo/bin/python \
   /home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python \
-  "${CONDA_PREFIX}/bin/python"; do
+  "${CONDA_PREFIX:-}/bin/python"; do
   if [[ -x "$candidate" ]]; then
     conda_python="$candidate"
     break
@@ -124,6 +195,10 @@ if [[ "$MOCK" == 1 ]]; then
 else
   export AUTONOMOUS_SEARCH_DEFAULT_BACKEND="go2w_experimental"
   export AUTONOMOUS_SEARCH_ENABLE_AUTONOMOUS_MOTION="${ENABLE_MOTION}"
+  # Carry the repository's existing operator-supervised experiment profile
+  # into every WebUI start request so it cannot be dropped at the worker
+  # boundary.  Motion still requires the explicit launcher opt-in above.
+  export AUTONOMOUS_SEARCH_OPERATOR_SUPERVISED="$([[ "$ENABLE_MOTION" == 1 ]] && echo 1 || echo 0)"
 fi
 setsid "$conda_python" -m uvicorn app.manual_web_demo.web_server:app \
   --host "${host}" --port "${port}" \

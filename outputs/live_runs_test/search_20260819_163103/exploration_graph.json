@@ -1,0 +1,147 @@
+{
+  "session_id": "explore_mock_20260819_163103",
+  "node_count": 2,
+  "edge_count": 2,
+  "observed_sectors": [
+    0,
+    1
+  ],
+  "nodes": [
+    {
+      "node_id": "node_obs_001",
+      "timestamp": 1787128263.7479541,
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "yaw": 0.0,
+        "frame_id": "odom",
+        "quality": "relative",
+        "timestamp": 1787128263.7478144,
+        "source": "mock_relative"
+      },
+      "pose_quality": "relative",
+      "heading": 0.0,
+      "heading_sector": 0,
+      "objects": [
+        "desk"
+      ],
+      "relations": [],
+      "scene_graph": {
+        "nodes": [
+          {
+            "node_id": "mock_desk",
+            "label": "desk",
+            "label_zh": "desk",
+            "attributes": {}
+          }
+        ],
+        "edges": []
+      },
+      "target_match_level": "none",
+      "target_score": 0.0,
+      "semantic_relevance": 0.0,
+      "information_gain": 0.55,
+      "visited_count": 0,
+      "negative_evidence_count": 1,
+      "navigation_fail_count": 0,
+      "reachable_state": "NEGATIVE",
+      "source_bundle_id": "obs_001",
+      "provenance": {
+        "source": "live_observation",
+        "negative_reasons": [
+          {
+            "reason": "target not observed in this view",
+            "host_s": 1787128263.747964
+          }
+        ]
+      }
+    },
+    {
+      "node_id": "node_obs_002",
+      "timestamp": 1787128264.2490366,
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "yaw": 0.5235987755982988,
+        "frame_id": "odom",
+        "quality": "relative",
+        "timestamp": 1787128264.2488015,
+        "source": "mock_relative"
+      },
+      "pose_quality": "relative",
+      "heading": 29.999999999999996,
+      "heading_sector": 1,
+      "objects": [
+        "desk"
+      ],
+      "relations": [],
+      "scene_graph": {
+        "nodes": [
+          {
+            "node_id": "mock_desk",
+            "label": "desk",
+            "label_zh": "desk",
+            "attributes": {}
+          }
+        ],
+        "edges": []
+      },
+      "target_match_level": "none",
+      "target_score": 0.0,
+      "semantic_relevance": 0.0,
+      "information_gain": 0.3,
+      "visited_count": 0,
+      "negative_evidence_count": 1,
+      "navigation_fail_count": 0,
+      "reachable_state": "NEGATIVE",
+      "source_bundle_id": "obs_002",
+      "provenance": {
+        "source": "live_observation",
+        "negative_reasons": [
+          {
+            "reason": "target not observed in this view",
+            "host_s": 1787128264.249051
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "node_obs_001",
+      "target_node_id": "node_obs_001",
+      "action_type": "ROTATE_VIEW",
+      "requested_motion": {},
+      "observed_motion": {},
+      "navigation_result": "cancelled",
+      "cost": 0.0
+    },
+    {
+      "source_node_id": "node_obs_002",
+      "target_node_id": "node_obs_002",
+      "action_type": "ROTATE_VIEW",
+      "requested_motion": {},
+      "observed_motion": {},
+      "navigation_result": "operator_stop",
+      "cost": 0.0
+    }
+  ],
+  "recent_goals": [
+    {
+      "goal_id": "cand_001",
+      "goal_type": "ROTATE_VIEW",
+      "status": "cancelled",
+      "target_node_id": "node_obs_001",
+      "heading_sector": 1,
+      "host_s": 1787128264.048628
+    },
+    {
+      "goal_id": "cand_001",
+      "goal_type": "ROTATE_VIEW",
+      "status": "operator_stop",
+      "target_node_id": "node_obs_002",
+      "heading_sector": 2,
+      "host_s": 1787128264.549877
+    }
+  ]
+}

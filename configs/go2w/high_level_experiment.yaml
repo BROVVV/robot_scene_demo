@@ -46,6 +46,20 @@ limits:
   front_half_plane_only: false
   turn_only: false
 
+# Capability contract consumed by the high-level planner/backend wiring.
+# Names are intentionally the semantic primitives shown in experiment logs;
+# the Go2-W executor maps them to /go2w/motion Action commands.
+motion_primitives:
+  FORWARD: true
+  ROTATE_LEFT: true
+  ROTATE_RIGHT: true
+  REVERSE: false
+  LATERAL: false
+
+execution:
+  stop_after_each_step: true
+  reobserve_after_motion: true
+
 # Merge with the exploration policy defaults.
 exploration:
   budget:

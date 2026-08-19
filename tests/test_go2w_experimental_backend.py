@@ -58,6 +58,10 @@ class TestGo2WExperimentalBackend(unittest.TestCase):
         self.assertFalse(caps.supports_metric_navigation)
         self.assertTrue(caps.supports_relative_rotation)
         self.assertTrue(caps.supports_relative_translation)
+        self.assertEqual(
+            caps.allowed_motion_primitives,
+            ("FORWARD", "ROTATE_LEFT", "ROTATE_RIGHT"),
+        )
 
     def test_pose_quality_relative(self) -> None:
         backend = _backend(_FakeMotion())
@@ -100,6 +104,17 @@ class TestGo2WExperimentalBackend(unittest.TestCase):
                                relative_dx=0.0, relative_dy=0.2)
         result = backend.execute_goal(goal).result
         self.assertEqual(result.status, NavigationStatus.REJECTED)
+        self.assertEqual(motion.steps, [])
+        self.assertTrue(result.provenance["replan_required"])
+
+    def test_reverse_rejected_and_marked_for_replan(self) -> None:
+        motion = _FakeMotion()
+        backend = _backend(motion)
+        goal = ExplorationGoal(goal_id="g1", goal_type=GOAL_RELATIVE_MOVE,
+                               relative_dx=-0.2)
+        result = backend.execute_goal(goal).result
+        self.assertEqual(result.status, NavigationStatus.REJECTED)
+        self.assertEqual(result.provenance["unsupported_primitive"], "REVERSE")
         self.assertEqual(motion.steps, [])
 
     def test_metric_goal_rejected(self) -> None:

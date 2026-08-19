@@ -50,6 +50,16 @@ def test_estop_overrides_all_and_latches() -> None:
     assert owner.is_estop()
 
 
+def test_explicit_estop_reset_releases_latch() -> None:
+    owner = ControlOwner()
+    owner.estop()
+    ok, reason = owner.reset_estop()
+    assert ok
+    assert reason == ""
+    assert owner.state() == OwnerState.NONE
+    assert owner.try_autonomous()[0] is True
+
+
 def test_release_only_frees_matching_owner() -> None:
     owner = ControlOwner()
     owner.try_autonomous(detail="search")

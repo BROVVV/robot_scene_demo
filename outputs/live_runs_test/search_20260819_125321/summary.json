@@ -1,0 +1,31 @@
+{
+  "result": "OPERATOR_STOP",
+  "target": "饮水机旁边的蓝色垃圾桶",
+  "duration_s": 0.802,
+  "planning_cycles": 2,
+  "motion_steps": 0,
+  "observations": 2,
+  "unique_nodes": 2,
+  "replans": 1,
+  "navigation_failures": 0,
+  "verify_attempts": 0,
+  "semantic_goal_selection_count": 0,
+  "fallback_goal_selection_count": 2,
+  "finish_reason": "OPERATOR_STOP",
+  "session_id": "explore_mock_20260819_125321",
+  "summary": {
+    "result": "OPERATOR_STOP",
+    "target": "饮水机旁边的蓝色垃圾桶",
+    "duration_s": 0.802,
+    "planning_cycles": 2,
+    "motion_steps": 0,
+    "observations": 2,
+    "unique_nodes": 2,
+    "replans": 1,
+    "navigation_failures": 0,
+    "verify_attempts": 0,
+    "semantic_goal_selection_count": 0,
+    "fallback_goal_selection_count": 2,
+    "finish_reason": "OPERATOR_STOP"
+  }
+}

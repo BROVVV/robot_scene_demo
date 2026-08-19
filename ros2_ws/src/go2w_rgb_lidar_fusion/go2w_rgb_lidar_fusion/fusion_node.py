@@ -14,7 +14,7 @@ from geometry_msgs.msg import PoseStamped
 from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from rclpy.time import Time
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2
 from sensor_msgs_py import point_cloud2
@@ -196,7 +196,11 @@ class FusionNode(Node):
             PointCloud2,
             str(self.get_parameter("cloud_topic").value),
             self._clouds.append,
-            qos_profile_sensor_data,
+            QoSProfile(
+                depth=5,
+                history=HistoryPolicy.KEEP_LAST,
+                reliability=ReliabilityPolicy.RELIABLE,
+            ),
         )
         self.create_subscription(
             Detection2DArray, "/perception/detections_2d", self._detection, 10

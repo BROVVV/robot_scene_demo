@@ -1,0 +1,22 @@
+{
+  "frontiers": {
+    "frontier_02_-440_-543": {
+      "frontier_id": "frontier_02_-440_-543",
+      "visit_count": 0,
+      "selected_count": 1,
+      "fail_count": 0,
+      "semantic_gain_after_visit": 0.0,
+      "blacklisted": false
+    },
+    "frontier_03_-407_-494": {
+      "frontier_id": "frontier_03_-407_-494",
+      "visit_count": 0,
+      "selected_count": 1,
+      "fail_count": 0,
+      "semantic_gain_after_visit": 0.0,
+      "blacklisted": false
+    }
+  },
+  "regions": {},
+  "blacklist": []
+}

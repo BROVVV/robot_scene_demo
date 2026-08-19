@@ -35,11 +35,13 @@ from .camera_bridge_core import (
 class CameraBridge(Node):
     def __init__(self) -> None:
         super().__init__("go2w_camera_bridge")
-        project_root = Path(__file__).resolve().parents[4]
-        control_root = Path(
+        project_root = Path(
             os.environ.get(
-                "GO2W_CONTROL_ROOT", str(project_root / "unitree_go2w_control")
+                "GO2W_PROJECT_ROOT", str(Path(__file__).resolve().parents[4])
             )
+        )
+        control_root = Path(
+            os.environ.get("GO2W_CONTROL_ROOT", str(project_root / "unitree_go2w_control"))
         )
         # The robot's VideoHub RPC is read-only and has proven reliable.  The
         # custom DDS/H.264 topic remains available only when explicitly chosen.
@@ -47,18 +49,29 @@ class CameraBridge(Node):
         self.declare_parameter("input_topic", "/frontvideostream")
         self.declare_parameter("frame_id", "front_camera_optical_frame")
         self.declare_parameter("calibration_file", "")
-        self.declare_parameter("interface", "enp6s0")
+        self.declare_parameter("interface", os.environ.get("GO2W_INTERFACE", "enp6s0"))
         self.declare_parameter(
             "sdk_python_path",
-            str(control_root / "vendor" / "unitree_sdk2_python"),
+            os.environ.get(
+                "GO2W_SDK_PYTHON_PATH",
+                str(control_root / "vendor" / "unitree_sdk2_python"),
+            ),
         )
         self.declare_parameter(
             "rpc_worker_python",
-            str(control_root / ".venv" / "bin" / "python"),
+            os.environ.get(
+                "GO2W_CONDA_PYTHON",
+                os.environ.get(
+                    "GO2W_CONTROL_PYTHON", str(control_root / ".venv" / "bin" / "python")
+                ),
+            ),
         )
         self.declare_parameter(
             "rpc_worker_script",
-            str(project_root / "scripts" / "go2w" / "videohub_rpc_worker.py"),
+            os.environ.get(
+                "GO2W_RPC_WORKER_SCRIPT",
+                str(project_root / "scripts" / "go2w" / "videohub_rpc_worker.py"),
+            ),
         )
         self.declare_parameter("rpc_timeout_sec", 3.0)
         self.declare_parameter("topic_fallback_timeout_sec", 2.0)

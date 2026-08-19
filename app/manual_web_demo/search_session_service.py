@@ -198,6 +198,7 @@ class SearchSessionService:
                 "finish_on_visual_confirmation": request.finish_on_visual_confirmation,
                 "turn_only": request.turn_only,
                 "enable_autonomous_motion": request.enable_autonomous_motion,
+                "operator_supervised_experiment": request.operator_supervised_experiment,
                 "dry_run_motion": request.dry_run_motion,
                 "rgbd_source": request.rgbd_source,
                 "rgbd_base_url": request.rgbd_base_url,
@@ -371,6 +372,26 @@ class SearchSessionService:
             else:
                 self._status = "FINISHED"
             self.owner.release(OwnerState.AUTONOMOUS)
+        # A subprocess worker is intentionally long-lived while a session is
+        # active, but it must not survive a terminal session.  Retire it off
+        # the executor callback thread: SubprocessSearchExecutor receives the
+        # result from its stdout reader, while the in-process test executor
+        # reports the result from its own worker thread.
+        executor = self._executor
+        if executor is not None and executor.alive():
+            threading.Thread(
+                target=self._retire_executor,
+                args=(executor,),
+                daemon=True,
+                name="search-executor-retire",
+            ).start()
+
+    @staticmethod
+    def _retire_executor(executor: SearchExecutor) -> None:
+        try:
+            executor.shutdown()
+        except Exception:  # noqa: BLE001 - terminal cleanup is best effort
+            pass
 
     def _publish_error(self, message: str) -> None:
         session_id = self._session_id or ""

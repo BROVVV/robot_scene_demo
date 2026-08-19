@@ -23,11 +23,21 @@ TF2_PID="${runtime_dir}/tf_base_camera.pid"
 RTAB_PID="${runtime_dir}/rtabmap.pid"
 
 start_bridge() {
-  if [[ -f "$BRIDGE_PID" ]] && kill -0 "$(<"$BRIDGE_PID")" 2>/dev/null; then
+  if ros2 node list 2>/dev/null | grep -qx '/go2w_d435_rgbd_bridge'; then
+    echo "D435 bridge already running; reusing the read-only live bridge"
+    rm -f "$BRIDGE_PID"
+    return
+  fi
+  if [[ -f "$BRIDGE_PID" ]] && kill -0 "$(<"$BRIDGE_PID")" 2>/dev/null \
+      && ps -p "$(<"$BRIDGE_PID")" -o args= 2>/dev/null \
+        | grep -q 'realsense_rgbd_bridge.py'; then
     echo "bridge already running pid $(<"$BRIDGE_PID")"
     return
   fi
-  setsid /usr/bin/python3 "${script_dir}/realsense_rgbd_bridge.py" \
+  rm -f "$BRIDGE_PID"
+  env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
+    -u ALL_PROXY -u all_proxy \
+    setsid /usr/bin/python3 "${script_dir}/realsense_rgbd_bridge.py" \
     --base-url "$D435_BASE_URL" --rate 10 \
     > "${runtime_dir}/d435_rgbd_bridge.log" 2>&1 &
   echo $! > "$BRIDGE_PID"
@@ -68,7 +78,9 @@ stop_stack() {
   for pidfile in "$RTAB_PID" "$TF2_PID" "$TF1_PID" "$BRIDGE_PID"; do
     if [[ -f "$pidfile" ]]; then
       pid="$(<"$pidfile")"
-      kill "$pid" 2>/dev/null || true
+      if kill -0 "$pid" 2>/dev/null; then
+        kill "$pid" 2>/dev/null || true
+      fi
       rm -f "$pidfile"
     fi
   done

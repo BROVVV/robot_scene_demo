@@ -6,11 +6,12 @@ Exactly one owner may drive the robot at a time:
 * NONE        – nobody owns motion;
 * MANUAL      – the WASD+QE controller is enabled;
 * AUTONOMOUS  – the autonomous search session owns motion;
-* ESTOP       – emergency stop latched, everything else is refused.
+* ESTOP       – emergency stop latched, everything else is refused until an
+  explicit operator reset passes the runtime health checks.
 
 The web-server routes consult the owner before enabling manual control or
 starting a search; the estop path forces the owner to ESTOP and refuses any
-further start/enable until explicitly reset (server restart is the reset).
+further start/enable until explicitly reset by the WebUI.
 """
 
 from __future__ import annotations
@@ -93,3 +94,17 @@ class ControlOwner:
         with self._lock:
             self._state = OwnerState.ESTOP
             self._owner_detail = "estop"
+
+    def reset_estop(self, *, detail: str = "operator_estop_reset") -> tuple[bool, str]:
+        """Clear the application latch after an explicit operator reset.
+
+        Hardware stop/arm state is intentionally not changed here. The
+        runtime performs health checks before calling this method, and the
+        next motion request must still pass the normal arm/action gates.
+        """
+        with self._lock:
+            if self._state != OwnerState.ESTOP:
+                return True, ""
+            self._state = OwnerState.NONE
+            self._owner_detail = detail
+            return True, ""

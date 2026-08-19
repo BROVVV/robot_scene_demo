@@ -231,7 +231,8 @@ args=(scripts/go2w/run_semantic_exploration.py --target "${target}" --backend go
 [[ -n "${output}" ]] && args+=( --output "${output}" )
 args+=( --session-dir "${session_dir}" --max-seconds "${max_seconds}" \
         --max-motion-steps "${max_motion_steps}" \
-        --operator-supervised-experiment )
+        --operator-supervised-experiment \
+        --profile-config configs/go2w/high_level_experiment.yaml )
 [[ -n "${allow_degraded}" ]] && args+=( "${allow_degraded}" )
 args+=( "${extra_args[@]}" )
 exec "${system_python}" "${args[@]}"

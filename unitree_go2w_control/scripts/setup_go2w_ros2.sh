@@ -7,16 +7,43 @@ _go2w_setup_fail() {
 
 _GO2W_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 export GO2W_CONTROL_ROOT="$(cd -- "$_GO2W_SCRIPT_DIR/.." && pwd)"
-export GO2W_UNITREE_ROOT="${GO2W_UNITREE_ROOT:-$HOME/unitree_ros2}"
+_GO2W_PROJECT_ROOT="$(cd -- "$GO2W_CONTROL_ROOT/.." && pwd)"
+if [[ -z "${GO2W_UNITREE_ROOT:-}" ]]; then
+  if [[ -d "$_GO2W_PROJECT_ROOT/external/unitree_ros2/cyclonedds_ws/install" ]]; then
+    GO2W_UNITREE_ROOT="$_GO2W_PROJECT_ROOT/external/unitree_ros2"
+  else
+    GO2W_UNITREE_ROOT="$HOME/unitree_ros2"
+  fi
+fi
+export GO2W_UNITREE_ROOT
 export GO2W_ROBOT_IP="${GO2W_ROBOT_IP:-192.168.123.18}"
 export GO2W_ROBOT_INTERFACE="$("$_GO2W_SCRIPT_DIR/detect_unitree_interface.sh")" || \
   _go2w_setup_fail "cannot resolve the robot interface"
+if [[ -z "${GO2W_ROBOT_HOST_IP:-}" ]]; then
+  GO2W_ROBOT_HOST_IP="$(ip -4 -o address show dev "$GO2W_ROBOT_INTERFACE" 2>/dev/null \
+    | awk '$4 ~ /^192[.]168[.]123[.][0-9]+\// {sub("/.*", "", $4); print $4; exit}')"
+fi
+if [[ -z "${GO2W_ROBOT_HOST_IP:-}" ]]; then
+  GO2W_ROBOT_HOST_IP="$(ip route get "$GO2W_ROBOT_IP" 2>/dev/null \
+    | awk '{for (i=1; i<=NF; i++) if ($i == "src") {print $(i+1); exit}}')"
+fi
+[[ "$GO2W_ROBOT_HOST_IP" =~ ^192[.]168[.]123[.][0-9]+$ ]] || \
+  _go2w_setup_fail "cannot resolve a 192.168.123.x host address on $GO2W_ROBOT_INTERFACE"
+export GO2W_ROBOT_HOST_IP
 
 [[ -f /opt/ros/humble/setup.bash ]] || _go2w_setup_fail "ROS 2 Humble missing"
 [[ -f "$GO2W_UNITREE_ROOT/cyclonedds_ws/install/setup.bash" ]] || \
   _go2w_setup_fail "Unitree message workspace missing"
 [[ -f "$GO2W_CONTROL_ROOT/ros2_ws/install/setup.bash" ]] || \
   _go2w_setup_fail "control workspace is not built"
+
+# The launcher is often invoked from a Conda/ROS1 shell.  Keep the control
+# process on the Ubuntu Humble toolchain and let the project venv provide the
+# SDK dependencies without inheriting ROS1 paths.
+unset ROS_DISTRO ROS_VERSION ROS_PYTHON_VERSION ROS_ROOT ROS_PACKAGE_PATH
+unset ROS_MASTER_URI ROSLISP_PACKAGE_DIRECTORIES AMENT_PREFIX_PATH COLCON_PREFIX_PATH
+unset PYTHONHOME PYTHONPATH LD_LIBRARY_PATH CMAKE_PREFIX_PATH
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
 set +u
 # shellcheck source=/dev/null
@@ -37,7 +64,7 @@ _GO2W_CYCLONE_FILE="/tmp/go2w_cyclonedds_${UID}.xml"
 {
   printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
   printf '%s\n' '<CycloneDDS xmlns="https://cdds.io/config"><Domain id="any"><General><Interfaces>'
-  printf '  <NetworkInterface name="%s" priority="default" multicast="default"/>\n' "$GO2W_ROBOT_INTERFACE"
+  printf '  <NetworkInterface address="%s" priority="default" multicast="default"/>\n' "$GO2W_ROBOT_HOST_IP"
   printf '%s\n' '</Interfaces><AllowMulticast>true</AllowMulticast></General><Discovery><ParticipantIndex>auto</ParticipantIndex><MaxAutoParticipantIndex>120</MaxAutoParticipantIndex></Discovery></Domain></CycloneDDS>'
 } >"$_GO2W_CYCLONE_FILE"
 chmod 600 "$_GO2W_CYCLONE_FILE"
@@ -45,4 +72,4 @@ export CYCLONEDDS_URI="file://$_GO2W_CYCLONE_FILE"
 
 printf 'Go2-W ROS 2 ready: interface=%s domain=%s rmw=%s\n' \
   "$GO2W_ROBOT_INTERFACE" "$ROS_DOMAIN_ID" "$RMW_IMPLEMENTATION"
-unset _GO2W_SCRIPT_DIR _GO2W_CYCLONE_FILE
+unset _GO2W_SCRIPT_DIR _GO2W_PROJECT_ROOT _GO2W_CYCLONE_FILE

@@ -1,0 +1,12 @@
+{
+  "dry_run": true,
+  "duration_sec": 0.0,
+  "goal_id": "77e292cf331340f8bd8ff29fce2f780e",
+  "max_yaw_rate": 0.07999999821186066,
+  "mode": 1,
+  "relative_yaw_deg": 10.0,
+  "timeout_sec": 0.6000000238418579,
+  "vx": 0.0,
+  "vy": 0.0,
+  "yaw_rate": 0.0
+}

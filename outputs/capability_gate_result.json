@@ -1,0 +1,39 @@
+{
+  "fully_executable": true,
+  "navigation_part_executable": true,
+  "allowed_subtasks": [
+    {
+      "id": "subtask_1",
+      "type": "locate_object",
+      "object": "办公椅",
+      "recipient_or_target": "",
+      "state_query": "",
+      "is_navigation_relevant": true,
+      "requires_visual_grounding": true,
+      "requires_manipulation": false,
+      "requires_physical_contact": false,
+      "requires_harmful_action": false,
+      "semantic_role": "main_goal",
+      "llm_reason": "用户请求定位办公椅，属于物体定位任务，无需操作或接触，仅需视觉搜索。",
+      "requested_by_user": true,
+      "allowed_by_capability": true,
+      "allowed_by_safety": true,
+      "blocked_reason": null
+    }
+  ],
+  "blocked_subtasks": [],
+  "safety_flags": [],
+  "blocked_reasons": [],
+  "user_feedback_zh": "请稍等，我正在为您寻找办公椅。",
+  "execution_constraints": {
+    "contact_allowed": false,
+    "manipulation_allowed": false,
+    "harmful_action_allowed": false,
+    "chase_or_ram_allowed": false,
+    "requires_safe_standoff_distance": false,
+    "requires_stop_after_motion": true,
+    "requires_stop_after_navigation": true,
+    "stop_distance_policy": "safe_distance",
+    "max_speed_policy": "normal_or_conservative"
+  }
+}

@@ -75,6 +75,12 @@ def generate_live_exploration_candidates(
     config = config or CandidateConfig()
     capabilities = capabilities or RobotCapabilities()
     cap = capabilities
+    allowed_primitives = {
+        str(item).upper() for item in (cap.allowed_motion_primitives or ())
+    }
+    # Older backends did not publish the explicit vocabulary; preserve their
+    # existing behavior while making the Go2-W contract planner-visible.
+    explicit_primitive_contract = bool(allowed_primitives)
     candidates: list[ExplorationGoal] = []
     seen: set[tuple[str, Any]] = set()
     sector_deg = 360.0 / max(1, config.heading_sectors)
@@ -82,6 +88,10 @@ def generate_live_exploration_candidates(
     min_turn = max(1.0, float(getattr(config, "min_turn_deg", 5.0)))
 
     def add(goal: ExplorationGoal) -> None:
+        if explicit_primitive_contract and not _goal_primitive_allowed(
+            goal, allowed_primitives
+        ):
+            return
         # Skip tiny turns the platform executor will reject (e.g. <5 deg).
         if goal.goal_type in {GOAL_ROTATE_VIEW, GOAL_INSPECT_ANCHOR,
                               GOAL_REVISIT_NODE}:
@@ -304,7 +314,14 @@ def generate_live_exploration_candidates(
                         provenance={"source": "fallback", "sector": sector},
                     )
                 )
-        if cap.supports_relative_translation and not turn_only:
+        if (
+            cap.supports_relative_translation
+            and not turn_only
+            and (
+                not explicit_primitive_contract
+                or "FORWARD" in allowed_primitives
+            )
+        ):
             add(
                 ExplorationGoal(
                     goal_id=f"cand_{len(candidates) + 1:03d}",
@@ -335,6 +352,32 @@ def generate_live_exploration_candidates(
         reverse=True,
     )
     return candidates[:max_candidates]
+
+
+def _goal_primitive_allowed(
+    goal: ExplorationGoal, allowed_primitives: set[str]
+) -> bool:
+    """Return whether a high-level goal maps to the backend vocabulary.
+
+    Unsupported lateral/reverse goals are intentionally filtered before the
+    Go2-W executor.  The backend still rejects malformed/external goals with
+    a replan-required result, so this is a planner capability contract rather
+    than a trust boundary.
+    """
+    if goal.goal_type in {GOAL_ROTATE_VIEW, GOAL_INSPECT_ANCHOR,
+                          GOAL_REVISIT_NODE}:
+        dyaw = float(goal.relative_dyaw or 0.0)
+        primitive = "ROTATE_LEFT" if dyaw >= 0.0 else "ROTATE_RIGHT"
+        return primitive in allowed_primitives
+    if goal.goal_type == GOAL_RELATIVE_MOVE:
+        dx = float(goal.relative_dx or 0.0)
+        dy = float(goal.relative_dy or 0.0)
+        if dx < -0.01:
+            return "REVERSE" in allowed_primitives
+        if abs(dy) > 0.01:
+            return "LATERAL" in allowed_primitives
+        return "FORWARD" in allowed_primitives
+    return True
 
 
 def _nearest_pose(trajectory: list[VideoFramePose], frame_id) -> VideoFramePose | None:

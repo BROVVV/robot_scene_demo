@@ -1,4 +1,6 @@
 import time
+import os
+import re
 from typing import Any, Callable
 import threading
 from threading import Thread, Event
@@ -14,7 +16,11 @@ from cyclonedds.util import duration
 from cyclonedds.internal import dds_c_t, InvalidSample
 
 # for channel config
-from .channel_config import ChannelConfigAutoDetermine, ChannelConfigHasInterface
+from .channel_config import (
+    ChannelConfigAutoDetermine,
+    ChannelConfigHasAddress,
+    ChannelConfigHasInterface,
+)
 
 # for singleton
 from ..utils.singleton import Singleton
@@ -212,7 +218,24 @@ class ChannelFactory(Singleton):
             if networkInterface is None:
                 config = ChannelConfigAutoDetermine
             else:
-                config = ChannelConfigHasInterface.replace('$__IF_NAME__$', networkInterface)
+                # Prefer the route-specific address supplied by the project.
+                # This is necessary when the selected NIC has multiple IPv4
+                # addresses; using only its name can bind DDS to the wrong LAN.
+                address = os.environ.get("GO2W_ROBOT_HOST_IP") or os.environ.get(
+                    "GO2W_HOST_IP"
+                )
+                if address and re.fullmatch(r"192\.168\.123\.[0-9]+", address):
+                    config = ChannelConfigHasAddress.replace(
+                        "$__IP_ADDRESS__", address
+                    )
+                elif re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", networkInterface):
+                    config = ChannelConfigHasAddress.replace(
+                        "$__IP_ADDRESS__", networkInterface
+                    )
+                else:
+                    config = ChannelConfigHasInterface.replace(
+                        "$__IF_NAME__$", networkInterface
+                    )
 
             try:
                 self.__class__.__domain = Domain(id, config)

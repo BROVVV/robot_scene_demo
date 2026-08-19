@@ -381,8 +381,15 @@
     api("/api/search/start", {
       target: target,
       enable_autonomous_motion: els.chkMotion.checked,
+      operator_supervised_experiment: els.chkMotion.checked,
     }).then(function (data) {
-      if (!data.ok) showBanner("无法开始: " + (data.error || "unknown"), "error");
+      if (!data.ok) {
+        if (data.error === "emergency_stop_latched") {
+          showBanner("无法开始：请先点击顶部“解除急停”，确认状态正常后再搜索", "error");
+        } else {
+          showBanner("无法开始: " + (data.error || "unknown"), "error");
+        }
+      }
     }).catch(function () { showBanner("无法开始搜索（网络错误）", "error"); });
   }
 

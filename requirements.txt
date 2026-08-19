@@ -1,4 +1,5 @@
 python-dotenv
+PyYAML
 openai
 pydantic
 networkx

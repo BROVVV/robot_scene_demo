@@ -23,7 +23,8 @@ class Fixture:
     def __init__(self) -> None:
         self.node = rclpy.create_node("go2w_action_dry_run_fixture")
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
-        state_qos = QoSProfile(depth=20, reliability=ReliabilityPolicy.BEST_EFFORT)
+        # Match the real Go2-W state publishers used by the motion monitor.
+        state_qos = QoSProfile(depth=20, reliability=ReliabilityPolicy.RELIABLE)
         self.lease_id_pub = self.node.create_publisher(
             UInt64, "/go2w/sport_lease/id", latched
         )

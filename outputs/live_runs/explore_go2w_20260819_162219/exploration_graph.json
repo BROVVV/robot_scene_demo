@@ -1,0 +1,112 @@
+{
+  "session_id": "explore_go2w_20260819_162219",
+  "node_count": 1,
+  "edge_count": 1,
+  "observed_sectors": [
+    0
+  ],
+  "nodes": [
+    {
+      "node_id": "node_bundle_7459",
+      "timestamp": 1787127743.8661592,
+      "pose": {
+        "x": 0.14984405713318422,
+        "y": 0.6343595332962295,
+        "yaw": -0.015442103147506714,
+        "frame_id": "odom",
+        "quality": "relative",
+        "timestamp": 1787127743.8649282,
+        "source": "wheel_fused_odom"
+      },
+      "pose_quality": "relative",
+      "heading": -0.8847673371578192,
+      "heading_sector": 0,
+      "objects": [],
+      "relations": [],
+      "scene_graph": {
+        "nodes": [
+          {
+            "node_id": "place_001",
+            "node_type": "place",
+            "label": "unknown",
+            "label_zh": "未知地点",
+            "category": "place",
+            "source": "observed",
+            "confidence": 0.65,
+            "evidence_level": "observed_confirmed",
+            "based_on": [
+              "frame_007459"
+            ],
+            "can_confirm_target": true,
+            "attributes": {
+              "start_time": 1787127743.85,
+              "end_time": 1787127743.85,
+              "start_frame": 7459,
+              "end_frame": 7459,
+              "dominant_labels": [],
+              "passage_candidates": [],
+              "free_space_hint": null,
+              "split_reason": "initial_segment",
+              "object_track_ids": [],
+              "navigation_role": "place",
+              "observed_from_pose": {
+                "x": 0.14984405713318422,
+                "y": 0.6343595332962295,
+                "yaw_rad": -0.015442103147506714,
+                "yaw_deg": -0.8847673371578192
+              },
+              "heading_sector": 0,
+              "observed_heading_deg": -0.8847673371578192,
+              "position_status": "observation_pose_only"
+            }
+          }
+        ],
+        "edges": []
+      },
+      "target_match_level": "zero_match",
+      "target_score": 0.0,
+      "semantic_relevance": 0.0,
+      "information_gain": 0.3,
+      "visited_count": 1,
+      "negative_evidence_count": 1,
+      "navigation_fail_count": 0,
+      "reachable_state": "VISITED",
+      "source_bundle_id": "bundle_7459",
+      "provenance": {
+        "source": "live_observation",
+        "negative_reasons": [
+          {
+            "reason": "target not observed in this view",
+            "host_s": 1787127743.866179
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "node_bundle_7459",
+      "target_node_id": "node_bundle_7459",
+      "action_type": "ROTATE_VIEW",
+      "requested_motion": {
+        "step": "l30",
+        "relative_yaw_deg": 30.0
+      },
+      "observed_motion": {
+        "yaw_delta_deg": 0.0
+      },
+      "navigation_result": "succeeded",
+      "cost": 0.0
+    }
+  ],
+  "recent_goals": [
+    {
+      "goal_id": "local_scan_001",
+      "goal_type": "ROTATE_VIEW",
+      "status": "succeeded",
+      "target_node_id": "node_bundle_7459",
+      "heading_sector": null,
+      "host_s": 1787127743.867257
+    }
+  ]
+}

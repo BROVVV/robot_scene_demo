@@ -47,6 +47,13 @@ class Go2WBackendConfig:
     pose_max_age_sec: float | None = 10.0
 
 
+GO2W_OPERATOR_SUPERVISED_PRIMITIVES = (
+    "FORWARD",
+    "ROTATE_LEFT",
+    "ROTATE_RIGHT",
+)
+
+
 @dataclass
 class MotionCorrection:
     rotation_scale: float = 1.0
@@ -101,6 +108,7 @@ class Go2WExperimentalBackend(RobotBackend):
             supports_navigation_cancel=True,
             supports_navigation_feedback=True,
             supports_platform_obstacle_avoidance=False,
+            allowed_motion_primitives=GO2W_OPERATOR_SUPERVISED_PRIMITIVES,
         )
 
     def get_pose(self) -> RobotPose | None:
@@ -208,17 +216,37 @@ class Go2WExperimentalBackend(RobotBackend):
             return self._execute_turn(goal, float(dyaw))
         if goal_type == "RELATIVE_MOVE":
             dx = float(goal.relative_dx if goal.relative_dx is not None else 0.0)
-            if dx < 0.01 and (goal.relative_dy or 0) == 0:
+            dy = float(goal.relative_dy or 0.0)
+            if dx < -0.01:
+                # The Go2-W experiment has no reverse primitive.  Return a
+                # structured rejection so AutonomousExplorer performs its
+                # normal failure->replan path without sending motion.
+                return navigation_result(
+                    goal.goal_id, NavigationStatus.REJECTED,
+                    message="reverse motion disabled; replan with rotate+forward",
+                    requested_motion=_requested_motion(goal),
+                    provenance={
+                        "backend": "go2w_experimental",
+                        "replan_required": True,
+                        "unsupported_primitive": "REVERSE",
+                    },
+                )
+            if dx < 0.01 and abs(dy) <= 0.01:
                 # A pure re-position with no forward demand.
                 return navigation_result(
                     goal.goal_id, NavigationStatus.SUCCEEDED,
                     message="no translation demanded", requested_motion=_requested_motion(goal),
                 )
-            if not self.config.allow_lateral and abs(float(goal.relative_dy or 0.0)) > 0.01:
+            if not self.config.allow_lateral and abs(dy) > 0.01:
                 return navigation_result(
                     goal.goal_id, NavigationStatus.REJECTED,
-                    message="lateral motion disabled by go2w experimental config",
+                    message="lateral motion disabled; replan with rotate+forward",
                     requested_motion=_requested_motion(goal),
+                    provenance={
+                        "backend": "go2w_experimental",
+                        "replan_required": True,
+                        "unsupported_primitive": "LATERAL",
+                    },
                 )
             return self._execute_forward(goal, dx)
         return navigation_result(

@@ -1,0 +1,78 @@
+{
+  "raw_query": "找到手机",
+  "canonical_name_zh": "手机",
+  "target_type": "object",
+  "primary_labels_en": [
+    "phone",
+    "cell phone",
+    "mobile phone",
+    "smartphone"
+  ],
+  "aliases_zh": [
+    "手机",
+    "手机"
+  ],
+  "aliases_en": [
+    "phone",
+    "cell phone",
+    "mobile phone",
+    "smartphone"
+  ],
+  "attributes": [],
+  "colors": [],
+  "materials": [],
+  "affordances": [],
+  "relation_constraints": [],
+  "context_labels_en": [
+    "table",
+    "sofa",
+    "bed",
+    "charger"
+  ],
+  "context_labels_zh": [
+    "桌子",
+    "沙发",
+    "床",
+    "充电线"
+  ],
+  "likely_regions_zh": [],
+  "negative_terms": [],
+  "possible_confusions": [],
+  "search_hint_zh": "",
+  "resolver_source": "fallback",
+  "resolver_error": null,
+  "target_category": "unknown",
+  "grounding_strategy": "unknown",
+  "direct_detection_supported": true,
+  "requires_proxy_objects": false,
+  "requires_scene_confirmation": false,
+  "requires_state_verification": false,
+  "grounding_prompt_plan": null,
+  "raw_target": "找到手机",
+  "core_entities": [
+    "手机",
+    "phone",
+    "cell phone"
+  ],
+  "zh_terms": [
+    "手机"
+  ],
+  "en_terms": [
+    "phone",
+    "cell phone",
+    "mobile phone",
+    "smartphone"
+  ],
+  "spatial_constraints": [],
+  "context_objects": [
+    "table",
+    "sofa",
+    "bed",
+    "charger",
+    "桌子",
+    "沙发",
+    "床",
+    "充电线"
+  ],
+  "grounding_prompt": "phone. cell phone. mobile phone. smartphone. table. sofa. bed. charger."
+}

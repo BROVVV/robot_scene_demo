@@ -13,6 +13,13 @@ from typing import Any
 from app.perception.rgbd_source import RGBDFrame, RGBDFrameUnavailable
 
 
+# Install a proxy-free default opener for this ROS-side sensor process, while
+# keeping calls routed through urllib.request.urlopen so tests and operators
+# can still inject a transport at the normal seam.
+_DIRECT_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+urllib.request.install_opener(_DIRECT_OPENER)
+
+
 class RealSenseHTTPRGBDSource:
     """Reads atomic RGB-D frames from the D435 HTTP stream service.
 
@@ -38,7 +45,6 @@ class RealSenseHTTPRGBDSource:
         self.max_cached_frames = max(8, int(max_cached_frames))
         self.request_timeout = float(request_timeout)
         self.max_age_seconds = float(max_age_seconds)
-
     def _url(self, path: str) -> str:
         return urllib.parse.urljoin(self.base_url + "/", path.lstrip("/"))
 

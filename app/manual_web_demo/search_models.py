@@ -22,6 +22,10 @@ class SearchStartRequest:
     finish_on_visual_confirmation: bool = True
     turn_only: bool = False
     enable_autonomous_motion: bool = False
+    # Explicitly carried through the WebUI -> worker -> semantic runner
+    # boundary.  For a real Go2-W motion session this is the repository's
+    # existing operator_supervised_experiment profile, not a new gate.
+    operator_supervised_experiment: bool = False
     dry_run_motion: bool = False
     # RGB-D spatial exploration (D435 atomic HTTP source)
     rgbd_source: bool = False
@@ -40,6 +44,18 @@ class SearchStartRequest:
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "SearchStartRequest":
         defaults = load_search_defaults()
+        enable_motion = bool(
+            value.get(
+                "enable_autonomous_motion",
+                defaults["enable_autonomous_motion"],
+            )
+        )
+        operator_supervised = bool(
+            value.get(
+                "operator_supervised_experiment",
+                defaults.get("operator_supervised_experiment", enable_motion),
+            )
+        )
         return cls(
             target=str(value.get("target") or "").strip(),
             reasoner=str(value.get("reasoner") or "unigoal"),
@@ -48,12 +64,8 @@ class SearchStartRequest:
                 value.get("finish_on_visual_confirmation", True)
             ),
             turn_only=bool(value.get("turn_only", False)),
-            enable_autonomous_motion=bool(
-                value.get(
-                    "enable_autonomous_motion",
-                    defaults["enable_autonomous_motion"],
-                )
-            ),
+            enable_autonomous_motion=enable_motion,
+            operator_supervised_experiment=operator_supervised,
             dry_run_motion=bool(value.get("dry_run_motion", False)),
             rgbd_source=bool(value.get("rgbd_source", defaults["rgbd_source"])),
             rgbd_base_url=str(
@@ -117,6 +129,7 @@ def load_search_defaults() -> dict[str, Any]:
     defaults: dict[str, Any] = {
         "backend": "go2w_experimental",
         "enable_autonomous_motion": False,
+        "operator_supervised_experiment": False,
         "rgbd_source": False,
         "rgbd_base_url": "http://192.168.123.18:8080",
         "spatial_v2": False,
@@ -147,6 +160,14 @@ def load_search_defaults() -> dict[str, Any]:
                         "max_motion_steps"):
                 if search.get(key) is not None:
                     defaults[key] = search[key]
+            if search.get("enable_autonomous_motion") is not None:
+                defaults["enable_autonomous_motion"] = bool(
+                    search["enable_autonomous_motion"]
+                )
+            if search.get("operator_supervised_experiment") is not None:
+                defaults["operator_supervised_experiment"] = bool(
+                    search["operator_supervised_experiment"]
+                )
         except Exception:  # noqa: BLE001 - config must never break startup
             pass
     if os.getenv("AUTONOMOUS_SEARCH_DEFAULT_BACKEND"):
@@ -156,6 +177,14 @@ def load_search_defaults() -> dict[str, Any]:
         defaults["enable_autonomous_motion"] = motion_env.strip().lower() in {
             "1", "true", "yes", "on",
         }
+    if os.getenv("AUTONOMOUS_SEARCH_OPERATOR_SUPERVISED") is not None:
+        defaults["operator_supervised_experiment"] = os.getenv(
+            "AUTONOMOUS_SEARCH_OPERATOR_SUPERVISED", ""
+        ).strip().lower() in {"1", "true", "yes", "on"}
+    elif defaults["enable_autonomous_motion"]:
+        # Backward-compatible launcher contract: requesting real autonomous
+        # motion means using the existing supervised experiment profile.
+        defaults["operator_supervised_experiment"] = True
     return defaults
 
 

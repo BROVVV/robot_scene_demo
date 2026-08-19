@@ -1,0 +1,31 @@
+{
+  "result": "OPERATOR_STOP",
+  "target": "找到厕所",
+  "duration_s": 126.835,
+  "planning_cycles": 10,
+  "motion_steps": 9,
+  "observations": 10,
+  "unique_nodes": 10,
+  "replans": 0,
+  "navigation_failures": 0,
+  "verify_attempts": 0,
+  "semantic_goal_selection_count": 0,
+  "fallback_goal_selection_count": 10,
+  "finish_reason": "OPERATOR_STOP",
+  "session_id": "explore_go2w_20260819_171809",
+  "summary": {
+    "result": "OPERATOR_STOP",
+    "target": "找到厕所",
+    "duration_s": 126.835,
+    "planning_cycles": 10,
+    "motion_steps": 9,
+    "observations": 10,
+    "unique_nodes": 10,
+    "replans": 0,
+    "navigation_failures": 0,
+    "verify_attempts": 0,
+    "semantic_goal_selection_count": 0,
+    "fallback_goal_selection_count": 10,
+    "finish_reason": "OPERATOR_STOP"
+  }
+}

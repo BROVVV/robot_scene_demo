@@ -59,9 +59,16 @@ class RobotCapabilities:
     supports_navigation_cancel: bool = False
     supports_navigation_feedback: bool = False
     supports_platform_obstacle_avoidance: bool = False
+    # High-level motion vocabulary exposed to planners.  This is deliberately
+    # more specific than supports_relative_translation/rotation: the current
+    # Go2-W experiment can move forward and rotate, but does not expose
+    # reverse or lateral primitives.
+    allowed_motion_primitives: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        value = asdict(self)
+        value["allowed_motion_primitives"] = list(self.allowed_motion_primitives)
+        return value
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "RobotCapabilities":
@@ -75,6 +82,9 @@ class RobotCapabilities:
             supports_navigation_feedback=bool(value.get("supports_navigation_feedback", False)),
             supports_platform_obstacle_avoidance=bool(
                 value.get("supports_platform_obstacle_avoidance", False)
+            ),
+            allowed_motion_primitives=tuple(
+                str(item) for item in (value.get("allowed_motion_primitives") or [])
             ),
         )
 

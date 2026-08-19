@@ -1,0 +1,100 @@
+{
+  "places": [
+    {
+      "place_id": "P1",
+      "pose": {
+        "x": 0.16492941579745338,
+        "y": 0.6327231849185982,
+        "yaw": -0.0024531893432140346,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "pose_quality": "relative",
+      "observation_ids": [
+        "bundle_11212",
+        "bundle_11636",
+        "bundle_12032"
+      ],
+      "heading_coverage": {
+        "0": 1,
+        "1": 1,
+        "2": 1
+      },
+      "observed_object_ids": [],
+      "semantic_interest": 0.0,
+      "visit_count": 3,
+      "negative_evidence": 0,
+      "target_candidate": false,
+      "target_confirmed": false,
+      "provenance": {
+        "created_at": 1787127868.8681529,
+        "from_place": null
+      }
+    }
+  ],
+  "observations": [
+    {
+      "observation_id": "bundle_11212",
+      "heading_sector": 0,
+      "timestamp": 1787127868.8624125,
+      "objects": [],
+      "rgbd_frame_id": "11212",
+      "pose": {
+        "x": 0.16492941579745338,
+        "y": 0.6327231849185982,
+        "yaw": -0.0024531893432140346,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "provenance": {
+        "place_id": "P1"
+      }
+    },
+    {
+      "observation_id": "bundle_11636",
+      "heading_sector": 1,
+      "timestamp": 1787127881.9555917,
+      "objects": [],
+      "rgbd_frame_id": "11636",
+      "pose": {
+        "x": 0.23547594728798066,
+        "y": 0.6578426105795924,
+        "yaw": 0.5284563638269901,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "provenance": {
+        "place_id": "P1"
+      }
+    },
+    {
+      "observation_id": "bundle_12032",
+      "heading_sector": 2,
+      "timestamp": 1787127896.469235,
+      "objects": [],
+      "rgbd_frame_id": "12032",
+      "pose": {
+        "x": 0.29311658916088834,
+        "y": 0.71647129036481,
+        "yaw": 1.0562907196581364,
+        "frame_id": "odom",
+        "quality": "relative",
+        "source": "go2w_wheel_odom",
+        "provenance": {}
+      },
+      "provenance": {
+        "place_id": "P1"
+      }
+    }
+  ],
+  "edges": [],
+  "current_place_id": "P1",
+  "merge_distance_m": 0.25,
+  "relocation_min_displacement_m": 0.1
+}

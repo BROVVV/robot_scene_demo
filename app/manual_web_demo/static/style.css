@@ -64,6 +64,11 @@ button.estop {
   padding: 8px 18px; border-radius: 6px; font-weight: 700; cursor: pointer;
 }
 button.estop:disabled { background: var(--gray); cursor: not-allowed; }
+button.reset-estop {
+  background: #a56a00; color: #fff; border: none;
+  padding: 8px 14px; border-radius: 6px; font-weight: 700; cursor: pointer;
+}
+button.reset-estop:disabled { background: var(--gray); cursor: not-allowed; opacity: 0.7; }
 
 /* ---------- main layout ---------- */
 .main {

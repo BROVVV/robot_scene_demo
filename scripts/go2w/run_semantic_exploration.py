@@ -56,7 +56,10 @@ from app.live_robot.semantic_observer import (
 )
 from app.memory.observation_memory_store import ObservationMemoryStore
 from app.navigation.backend_factory import create_backend
-from app.navigation.exploration_config import load_exploration_policy
+from app.navigation.exploration_config import (
+    load_exploration_policy,
+    load_go2w_experiment_profile,
+)
 from app.navigation.exploration_graph import ExplorationGraph
 from app.navigation.models import (
     GOAL_ROTATE_VIEW,
@@ -392,6 +395,25 @@ def run_go2w(args, event_hook=None) -> int:
         return 2
     from run_autonomous_loop import AutonomousLoop, PROMPT_MAP  # noqa: E402
 
+    # Load the repository-owned operator-supervised profile at the real
+    # backend boundary.  This does not invoke Stage-2/Nav2 readiness gates.
+    experiment_profile = load_go2w_experiment_profile(args.profile_config)
+    profile_name = str(
+        experiment_profile.get("profile") or "operator_supervised_experiment"
+    )
+    profile_limits = experiment_profile.get("limits") or {}
+    profile_motion = experiment_profile.get("motion_primitives") or {}
+    max_turn_deg = min(
+        abs(float(args.max_turn_deg)),
+        abs(float(profile_limits.get("max_turn_deg", args.max_turn_deg))),
+        30.0,
+    )
+    forward_step_m = min(
+        max(0.0, float(args.forward_step_m)),
+        max(0.0, float(profile_limits.get("max_forward_step_m", 0.30))),
+        0.30,
+    )
+
     policy = load_exploration_policy(args.exploration_config, overrides={
         "exploration": {
             "budget": {
@@ -399,7 +421,9 @@ def run_go2w(args, event_hook=None) -> int:
                 "max_planning_cycles": args.max_planning_cycles,
                 "max_motion_steps": args.max_motion_steps,
             },
-            "candidates": {"fallback_turn_deg": args.max_turn_deg},
+            # Use the profile-clamped value so candidate generation cannot
+            # propose a turn larger than the operator-supervised contract.
+            "candidates": {"fallback_turn_deg": max_turn_deg},
         },
     })
     rclpy.init()
@@ -408,7 +432,7 @@ def run_go2w(args, event_hook=None) -> int:
         pattern=["f"], output=output_path, forward_vx=0.12,
         forward_seconds=2.0, max_yaw_rate=0.15, min_clearance_m=0.30,
         mode="state_machine_search", max_seconds=args.max_seconds,
-        wander_front_go_m=0.45, wander_turn_deg=30.0,
+        wander_front_go_m=0.45, wander_turn_deg=max_turn_deg,
         max_radius_m=args.max_radius, scan_turn_deg=30.0, scan_span=3,
         pre_scan_turns=0, record_video=args.record_video,
         video_fps=15.0, video_scale=0.4, scan360_steps=8,
@@ -435,6 +459,12 @@ def run_go2w(args, event_hook=None) -> int:
     )
     node._rotation_lease_path = ""
     node._rotation_lease_error = ""
+    node._experiment_profile_name = profile_name
+    node._experiment_motion_primitives = {
+        str(name): bool(enabled) for name, enabled in profile_motion.items()
+    }
+    node._experiment_max_turn_deg = max_turn_deg
+    node._experiment_forward_step_m = forward_step_m
 
     try:
         return _run_go2w_explorer(args, node, policy, PROMPT_MAP, event_hook)
@@ -637,8 +667,10 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             )
         )
         local_executor = LocalGoalExecutor(
-            forward_step_m=args.forward_step_m or 0.25,
-            max_turn_deg=args.max_turn_deg,
+            forward_step_m=getattr(node, "_experiment_forward_step_m", None)
+            or args.forward_step_m or 0.25,
+            max_turn_deg=getattr(node, "_experiment_max_turn_deg", None)
+            or args.max_turn_deg,
             turn_only=bool(args.turn_only),
         )
         state["spatial_v2"] = {
@@ -1062,6 +1094,14 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             "robot_mode_error": not mode_ok,
             "lidar_fresh": node._lidar_fresh is True,
             "operator_authorized_rotation": operator_authorized,
+            "experiment_profile": getattr(
+                node, "_experiment_profile_name", "operator_supervised_experiment"
+            ),
+            "allowed_motion_primitives": [
+                name for name, enabled in getattr(
+                    node, "_experiment_motion_primitives", {}
+                ).items() if enabled
+            ],
         }
 
     backend = Go2WExperimentalBackend(
@@ -1071,9 +1111,21 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         cancel=cancel,
         health_probe=health_probe,
         config=Go2WBackendConfig(
-            max_turn_deg_per_action=args.max_turn_deg,
-            forward_step_m=args.forward_step_m,
-            max_forward_step_m=min(0.30, args.forward_step_m * 1.5),
+            max_turn_deg_per_action=getattr(
+                node, "_experiment_max_turn_deg", args.max_turn_deg
+            ),
+            forward_step_m=getattr(
+                node, "_experiment_forward_step_m", args.forward_step_m
+            ),
+            max_forward_step_m=min(
+                0.30,
+                max(
+                    0.01,
+                    float(getattr(
+                        node, "_experiment_forward_step_m", args.forward_step_m
+                    )),
+                ) * 1.5,
+            ),
         ),
     )
 
@@ -1186,6 +1238,16 @@ def _probe_readiness(args, node):
         and int(node._sport.error_code) == 0
     )
     pose_fresh = bool(node._odom is not None)
+    from app.navigation.robot_backend import RobotCapabilities
+
+    capabilities = RobotCapabilities(
+        supports_relative_translation=True,
+        supports_relative_rotation=True,
+        supports_heading_control=True,
+        supports_navigation_cancel=True,
+        supports_navigation_feedback=True,
+        allowed_motion_primitives=("FORWARD", "ROTATE_LEFT", "ROTATE_RIGHT"),
+    )
     return compute_experiment_readiness(
         camera_fresh=camera_ok,
         bundle_fresh=bundle_ok,
@@ -1195,9 +1257,7 @@ def _probe_readiness(args, node):
         emergency_stop_available=stop_ready,
         backend_healthy=True,
         pose_freshness_if_available=pose_fresh,
-        capabilities=(
-            None
-        ),
+        capabilities=capabilities,
         check_llm_key=True,
     )
 

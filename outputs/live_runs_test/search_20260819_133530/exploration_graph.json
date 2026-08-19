@@ -1,0 +1,254 @@
+{
+  "session_id": "explore_mock_20260819_133530",
+  "node_count": 3,
+  "edge_count": 3,
+  "observed_sectors": [
+    0,
+    1
+  ],
+  "nodes": [
+    {
+      "node_id": "node_obs_001",
+      "timestamp": 1787117731.0009305,
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "yaw": 0.0,
+        "frame_id": "odom",
+        "quality": "relative",
+        "timestamp": 1787117731.0008116,
+        "source": "mock_relative"
+      },
+      "pose_quality": "relative",
+      "heading": 0.0,
+      "heading_sector": 0,
+      "objects": [
+        "water dispenser"
+      ],
+      "relations": [],
+      "scene_graph": {
+        "nodes": [
+          {
+            "node_id": "mock_water dispenser",
+            "label": "water dispenser",
+            "label_zh": "water dispenser",
+            "attributes": {}
+          }
+        ],
+        "edges": []
+      },
+      "target_match_level": "none",
+      "target_score": 0.0,
+      "semantic_relevance": 0.0,
+      "information_gain": 0.55,
+      "visited_count": 0,
+      "negative_evidence_count": 1,
+      "navigation_fail_count": 1,
+      "reachable_state": "NEGATIVE",
+      "source_bundle_id": "obs_001",
+      "provenance": {
+        "source": "live_observation",
+        "negative_reasons": [
+          {
+            "reason": "target not observed in this view",
+            "host_s": 1787117731.000944
+          }
+        ]
+      }
+    },
+    {
+      "node_id": "node_obs_002",
+      "timestamp": 1787117731.001686,
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "yaw": 0.17453292519943295,
+        "frame_id": "odom",
+        "quality": "relative",
+        "timestamp": 1787117731.0014532,
+        "source": "mock_relative"
+      },
+      "pose_quality": "relative",
+      "heading": 10.0,
+      "heading_sector": 0,
+      "objects": [
+        "desk",
+        "chair"
+      ],
+      "relations": [],
+      "scene_graph": {
+        "nodes": [
+          {
+            "node_id": "mock_desk",
+            "label": "desk",
+            "label_zh": "desk",
+            "attributes": {}
+          },
+          {
+            "node_id": "mock_chair",
+            "label": "chair",
+            "label_zh": "chair",
+            "attributes": {}
+          }
+        ],
+        "edges": []
+      },
+      "target_match_level": "none",
+      "target_score": 0.0,
+      "semantic_relevance": 0.0,
+      "information_gain": 0.5,
+      "visited_count": 1,
+      "negative_evidence_count": 1,
+      "navigation_fail_count": 0,
+      "reachable_state": "VISITED",
+      "source_bundle_id": "obs_002",
+      "provenance": {
+        "source": "live_observation",
+        "negative_reasons": [
+          {
+            "reason": "target not observed in this view",
+            "host_s": 1787117731.001694
+          }
+        ]
+      }
+    },
+    {
+      "node_id": "node_obs_003",
+      "timestamp": 1787117731.0026243,
+      "pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "yaw": 0.5235987755982988,
+        "frame_id": "odom",
+        "quality": "relative",
+        "timestamp": 1787117731.0023928,
+        "source": "mock_relative"
+      },
+      "pose_quality": "relative",
+      "heading": 29.999999999999996,
+      "heading_sector": 1,
+      "objects": [
+        "desk",
+        "chair"
+      ],
+      "relations": [],
+      "scene_graph": {
+        "nodes": [
+          {
+            "node_id": "mock_desk",
+            "label": "desk",
+            "label_zh": "desk",
+            "attributes": {}
+          },
+          {
+            "node_id": "mock_chair",
+            "label": "chair",
+            "label_zh": "chair",
+            "attributes": {}
+          }
+        ],
+        "edges": []
+      },
+      "target_match_level": "none",
+      "target_score": 0.0,
+      "semantic_relevance": 0.0,
+      "information_gain": 0.3,
+      "visited_count": 1,
+      "negative_evidence_count": 1,
+      "navigation_fail_count": 0,
+      "reachable_state": "VISITED",
+      "source_bundle_id": "obs_003",
+      "provenance": {
+        "source": "live_observation",
+        "negative_reasons": [
+          {
+            "reason": "target not observed in this view",
+            "host_s": 1787117731.002631
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_node_id": "node_obs_001",
+      "target_node_id": "node_obs_001",
+      "action_type": "INSPECT_ANCHOR",
+      "requested_motion": {
+        "goal_type": "INSPECT_ANCHOR",
+        "relative_dx": null,
+        "relative_dy": null,
+        "relative_dyaw": 10.0,
+        "position": null,
+        "yaw": null
+      },
+      "observed_motion": {
+        "yaw_delta_deg": 10.0
+      },
+      "navigation_result": "failed",
+      "cost": 0.01
+    },
+    {
+      "source_node_id": "node_obs_002",
+      "target_node_id": "node_obs_002",
+      "action_type": "ROTATE_VIEW",
+      "requested_motion": {
+        "goal_type": "ROTATE_VIEW",
+        "relative_dx": null,
+        "relative_dy": null,
+        "relative_dyaw": 20.0,
+        "position": null,
+        "yaw": null
+      },
+      "observed_motion": {
+        "yaw_delta_deg": 20.0
+      },
+      "navigation_result": "succeeded",
+      "cost": 0.01
+    },
+    {
+      "source_node_id": "node_obs_003",
+      "target_node_id": "node_obs_003",
+      "action_type": "ROTATE_VIEW",
+      "requested_motion": {
+        "goal_type": "ROTATE_VIEW",
+        "relative_dx": null,
+        "relative_dy": null,
+        "relative_dyaw": 30.0,
+        "position": null,
+        "yaw": null
+      },
+      "observed_motion": {
+        "yaw_delta_deg": 30.0
+      },
+      "navigation_result": "succeeded",
+      "cost": 0.01
+    }
+  ],
+  "recent_goals": [
+    {
+      "goal_id": "cand_012",
+      "goal_type": "INSPECT_ANCHOR",
+      "status": "failed",
+      "target_node_id": "node_obs_001",
+      "heading_sector": 0,
+      "host_s": 1787117731.001421
+    },
+    {
+      "goal_id": "cand_001",
+      "goal_type": "ROTATE_VIEW",
+      "status": "succeeded",
+      "target_node_id": "node_obs_002",
+      "heading_sector": 1,
+      "host_s": 1787117731.002381
+    },
+    {
+      "goal_id": "cand_001",
+      "goal_type": "ROTATE_VIEW",
+      "status": "succeeded",
+      "target_node_id": "node_obs_003",
+      "heading_sector": 2,
+      "host_s": 1787117731.003403
+    }
+  ]
+}

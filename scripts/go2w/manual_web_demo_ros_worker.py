@@ -135,9 +135,19 @@ class ManualWebDemoWorker:
         from sensor_msgs.msg import CompressedImage  # noqa: PLC0415
         from std_msgs.msg import Bool, Float32  # noqa: PLC0415
         from std_srvs.srv import SetBool, Trigger  # noqa: PLC0415
-        from go2w_motion_interfaces.action import MotionCommand  # noqa: PLC0415
         from unitree_go.msg import LowState, SportModeState  # noqa: PLC0415
         from nav_msgs.msg import Odometry  # noqa: PLC0415
+
+        # The motion interface/control workspace is an external prerequisite
+        # in the README. Keep the ROS worker alive for camera/status display
+        # when that workspace has not been deployed yet, but never substitute
+        # a different driver or enable motion without the exact Action type.
+        motion_import_error = None
+        try:
+            from go2w_motion_interfaces.action import MotionCommand  # noqa: PLC0415
+        except Exception as exc:  # noqa: BLE001
+            MotionCommand = None
+            motion_import_error = f"{type(exc).__name__}: {exc}"
 
         rclpy.init(args=[])
         from app.manual_web_demo.config import get_manual_demo_settings  # noqa: PLC0415
@@ -150,6 +160,7 @@ class ManualWebDemoWorker:
         self.SetBool = SetBool
         self.Trigger = Trigger
         self.MotionCommand = MotionCommand
+        self._motion_backend_error = motion_import_error
 
         self._lock = threading.Lock()
         self._motion_active = False
@@ -161,6 +172,8 @@ class ManualWebDemoWorker:
         self._camera_available = False
         self._last_camera_monotonic: float | None = None
         self._sport = None
+        self._last_sport_monotonic: float | None = None
+        self._last_low_monotonic: float | None = None
         self._front_clearance: float | None = None
         self._lidar_fresh: bool | None = None
         self._left_clearance: float | None = None
@@ -184,7 +197,7 @@ class ManualWebDemoWorker:
         state_qos = QoSProfile(
             depth=20,
             history=HistoryPolicy.KEEP_LAST,
-            reliability=ReliabilityPolicy.BEST_EFFORT,
+            reliability=ReliabilityPolicy.RELIABLE,
         )
         self.node.create_subscription(
             CompressedImage,
@@ -223,8 +236,10 @@ class ManualWebDemoWorker:
         except Exception as exc:  # noqa: BLE001
             log(f"odom subscription unavailable: {exc}")
 
-        self._motion_client = self.ActionClient(
-            self.node, self.MotionCommand, "/go2w/motion"
+        self._motion_client = (
+            self.ActionClient(self.node, self.MotionCommand, "/go2w/motion")
+            if self.MotionCommand is not None
+            else None
         )
         self._arm_client = self.node.create_client(self.SetBool, "/go2w/arm")
         self._estop_client = self.node.create_client(
@@ -281,9 +296,10 @@ class ManualWebDemoWorker:
 
     def _on_sport(self, msg) -> None:
         self._sport = msg
+        self._last_sport_monotonic = time.monotonic()
 
     def _on_low(self, msg) -> None:
-        pass  # LowState presence alone keeps state_fresh meaningful.
+        self._last_low_monotonic = time.monotonic()
 
     def _on_front_clearance(self, msg) -> None:
         self._front_clearance = float(msg.data)
@@ -314,12 +330,18 @@ class ManualWebDemoWorker:
     # ------------------------------------------------------------------ #
     def _status_snapshot(self) -> dict:
         with self._lock:
-            state_fresh = self._sport is not None
+            now = time.monotonic()
+            state_fresh = bool(
+                self._sport is not None
+                and self._last_sport_monotonic is not None
+                and self._last_low_monotonic is not None
+                and now - self._last_sport_monotonic <= 1.5
+                and now - self._last_low_monotonic <= 1.5
+            )
             mode = int(self._sport.mode) if self._sport is not None else None
             error_code = (
                 int(self._sport.error_code) if self._sport is not None else None
             )
-            now = time.monotonic()
             if now - self._motion_available_checked_at >= 5.0:
                 try:
                     self._motion_available_cached = bool(
@@ -331,11 +353,14 @@ class ManualWebDemoWorker:
                     self._motion_available_cached = False
                 self._motion_available_checked_at = now
             motion_available = self._motion_available_cached
+            if self._motion_backend_error is not None:
+                motion_available = False
             odom_pose = list(self._odom_pose) if self._odom_pose else None
         return {
             "type": "worker_status",
             "state": "ready",
             "motion_available": motion_available,
+            "motion_backend_error": self._motion_backend_error,
             "robot_mode": mode,
             "robot_error_code": error_code,
             "state_fresh": state_fresh,
@@ -363,6 +388,16 @@ class ManualWebDemoWorker:
             "turn_right",
         ):
             emit({"type": "blocked", "reason": f"unknown_direction:{direction}"})
+            return
+        if self._motion_backend_error is not None or self._motion_client is None:
+            emit(
+                {
+                    "type": "blocked",
+                    "reason": "motion_backend_unavailable",
+                    "message": self._motion_backend_error
+                    or "go2w motion Action client unavailable",
+                }
+            )
             return
         with self._lock:
             if self._motion_active:

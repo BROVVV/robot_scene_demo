@@ -87,6 +87,7 @@ class MockBackend(RobotBackend):
             supports_navigation_cancel=True,
             supports_navigation_feedback=True,
             supports_platform_obstacle_avoidance=False,
+            allowed_motion_primitives=("FORWARD", "ROTATE_LEFT", "ROTATE_RIGHT"),
         )
 
     def get_pose(self) -> RobotPose | None:
@@ -180,6 +181,9 @@ class MockMetricBackend(RobotBackend):
             supports_navigation_cancel=True,
             supports_navigation_feedback=True,
             supports_platform_obstacle_avoidance=True,
+            allowed_motion_primitives=(
+                "FORWARD", "ROTATE_LEFT", "ROTATE_RIGHT", "REVERSE", "LATERAL"
+            ),
         )
 
     def get_pose(self) -> RobotPose | None:

@@ -11,7 +11,7 @@ from builtin_interfaces.msg import Time
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from rclpy.node import Node
 from rclpy.executors import ExternalShutdownException
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Imu, PointCloud2
 
 from .time_sync_core import load_time_sync, transform_seconds
@@ -40,26 +40,34 @@ class TimeBridge(Node):
         self._allow_unstable = bool(
             self.get_parameter("allow_unstable_alignment").value
         )
+        # Unitree's official /utlidar publishers offer RELIABLE data.  Use a
+        # matching profile here; the generic sensor-data BEST_EFFORT profile
+        # can discover the topics but does not receive samples on this rig.
+        reliable_sensor_qos = QoSProfile(
+            depth=5,
+            history=HistoryPolicy.KEEP_LAST,
+            reliability=ReliabilityPolicy.RELIABLE,
+        )
         self._raw_cloud_pub = self.create_publisher(
-            PointCloud2, "/go2w/lio_input/cloud_raw", qos_profile_sensor_data
+            PointCloud2, "/go2w/lio_input/cloud_raw", reliable_sensor_qos
         )
         self._raw_imu_pub = self.create_publisher(
-            Imu, "/go2w/lio_input/imu_raw", qos_profile_sensor_data
+            Imu, "/go2w/lio_input/imu_raw", reliable_sensor_qos
         )
         self._cloud_pub = self.create_publisher(
-            PointCloud2, "/go2w/sensors/cloud", qos_profile_sensor_data
+            PointCloud2, "/go2w/sensors/cloud", reliable_sensor_qos
         )
         self._imu_pub = self.create_publisher(
-            Imu, "/go2w/sensors/lidar_imu", qos_profile_sensor_data
+            Imu, "/go2w/sensors/lidar_imu", reliable_sensor_qos
         )
         self._diag_pub = self.create_publisher(
             DiagnosticArray, "/go2w/sensors/time_status", 10
         )
         self.create_subscription(
-            PointCloud2, "/utlidar/cloud", self._cloud, qos_profile_sensor_data
+            PointCloud2, "/utlidar/cloud", self._cloud, reliable_sensor_qos
         )
         self.create_subscription(
-            Imu, "/utlidar/imu", self._imu, qos_profile_sensor_data
+            Imu, "/utlidar/imu", self._imu, reliable_sensor_qos
         )
 
     def _cloud(self, message: PointCloud2) -> None:

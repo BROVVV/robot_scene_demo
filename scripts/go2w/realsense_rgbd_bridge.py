@@ -27,7 +27,7 @@ import numpy as np
 import rclpy
 from cv_bridge import CvBridge
 from rclpy.node import Node
-from sensor_msgs.msg import CameraInfo, Image
+from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 from std_msgs.msg import String
 
 from app.perception.realsense_http_rgbd_source import RealSenseHTTPRGBDSource
@@ -44,6 +44,14 @@ class D435RGBDBridge(Node):
         self.color_pub = self.create_publisher(Image, "/go2w/d435/color/image_raw", 10)
         self.depth_pub = self.create_publisher(Image, "/go2w/d435/depth/image_rect_raw", 10)
         self.info_pub = self.create_publisher(CameraInfo, "/go2w/d435/color/camera_info", 10)
+        # The WebUI and the live ROS worker use the canonical front-camera
+        # topics. Mirror the D435 color stream there as a read-only alias so
+        # the HTTP RGB-D deployment and the existing UI share one source.
+        self.front_color_pub = self.create_publisher(Image, "/camera/front/image_raw", 10)
+        self.front_compressed_pub = self.create_publisher(
+            CompressedImage, "/camera/front/image_raw/compressed", 10
+        )
+        self.front_info_pub = self.create_publisher(CameraInfo, "/camera/front/camera_info", 10)
         self.health_pub = self.create_publisher(String, "/go2w/d435/rgbd_health", 10)
         self.rate_hz = max(1.0, float(rate_hz))
         self._last_frame_id: str | None = None
@@ -88,6 +96,15 @@ class D435RGBDBridge(Node):
         self.color_pub.publish(color_msg)
         self.depth_pub.publish(depth_msg)
         self.info_pub.publish(info)
+        self.front_color_pub.publish(color_msg)
+        compressed = CompressedImage()
+        compressed.header = color_msg.header
+        compressed.format = "jpeg"
+        ok, encoded = cv2.imencode(".jpg", color)
+        if ok:
+            compressed.data = encoded.tobytes()
+            self.front_compressed_pub.publish(compressed)
+        self.front_info_pub.publish(info)
         self.health_pub.publish(String(data=f"frame={frame.frame_id} age={frame.health.get('age_s', 0.0)}"))
         self.get_logger().info(
             f"published D435 frame {frame.frame_id} color={frame.width}x{frame.height}"

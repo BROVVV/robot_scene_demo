@@ -9,7 +9,7 @@ from geometry_msgs.msg import Vector3Stamped
 from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from rclpy.time import Time
 from sensor_msgs.msg import LaserScan, PointCloud2
 from sensor_msgs_py import point_cloud2
@@ -77,11 +77,16 @@ class LidarPreprocessor(Node):
         self._fresh_pub = self.create_publisher(
             Bool, "/go2w/safety/lidar_fresh", 10
         )
+        reliable_cloud_qos = QoSProfile(
+            depth=5,
+            history=HistoryPolicy.KEEP_LAST,
+            reliability=ReliabilityPolicy.RELIABLE,
+        )
         self.create_subscription(
             PointCloud2,
             "/go2w/sensors/cloud",
             self._cloud,
-            qos_profile_sensor_data,
+            reliable_cloud_qos,
         )
         self.create_timer(0.1, self._publish_freshness)
 

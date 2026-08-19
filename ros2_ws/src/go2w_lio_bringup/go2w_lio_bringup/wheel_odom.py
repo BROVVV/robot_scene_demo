@@ -28,7 +28,7 @@ from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from geometry_msgs.msg import Quaternion, TransformStamped
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from rclpy.qos import QoSProfile
+from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 from tf2_ros import TransformBroadcaster
 from unitree_go.msg import LowState, SportModeState
 
@@ -163,16 +163,22 @@ class WheelOdomNode(Node):
         self._lio_violations = 0
         self._lio_warned = False
 
-        best_effort = QoSProfile(depth=20, reliability=2)  # BEST_EFFORT
-        self.create_subscription(
-            LowState, low_topic, self._on_low, best_effort
+        # The official Unitree state publishers offer RELIABLE samples.  A
+        # matching reader is required on this deployment's DDS path.
+        reliable_state = QoSProfile(
+            depth=20,
+            history=HistoryPolicy.KEEP_LAST,
+            reliability=ReliabilityPolicy.RELIABLE,
         )
         self.create_subscription(
-            SportModeState, sport_topic, self._on_sport, best_effort
+            LowState, low_topic, self._on_low, reliable_state
+        )
+        self.create_subscription(
+            SportModeState, sport_topic, self._on_sport, reliable_state
         )
         if self._lio_enabled:
             self.create_subscription(
-                Odometry, lio_topic, self._on_lio, best_effort
+                Odometry, lio_topic, self._on_lio, reliable_state
             )
         self._odom_pub = self.create_publisher(Odometry, odom_topic, 10)
         self._fused_pub = self.create_publisher(Odometry, fused_topic, 10)

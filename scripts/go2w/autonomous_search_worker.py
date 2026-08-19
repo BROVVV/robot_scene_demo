@@ -74,7 +74,9 @@ def build_argv(params: dict[str, Any]) -> list[str]:
         "--backend", str(params.get("backend") or "go2w_experimental"),
         "--reasoner", str(params.get("reasoner") or "unigoal"),
     ]
-    if params.get("enable_autonomous_motion"):
+    if params.get("operator_supervised_experiment") or params.get(
+        "enable_autonomous_motion"
+    ):
         argv.append("--operator-supervised-experiment")
         # Plan §90: enable_autonomous_motion=true + turn_only=false means the
         # high-level explorer may use short forward relocations.  No hidden

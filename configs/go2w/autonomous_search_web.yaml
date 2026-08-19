@@ -13,6 +13,12 @@ search:
   reasoner: unigoal
   backend: go2w_experimental     # go2w_experimental | mock | mock_metric
   finish_on_visual_confirmation: true
+  # The WebUI search button enters the repository's existing
+  # operator_supervised_experiment path.  The operator remains responsible
+  # for holding the remote emergency stop; all motion bounds and per-step
+  # stop behavior stay in the high-level executor.
+  enable_autonomous_motion: true
+  operator_supervised_experiment: true
 
   # D435 is the primary RGB-D camera; the WebUI start request can still opt
   # out by passing rgbd_source=false.

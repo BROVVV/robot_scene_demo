@@ -1,0 +1,14 @@
+{
+  "frontiers": {
+    "frontier_00_-19_41": {
+      "frontier_id": "frontier_00_-19_41",
+      "visit_count": 0,
+      "selected_count": 1,
+      "fail_count": 0,
+      "semantic_gain_after_visit": 0.0,
+      "blacklisted": false
+    }
+  },
+  "regions": {},
+  "blacklist": []
+}

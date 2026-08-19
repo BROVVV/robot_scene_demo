@@ -12,7 +12,10 @@ namespace go2w_motion_control {
 MotionStateMonitor::MotionStateMonitor(rclcpp::Node *node,
                                        const std::string &sport_topic,
                                        const std::string &low_topic) {
-  const auto state_qos = rclcpp::QoS(rclcpp::KeepLast(20)).best_effort();
+  // The Go2-W bare DDS publishers expose RELIABLE state streams on this
+  // deployment.  BEST_EFFORT readers discover the topics but can remain
+  // silent, which would make the motion gate incorrectly report stale state.
+  const auto state_qos = rclcpp::QoS(rclcpp::KeepLast(20)).reliable();
   sport_sub_ = node->create_subscription<unitree_go::msg::SportModeState>(
       sport_topic, state_qos,
       [this](const unitree_go::msg::SportModeState::SharedPtr msg) {

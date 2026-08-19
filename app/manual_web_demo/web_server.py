@@ -44,6 +44,14 @@ INDEX_HTML = PACKAGE_DIR / "templates" / "index.html"
 STATIC_DIR = PACKAGE_DIR / "static"
 _DEFAULT_SEARCH_SESSION_DIR = "outputs/live_runs"
 
+# The robot is on the directly attached 192.168.123.0/24 network.  The host
+# may have a SOCKS proxy configured for general internet access; never route
+# the D435 HTTP stream through that proxy.
+_DIRECT_HTTP_OPENER = urllib.request.build_opener(
+    urllib.request.ProxyHandler({})
+)
+urllib.request.install_opener(_DIRECT_HTTP_OPENER)
+
 
 # --------------------------------------------------------------------------- #
 # Motion executor that forwards controller intents to the ROS worker          #
@@ -323,7 +331,9 @@ class DemoRuntime:
             "ros_worker_alive": bool(worker.get("alive", False)),
             "motion_action_available": bool(motion.get("available", False)),
             "robot_mode_ok": bool(
-                motion.get("robot_mode") == 1 and motion.get("robot_error_code") == 0
+                motion.get("state_fresh") is True
+                and motion.get("robot_mode") == 1
+                and motion.get("robot_error_code") == 0
             ),
             "emergency_stop_available": bool(motion.get("available", False)),
             "llm_available": bool(llm.get("enabled", False)),
@@ -347,6 +357,56 @@ class DemoRuntime:
             "reason": "" if ready else "readiness failed: " + "; ".join(blocked),
             "owner": self.owner.snapshot(),
         }
+
+    def reset_estop(self) -> dict[str, Any]:
+        """Explicitly clear the WebUI estop latch after health checks.
+
+        This only releases application ownership. It does not arm the robot
+        or bypass the motion action server; the next search must still arm
+        through ``/go2w/arm`` immediately before its first motion step.
+        """
+        status = self.status_snapshot()
+        if not self.owner.is_estop():
+            return {
+                "ok": True,
+                "status": "NOT_LATCHED",
+                "owner": self.owner.snapshot(),
+            }
+
+        camera = status.get("camera") or {}
+        motion = status.get("motion") or {}
+        worker_status = self.worker.status()
+        search = status.get("search") or {}
+        checks = {
+            "camera_fresh": camera.get("fresh") is True,
+            "worker_alive": self.worker.alive(),
+            "motion_available": motion.get("available") is True,
+            "robot_mode_ok": (
+                motion.get("state_fresh") is True
+                and motion.get("robot_mode") == 1
+                and motion.get("robot_error_code") == 0
+            ),
+            "lidar_fresh": worker_status.get("lidar_fresh") is True,
+            "motion_idle": motion.get("motion_in_flight") is not True,
+            "search_idle": not bool(search.get("alive")),
+        }
+        failed = [name for name, passed in checks.items() if not passed]
+        if failed:
+            return {
+                "ok": False,
+                "status": "ESTOP",
+                "error": "estop_reset_blocked: " + ", ".join(failed),
+                "checks": checks,
+                "owner": self.owner.snapshot(),
+            }
+
+        self.controller.disable(reason="estop_reset")
+        self.worker.request_stop()
+        self.owner.reset_estop()
+        self.broadcaster.publish(
+            {"type": "estop_reset", "owner": self.owner.snapshot()}
+        )
+        return {"ok": True, "status": "RESET", "owner": self.owner.snapshot()}
 
 
 # --------------------------------------------------------------------------- #
@@ -441,6 +501,11 @@ def create_app(
         runtime.controller.estop()
         runtime.search_service.estop_search()
         return JSONResponse({"ok": True})
+
+    @app.post("/api/estop/reset")
+    async def api_estop_reset() -> JSONResponse:
+        result = runtime.reset_estop()
+        return JSONResponse(result, status_code=200 if result.get("ok") else 409)
 
     @app.get("/api/camera.mjpeg")
     async def api_camera_mjpeg(request: Request) -> StreamingResponse:

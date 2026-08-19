@@ -23,6 +23,20 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "${script_dir}/../.." && pwd)"
 unitree_root="${GO2W_UNITREE_ROOT:-${HOME}/unitree_ros2}"
 control_root="${GO2W_CONTROL_ROOT:-${project_root}/unitree_go2w_control}"
+go2w_interface="${GO2W_INTERFACE:-}"
+if [[ -z "$go2w_interface" ]]; then
+  for candidate in enp6s0 enp3s0 enp4s0 enp5s0; do
+    if [[ -r "/sys/class/net/${candidate}/carrier" ]] \
+      && [[ "$(< "/sys/class/net/${candidate}/carrier")" == "1" ]] \
+      && ip -4 -o address show dev "$candidate" 2>/dev/null \
+        | awk '$4 ~ /^192[.]168[.]123[.][0-9]+\// { found=1 } END { exit !found }'; then
+      go2w_interface="$candidate"
+      break
+    fi
+  done
+fi
+go2w_interface="${go2w_interface:-enp6s0}"
+export GO2W_INTERFACE="$go2w_interface"
 json_only="0"
 for arg in "$@"; do
   case "$arg" in
@@ -42,10 +56,10 @@ set_check() { results["$1"]="$2"; }
 iface_carrier="0"
 host_ip="none"
 robot_reachable="false"
-if [[ -r /sys/class/net/enp6s0/carrier ]]; then
-  iface_carrier="$(< /sys/class/net/enp6s0/carrier)"
+if [[ -r "/sys/class/net/${go2w_interface}/carrier" ]]; then
+  iface_carrier="$(< "/sys/class/net/${go2w_interface}/carrier")"
 fi
-host_ip="$(ip -4 -o address show dev enp6s0 2>/dev/null | awk '{print $4}' | head -1)"
+host_ip="$(ip -4 -o address show dev "$go2w_interface" 2>/dev/null | awk '{print $4}' | head -1)"
 if [[ "${host_ip:-none}" == none ]]; then
   host_ip="none"
 fi
@@ -62,43 +76,47 @@ fi
 # ROS environment (best effort; topic checks are skipped when unavailable)
 # ---------------------------------------------------------------------------
 ros_ok="false"
-if command -v ros2 >/dev/null 2>&1; then
-  ros_ok="true"
-else
-  set +u
-  # shellcheck disable=SC1091
-  source /opt/ros/humble/setup.bash 2>/dev/null
-  # shellcheck disable=SC1091
-  source "${unitree_root}/cyclonedds_ws/install/setup.bash" 2>/dev/null
-  # shellcheck disable=SC1091
-  source "${project_root}/ros2_ws/install/setup.bash" 2>/dev/null
-  if [[ -f "${control_root}/ros2_ws/install/setup.bash" ]]; then
-    # shellcheck disable=SC1091
-    source "${control_root}/ros2_ws/install/setup.bash" 2>/dev/null
-  fi
-  set -u
-  export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-  export ROS_DOMAIN_ID=0
-  export CYCLONEDDS_URI="file://${project_root}/configs/go2w/cyclonedds_go2w.xml"
-  command -v ros2 >/dev/null 2>&1 && ros_ok="true"
-fi
+set +u
+# shellcheck disable=SC1091
+source "${project_root}/scripts/go2w/setup_environment.sh" >/dev/null 2>&1 || true
+set -u
+command -v ros2 >/dev/null 2>&1 && ros_ok="true"
 
 topic_alive() {
   # ros2 topic hz never exits; treat any captured rate output as alive.
   local out
   out="$(timeout 5 ros2 topic hz "$1" --window 2 2>/dev/null)"
-  [[ -n "${out}" ]]
+  [[ -n "${out}" && "${out}" != *"does not appear to be published yet"* ]]
 }
 
 service_ok() {
-  timeout 5 ros2 service type "$1" >/dev/null 2>&1
+  local service="$1" node info
+  while IFS= read -r node; do
+    [[ -z "$node" ]] && continue
+    info="$(timeout 5 ros2 node info "$node" 2>/dev/null || true)"
+    if awk -v service="$service" '
+      /^  Service Servers:/ { in_servers=1; next }
+      /^  Service Clients:/ { in_servers=0 }
+      in_servers && $1 == service ":" { found=1 }
+      END { exit !found }
+    ' <<<"$info"; then
+      return 0
+    fi
+  done < <(timeout 5 ros2 node list 2>/dev/null || true)
+  return 1
+}
+
+action_server_ok() {
+  local info
+  info="$(timeout 5 ros2 action info "$1" 2>/dev/null || true)"
+  grep -Eq 'Action servers:[[:space:]]*[1-9][0-9]*' <<<"$info"
 }
 
 if [[ "${ros_ok}" == "true" ]]; then
   # sport mode
   sport_ok="false"
-  sport_mode="$(timeout 6 ros2 topic echo /lf/sportmodestate --once --qos-reliability best_effort --field mode 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
-  sport_error="$(timeout 6 ros2 topic echo /lf/sportmodestate --once --qos-reliability best_effort --field error_code 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
+  sport_mode="$(timeout 6 ros2 topic echo /lf/sportmodestate --once --field mode 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
+  sport_error="$(timeout 6 ros2 topic echo /lf/sportmodestate --once --field error_code 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
   if [[ "${sport_mode}" == "1" && "${sport_error}" == "0" ]]; then
     sport_ok="true"
   fi
@@ -121,17 +139,17 @@ if [[ "${ros_ok}" == "true" ]]; then
 
   # safety topics
   lidar_fresh="false"
-  fresh_value="$(timeout 6 ros2 topic echo /go2w/safety/lidar_fresh --once --qos-reliability best_effort --field data 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
+  fresh_value="$(timeout 6 ros2 topic echo /go2w/safety/lidar_fresh --once --field data 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
   [[ "${fresh_value}" == "True" || "${fresh_value}" == "true" ]] && lidar_fresh="true"
   set_check lidar_fresh "${lidar_fresh}"
   rotation_clearance="false"
-  rc_value="$(timeout 6 ros2 topic echo /go2w/safety/rotation_clearance_valid --once --qos-reliability best_effort --field data 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
+  rc_value="$(timeout 6 ros2 topic echo /go2w/safety/rotation_clearance_valid --once --field data 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
   [[ "${rc_value}" == "True" || "${rc_value}" == "true" ]] && rotation_clearance="true"
   set_check rotation_clearance_valid "${rotation_clearance}"
 
   # motion action + services
   motion="false"
-  timeout 5 ros2 action info /go2w/motion >/dev/null 2>&1 && motion="true"
+  action_server_ok /go2w/motion && motion="true"
   set_check motion_action "${motion}"
   set_check arm_service "$(service_ok /go2w/arm && echo true || echo false)"
   set_check emergency_stop_service "$(service_ok /go2w/emergency_stop && echo true || echo false)"

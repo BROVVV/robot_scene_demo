@@ -222,3 +222,17 @@ def test_search_estop_endpoint(tmp_path) -> None:
         result = client.post("/api/search/estop").json()
         assert result["ok"] is True
         assert client.get("/api/status").json()["owner"]["owner"] == "ESTOP"
+
+
+def test_estop_reset_allows_next_search_after_health_checks(tmp_path) -> None:
+    client, _ = make_app(tmp_path)
+    with client:
+        client.post("/api/estop")
+        assert client.post("/api/search/start", json={"target": "x"}).status_code == 409
+        reset = client.post("/api/estop/reset")
+        assert reset.status_code == 200
+        assert reset.json()["status"] == "RESET"
+        assert client.get("/api/status").json()["owner"]["owner"] == "NONE"
+        started = client.post("/api/search/start", json={"target": "x"}).json()
+        assert started["ok"] is True
+        client.post("/api/search/stop")

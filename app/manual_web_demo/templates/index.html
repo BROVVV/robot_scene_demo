@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Go2-W 自主语义搜索控制台</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css?v=estop-reset-20260819" />
 </head>
 <body>
   <header class="topbar">
@@ -18,6 +18,7 @@
       <span class="light" id="light-ws"><i></i>WebSocket</span>
     </div>
     <button id="btn-estop" class="estop" disabled>紧急停止</button>
+    <button id="btn-estop-reset" class="reset-estop" type="button" title="确认机器人已停止且场地安全后解除 WebUI 急停锁存">解除急停</button>
   </header>
 
   <nav class="tabs" id="tabs">
@@ -37,8 +38,8 @@
         <button id="btn-search-resume" disabled>继续</button>
         <button id="btn-search-stop" class="danger" disabled>停止</button>
         <button id="btn-search-estop" class="estop" disabled>急停</button>
-        <label class="debug-toggle" title="允许自主搜索驱动机器人（<=30° 转向 / <=0.30m 前进，经既有运动安全门）">
-          <input type="checkbox" id="chk-motion" /> 自主运动
+        <label class="debug-toggle" title="operator_supervised_experiment：操作者持遥控器监督，转向≤30°、前进≤0.30m">
+          <input type="checkbox" id="chk-motion" checked /> 操作者监督自主运动
         </label>
         <label class="debug-toggle"><input type="checkbox" id="chk-debug" /> 调试</label>
         <span id="search-session-info" class="session-info"></span>
@@ -49,7 +50,10 @@
         <div class="cell cell-camera">
           <div class="cell-title">相机 <span id="scam-age" class="sub">--</span></div>
           <div class="camera-wrap">
-            <img id="search-camera" src="/api/d435.mjpeg" alt="实时相机" />
+            <!-- Reuse the ROS worker's fresh camera stream.  The old direct
+                 D435 proxy path inherited a SOCKS proxy on some hosts and
+                 rendered a permanently blank search preview. -->
+            <img id="search-camera" src="/api/camera.mjpeg" alt="实时相机" />
             <canvas id="search-overlay" width="640" height="480"></canvas>
             <div class="camera-overlay">
               <span id="scam-fps">-- FPS</span>
@@ -208,7 +212,7 @@
   </main>
 
   <script src="/static/search_map.js"></script>
-  <script src="/static/search_ui.js"></script>
-  <script src="/static/app.js"></script>
+  <script src="/static/search_ui.js?v=estop-reset-20260819"></script>
+  <script src="/static/app.js?v=estop-reset-20260819"></script>
 </body>
 </html>

@@ -11,6 +11,15 @@ control_root="${GO2W_CONTROL_ROOT:-${project_root}/unitree_go2w_control}"
 unitree_root="${GO2W_UNITREE_ROOT:-${HOME}/unitree_ros2}"
 unitree_url="https://github.com/unitreerobotics/unitree_ros2.git"
 
+# ROSIDL/colcon must run with the Ubuntu Humble system Python.  A parent
+# Conda/ROS1 shell otherwise makes CMake invoke the wrong interpreter (and
+# hides Humble's python3-empy module).
+unset ROS_DISTRO ROS_VERSION ROS_PYTHON_VERSION ROS_ROOT ROS_PACKAGE_PATH
+unset ROS_MASTER_URI ROSLISP_PACKAGE_DIRECTORIES AMENT_PREFIX_PATH COLCON_PREFIX_PATH
+unset CONDA_PREFIX CONDA_DEFAULT_ENV CONDA_PROMPT_MODIFIER CONDA_SHLVL PYTHONHOME PYTHONPATH
+unset LD_LIBRARY_PATH CMAKE_PREFIX_PATH
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 die() {
   printf 'ERROR: %s\n' "$*" >&2
   exit 2
@@ -52,7 +61,7 @@ set -u
 printf 'Building official Unitree ROS 2 message packages ...\n'
 (
   cd "${unitree_root}/cyclonedds_ws"
-  colcon build --symlink-install --event-handlers console_direct+
+  colcon build --symlink-install --cmake-clean-cache --event-handlers console_direct+
 )
 
 set +u
@@ -63,7 +72,7 @@ set -u
 printf 'Building bundled Go2-W motion interfaces and controller ...\n'
 (
   cd "${control_root}/ros2_ws"
-  colcon build --symlink-install --event-handlers console_direct+ \
+  colcon build --symlink-install --cmake-clean-cache --event-handlers console_direct+ \
     --packages-select go2w_motion_interfaces go2w_motion_control \
     --cmake-args \
       -DPython3_EXECUTABLE=/usr/bin/python3 \
@@ -74,18 +83,18 @@ printf 'Building bundled Go2-W motion interfaces and controller ...\n'
 # it in a project-local venv so it does not alter the workstation's system
 # Python. The launch file can also use PYTHONPATH when this venv is absent.
 venv="${control_root}/.venv"
-venv_is_system_python="false"
-if [[ -x "${venv}/bin/python" ]]; then
-  system_python_real="$(readlink -f /usr/bin/python3)"
-  venv_python_real="$(readlink -f "${venv}/bin/python")"
-  [[ "${venv_python_real}" == "${system_python_real}" ]] && \
-    venv_is_system_python="true"
+venv_needs_recreate="false"
+if [[ ! -x "${venv}/bin/python" || ! -x "${venv}/bin/pip" || \
+      ! -f "${venv}/pyvenv.cfg" || \
+      "$(grep -E '^include-system-site-packages = ' "${venv}/pyvenv.cfg" 2>/dev/null || true)" \
+        != "include-system-site-packages = true" ]]; then
+  venv_needs_recreate="true"
 fi
-if [[ ! -x "${venv}/bin/python" || "${venv_is_system_python}" != true ]]; then
-  if [[ -x "${venv}/bin/python" ]]; then
+if [[ "${venv_needs_recreate}" == true ]]; then
+  if [[ -e "${venv}" ]]; then
     rm -rf "${venv}"
   fi
-  /usr/bin/python3 -m venv "${venv}"
+  /usr/bin/python3 -m venv --system-site-packages "${venv}"
 fi
 
 # Some development hosts export a SOCKS proxy without installing the Python
