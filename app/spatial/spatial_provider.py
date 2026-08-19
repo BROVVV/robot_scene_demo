@@ -1,6 +1,6 @@
 """SpatialProvider: unified spatial/map interface used by the exploration core.
 
-This protocol keeps UniGoal / PSG / LongTermGoalSelector decoupled from
+This protocol keeps SemanticNavigation / PSG / LongTermGoalSelector decoupled from
 RTAB-Map, ROS topics and camera-local implementation details.
 """
 

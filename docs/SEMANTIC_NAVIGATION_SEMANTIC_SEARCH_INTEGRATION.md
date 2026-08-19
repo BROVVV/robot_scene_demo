@@ -1,6 +1,6 @@
-# UniGoal-style 语义搜索融合
+# SemanticNavigation-style 语义搜索融合
 
-本项目没有把 UniGoal 的 Habitat、RGB-D mapper、FMM、Grounded-SAM 或
+本项目没有把 SemanticNavigation 的 Habitat、RGB-D mapper、FMM、Grounded-SAM 或
 `real_world_env` 整仓接入。当前实现只按其公开的 Goal Graph、在线 Scene Graph
 matching、分阶段 search policy 和 negative memory 思想，基于本项目现有接口重新
 实现了一个可回滚的“下一视角”推理层。
@@ -25,7 +25,7 @@ stable REOBSERVE event → existing full scene analysis
                      → ObservedSceneGraphBuilder
 GoalGraph + observed SceneGraph + session negative memory
                      → explainable graph match
-                     → legacy / unigoal / hybrid reasoner
+                     → legacy / semantic_navigation / hybrid reasoner
                      → SearchDirective
                      → directive_to_step_plan
                      → existing safety and short-step chain
@@ -37,7 +37,7 @@ Semantic observer 是事件驱动和带 TTL 缓存的；不会按 15–28 Hz 相
 ## 后端与运行模式
 
 - `legacy`：严格保留原 `plan_scan_step()`。
-- `unigoal`：按 zero / partial / strong graph match 选择未观察方向或 anchor。
+- `semantic_navigation`：按 zero / partial / strong graph match 选择未观察方向或 anchor。
 - `hybrid`：优先真实观察图和负证据，不能形成可靠 directive 时回退 legacy。
 - `shadow`：记录 semantic directive，但实际执行一定使用 legacy step。
 - `active`：只有 directive 置信度达标且能安全转换时才使用 semantic step；否则自动
@@ -82,7 +82,7 @@ python run_live_robot_demo.py \
   --max-motion-steps 1 \
   --min-rotation-clearance 0.511 \
   --odom-topic /go2w/odom/fused \
-  --output outputs/live_sessions/unigoal_shadow.jsonl
+  --output outputs/live_sessions/semantic_navigation_shadow.jsonl
 ```
 
 狭窄现场首轮必须同时使用上述四个附加门：初始前向半圆、最终执行器禁止所有 forward、
@@ -110,7 +110,7 @@ Runner 主 JSONL 会写：
 - PSG / precomputed situated-prior 的 enabled/available/used refs，以及 replan cache 状态
 - `semantic_reasoner_error` 和 legacy fallback
 
-observe-only pipeline 还会写 `goal_graph.json`、`unigoal_match.json`、
+observe-only pipeline 还会写 `goal_graph.json`、`semantic_navigation_match.json`、
 `search_directive.json`。离线比较：
 
 ```bash
@@ -128,7 +128,7 @@ python scripts/evaluate_live_search_reasoners.py \
   `null`，不会臆造；`success_proxy` 仅代表存在候选视觉证据，不等于 target confirmed。
 
 现场保存 session 的离线 A/B 证据位于
-`outputs/reasoner_evaluation/{phone_live_20260806,unigoal_live_20260813_01,unigoal_live_20260813_02,unigoal_live_20260813_03}`。
+`outputs/reasoner_evaluation/{phone_live_20260806,semantic_navigation_live_20260813_01,semantic_navigation_live_20260813_02,semantic_navigation_live_20260813_03}`。
 
 带显式关系约束的目标确认还要求
 `TARGET_CONFIRMATION_REQUIRE_RELATION_EVIDENCE`：crop/track 负责确认主体视觉身份，
@@ -145,12 +145,12 @@ GoalGraph 与 Observed SceneGraph 必须同时给出 strong relation match。Rea
 - map goal 与 Nav2（等待 Level D/Nav2 gate）。
 
 上述真机 shadow 安全验收证据位于
-`outputs/go2w_acceptance/unigoal_shadow_fail_closed_20260813/result.json`。状态机模式现在
+`outputs/go2w_acceptance/semantic_navigation_shadow_fail_closed_20260813/result.json`。状态机模式现在
 延迟到某一步通过边界、旋转有效性与 LiDAR freshness 后才 arm；被门禁拒绝的 shadow
 不会访问 arm/急停服务。quick 检测若明确返回目标不存在，可复用其场景摘要形成不含
 伪造物体/关系的 zero-match 观察，避免对同一稳定帧重复调用 full-scene API。
 
-本实现没有复制 UniGoal 源文件，因此不新增 vendored 第三方代码；算法来源说明保留
+本实现没有复制 SemanticNavigation 源文件，因此不新增 vendored 第三方代码；算法来源说明保留
 在本文件和改动计划中。未来若复制上游 MIT 源码，必须补充第三方 notice。
 
 ## 长期与短期记忆边界

@@ -4,22 +4,22 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.reasoning.unigoal.goal_graph_builder import GoalGraphBuilder
-from app.reasoning.unigoal.graph_matcher import UniGoalGraphMatcher
-from app.reasoning.unigoal.models import SearchDirective, SearchReasoningContext
-from app.reasoning.unigoal.search_reasoner import HybridReasoner, LegacyReasoner, UniGoalReasoner
+from app.reasoning.semantic_navigation.goal_graph_builder import GoalGraphBuilder
+from app.reasoning.semantic_navigation.graph_matcher import SemanticNavigationGraphMatcher
+from app.reasoning.semantic_navigation.models import SearchDirective, SearchReasoningContext
+from app.reasoning.semantic_navigation.search_reasoner import HybridReasoner, LegacyReasoner, SemanticNavigationReasoner
 
 
 class SearchReasonerRouter:
     def __init__(self, backend: str = "legacy", *, partial_threshold: float = 0.30,
                  strong_threshold: float = 0.72) -> None:
-        if backend not in {"legacy", "unigoal", "hybrid"}:
+        if backend not in {"legacy", "semantic_navigation", "hybrid"}:
             raise ValueError(f"unsupported search reasoner backend: {backend}")
         self.backend = backend
-        self.matcher = UniGoalGraphMatcher(partial_threshold, strong_threshold)
+        self.matcher = SemanticNavigationGraphMatcher(partial_threshold, strong_threshold)
         self.reasoner = {
             "legacy": LegacyReasoner(),
-            "unigoal": UniGoalReasoner(),
+            "semantic_navigation": SemanticNavigationReasoner(),
             "hybrid": HybridReasoner(),
         }[backend]
 

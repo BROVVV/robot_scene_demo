@@ -444,8 +444,8 @@ def rotation_lease_stage2_scope_errors(
         errors.append("mode must be state_machine_search")
     if not semantic_reasoning:
         errors.append("--semantic-reasoning is required")
-    if search_reasoner not in {"unigoal", "hybrid"}:
-        errors.append("reasoner must be unigoal or hybrid")
+    if search_reasoner not in {"semantic_navigation", "hybrid"}:
+        errors.append("reasoner must be semantic_navigation or hybrid")
     if search_reasoner_mode != "active":
         errors.append("reasoner mode must be active")
     if not turn_only:

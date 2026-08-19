@@ -1,15 +1,15 @@
-# UniGoal V1 现有实现审计报告（2026-08-13）
+# SemanticNavigation V1 现有实现审计报告（2026-08-13）
 
 > 项目：`/home/brov/robot/robot_scene_demo`
 > 基线 HEAD：`e861b953ba195e1a47bcdb9491f955e69c5ae451`
-> 审计性质：KEEP-only。只确认现有 UniGoal V1 可直接接续，不重写、不"统一风格"大重构。
-> 审计范围：`app/reasoning/unigoal/*`、`app/live_robot/*` 与安全链、ROS `go2w_lidar_preprocessor` 包、脚本与配置。
+> 审计性质：KEEP-only。只确认现有 SemanticNavigation V1 可直接接续，不重写、不"统一风格"大重构。
+> 审计范围：`app/reasoning/semantic_navigation/*`、`app/live_robot/*` 与安全链、ROS `go2w_lidar_preprocessor` 包、脚本与配置。
 
 ---
 
 ## 1. 结论
 
-UniGoal V1 软件核心**完整且可原地接续**。Observe-only 与 Shadow 已通过；
+SemanticNavigation V1 软件核心**完整且可原地接续**。Observe-only 与 Shadow 已通过；
 Active turn-only / short-forward 被安全证据缺口阻塞，而不是被算法缺口阻塞。
 
 | 模块 | 结论 |
@@ -29,12 +29,12 @@ Active turn-only / short-forward 被安全证据缺口阻塞，而不是被算�
 - PandarXT-16 尚无正式外参、自遮挡、时钟与四向证据；
 - 旧硬件（安装前）四向物理证据不可用于当前硬件运动许可。
 
-## 2. UniGoal 数据流（审计确认）
+## 2. SemanticNavigation 数据流（审计确认）
 
 ```
 TargetProfile
   -> GoalGraphBuilder.build(profile)            # router.py:42
-  -> UniGoalGraphMatcher.match(...)             # router.py:26-32, graph_matcher.py:19
+  -> SemanticNavigationGraphMatcher.match(...)             # router.py:26-32, graph_matcher.py:19
        ZERO / PARTIAL / STRONG（无 confirmed；strong != confirmed）
   -> SearchReasoner.propose(context)            # search_reasoner.py:35-92
   -> SearchDirective（models.py:97-117）
@@ -88,4 +88,4 @@ step_planner 产出候选 step
 - `configs/go2w/official_reference.yaml`（厂商原始 0.50 m 高度不改）
 - `configs/go2w/navigation_gate.yaml`（fail-closed 未解锁）
 - `unitree_go2w_control/*`、`ros2_ws/src/hesai_ros_driver/*`
-- `app/reasoning/unigoal/*` 既有逻辑（只允许修 bug / 补接口）
+- `app/reasoning/semantic_navigation/*` 既有逻辑（只允许修 bug / 补接口）

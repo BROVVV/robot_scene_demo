@@ -164,7 +164,7 @@ LLM 路径特点：
 
 - 物体、关系、目标判断、路线规划主要由视觉大模型一次性给出。
 - 可开启 `ENABLE_LOW_OBJECT_RETRY`，当识别物体少于 `MIN_OBJECTS_FOR_COMPLEX_SCENE` 时追加提示重试一次。
-- 默认模型来自 `SILICONFLOW_MODEL`，当前 `.env.example` 是 `Qwen/Qwen3-VL-8B-Instruct`。
+- 推理模型来自 `SILICONFLOW_REASONING_MODEL`，视觉模型来自 `SILICONFLOW_VISION_MODEL`；当前视觉默认是 `Qwen/Qwen3-VL-8B-Instruct`。
 
 ### 4.2 Grounding DINO + SAM2 本地检测路径
 
@@ -332,7 +332,8 @@ python scripts/evaluate_task_examples.py
 ```text
 SILICONFLOW_API_KEY=
 SILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1
-SILICONFLOW_MODEL=Qwen/Qwen3-VL-8B-Instruct
+SILICONFLOW_REASONING_MODEL=deepseek-ai/DeepSeek-V4-Flash
+SILICONFLOW_VISION_MODEL=Qwen/Qwen3-VL-8B-Instruct
 SILICONFLOW_TIMEOUT_SECONDS=25
 SILICONFLOW_MAX_TOKENS=2048
 IMAGE_MAX_SIDE=640

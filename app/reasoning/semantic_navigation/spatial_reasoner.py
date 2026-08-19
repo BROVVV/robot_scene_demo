@@ -1,4 +1,4 @@
-"""UniGoal V2 spatial reasoner: choose a long-term spatial goal from semantic
+"""SemanticNavigation V2 spatial reasoner: choose a long-term spatial goal from semantic
 match state + frontiers + PSG + PlaceGraph.
 
 This is the V2 replacement for the V1 next-view policy.  It still returns an
@@ -17,7 +17,7 @@ from app.navigation.long_term_goal_selector import (
     LongTermGoalSelector,
     ScoredIntent,
 )
-from app.reasoning.unigoal.models import GraphMatchResult, GraphMatchState
+from app.reasoning.semantic_navigation.models import GraphMatchResult, GraphMatchState
 from app.spatial.models import ExplorationIntent, FrontierCandidate, SemanticPrior
 from app.spatial.place_graph import PlaceGraph
 from app.spatial.semantic_object_map import SemanticObjectMap

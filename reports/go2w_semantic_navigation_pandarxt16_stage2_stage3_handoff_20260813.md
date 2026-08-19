@@ -1,16 +1,16 @@
-# robot_scene_demo × Go2-W × UniGoal × PandarXT-16 Stage 2/3 交接书
+# robot_scene_demo × Go2-W × SemanticNavigation × PandarXT-16 Stage 2/3 交接书
 
 > 交接日期：2026-08-14（Asia/Shanghai，机器狗重启后现场复核）
 > 项目：`/home/brov/robot/robot_scene_demo`
 > 分支：`main`；基线 HEAD：`e861b953ba195e1a47bcdb9491f955e69c5ae451`
 > 工作树：本轮继续原地接续，未 reset/clean；本交接记录本轮 Phase 0–7 全部软件改动。
-> 本轮计划书：`/home/brov/下载/robot_scene_demo_UniGoal_PandarXT16_Stage2_Stage3_一次性改动计划书_20260813.md`
+> 本轮计划书：`/home/brov/下载/robot_scene_demo_SemanticNavigation_PandarXT16_Stage2_Stage3_一次性改动计划书_20260813.md`
 
 ---
 
 ## 0. 一页结论
 
-1. **UniGoal V1 未重做**。Observe-only / Shadow 保持 PASS；Active turn-only /
+1. **SemanticNavigation V1 未重做**。Observe-only / Shadow 保持 PASS；Active turn-only /
    short-forward 仍被安全证据缺口阻塞（不是算法缺口）。
 2. **当前整机几何**为 `0.70 × 0.43 × 0.70 m`，最高点为 **PandarXT-16 固定保护
    框架**（不是松弛电缆）；**本轮没有重新测整机长宽高**。
@@ -72,7 +72,7 @@ scripts/go2w/validate_dual_lidar_observability_ros.py  # 双雷达旋转可观�
 ```text
 app/config.py                         # 新增 PANDARXT16_*/DUAL_LIDAR_*/GO2W_CURRENT_* 设置
 .env.example / .env.go2w              # 同步新环境变量（默认全部 fail-closed）
-app/reasoning/unigoal/models.py       # SearchDirective 可选 safety_intent / requires_* 字段
+app/reasoning/semantic_navigation/models.py       # SearchDirective 可选 safety_intent / requires_* 字段
 app/live_robot/motion_bounds.py       # evaluate_dual_lidar_rotation_gate
 app/live_robot/rotation_lease.py      # hardware_binding（expected_binding 校验 + build 助手）
 app/live_robot/frame_bundle_reader.py # 可选 pandar/dual_lidar 状态段 + 读取助手
@@ -212,8 +212,8 @@ mount 改变 -> 外参与 lease 自动失效  motion steps=0
 
 本轮把 Pandar 从"隔离出云"推进到"诊断预处理 + 双雷达证据融合 + 可观测性 +
 安全门 + 硬件绑定 + Stage 2/3 readiness"的完整软件层，同时保持全链路 fail-closed。
-UniGoal V1 与内置安全链没有重做或绕过。代码在真实物理证据通过时可直接进入
-UniGoal Active turn-only，再进入 short-forward，而不需要再次大改软件架构。
+SemanticNavigation V1 与内置安全链没有重做或绕过。代码在真实物理证据通过时可直接进入
+SemanticNavigation Active turn-only，再进入 short-forward，而不需要再次大改软件架构。
 
 ---
 
@@ -276,9 +276,9 @@ UniGoal Active turn-only，再进入 short-forward，而不需要再次大改软
 - 证据：`outputs/go2w_acceptance/semantic_turn_execute.jsonl` + `semantic_turn_execute.mp4`。
 
 ### A.7 修复一个真实 bug
-- `app/reasoning/unigoal/models.py` 的 `GoalGraph.to_dict()` 引用了不存在的
+- `app/reasoning/semantic_navigation/models.py` 的 `GoalGraph.to_dict()` 引用了不存在的
   `self.observation_memory`，导致 observe 模式输出序列化崩溃。已修复，17 项
-  UniGoal 回归测试通过。**不要重新引入**。
+  SemanticNavigation 回归测试通过。**不要重新引入**。
 
 ## B. 关键发现（下一位 AI 必须知道）
 
@@ -382,7 +382,7 @@ Pandar 驱动 + 诊断预处理: 运行中
 
 本轮在真实机器狗上完成了：感知/运动/Pandar 栈启动与验证、时钟/可观测性诊断、
 **当前硬件自过滤修正**（Pandar 框架 + 轮胎掩码）、**odom 重锚定**、**操作者授权
-旋转功能**、**单次转向验证**、**检测颜色幻觉定位**、**UniGoal reasoner 决策→实际
+旋转功能**、**单次转向验证**、**检测颜色幻觉定位**、**SemanticNavigation reasoner 决策→实际
 转向 30° 闭环验证**，以及一个真实 bug 修复（GoalGraph.to_dict）。四向证据/lease/
 Pandar 外参/Stage 2 正式 readiness 因办公环境与真机标定未完成而延后，下一步应在
 净空场地重采四向证据并推进多场景外参标定。

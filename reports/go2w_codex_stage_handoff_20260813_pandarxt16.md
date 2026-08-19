@@ -1,4 +1,4 @@
-# robot_scene_demo × Go2-W × UniGoal 阶段交接书（重点：外接 PandarXT-16）
+# robot_scene_demo × Go2-W × SemanticNavigation 阶段交接书（重点：外接 PandarXT-16）
 
 > 交接日期：2026-08-13（Asia/Shanghai）  
 > 项目：`/home/brov/robot/robot_scene_demo`  
@@ -13,10 +13,10 @@
 
 1. 两份用户计划书是：
    - `/home/brov/下载/robot_scene_demo_go2w_builtin_rgb_lidar_codex_implementation_plan.md`
-   - `/home/brov/下载/robot_scene_demo_UniGoal_语义搜索融合详细改动计划书_20260813.md`
+   - `/home/brov/下载/robot_scene_demo_SemanticNavigation_语义搜索融合详细改动计划书_20260813.md`
 2. 内置 RGB、内置 LiDAR/IMU 时间桥、相机内参、静态 LiDAR 预处理、Frame Bundle、
-   状态机、LLM quick/verify 和 UniGoal 风格语义搜索主体已实现。
-3. UniGoal V1 代码层基本完成；真实 Stage 1 observe-only/shadow 已验证，但没有运动。
+   状态机、LLM quick/verify 和 SemanticNavigation 风格语义搜索主体已实现。
+3. SemanticNavigation V1 代码层基本完成；真实 Stage 1 observe-only/shadow 已验证，但没有运动。
    Stage 2 active turn-only 和 Stage 3 short-forward 尚未通过。
 4. 内置 LiDAR 的正前碰撞高度误报和左轮自回波已修正，但它对整机 `0.511 m` 原地旋转
    扫掠环带在 720/720 个方向存在不可观测空间。因此：
@@ -46,7 +46,7 @@
 
 1. 本交接书；
 2. `README.md` 顶部“Go2-W 真机项目当前进度还原指南（2026-08-13）”；
-3. `reports/go2w_unigoal_semantic_search_handoff_20260813.md`；
+3. `reports/go2w_semantic_navigation_semantic_search_handoff_20260813.md`；
 4. `reports/go2w_pandarxt16_mount_candidate_20260813.md`；
 5. 两份用户计划书；
 6. `reports/go2w_codex_handoff_20260813.md`；
@@ -160,7 +160,7 @@ GO2W_MOTION_READY
 关节位置、速度、力矩控制
 ReleaseMode() / Damp()
 修改固件或关闭厂商安全保护
-由 LLM/UniGoal 直接发布运动
+由 LLM/SemanticNavigation 直接发布运动
 把 RGB 像素或候选图节点伪装成米制 map goal
 ```
 
@@ -321,11 +321,11 @@ metric 3D topics=0 messages
 
 ---
 
-## 5. UniGoal 语义搜索计划完成情况
+## 5. SemanticNavigation 语义搜索计划完成情况
 
 ### 5.1 已实现
 
-`app/reasoning/unigoal/` 已有 models、GoalGraphBuilder、GraphMatcher、SemanticMemory、
+`app/reasoning/semantic_navigation/` 已有 models、GoalGraphBuilder、GraphMatcher、SemanticMemory、
 reasoner/router 和 auxiliary hints：
 
 - 复用 `TargetProfile`；target/explicit anchor/inferred context 分级；
@@ -336,7 +336,7 @@ reasoner/router 和 auxiliary hints：
 - event-driven `LiveSemanticObserver`、TTL、heading/profile/pose cache；
 - session negative memory、TTL、sector penalty、解封；
 - 长期 ObservationMemoryStore 只读检索，不永久写每次失败 scan；
-- legacy/unigoal/hybrid；
+- legacy/semantic_navigation/hybrid；
 - directive 转 StepPlan，转向硬 clamp <=30°；
 - forward 默认禁用；异常、低置信度自动 fallback legacy；
 - PSG/situated prior 只作弱辅助，不能覆盖视觉事实/负证据；
@@ -353,7 +353,7 @@ Runner/视觉链还完成：
 - `TARGET_CONFIRMATION_REQUIRE_RELATION_EVIDENCE`；
 - strong graph match 不直接确认目标。
 
-配置/CLI 已支持 semantic、legacy|unigoal|hybrid、shadow|active、no-forward。仓库默认仍是：
+配置/CLI 已支持 semantic、legacy|semantic_navigation|hybrid、shadow|active、no-forward。仓库默认仍是：
 
 ```text
 disabled + legacy + shadow + no-forward
@@ -669,16 +669,16 @@ outputs/go2w_acceptance/lidar_rotation_observability_20260813/result.json
 outputs/go2w_acceptance/live_bundle_current_scene_20260813/result.json
 ```
 
-### 8.2 RGB–LiDAR 与 UniGoal
+### 8.2 RGB–LiDAR 与 SemanticNavigation
 
 ```text
 outputs/go2w_acceptance/rgb_lidar_geometry_tier_20260813/result.json
 outputs/go2w_acceptance/frame_bundle_geometry_tier_20260813/result.json
-outputs/live_runs/unigoal_observe_20260813_01/
-outputs/live_runs/unigoal_observe_20260813_03/
-outputs/live_runs/unigoal_context_verify_replay_20260813/
-outputs/live_sessions/unigoal_shadow_fail_closed_20260813_03.jsonl
-outputs/go2w_acceptance/unigoal_shadow_fail_closed_20260813/result.json
+outputs/live_runs/semantic_navigation_observe_20260813_01/
+outputs/live_runs/semantic_navigation_observe_20260813_03/
+outputs/live_runs/semantic_navigation_context_verify_replay_20260813/
+outputs/live_sessions/semantic_navigation_shadow_fail_closed_20260813_03.jsonl
+outputs/go2w_acceptance/semantic_navigation_shadow_fail_closed_20260813/result.json
 ```
 
 ### 8.3 旧旋转物理工具证据（不得授权当前硬件）
@@ -708,8 +708,8 @@ reports/go2w_pandarxt16_mount_candidate_20260813.md
 ## 9. 测试与构建基线
 
 ```text
-UniGoal 初期新增/受影响 unittest: 53 tests OK
-UniGoal pytest focus:             25 passed
+SemanticNavigation 初期新增/受影响 unittest: 53 tests OK
+SemanticNavigation pytest focus:             25 passed
 现场链修复集中回归:              51 passed
 关系 crop/tracker 回归:           23 passed
 广泛回归（已知基线排除）:        244 passed, 1 deselected
@@ -728,11 +728,11 @@ git diff --check:                PASS
 
 ```bash
 conda run -n go2_robot_scene_demo python -m pytest -q \
-  tests/test_unigoal_goal_graph_builder.py \
-  tests/test_unigoal_graph_matcher.py \
-  tests/test_unigoal_semantic_memory.py \
-  tests/test_unigoal_search_reasoner.py \
-  tests/test_unigoal_auxiliary_hints.py \
+  tests/test_semantic_navigation_goal_graph_builder.py \
+  tests/test_semantic_navigation_graph_matcher.py \
+  tests/test_semantic_navigation_semantic_memory.py \
+  tests/test_semantic_navigation_search_reasoner.py \
+  tests/test_semantic_navigation_auxiliary_hints.py \
   tests/test_search_directive_adapter.py \
   tests/test_live_semantic_observer.py \
   tests/test_step_search_runner_semantic_reasoning.py \
@@ -750,21 +750,21 @@ Python message import、订阅和字段读取已通过，不要把 CLI 显示问
 
 ## 10. 当前改动文件地图
 
-### 10.1 UniGoal / live search 新文件
+### 10.1 SemanticNavigation / live search 新文件
 
 ```text
-app/reasoning/unigoal/__init__.py
-app/reasoning/unigoal/models.py
-app/reasoning/unigoal/goal_graph_builder.py
-app/reasoning/unigoal/graph_matcher.py
-app/reasoning/unigoal/semantic_memory.py
-app/reasoning/unigoal/search_reasoner.py
-app/reasoning/unigoal/router.py
-app/reasoning/unigoal/auxiliary_hints.py
+app/reasoning/semantic_navigation/__init__.py
+app/reasoning/semantic_navigation/models.py
+app/reasoning/semantic_navigation/goal_graph_builder.py
+app/reasoning/semantic_navigation/graph_matcher.py
+app/reasoning/semantic_navigation/semantic_memory.py
+app/reasoning/semantic_navigation/search_reasoner.py
+app/reasoning/semantic_navigation/router.py
+app/reasoning/semantic_navigation/auxiliary_hints.py
 app/live_robot/semantic_observer.py
 app/live_robot/search_directive_adapter.py
 scripts/evaluate_live_search_reasoners.py
-docs/UNIGOAL_SEMANTIC_SEARCH_INTEGRATION.md
+docs/SEMANTIC_NAVIGATION_SEMANTIC_SEARCH_INTEGRATION.md
 ```
 
 ### 10.2 运动边界和旋转许可新文件
@@ -829,11 +829,11 @@ scripts/go2w/validate_rgb_lidar_fusion_gate_ros.py
 ### 10.5 主要新增测试
 
 ```text
-tests/test_unigoal_goal_graph_builder.py
-tests/test_unigoal_graph_matcher.py
-tests/test_unigoal_semantic_memory.py
-tests/test_unigoal_search_reasoner.py
-tests/test_unigoal_auxiliary_hints.py
+tests/test_semantic_navigation_goal_graph_builder.py
+tests/test_semantic_navigation_graph_matcher.py
+tests/test_semantic_navigation_semantic_memory.py
+tests/test_semantic_navigation_search_reasoner.py
+tests/test_semantic_navigation_auxiliary_hints.py
 tests/test_search_directive_adapter.py
 tests/test_live_semantic_observer.py
 tests/test_step_search_runner_semantic_reasoning.py
@@ -879,7 +879,7 @@ ros2_ws/src/go2w_lidar_preprocessor/test/test_rotation_crosscheck.py
 - Collision Monitor/Velocity Smoother 端到端未验收；
 - LiDAR/LIO/lease 丢失后的组合 STOP 场景未全跑。
 
-### P4：UniGoal 真机能力
+### P4：SemanticNavigation 真机能力
 
 - Stage 2 active turn-only 未运行成功；
 - Stage 3 semantic short-forward 未开始；
@@ -949,7 +949,7 @@ confirmed=false until thresholds pass
 5. 检查 pose drift、hash chain、方向、距离、点数增量或中位距离替换；
 6. 生成当前硬件唯一的短时 pose-bound lease。
 
-### Step 6：UniGoal Stage 2 active turn-only
+### Step 6：SemanticNavigation Stage 2 active turn-only
 
 仅在 Step 5 全通过后保持：
 
@@ -1020,8 +1020,8 @@ bash scripts/go2w/build_ros2.sh
 bash scripts/go2w/stop_all.sh
 ```
 
-停止脚本只应处理项目拥有的进程，不要批量杀未知 ROS/用户进程。UniGoal observe/shadow
-命令以 README 和 `docs/UNIGOAL_SEMANTIC_SEARCH_INTEGRATION.md` 为准；任何 active 命令都
+停止脚本只应处理项目拥有的进程，不要批量杀未知 ROS/用户进程。SemanticNavigation observe/shadow
+命令以 README 和 `docs/SEMANTIC_NAVIGATION_SEMANTIC_SEARCH_INTEGRATION.md` 为准；任何 active 命令都
 必须先确认当前物理门，不能因代码支持就执行。
 
 ---
@@ -1042,7 +1042,7 @@ bash scripts/go2w/stop_all.sh
 [ ] 没有把照片候选发布为正式 TF。
 [ ] 没把 Point-LIO yaw PASS 写成 translation PASS。
 [ ] 没把 diagnostic overlay 写成 metric 3D PASS。
-[ ] 没让 UniGoal strong_match 确认目标。
+[ ] 没让 SemanticNavigation strong_match 确认目标。
 [ ] 没启用 Nav2 execute。
 ```
 
@@ -1054,7 +1054,7 @@ bash scripts/go2w/stop_all.sh
 
 > 在最终固定的 PandarXT-16 硬件状态下，得到可重复的多场景外参、明确的时钟/零回波/
 > 自遮挡报告、实测整机 envelope，并重做空场+四向实体检测，使证据能生成短时、位置绑定、
-> 只覆盖一次原位转向的许可；随后才执行 UniGoal Stage 2 的一次 turn-only 真机 A/B。
+> 只覆盖一次原位转向的许可；随后才执行 SemanticNavigation Stage 2 的一次 turn-only 真机 A/B。
 
 完成前必须保持：
 
@@ -1072,9 +1072,9 @@ motion steps=0
 
 ## 16. 最终交接摘要
 
-本阶段没有把 UniGoal 或新雷达变成绕过安全链的控制器。已完成：
+本阶段没有把 SemanticNavigation 或新雷达变成绕过安全链的控制器。已完成：
 
-- 可回滚、可 shadow、可审计的 UniGoal 风格 semantic next-view；
+- 可回滚、可 shadow、可审计的 SemanticNavigation 风格 semantic next-view；
 - 真实 2D 视觉关系和 evidence gate；
 - 内置 LiDAR 误障碍修正与旋转盲区硬门；
 - 固定原始半平面/半径和短时物理许可软件；

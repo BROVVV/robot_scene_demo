@@ -29,7 +29,7 @@ from app.live_robot.step_planner import (
     verify_rejection_step,
 )
 from app.live_robot.search_directive_adapter import directive_to_step_plan
-from app.reasoning.unigoal.models import SearchDirective, SearchReasoningContext
+from app.reasoning.semantic_navigation.models import SearchDirective, SearchReasoningContext
 
 
 @dataclass(frozen=True)
@@ -186,7 +186,7 @@ class StepSearchRunner:
         )
         enabled = (
             self.config.semantic_reasoning_enabled
-            and self.config.search_reasoner_backend in {"unigoal", "hybrid"}
+            and self.config.search_reasoner_backend in {"semantic_navigation", "hybrid"}
             and self._reason_next_view is not None
         )
         if not enabled:

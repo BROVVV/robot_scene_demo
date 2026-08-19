@@ -1,8 +1,8 @@
 # PandarXT-16 双雷达安全集成说明
 
 > 2026-08-13 · 项目：`/home/brov/robot/robot_scene_demo`
-> 原则：**UniGoal 负责"去哪看"，双雷达安全层负责"能不能动"**。Pandar 永远不能
-> 成为绕过安全链的第二个控制器；UniGoal 也不能因 strong match 直接运动。
+> 原则：**SemanticNavigation 负责"去哪看"，双雷达安全层负责"能不能动"**。Pandar 永远不能
+> 成为绕过安全链的第二个控制器；SemanticNavigation 也不能因 strong match 直接运动。
 
 ---
 
@@ -10,7 +10,7 @@
 
 | 层 | 负责 | 禁止 |
 |---|---|---|
-| UniGoal / Hybrid Reasoner | GoalGraph、SceneGraph 匹配、SearchDirective | 不确认目标；不带 `authorizes_motion` |
+| SemanticNavigation / Hybrid Reasoner | GoalGraph、SceneGraph 匹配、SearchDirective | 不确认目标；不带 `authorizes_motion` |
 | search_directive_adapter | SearchDirective -> StepPlan（yaw clamp <= 30°） | 不 bypass 安全门 |
 | Existing Physical Safety Gate | motion bounds / odom radius / mode / error | 不直接发布运动 |
 | 双雷达安全证据层 | builtin L2 + Pandar 的 provenance 证据、旋转可观测性 | 不简单 concat 后宣称 clear |

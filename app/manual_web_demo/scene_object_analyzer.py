@@ -159,7 +159,7 @@ def analyze_scene_objects(
         + base64.b64encode(image_bytes).decode("ascii")
     )
     response = client.client.chat.completions.create(
-        model=demo_settings.siliconflow_model,
+        model=demo_settings.vision_model,
         messages=[
             {"role": "system", "content": _SCENE_OBJECT_SYSTEM_PROMPT},
             {
@@ -185,7 +185,7 @@ def analyze_scene_objects(
     return {
         "objects": objects,
         "scene_summary": scene_summary,
-        "model": demo_settings.siliconflow_model,
+        "model": demo_settings.vision_model,
     }
 
 

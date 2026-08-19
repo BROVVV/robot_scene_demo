@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.reasoning.unigoal.auxiliary_hints import (
+from app.reasoning.semantic_navigation.auxiliary_hints import (
     build_precomputed_situated_prior_hints,
     build_psg_auxiliary_hints,
 )

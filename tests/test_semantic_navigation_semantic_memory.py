@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.reasoning.unigoal.semantic_memory import SemanticSearchMemory
+from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
 
 
 class SemanticMemoryTests(unittest.TestCase):

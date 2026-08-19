@@ -18,7 +18,7 @@ backend:
 
 high_level:
   semantic_reasoning: true
-  reasoner: unigoal
+  reasoner: semantic_navigation
   continuous_exploration: true
 
 manual_calibration_requirements:

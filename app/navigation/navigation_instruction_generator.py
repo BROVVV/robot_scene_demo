@@ -1,4 +1,4 @@
-"""Generate human-readable instructions from a visual navigation plan."""
+"""Generate precise human-readable instructions from any NavigationPlan."""
 
 from __future__ import annotations
 
@@ -9,21 +9,26 @@ from .models import NavigationPlan, Pose2D
 
 
 def generate_navigation_instructions(plan: NavigationPlan) -> list[dict[str, Any]]:
-    unit = "m" if plan.scale_status == "metric" else "个相对单位"
-    distance_word = "前进约" if plan.scale_status == "metric" else "沿视频轨迹移动约"
+    unit = "m" if plan.scale_status == "metric" else "相对单位"
+    distance_word = "前进" if plan.scale_status == "metric" else "沿当前路径前进"
     steps = [
         {
             "step": 1,
-            "instruction": "从视频第一帧起点出发。",
+            "instruction": "从当前机器人位置出发。",
             "state": "planned",
             "waypoint_type": "start",
         }
     ]
     counter = 2
     for previous, current in zip(plan.path, plan.path[1:]):
-        turn = _turn_instruction(previous, current)
+        turn, turn_deg = _turn_instruction(previous, current)
         distance = previous.distance_to(current)
-        instruction = f"{turn}{distance_word} {distance:.2f} {unit}。"
+        if turn_deg >= 0.5 and distance >= 0.005:
+            instruction = f"{turn} {distance_word} {distance:.2f} {unit}，停止并重新观察。"
+        elif turn_deg >= 0.5:
+            instruction = f"{turn}，停止并重新观察。"
+        else:
+            instruction = f"{distance_word} {distance:.2f} {unit}，停止并重新观察。"
         steps.append(
             {
                 "step": counter,
@@ -53,14 +58,13 @@ def generate_navigation_instructions(plan: NavigationPlan) -> list[dict[str, Any
     return steps
 
 
-def _turn_instruction(previous: Pose2D, current: Pose2D) -> str:
+def _turn_instruction(previous: Pose2D, current: Pose2D) -> tuple[str, float]:
     heading = math.atan2(current.y - previous.y, current.x - previous.x)
     delta = _normalize_angle(heading - previous.yaw)
-    if delta > 0.45:
-        return "向左调整方向，"
-    if delta < -0.45:
-        return "向右调整方向，"
-    return "沿当前方向"
+    degrees = abs(math.degrees(delta))
+    if degrees >= 0.5:
+        return (("左转" if delta > 0 else "右转") + f" {degrees:.0f}°", degrees)
+    return "沿当前方向", 0.0
 
 
 def _normalize_angle(value: float) -> float:

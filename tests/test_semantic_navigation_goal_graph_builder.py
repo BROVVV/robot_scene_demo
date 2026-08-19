@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from app.reasoning.unigoal.goal_graph_builder import GoalGraphBuilder
+from app.reasoning.semantic_navigation.goal_graph_builder import GoalGraphBuilder
 from app.video.target_profile import TargetProfile
 
 

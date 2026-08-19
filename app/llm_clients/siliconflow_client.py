@@ -44,7 +44,7 @@ class SiliconFlowVisionClient(BaseVisionLLMClient):
         image_data_url = self._image_to_data_url(image_path)
 
         response = self.client.chat.completions.create(
-            model=self.settings.siliconflow_model,
+            model=self.settings.vision_model,
             messages=[
                 {"role": "system", "content": _FAST_SYSTEM_PROMPT},
                 {

@@ -1,4 +1,4 @@
-"""Spatial exploration data models (UniGoal V2 / RGB-D spatial stack).
+"""Spatial exploration data models (SemanticNavigation V2 / RGB-D spatial stack).
 
 These models are platform-independent and JSON-safe.  They intentionally
 separate observed facts (SemanticObjectMap / PlaceGraph) from predictions

@@ -39,7 +39,7 @@
 仓库已经存在并应优先复用：
 
 ```text
-app/reasoning/unigoal/
+app/reasoning/semantic_navigation/
 app/live_robot/
 app/navigation/
 app/planning/
@@ -60,7 +60,7 @@ app/live_robot/step_search_runner.py
 app/live_robot/search_state_machine.py
 app/live_robot/semantic_observer.py
 app/live_robot/search_directive_adapter.py
-app/reasoning/unigoal/*
+app/reasoning/semantic_navigation/*
 ```
 
 都必须先审计再复用。
@@ -283,7 +283,7 @@ Spatial / Semantic Memory 更新
 ↓
 生成 Exploration Candidates
 ↓
-UniGoal + Exploration Planner 打分
+SemanticNavigation + Exploration Planner 打分
 ↓
 选择 Next Exploration Goal
 ↓
@@ -375,12 +375,12 @@ visual_confirmed
 
 ---
 
-## 2.2 UniGoal V1
+## 2.2 SemanticNavigation V1
 
 已有：
 
 ```text
-app/reasoning/unigoal/
+app/reasoning/semantic_navigation/
   models.py
   goal_graph_builder.py
   graph_matcher.py
@@ -400,7 +400,7 @@ sector penalty
 context reasoning
 exact / alias / lexical / attribute / relation matching
 semantic next-view directive
-legacy / unigoal / hybrid routing
+legacy / semantic_navigation / hybrid routing
 shadow / active
 ```
 
@@ -432,7 +432,7 @@ search
 → target_reached
 ```
 
-并且 UniGoal 语义 reasoner 已经证明过：
+并且 SemanticNavigation 语义 reasoner 已经证明过：
 
 ```text
 reasoner decision
@@ -511,7 +511,7 @@ app/planning/exploration_planner.py
                        ↓
                 Candidate Goal Generator
                        ↓
-           UniGoal Exploration Goal Selector
+           SemanticNavigation Exploration Goal Selector
                        ↓
                 AutonomousExplorer
                        ↓
@@ -536,7 +536,7 @@ app/planning/exploration_planner.py
 
 ## 4.1 目标
 
-UniGoal、SceneGraph、SemanticMemory、Exploration Planner 不允许直接依赖：
+SemanticNavigation、SceneGraph、SemanticMemory、Exploration Planner 不允许直接依赖：
 
 ```text
 Unitree
@@ -967,7 +967,7 @@ app/navigation/candidate_goal_generator.py
 
 至少包含：
 
-### A. UniGoal semantic directive
+### A. SemanticNavigation semantic directive
 
 例如：
 
@@ -1035,7 +1035,7 @@ REOBSERVE
 
 ### F. fallback exploration
 
-UniGoal 没有高置信度方向时，仍应生成普通探索候选。
+SemanticNavigation 没有高置信度方向时，仍应生成普通探索候选。
 
 不能因为 semantic reasoner 没有建议就停止。
 
@@ -1099,7 +1099,7 @@ explicit anchor
 inferred context
 SceneGraph relation
 TargetProfile context_terms
-UniGoal reasoner provenance
+SemanticNavigation reasoner provenance
 ```
 
 显式 anchor 优先于弱 inferred context。
@@ -1130,7 +1130,7 @@ scene similarity
 
 ## 10.4 negative evidence
 
-已有 UniGoal negative memory 必须接入 Planner。
+已有 SemanticNavigation negative memory 必须接入 Planner。
 
 如果某位置已经多次：
 
@@ -1169,7 +1169,7 @@ mark UNREACHABLE
 
 ---
 
-# 11. UniGoal 从 Next-View 升级到 Next-Exploration-Goal
+# 11. SemanticNavigation 从 Next-View 升级到 Next-Exploration-Goal
 
 这是第三个核心改造。
 
@@ -1198,7 +1198,7 @@ semantic directive
 
 ---
 
-## 11.2 不再把 UniGoal 只绑定 TURN
+## 11.2 不再把 SemanticNavigation 只绑定 TURN
 
 当前：
 
@@ -1242,7 +1242,7 @@ inspect_anchor(water dispenser)
 导航到 anchor 附近最佳 viewpoint
 ```
 
-UniGoal 自己不关心。
+SemanticNavigation 自己不关心。
 
 ---
 
@@ -1307,7 +1307,7 @@ while budget.remaining():
         observation=observation,
         memory=memory,
         graph=graph,
-        unigoal=semantic_reasoner,
+        semantic_navigation=semantic_reasoner,
         backend_capabilities=backend.capabilities(),
     )
 
@@ -1526,7 +1526,7 @@ backend:
 
 high_level:
   semantic_reasoning: true
-  reasoner: unigoal
+  reasoner: semantic_navigation
   continuous_exploration: true
 
 manual_calibration_requirements:
@@ -1828,7 +1828,7 @@ scripts/go2w/run_semantic_exploration.py
 /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
   --target "饮水机旁边的蓝色垃圾桶" \
   --backend go2w_experimental \
-  --reasoner unigoal \
+  --reasoner semantic_navigation \
   --operator-supervised-experiment \
   --max-seconds 600 \
   --max-motion-steps 50 \
@@ -1967,7 +1967,7 @@ FutureRobotBackend
 
 所以：
 
-> **Nav2 是 backend option，不是 UniGoal dependency。**
+> **Nav2 是 backend option，不是 SemanticNavigation dependency。**
 
 ---
 
@@ -2158,7 +2158,7 @@ Planner 必须能够：
 
 而不是继续机械 scan。
 
-这将是证明 UniGoal 高层自主探索价值的重要演示。
+这将是证明 SemanticNavigation 高层自主探索价值的重要演示。
 
 ---
 
@@ -2169,7 +2169,7 @@ Planner 必须能够：
 如果：
 
 ```text
-UniGoal exception
+SemanticNavigation exception
 低置信度
 GoalGraph 无有效 candidate
 LLM timeout
@@ -2277,7 +2277,7 @@ oscillation penalty
 
 ---
 
-### Scenario F：UniGoal exception
+### Scenario F：SemanticNavigation exception
 
 ```text
 fallback
@@ -2321,7 +2321,7 @@ same Explorer
 NAVIGATE_POSE
 ```
 
-而无需修改 UniGoal。
+而无需修改 SemanticNavigation。
 
 ---
 
@@ -2375,7 +2375,7 @@ candidate provenance 可解释
 修改后至少重跑：
 
 ```text
-UniGoal
+SemanticNavigation
 SceneGraph
 TargetProfile
 semantic verifier
@@ -2543,8 +2543,8 @@ HIGH_LEVEL_AUTONOMOUS_SEMANTIC_EXPLORATION = PASS
 
 1. 自然语言 target 可直接启动；
 2. perception 不需要人工逐步触发；
-3. UniGoal/Planner 自动给出连续 exploration goal；
-4. RobotBackend 与 UniGoal 解耦；
+3. SemanticNavigation/Planner 自动给出连续 exploration goal；
+4. RobotBackend 与 SemanticNavigation 解耦；
 5. 当前 Go2-W backend 可执行连续高层动作；
 6. 至少一次真实机器人完成 10+ autonomous planning cycle；
 7. 用户期间没有提供“下一步往哪走”的指令；
@@ -2672,7 +2672,7 @@ Go2-W experimental limits
 logging
 ```
 
-不要把 Go2-W 参数混进 UniGoal models。
+不要把 Go2-W 参数混进 SemanticNavigation models。
 
 ---
 
@@ -2790,7 +2790,7 @@ latest handoff
 app/live_robot
 app/navigation
 app/planning
-app/reasoning/unigoal
+app/reasoning/semantic_navigation
 app/memory
 run_autonomous_loop.py
 tests
@@ -2848,7 +2848,7 @@ candidate_goal_generator.py
 接：
 
 ```text
-UniGoal directive
+SemanticNavigation directive
 semantic anchor
 unvisited sector
 graph node
@@ -2880,7 +2880,7 @@ oscillation penalty
 
 ---
 
-## Phase 5：UniGoal Goal Adapter
+## Phase 5：SemanticNavigation Goal Adapter
 
 把：
 
@@ -3025,7 +3025,7 @@ git diff --check
 停在“建议下一步”
 只写 TODO
 只增加接口不接真机
-重新实现已有 UniGoal
+重新实现已有 SemanticNavigation
 重新造第四套 planner
 删除 legacy 路径
 把 experiment mode 改成 production default
@@ -3078,7 +3078,7 @@ relative/topological mode
 
 ---
 
-## UniGoal 出错
+## SemanticNavigation 出错
 
 ```text
 legacy/fallback candidate
@@ -3142,7 +3142,7 @@ app/
     models.py                           # EXTEND
 
   reasoning/
-    unigoal/
+    semantic_navigation/
       ...                               # KEEP / EXTEND adapter only
 
 configs/
@@ -3200,7 +3200,7 @@ TARGET_FOUND
 
 ---
 
-## Demo B：UniGoal semantic search
+## Demo B：SemanticNavigation semantic search
 
 ```text
 “寻找饮水机旁边的蓝色垃圾桶”
@@ -3245,7 +3245,7 @@ bash scripts/go2w/start_semantic_exploration.sh \
 /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
   --target "饮水机旁边的蓝色垃圾桶" \
   --backend go2w_experimental \
-  --reasoner unigoal \
+  --reasoner semantic_navigation \
   --operator-supervised-experiment \
   --finish-on-visual-confirmation \
   --max-seconds 600 \
@@ -3276,7 +3276,7 @@ bash scripts/go2w/start_semantic_exploration.sh \
 Target / Goal Understanding
 SceneGraph
 GoalGraph
-UniGoal
+SemanticNavigation
 Spatial Semantic Memory
 Exploration Graph
 Candidate Goal Generation
@@ -3309,7 +3309,7 @@ RobotBackend abstraction
 [ ] 已实现 Mock/Future metric backend 测试路径。
 [ ] 已实现 Exploration Graph / session spatial-semantic memory。
 [ ] 已实现 live candidate goal generation。
-[ ] 已让 UniGoal semantic directive 能影响 exploration goal。
+[ ] 已让 SemanticNavigation semantic directive 能影响 exploration goal。
 [ ] 已实现 visited/negative/failure/oscillation penalty。
 [ ] 已实现 AutonomousExplorer 长周期循环。
 [ ] 已实现 navigation result → recovery/replan。
@@ -3354,7 +3354,7 @@ FUTURE_ROBOT_BACKEND_READY = PASS
 
 这次实现的主线只有一条：
 
-> **把仓库里已经存在的视觉、SceneGraph、UniGoal、搜索状态机、导航/探索骨架真正收敛成一个平台解耦、能连续运行、能记忆、能重规划、能自主选择下一探索目标、能在当前 Go2-W 上由操作者监督跑通、未来能直接换 RobotBackend 的完整高层自主语义探索系统。**
+> **把仓库里已经存在的视觉、SceneGraph、SemanticNavigation、搜索状态机、导航/探索骨架真正收敛成一个平台解耦、能连续运行、能记忆、能重规划、能自主选择下一探索目标、能在当前 Go2-W 上由操作者监督跑通、未来能直接换 RobotBackend 的完整高层自主语义探索系统。**
 
 只要某个底层问题：
 

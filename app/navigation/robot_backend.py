@@ -1,6 +1,6 @@
 """Platform-independent robot backend contract for high-level exploration.
 
-UniGoal, SceneGraph, SemanticMemory and the Exploration Planner must never
+SemanticNavigation, SceneGraph, SemanticMemory and the Exploration Planner must never
 depend on Unitree / /go2w/motion / SportModeState / Pandar details.  They talk
 to a ``RobotBackend``; the current Go2-W is one implementation
 (``Go2WExperimentalBackend``) and a future production dog is another

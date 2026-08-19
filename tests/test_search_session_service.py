@@ -40,7 +40,7 @@ def _wait_status(service: SearchSessionService, statuses: set[str],
 
 def _start(service: SearchSessionService, target: str = "饮水机旁边的蓝色垃圾桶",
            **overrides) -> dict:
-    params = {"target": target, "backend": "mock", "reasoner": "unigoal", **overrides}
+    params = {"target": target, "backend": "mock", "reasoner": "semantic_navigation", **overrides}
     return service.start_search(SearchStartRequest.from_dict(params))
 
 

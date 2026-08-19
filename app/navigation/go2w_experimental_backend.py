@@ -45,6 +45,10 @@ class Go2WBackendConfig:
     apply_correction: bool = True
     # Pose freshness window; None disables the check.
     pose_max_age_sec: float | None = 10.0
+    # Camera/LLM-only validation mode.  It intentionally never authorizes
+    # motion; missing Action/arm services therefore do not make the
+    # perception loop look like a backend crash.
+    dry_run: bool = False
 
 
 GO2W_OPERATOR_SUPERVISED_PRIMITIVES = (
@@ -171,7 +175,7 @@ class Go2WExperimentalBackend(RobotBackend):
             details.update(probe)
         degraded = ["metric_pose_unavailable"]
         ready = True
-        if details.get("motion_action_available") is False:
+        if details.get("motion_action_available") is False and not self.config.dry_run:
             ready = False
             degraded.append("motion_action_unavailable")
         if details.get("robot_mode_error"):

@@ -8,6 +8,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 MAX_TARGET_LENGTH = 500
 
@@ -16,8 +17,11 @@ MAX_TARGET_LENGTH = 500
 class SearchStartRequest:
     """Body of ``POST /api/search/start`` (plan book §10)."""
 
-    target: str
-    reasoner: str = "unigoal"
+    # ``target`` is retained for one release as an input compatibility alias.
+    # The service immediately normalizes it to task_text and then parses it.
+    target: str = ""
+    task_text: str = ""
+    reasoner: str = "semantic"
     backend: str = "go2w_experimental"  # go2w_experimental | mock | mock_metric
     finish_on_visual_confirmation: bool = True
     turn_only: bool = False
@@ -27,10 +31,11 @@ class SearchStartRequest:
     # existing operator_supervised_experiment profile, not a new gate.
     operator_supervised_experiment: bool = False
     dry_run_motion: bool = False
+    allow_degraded: bool = False
     # RGB-D spatial exploration (D435 atomic HTTP source)
     rgbd_source: bool = False
     rgbd_base_url: str = "http://192.168.123.18:8080"
-    # UniGoal V2 spatial exploration loop
+    # Live semantic spatial exploration loop
     spatial_v2: bool = False
     # Use RTAB-Map ROS2 topics as the SpatialProvider
     rtabmap: bool = False
@@ -40,6 +45,12 @@ class SearchStartRequest:
     max_motion_steps: int | None = None
     llm_model: str | None = None
     verify_min_confidence: float | None = None
+
+    def __post_init__(self) -> None:
+        # Keep direct dataclass construction compatible with clients that
+        # still send the one-field form; the service only consumes task_text.
+        if not self.task_text and self.target:
+            self.task_text = self.target.strip()
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "SearchStartRequest":
@@ -56,17 +67,43 @@ class SearchStartRequest:
                 defaults.get("operator_supervised_experiment", enable_motion),
             )
         )
+        requested_reasoner = str(value.get("reasoner") or "semantic")
+        # Migrate historical goal-selector values without persisting their
+        # old branding into the new session or event stream.
+        if requested_reasoner.lower() in {"semantic_navigation"} or requested_reasoner.lower().endswith("goal"):
+            requested_reasoner = "semantic"
+        backend = str(value.get("backend") or defaults["backend"])
+        operator_supervised = bool(
+            value.get(
+                "operator_supervised_experiment",
+                defaults.get("operator_supervised_experiment", enable_motion),
+            )
+        )
+        # The normal WebUI profile is read-only.  Make that contract explicit
+        # at the request boundary so a real backend cannot reach the worker
+        # without either a motion opt-in or an explicit dry-run flag.
+        dry_run_motion = bool(
+            value.get(
+                "dry_run_motion",
+                backend == "go2w_experimental"
+                and not enable_motion
+                and not operator_supervised,
+            )
+        )
+        allow_degraded = bool(value.get("allow_degraded", dry_run_motion))
         return cls(
+            task_text=str(value.get("task_text") or value.get("target") or "").strip(),
             target=str(value.get("target") or "").strip(),
-            reasoner=str(value.get("reasoner") or "unigoal"),
-            backend=str(value.get("backend") or defaults["backend"]),
+            reasoner=requested_reasoner,
+            backend=backend,
             finish_on_visual_confirmation=bool(
                 value.get("finish_on_visual_confirmation", True)
             ),
             turn_only=bool(value.get("turn_only", False)),
             enable_autonomous_motion=enable_motion,
             operator_supervised_experiment=operator_supervised,
-            dry_run_motion=bool(value.get("dry_run_motion", False)),
+            dry_run_motion=dry_run_motion,
+            allow_degraded=allow_degraded,
             rgbd_source=bool(value.get("rgbd_source", defaults["rgbd_source"])),
             rgbd_base_url=str(
                 value.get("rgbd_base_url") or defaults["rgbd_base_url"]
@@ -82,11 +119,12 @@ class SearchStartRequest:
 
     def validate(self) -> str | None:
         """Return an error message or None when the request is acceptable."""
-        if not self.target:
-            return "target is required"
-        if len(self.target) > MAX_TARGET_LENGTH:
-            return f"target too long (max {MAX_TARGET_LENGTH} chars)"
-        if self.reasoner not in {"legacy", "unigoal", "hybrid"}:
+        task_text = (self.task_text or self.target).strip()
+        if not task_text:
+            return "task_text/target is required"
+        if len(task_text) > MAX_TARGET_LENGTH:
+            return f"task_text too long (max {MAX_TARGET_LENGTH} chars)"
+        if self.reasoner not in {"legacy", "semantic", "hybrid"}:
             return f"unsupported reasoner: {self.reasoner}"
         if self.backend not in {"go2w_experimental", "mock", "mock_metric"}:
             return f"unsupported backend: {self.backend}"
@@ -100,6 +138,8 @@ class SearchSessionInfo:
     session_id: str
     target: str
     status: str
+    task_text: str = ""
+    task_context: dict[str, Any] = field(default_factory=dict)
     result: str = ""
     started_at: float | None = None
     finished_at: float | None = None
@@ -111,7 +151,7 @@ class SearchSessionInfo:
 
 
 def new_session_id() -> str:
-    return time.strftime("search_%Y%m%d_%H%M%S")
+    return f"search_{time.strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}"
 
 
 _DEFAULT_SEARCH_CONFIG = "configs/go2w/autonomous_search_web.yaml"

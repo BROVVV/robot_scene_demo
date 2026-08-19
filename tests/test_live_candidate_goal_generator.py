@@ -17,7 +17,7 @@ from app.navigation.models import (
     LiveObservation,
 )
 from app.navigation.robot_backend import RobotCapabilities
-from app.reasoning.unigoal.models import (
+from app.reasoning.semantic_navigation.models import (
     SearchDirective,
     SearchDirectiveKind,
 )
@@ -72,7 +72,7 @@ class TestLiveCandidateGoalGenerator(unittest.TestCase):
         obs = _observation(objects=["water dispenser"])
         directive = SearchDirective(
             directive_id="d1", kind=SearchDirectiveKind.INSPECT_ANCHOR,
-            source_backend="unigoal", match_state="partial_match",
+            source_backend="semantic_navigation", match_state="partial_match",
             confidence=0.8, preferred_heading_delta_deg=25.0,
             anchor_label="water dispenser",
         )

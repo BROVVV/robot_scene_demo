@@ -9,3 +9,5 @@ Pillow
 opencv-python-headless
 socksio
 streamlit
+fastapi
+uvicorn

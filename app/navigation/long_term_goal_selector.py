@@ -190,7 +190,7 @@ class LongTermGoalSelector:
             psg_score=0.0,
             spatial_gain=0.0,
             travel_cost=0.0,
-            provenance={"source": "unigoal_v2", "match_state": match_state},
+            provenance={"source": "semantic_navigation_v2", "match_state": match_state},
         )
         return ScoredIntent(intent, score=1.0, components={"semantic": 1.0},
                             reasons=[f"{match_state} match -> {intent_type}"])

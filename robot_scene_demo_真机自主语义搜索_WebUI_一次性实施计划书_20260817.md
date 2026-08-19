@@ -1,10 +1,10 @@
 # robot_scene_demo 真机自主语义搜索 WebUI 一次性实施计划书
 
-> 版本：2026-08-17  
-> 项目仓库：https://github.com/BROVVV/robot_scene_demo  
-> 当前实验平台：Unitree Go2-W  
-> Web 技术路线：复用当前 `app/manual_web_demo/` 的 FastAPI + 原生 HTML/CSS/JS + MJPEG + WebSocket + ROS Worker IPC  
-> 高层搜索路线：复用/接入项目现有视觉、SceneGraph、UniGoal、搜索状态机、Exploration Planner / Navigation Map，并与未来 `RobotBackend` 保持平台解耦  
+> 版本：2026-08-17
+> 项目仓库：https://github.com/BROVVV/robot_scene_demo
+> 当前实验平台：Unitree Go2-W
+> Web 技术路线：复用当前 `app/manual_web_demo/` 的 FastAPI + 原生 HTML/CSS/JS + MJPEG + WebSocket + ROS Worker IPC
+> 高层搜索路线：复用/接入项目现有视觉、SceneGraph、SemanticNavigation、搜索状态机、Exploration Planner / Navigation Map，并与未来 `RobotBackend` 保持平台解耦
 > 本计划目标：**把当前项目升级成一个能通过浏览器输入目标、启动真实机器狗自主搜索，并实时显示相机、当前物体、目标证据、下一步决策、搜索轨迹和实时探索地图的完整真机 Web 控制台。**
 
 ---
@@ -20,7 +20,7 @@
 
 你的任务是：
 
-> **直接审计当前仓库，在不推倒已有 Manual Web Demo、UniGoal、真机搜索、navigation/exploration 代码的前提下，把“真机自主语义搜索 WebUI”从后端到前端完整实现、接线、测试、文档化，并提供一条可直接启动的命令。**
+> **直接审计当前仓库，在不推倒已有 Manual Web Demo、SemanticNavigation、真机搜索、navigation/exploration 代码的前提下，把“真机自主语义搜索 WebUI”从后端到前端完整实现、接线、测试、文档化，并提供一条可直接启动的命令。**
 
 最终用户必须能做到：
 
@@ -171,7 +171,7 @@ README.md
 
 app/manual_web_demo/
 app/live_robot/
-app/reasoning/unigoal/
+app/reasoning/semantic_navigation/
 app/navigation/
 app/planning/
 app/memory/
@@ -181,7 +181,7 @@ scripts/go2w/
 tests/
 
 docs/GO2W_MANUAL_WASD_WEB_DEMO.md
-docs/UNIGOAL_SEMANTIC_SEARCH_INTEGRATION.md
+docs/SEMANTIC_NAVIGATION_SEMANTIC_SEARCH_INTEGRATION.md
 ```
 
 ---
@@ -338,7 +338,7 @@ WebUI
 │ Observation                                   │
 │ TargetProfile / GoalGraph                     │
 │ SceneGraph                                    │
-│ UniGoal                                       │
+│ SemanticNavigation                                       │
 │ Semantic Memory                               │
 │ Exploration Planner                           │
 │ AutonomousExplorer                            │
@@ -477,7 +477,7 @@ Body：
 ```json
 {
   "target": "饮水机旁边的蓝色垃圾桶",
-  "reasoner": "unigoal",
+  "reasoner": "semantic_navigation",
   "backend": "go2w_experimental",
   "finish_on_visual_confirmation": true
 }
@@ -1083,7 +1083,7 @@ Explicit anchors
 Context
 ```
 
-方便展示 UniGoal。
+方便展示 SemanticNavigation。
 
 ---
 
@@ -1654,7 +1654,7 @@ WebUI 必须支持：
 真实 camera
 真实 LLM
 真实 SceneGraph
-真实 UniGoal
+真实 SemanticNavigation
 真实 Planner
 不执行动作
 ```
@@ -2403,7 +2403,7 @@ status live
 camera
 LLM
 SceneGraph
-UniGoal
+SemanticNavigation
 Planner
 ```
 
@@ -2726,7 +2726,7 @@ web:
   search_event_buffer: 500
 
 search:
-  reasoner: unigoal
+  reasoner: semantic_navigation
   backend: go2w_experimental
   finish_on_visual_confirmation: true
 
@@ -2869,7 +2869,7 @@ ROS bag Web viewer
 [ ] pause/resume test 通过。
 [ ] operator stop test 通过。
 [ ] 真相机 Web dry-run 通过。
-[ ] 真 LLM/SceneGraph/UniGoal 数据能在页面显示。
+[ ] 真 LLM/SceneGraph/SemanticNavigation 数据能在页面显示。
 [ ] 真机 turn-only Web search 通过。
 [ ] 真机连续 Web search 通过。
 [ ] 至少一次有 10+ autonomous planning cycles。
@@ -2909,7 +2909,7 @@ WebSocket
 ROS Worker IPC
 SceneObjectAnalyzer
 真实真机搜索 runner
-UniGoal
+SemanticNavigation
 SceneGraph
 navigation/exploration planner
 video navigation topology

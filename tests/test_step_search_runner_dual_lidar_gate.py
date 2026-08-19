@@ -13,7 +13,7 @@ from app.live_robot.motion_bounds import (
     MotionBoundaryDecision,
     evaluate_dual_lidar_rotation_gate,
 )
-from app.reasoning.unigoal.models import SearchDirective, SearchDirectiveKind
+from app.reasoning.semantic_navigation.models import SearchDirective, SearchDirectiveKind
 
 
 def _gate(**kwargs) -> MotionBoundaryDecision:
@@ -64,7 +64,7 @@ def test_directive_carries_safety_intent_for_turn() -> None:
     directive = SearchDirective(
         directive_id="d1",
         kind=SearchDirectiveKind.REOBSERVE_SECTOR,
-        source_backend="unigoal",
+        source_backend="semantic_navigation",
         match_state="strong_match",
         confidence=0.8,
         preferred_heading_delta_deg=20.0,

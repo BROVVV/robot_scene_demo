@@ -10,7 +10,7 @@ web:
   search_event_buffer: 500
 
 search:
-  reasoner: unigoal
+  reasoner: semantic_navigation
   backend: go2w_experimental     # go2w_experimental | mock | mock_metric
   finish_on_visual_confirmation: true
   # The WebUI search button enters the repository's existing
@@ -25,7 +25,7 @@ search:
   rgbd_source: true
   rgbd_base_url: http://192.168.123.18:8080
 
-  # UniGoal V2 spatial exploration loop (PlaceGraph + Frontier +
+  # SemanticNavigation V2 spatial exploration loop (PlaceGraph + Frontier +
   # LongTermGoalSelector + LocalGoalExecutor).
   spatial_v2: true
 
@@ -36,7 +36,8 @@ search:
   max_planning_cycles: 100
   max_motion_steps: 50
   verify_min_confidence: 0.6
-  llm_model: Qwen/Qwen3-VL-30B-A3B-Instruct
+  # Optional visual override; empty means use SILICONFLOW_VISION_MODEL.
+  llm_model: ""
 
 map:
   mode: auto                     # topological (current Go2-W) / metric (future)

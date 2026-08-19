@@ -145,7 +145,7 @@ class TargetProfileResolver:
                 timeout=self.settings.siliconflow_timeout_seconds,
             )
             response = client.chat.completions.create(
-                model=self.settings.siliconflow_model,
+                model=self.settings.reasoning_model,
                 messages=[
                     {"role": "system", "content": _TARGET_PROFILE_SYSTEM_PROMPT},
                     {"role": "user", "content": _target_profile_user_prompt(query)},

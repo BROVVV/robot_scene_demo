@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import unittest
 
-from app.reasoning.unigoal.goal_graph_builder import GoalGraphBuilder
-from app.reasoning.unigoal.graph_matcher import UniGoalGraphMatcher
-from app.reasoning.unigoal.models import GraphMatchState
+from app.reasoning.semantic_navigation.goal_graph_builder import GoalGraphBuilder
+from app.reasoning.semantic_navigation.graph_matcher import SemanticNavigationGraphMatcher
+from app.reasoning.semantic_navigation.models import GraphMatchState
 from app.video.schemas import SceneGraph, SceneGraphEdge, SceneGraphNode
 from app.video.target_profile import TargetProfile
 
@@ -31,7 +31,7 @@ class GraphMatcherTests(unittest.TestCase):
     def setUp(self):
         self.profile = _profile()
         self.goal = GoalGraphBuilder().build(self.profile)
-        self.matcher = UniGoalGraphMatcher()
+        self.matcher = SemanticNavigationGraphMatcher()
 
     def test_zero_and_partial_anchor(self):
         zero = self.matcher.match(self.goal, SceneGraph(), target_profile=self.profile)

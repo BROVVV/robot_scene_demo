@@ -115,7 +115,7 @@ def _quick_detect(settings, image_path: str, target_text: str,
         base_url=settings.siliconflow_base_url,
         timeout=settings.siliconflow_timeout_seconds,
     )
-    model = model_override or settings.siliconflow_model
+    model = model_override or settings.vision_model
     image_bytes, mime_type = _load_resized_image_bytes(
         image_path, settings.image_max_side
     )
@@ -255,7 +255,7 @@ def _verify_detect(settings, image_path: str, target_text: str,
         base_url=settings.siliconflow_base_url,
         timeout=settings.siliconflow_timeout_seconds,
     )
-    model = model_override or settings.siliconflow_model
+    model = model_override or settings.vision_model
     image_bytes, mime_type = _load_resized_image_bytes(
         image_path, settings.image_max_side
     )

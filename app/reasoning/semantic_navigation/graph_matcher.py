@@ -5,10 +5,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.reasoning.unigoal.models import GoalGraph, GraphMatchResult, GraphMatchState
+from app.reasoning.semantic_navigation.models import GoalGraph, GraphMatchResult, GraphMatchState
 
 
-class UniGoalGraphMatcher:
+class SemanticNavigationGraphMatcher:
     def __init__(self, partial_threshold: float = 0.30,
                  strong_threshold: float = 0.72) -> None:
         if not 0.0 <= partial_threshold <= strong_threshold <= 1.0:

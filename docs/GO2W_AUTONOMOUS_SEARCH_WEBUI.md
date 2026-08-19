@@ -25,7 +25,7 @@ FastAPI Web Process（Conda Python）
 Autonomous Search Worker（子进程，ROS2 系统 Python）
    scripts/go2w/autonomous_search_worker.py
    └─ 复用 run_semantic_exploration.py 装配：
-      AutonomousLoop(rclpy) → LiveSemanticObserver → SemanticSearchController(UniGoal)
+      AutonomousLoop(rclpy) → LiveSemanticObserver → SemanticSearchController(SemanticNavigation)
       → AutonomousExplorer(OBSERVE→MATCH→VERIFY→UPDATE_MEMORY→PLAN→EXECUTE→REPLAN)
       → Go2WExperimentalBackend（/go2w/motion，≤30° 转向 / ≤0.30m 前进）
 ```
@@ -75,7 +75,7 @@ bash scripts/go2w/stop_autonomous_search_web.sh   # 只停项目自有 web.pid
 ```json
 {
   "target": "饮水机旁边的蓝色垃圾桶",
-  "reasoner": "unigoal",
+  "reasoner": "semantic_navigation",
   "backend": "go2w_experimental",      // go2w_experimental | mock | mock_metric
   "finish_on_visual_confirmation": true,
   "turn_only": false,

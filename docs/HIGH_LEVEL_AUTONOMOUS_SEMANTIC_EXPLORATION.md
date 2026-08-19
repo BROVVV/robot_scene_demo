@@ -12,11 +12,11 @@ Goal 评分、实验模式与未来机器人迁移方式。
 
 ```
 自然语言目标
-  → TargetProfile / GoalGraph（UniGoal）
+  → TargetProfile / GoalGraph（SemanticNavigation）
   → LiveObservation（LiveSemanticObserver + 快速检测）
   → GraphMatcher / SemanticMatch
   → 空间语义记忆（ExplorationGraph + SemanticSearchMemory）
-  → CandidateGoalGenerator（UniGoal directive / 未访问扇区 / 图节点 / anchor / last-known / fallback）
+  → CandidateGoalGenerator（SemanticNavigation directive / 未访问扇区 / 图节点 / anchor / last-known / fallback）
   → ExplorationPlanner（可配置权重评分）
   → AutonomousExplorer（最高层 orchestrator）
   → RobotBackend（平台抽象）
@@ -26,7 +26,7 @@ Goal 评分、实验模式与未来机器人迁移方式。
 
 核心原则：
 
-1. 高层（UniGoal / SceneGraph / Memory / Planner / Explorer）**不允许直接依赖**
+1. 高层（SemanticNavigation / SceneGraph / Memory / Planner / Explorer）**不允许直接依赖**
    Unitree、`/go2w/motion`、SportModeState、Pandar、旋转 lease、Go2-W footprint。
 2. 所有硬件访问通过 `RobotBackend` 接口；当前 Go2-W 是其中一个实现。
 3. strong graph match 不是最终确认；最终确认由视觉/关系 evidence + verify 完成。
@@ -127,7 +127,7 @@ BOOTSTRAP → OBSERVE → MATCH → VERIFY → UPDATE_MEMORY → PLAN → EXECUT
 
 | 来源 | 输出 |
 | --- | --- |
-| A. UniGoal semantic directive | `INSPECT_ANCHOR`（anchor 方向）/ `ROTATE_VIEW`（heading）/ `REOBSERVE` |
+| A. SemanticNavigation semantic directive | `INSPECT_ANCHOR`（anchor 方向）/ `ROTATE_VIEW`（heading）/ `REOBSERVE` |
 | B. 未访问 heading sector（12×30°） | `ROTATE_VIEW` |
 | C. 图中 UNSEEN / SEMANTIC_INTEREST 节点 | `REVISIT_NODE` |
 | D. 当前视图中的强语义 anchor | `INSPECT_ANCHOR`（semantic_relevance 高） |
@@ -173,7 +173,7 @@ score =
 bash scripts/go2w/start_semantic_exploration.sh --target "饮水机旁边的蓝色垃圾桶"
 # 或
 /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
-  --target "..." --backend go2w_experimental --reasoner unigoal \
+  --target "..." --backend go2w_experimental --reasoner semantic_navigation \
   --operator-supervised-experiment --finish-on-visual-confirmation \
   --max-seconds 600 --max-motion-steps 50 \
   --output outputs/live_sessions/high_level_semantic_exploration.jsonl
@@ -186,7 +186,7 @@ bash scripts/go2w/start_semantic_exploration.sh --target "饮水机旁边的蓝�
 
 1. 实现 `ProductionRobotBackend`（map pose + metric navigation + 避障）。
 2. 在 `backend_factory.create_backend` 注册。
-3. 高层（UniGoal / GraphMatcher / SemanticMemory / Planner / Explorer）零改动；
+3. 高层（SemanticNavigation / GraphMatcher / SemanticMemory / Planner / Explorer）零改动；
    Planner 自动生成 `NAVIGATE_POSE`，`PoseQuality.METRIC` 进入 ObservationNode。
 
 验证方式：`--backend mock_metric` 离线 E2E + 新增单测

@@ -36,7 +36,7 @@ def _event(event_type: str, session_id: str = "search_test", cycle: int | None =
 def test_store_session_lifecycle() -> None:
     store = SearchStateStore()
     store.apply(_event(SESSION_CREATED, payload={
-        "target": "饮水机旁边的蓝色垃圾桶", "reasoner": "unigoal", "backend": "mock",
+        "target": "饮水机旁边的蓝色垃圾桶", "reasoner": "semantic_navigation", "backend": "mock",
     }))
     store.apply(_event(SESSION_STARTED))
     snapshot = store.snapshot()

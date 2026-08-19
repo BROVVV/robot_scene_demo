@@ -298,10 +298,16 @@ button.danger { background: var(--yellow) !important; color: #1a1200 !important;
 
 /* decision */
 .dec-intent { font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+.dec-motion { font-size: 18px; font-weight: 700; color: #fbbf24; line-height: 1.45; margin-bottom: 8px; }
 .dec-reason { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 6px; }
 .dec-scores { font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; }
 .dec-scores .score-row { display: flex; justify-content: space-between; }
 .dec-scores .score-row span { color: var(--muted); }
+.task-understanding { font-size: 12px; line-height: 1.55; color: var(--muted); max-height: 150px; overflow-y: auto; }
+.task-understanding b { color: var(--text); }
+.decision-history { font-size: 12px; line-height: 1.45; max-height: 150px; overflow-y: auto; }
+.decision-history-row { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed var(--border); padding: 3px 0; }
+.decision-history-row .cnt { color: var(--muted); white-space: nowrap; }
 
 /* candidates */
 #dec-candidates .cand { border-bottom: 1px dashed var(--border); padding: 3px 0; font-size: 12px; }

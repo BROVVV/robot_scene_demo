@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from app.reasoning.unigoal.models import GoalGraph, GoalGraphEdge, GoalGraphNode
-from app.reasoning.unigoal.semantic_prior_provider import RuleSemanticPriorProvider
+from app.reasoning.semantic_navigation.models import GoalGraph, GoalGraphEdge, GoalGraphNode
+from app.reasoning.semantic_navigation.semantic_prior_provider import RuleSemanticPriorProvider
 from app.spatial.spatial_memory import SpatialMemory
 
 

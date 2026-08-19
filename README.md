@@ -6,7 +6,7 @@
 - 硅基流动视觉 API 场景理解
 - GroundingDINO + SAM2 本地开放词表检测
 - LLM-first GroundingDINO Prompt Expansion：把“找到卧室 / 检查打开的门”等自然语言任务转成 DINO 可检测的英文物体、结构和锚点词表
-- 第一视角视频目标搜索与视频语义记忆
+- （兼容保留）第一视角视频目标搜索与视频语义记忆；不是真机自主搜索主链
 - 无人工先验的大模型自生成常识推理与观察记忆导航
 - Streamlit Web UI
 - ROS2 可接收的 `/cmd_vel` 兼容 dry-run 输出
@@ -123,11 +123,11 @@ python scripts/go2w/validate_rgbd_spatial_stack.py
 ## 6. 先跑离线/纯软件功能
 
 ```bash
-# Mock 场景理解 + UniGoal V2 空间探索
+# Mock 场景理解 + SemanticNavigation V2 空间探索
 python scripts/go2w/run_semantic_exploration.py --target "饮水机旁边的蓝色垃圾桶" \
   --backend mock --max-seconds 30 --max-planning-cycles 5
 
-# 视频目标搜索
+# 兼容离线视频目标搜索（不是真机自主搜索主链）
 python run_video_demo.py --input 你的视频.mp4 --target "蓝色垃圾桶"
 ```
 
@@ -152,17 +152,17 @@ bash scripts/go2w/start_autonomous_search_web.sh --enable-autonomous-motion
 # 启动 D435 ROS2 Bridge + static TF + RTAB-Map
 bash scripts/go2w/start_rgbd_spatial_stack.sh start
 
-# 真机 UniGoal V2 空间搜索（dry-run，不运动）
+# 真机 SemanticNavigation V2 空间搜索（dry-run，不运动）
 /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
   --target "不存在的红色独角兽" \
-  --backend go2w_experimental --reasoner unigoal \
+  --backend go2w_experimental --reasoner semantic_navigation \
   --rgbd-source --spatial-v2 --rtabmap --dry-run-motion \
   --max-planning-cycles 1 --max-motion-steps 1
 
-# 真机 UniGoal V2 空间搜索（真实运动，需操作员持遥控器）
+# 真机 SemanticNavigation V2 空间搜索（真实运动，需操作员持遥控器）
 /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
   --target "不存在的红色独角兽" \
-  --backend go2w_experimental --reasoner unigoal \
+  --backend go2w_experimental --reasoner semantic_navigation \
   --rgbd-source --spatial-v2 --rtabmap \
   --operator-supervised-experiment \
   --max-local-rotations 1 \
@@ -192,13 +192,13 @@ bash scripts/go2w/check_go2w_ready.sh --json
 ## Operator-Supervised High-Level Semantic Exploration（2026-08-17 新增）
 
 > 本节描述本仓库新增的**高层自主语义探索实验系统**：自然语言目标 → 实时观察 →
-> SceneGraph/GoalGraph → UniGoal 语义匹配 → 空间语义记忆 → 候选探索目标 →
+> SceneGraph/GoalGraph → SemanticNavigation 语义匹配 → 空间语义记忆 → 候选探索目标 →
 > 平台无关 RobotBackend → 连续执行 → 重规划 → 视觉确认 → TARGET_FOUND。
 > 详细设计见 `docs/HIGH_LEVEL_AUTONOMOUS_SEMANTIC_EXPLORATION.md`。
 
 ### 用途
 
-- 把已有的 UniGoal / SceneGraph / 搜索状态机 / 探索骨架收敛为**连续长周期闭环**：
+- 把已有的 SemanticNavigation / SceneGraph / 搜索状态机 / 探索骨架收敛为**连续长周期闭环**：
   `observe → match → verify → update memory → plan → execute → replan → …`。
 - 当前 Go2-W 以 `go2w_experimental`（Relative + Topological）backend 运行；
   未来成熟机器狗只需实现 `RobotBackend`（metric 模式），高层代码不变。
@@ -243,7 +243,7 @@ launcher 自动：网络预检 → source ROS 环境 → 启动只读感知栈�
 ```bash
 /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
   --target "饮水机旁边的蓝色垃圾桶" \
-  --backend go2w_experimental --reasoner unigoal \
+  --backend go2w_experimental --reasoner semantic_navigation \
   --operator-supervised-experiment --finish-on-visual-confirmation \
   --max-seconds 600 --max-motion-steps 50 \
   --output outputs/live_sessions/high_level_semantic_exploration.jsonl
@@ -262,7 +262,7 @@ launcher 自动：网络预检 → source ROS 环境 → 启动只读感知栈�
 | 实验 | 目标 | 结果 |
 | --- | --- | --- |
 | 健康检查 `check_go2w_ready.sh` | — | `state=ready`（sport mode=1/error=0、odom 20Hz、相机 16.7Hz、lidar_fresh、motion/arm/急停、Bundle、LLM key） |
-| Trial 1 turn-only | 绿色垃圾桶 | 8 个自主规划周期、8 次转向全部 odom 验证（MAX_STEPS_REACHED，6/8 由 UniGoal 选向） |
+| Trial 1 turn-only | 绿色垃圾桶 | 8 个自主规划周期、8 次转向全部 odom 验证（MAX_STEPS_REACHED，6/8 由 SemanticNavigation 选向） |
 | Trial 2 转向+短步 | 绿色垃圾桶 | **13 个自主规划周期、12 次运动**、1 次导航失败自动 replan（MAX_STEPS_REACHED） |
 | Trial 4 普通目标 | 蓝色垃圾桶 | **TARGET_FOUND（84 s，0 运动）** |
 | Trial 5 关系目标 | 饮水机旁边的蓝色垃圾桶 | **TARGET_FOUND（86 s，0 运动）**，verify 确认“位于饮水机旁边” |
@@ -286,7 +286,7 @@ launcher 自动：网络预检 → source ROS 环境 → 启动只读感知栈�
 
 ### 未来机器狗接入（RobotBackend）
 
-高层（UniGoal/SceneGraph/Memory/Planner/Explorer）只依赖
+高层（SemanticNavigation/SceneGraph/Memory/Planner/Explorer）只依赖
 `app/navigation/robot_backend.py` 的协议与 `app/navigation/models.py` 的
 `ExplorationGoal`。未来机器人实现：
 
@@ -350,13 +350,13 @@ WS   /ws/search         连接即发 snapshot → 随后增量 SearchEvent（心
 
 ## RGB-D Spatial Semantic Exploration（2026-08-18 新增）
 
-当前项目已把 D435 作为主 RGB-D 传感器，并新增 UniGoal V2 空间探索所需的核心模块：
+当前项目已把 D435 作为主 RGB-D 传感器，并新增 SemanticNavigation V2 空间探索所需的核心模块：
 
 ```text
 D435 /rgbd/latest.json + /rgbd/frame/<id>/{color.jpg,depth.png}
   → RGBDSource → DepthObjectLocalizer → 3D SemanticObjectMap
   → SpatialProvider / FrontierExtractor / PlaceGraph
-  → PSG SemanticPriorProvider → UniGoal V2 SpatialReasoner
+  → PSG SemanticPriorProvider → SemanticNavigation V2 SpatialReasoner
   → LongTermGoalSelector → LocalGoalExecutor → RobotBackend
 ```
 
@@ -366,23 +366,23 @@ D435 /rgbd/latest.json + /rgbd/frame/<id>/{color.jpg,depth.png}
 # 真机语义搜索时使用 D435 主 RGB（WebUI 默认已开启 rgbd_source）
 bash scripts/go2w/start_autonomous_search_web.sh --enable-autonomous-motion
 
-# 直接 CLI 使用 D435 RGB-D + UniGoal V2 空间探索
+# 直接 CLI 使用 D435 RGB-D + SemanticNavigation V2 空间探索
 /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
   --target "饮水机旁边的蓝色垃圾桶" \
-  --backend go2w_experimental --reasoner unigoal \
+  --backend go2w_experimental --reasoner semantic_navigation \
   --operator-supervised-experiment --rgbd-source --spatial-v2 \
   --output outputs/live_sessions/rgbd_spatial_exploration.jsonl
 
 # 无运动 dry-run 验证 V2 链路（D435 + PlaceGraph + Frontier + LocalExecutor）
 /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
-  --target "绿色垃圾桶" --backend go2w_experimental --reasoner unigoal \
+  --target "绿色垃圾桶" --backend go2w_experimental --reasoner semantic_navigation \
   --rgbd-source --spatial-v2 --dry-run-motion \
   --max-seconds 60 --max-planning-cycles 2 \
   --output outputs/live_sessions/rgbd_v2_dryrun.jsonl
 
 # 使用 RTAB-Map（需先 start_rgbd_spatial_stack.sh start）
 /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
-  --target "不存在的红色独角兽" --backend go2w_experimental --reasoner unigoal \
+  --target "不存在的红色独角兽" --backend go2w_experimental --reasoner semantic_navigation \
   --rgbd-source --spatial-v2 --rtabmap --operator-supervised-experiment \
   --turn-only --max-planning-cycles 1 \
   --output outputs/live_sessions/rgbd_v2_rtabmap.jsonl
@@ -395,16 +395,16 @@ bash scripts/go2w/start_autonomous_search_web.sh --enable-autonomous-motion
 bash scripts/go2w/start_rgbd_spatial_stack.sh start
 ```
 
-详细文档：`docs/RGBD_UNIGOAL_V2_SPATIAL_EXPLORATION.md`。
+详细文档：`docs/RGBD_SEMANTIC_NAVIGATION_V2_SPATIAL_EXPLORATION.md`。
 
 ### WebUI 真机验证结果（2026-08-17，机器狗重启后）
 
 | 验收项 | 结果 |
 | --- | --- |
 | A 相机/状态 Web 启动 | PASS（camera fresh、readiness ready） |
-| B 搜索 dry-run（真实相机+LLM+UniGoal+Planner，零运动） | **TARGET_FOUND**（50 s，1 cycle，识别 blue_plastic_basket） |
-| C turn-only 真机搜索（≤30° 转向） | **TARGET_FOUND**：1 次真实自主转向（UniGoal 选向）后第 2 周期命中"绿色垃圾桶" |
-| D 连续自主循环（12 周期） | **8 次真实转向全部成功**、8/8 由 UniGoal 选向、覆盖 8 个朝向扇区、MAX_STEPS_REACHED 正常收尾 |
+| B 搜索 dry-run（真实相机+LLM+SemanticNavigation+Planner，零运动） | **TARGET_FOUND**（50 s，1 cycle，识别 blue_plastic_basket） |
+| C turn-only 真机搜索（≤30° 转向） | **TARGET_FOUND**：1 次真实自主转向（SemanticNavigation 选向）后第 2 周期命中"绿色垃圾桶" |
+| D 连续自主循环（12 周期） | **8 次真实转向全部成功**、8/8 由 SemanticNavigation 选向、覆盖 8 个朝向扇区、MAX_STEPS_REACHED 正常收尾 |
 | Pause/Resume 真机验证 | 真实搜索中暂停 → 当前转向完成后停车（零运动保持）→ 恢复继续 |
 
 ## Go2-W 真机项目当前进度还原指南（2026-08-15）
@@ -434,12 +434,12 @@ bash scripts/go2w/start_rgbd_spatial_stack.sh start
 | USLAM `/uslam/*` | **BLOCKED** | 当前固件未启用 |
 | LLM 快速检测（硅基流动） | PASS | `--detector llm`，默认 30B-A3B，单次 5–15 s |
 | LLM 目标复核（`--verify`） | PASS | 到达前确认物体身份，防椅子/书包误判 |
-| UniGoal V1 software core | PASS | GoalGraph/GraphMatcher/Memory/Reasoner/Router 完整，KEEP 审计见 `reports/unigoal_v1_existing_implementation_audit_20260813.md` |
-| UniGoal Observe-only | PASS | 真实 Bundle/LLM/Graph/关系证据与 2D visual confirmation 通过 |
-| UniGoal Shadow | PASS（无运动） | `actual_shadow_behavior_matches_legacy=true`，`dangerous_forward_request_count=0` |
-| UniGoal Active turn-only | **BLOCKED（正式）** / 操作者授权单次转向已验证 | 2026-08-14：`--operator-authorized-rotation` 单次转向实测通过（reasoner 决策→实际转向 30°，odom 验证）；正式 Stage 2 仍需 readiness 12 项全真 |
-| UniGoal 语义决策→运动闭环 | **PASS（操作者授权单次）** | reasoner `inspect_anchor` 决策 30° 转向并实际执行 29.5°；证据 `outputs/go2w_acceptance/semantic_turn_execute.*` |
-| UniGoal Short-forward | **BLOCKED** | 严格依赖 Stage 2 PASS；semantic forward 默认关闭 |
+| SemanticNavigation V1 software core | PASS | GoalGraph/GraphMatcher/Memory/Reasoner/Router 完整，KEEP 审计见 `reports/semantic_navigation_v1_existing_implementation_audit_20260813.md` |
+| SemanticNavigation Observe-only | PASS | 真实 Bundle/LLM/Graph/关系证据与 2D visual confirmation 通过 |
+| SemanticNavigation Shadow | PASS（无运动） | `actual_shadow_behavior_matches_legacy=true`，`dangerous_forward_request_count=0` |
+| SemanticNavigation Active turn-only | **BLOCKED（正式）** / 操作者授权单次转向已验证 | 2026-08-14：`--operator-authorized-rotation` 单次转向实测通过（reasoner 决策→实际转向 30°，odom 验证）；正式 Stage 2 仍需 readiness 12 项全真 |
+| SemanticNavigation 语义决策→运动闭环 | **PASS（操作者授权单次）** | reasoner `inspect_anchor` 决策 30° 转向并实际执行 29.5°；证据 `outputs/go2w_acceptance/semantic_turn_execute.*` |
+| SemanticNavigation Short-forward | **BLOCKED** | 严格依赖 Stage 2 PASS；semantic forward 默认关闭 |
 | 当前整机外廓 | `0.70 × 0.43 × 0.70 m` | `configs/go2w/current_hardware_geometry.yaml`；最高点 = PandarXT-16 固定保护框架 |
 | RGB–LiDAR 外参/3D 定位 | EXPERIMENTAL（未几何确认） | 诊断叠加可用；导航外参与 3D 输出门禁为 false |
 | Camera TF | **BLOCKED** | 官方 URDF 无相机 link，物理 TF 未测 |
@@ -448,7 +448,7 @@ bash scripts/go2w/start_rgbd_spatial_stack.sh start
 ### 0.1.1 Go2-W Manual WASD Web Demo（独立手动 Demo）
 
 独立的浏览器手动控制 Demo：实时相机 + WASD+QE 小范围运动 + SiliconFlow 场景物体表。
-不使用 UniGoal/Nav2/3D；相机来自正式 camera bridge；W/S/A/D/Q/E 通过现有高层运动
+不使用 SemanticNavigation/Nav2/3D；相机来自正式 camera bridge；W/S/A/D/Q/E 通过现有高层运动
 控制链（`/go2w/motion`）执行——W/S 前后、A/D 横移、Q/E 转向；直接复用项目现有
 SiliconFlow 视觉配置，后台异步列出主要物体。详见
 [`docs/GO2W_MANUAL_WASD_WEB_DEMO.md`](docs/GO2W_MANUAL_WASD_WEB_DEMO.md)。
@@ -635,14 +635,14 @@ export CYCLONEDDS_URI="file:///home/brov/robot/robot_scene_demo/configs/go2w/cyc
   --output outputs/go2w_acceptance/sm_demo.jsonl
 
 # 语义 reasoner 决策 → 实际转向闭环（2026-08-14 验证，操作者授权）
-# 说明：目标未强确认时触发 UniGoal reasoner 自主决策转向方向；
+# 说明：目标未强确认时触发 SemanticNavigation reasoner 自主决策转向方向；
 # --operator-authorized-rotation 是显式操作者授权，仅放宽"旋转需 lease"这一条门，
 # 其余安全门（mode/error、lidar fresh、前向净空、运动边界、≤30°、单步、急停）全部保留。
 # 必须在操作者确认场地安全 + 遥控器急停在手时使用。
 /usr/bin/python3 scripts/go2w/run_autonomous_loop.py \
   --mode state_machine_search --target "绿色垃圾桶" --detector llm \
   --llm-model Qwen/Qwen3-VL-30B-A3B-Instruct \
-  --semantic-reasoning --search-reasoner unigoal --search-reasoner-mode active \
+  --semantic-reasoning --search-reasoner semantic_navigation --search-reasoner-mode active \
   --operator-authorized-rotation --turn-only --max-motion-steps 1 \
   --max-radius 1.5 --front-half-plane-only --min-clearance 0.6 \
   --target-score-min 0.99 --odom-topic /go2w/odom/wheel \
@@ -653,7 +653,7 @@ export CYCLONEDDS_URI="file:///home/brov/robot/robot_scene_demo/configs/go2w/cyc
 每次运动都满足：短步（前进 2 s×0.12 m/s、转向 ≤30°）、轮式/融合里程计校验、
 前向净空门禁、`mode/error` 检查、无位移自动重试/绕障、结束三次 STOP + disarm。
 `--operator-authorized-rotation` 的详细说明见
-`reports/go2w_unigoal_pandarxt16_stage2_stage3_handoff_20260813.md` 2026-08-14 续接章节。
+`reports/go2w_semantic_navigation_pandarxt16_stage2_stage3_handoff_20260813.md` 2026-08-14 续接章节。
 
 ### 0.7 关键配置与代码索引
 
@@ -686,8 +686,8 @@ ros2_ws/src/go2w_lidar_preprocessor/.../lidar_evidence.py          # 双雷达�
 ros2_ws/src/go2w_lidar_preprocessor/.../dual_lidar_observability.py # 旋转可观测性
 ros2_ws/src/go2w_lidar_preprocessor/.../hesai_pandarxt16_preprocessor.py # Pandar 诊断节点
 reports/go2w_codex_handoff_20260813.md      # Go2-W 基础链最新交接
-reports/go2w_unigoal_semantic_search_handoff_20260813.md  # 语义搜索融合交接
-reports/unigoal_v1_existing_implementation_audit_20260813.md  # UniGoal V1 KEEP 审计
+reports/go2w_semantic_navigation_semantic_search_handoff_20260813.md  # 语义搜索融合交接
+reports/semantic_navigation_v1_existing_implementation_audit_20260813.md  # SemanticNavigation V1 KEEP 审计
 docs/PANDARXT16_DUAL_LIDAR_SAFETY_INTEGRATION.md  # 双雷达安全集成说明
 ```
 
@@ -875,7 +875,8 @@ nano .env
 ```text
 SILICONFLOW_API_KEY=
 SILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1
-SILICONFLOW_MODEL=Qwen/Qwen3-VL-8B-Instruct
+SILICONFLOW_REASONING_MODEL=deepseek-ai/DeepSeek-V4-Flash
+SILICONFLOW_VISION_MODEL=Qwen/Qwen3-VL-8B-Instruct
 SILICONFLOW_TIMEOUT_SECONDS=25
 SILICONFLOW_MAX_TOKENS=2048
 IMAGE_MAX_SIDE=1280
@@ -1634,7 +1635,7 @@ tmux kill-session -t robot_scene_demo_ui
   - `模拟数据`：不需要图片、不需要 API Key。
   - `真实 API`：上传图片，调用硅基流动视觉模型。
   - `GroundingDINO+SAM2`：上传图片，调用本地检测器。
-  - `视频目标搜索`：上传第一视角视频，先执行目标搜索，再按开关生成视频记忆、PSG、场景建图和导航拓扑辅助结果。
+  - `视频目标搜索（兼容）`：历史离线分析入口；不控制真机，也不是真机自主搜索主链。
 - `自然语言任务`：直接输入开放式任务，例如 `帮我找到手机`、`找到张三，然后在安全距离处报告位置`。
 - `场景图片`：真实 API 和 GroundingDINO+SAM2 模式需要上传。
 - `视频目标搜索` 模式下的辅助功能：
@@ -1681,14 +1682,14 @@ Web UI 不再要求用户选择“找可见目标 / 找不可见目标”等任�
 
 系统只保留定位/搜索/安全距离观察/停止反馈部分，并在 `outputs/actionability_report.md` 中说明被拦截的伤害行为。目标是否可见不会由用户输入决定，解析阶段固定为 `initial_visibility_state="unknown"`，后续只能由视觉检测和 evidence gating 判断为 `visual_candidate`、`visual_confirmed` 或当前视角未确认。
 
-### 10.2 视频目标搜索
+### 10.2 视频目标搜索（兼容入口）
 
-Web UI 的“运行模式”中选择“视频目标搜索”后，可以上传
+Web UI 的“运行模式”中选择“视频目标搜索（兼容）”后，可以上传
 `mp4/avi/mov/mkv` 视频，设置目标、检测器、关键帧采样 FPS 和最大分析帧数。
 
 当前产品语义：
 
-- 顶层运行模式只有 `视频目标搜索`，没有 `视频全场景建图`。
+- 该入口仅用于历史离线分析；真机主入口是 `Go2-W 实时目标搜索`，没有独立视频导航主链。
 - 只要提供目标，后端必须先执行目标搜索。
 - `启用全场景建图辅助`、`生成导航拓扑图`、`使用拓扑图辅助目标搜索排序` 都是目标搜索内部的辅助开关。
 - 看到客厅、沙发、电视柜等上下文，只能生成“可能搜索区域”和下一步观察建议，不能把目标升级为 `visual_confirmed`。
@@ -2810,12 +2811,12 @@ python -m unittest discover -s tests -p 'test_nav2_*.py'
 - [`docs/NAV2_INTEGRATION.md`](docs/NAV2_INTEGRATION.md)
 - [`docs/NAV2_WEBUI_TESTING.md`](docs/NAV2_WEBUI_TESTING.md)
 
-## Go2-W UniGoal-style 语义搜索推理
+## Go2-W SemanticNavigation-style 语义搜索推理
 
 `state_machine_search` 的“目标未出现 / SELECT_NEXT_VIEW”分支现已支持一个可回滚、
-可审计的 UniGoal 风格语义搜索层。它只融合 Goal Graph、现有 Observed Scene Graph
+可审计的 SemanticNavigation 风格语义搜索层。它只融合 Goal Graph、现有 Observed Scene Graph
 匹配、zero/partial/strong search policy 和 session negative memory；不是完整
-UniGoal runtime，也不替代检测器、运动控制或 Nav2。
+SemanticNavigation runtime，也不替代检测器、运动控制或 Nav2。
 
 安全语义保持不变：graph strong match 不能确认目标；目标仍必须经过现有视觉证据
 和 LLM verify。V1 只记录 observation pose、heading、bbox 和 provenance，不依赖
@@ -2846,7 +2847,7 @@ LIVE_SEARCH_REASONER_MODE=shadow
 LIVE_SEARCH_REASONER_ALLOW_FORWARD=false
 ```
 
-推荐先运行 shadow；此时会记录 hybrid/UniGoal 建议，但实际执行仍严格使用 legacy
+推荐先运行 shadow；此时会记录 hybrid/SemanticNavigation 建议，但实际执行仍严格使用 legacy
 scan step：
 
 ```bash
@@ -2862,7 +2863,7 @@ scan step：
   --front-half-plane-only --turn-only \
   --max-motion-steps 1 --min-rotation-clearance 0.511 \
   --odom-topic /go2w/odom/fused \
-  --output outputs/live_sessions/unigoal_shadow.jsonl
+  --output outputs/live_sessions/semantic_navigation_shadow.jsonl
 ```
 
 shadow 回放验证后才可将模式改为 `active`；V1 active 默认仅选择单步转向和重观测。
@@ -2927,7 +2928,7 @@ $PY scripts/go2w/run_autonomous_loop.py \
   --max-motion-steps 1 --min-rotation-clearance 0.511 \
   --odom-topic /go2w/odom/wheel \
   --rotation-clearance-evidence $OUT/rotation_lease.json \
-  --output outputs/live_sessions/unigoal_stage2_active_turn.jsonl
+  --output outputs/live_sessions/semantic_navigation_stage2_active_turn.jsonl
 ```
 
 `finalize` 还要求操作者实测完整 0.511 m 圆形扫掠范围（包括后方和四轮外侧）为空。
@@ -2945,12 +2946,12 @@ Runner 的 `--rotation-clearance-evidence` 用于原地转向。实时原始侧�
 一致，且没有启动运动控制图。状态机现在只在某一步通过全部运动门后才即时 arm；明确
 的 quick target-absent 结果可复用为不含伪造物体/关系的 zero-match 观察，避免重复
 full-scene API。证据为
-`outputs/go2w_acceptance/unigoal_shadow_fail_closed_20260813/result.json`。这不是成功转向
+`outputs/go2w_acceptance/semantic_navigation_shadow_fail_closed_20260813/result.json`。这不是成功转向
 PASS；active turn-only 与 short-forward 仍保持关闭。
 
 回滚只需去掉 `--semantic-reasoning` 或使用 `--search-reasoner legacy`。完整架构、
 输出、离线 A/B 和分级真机验收见
-[`docs/UNIGOAL_SEMANTIC_SEARCH_INTEGRATION.md`](docs/UNIGOAL_SEMANTIC_SEARCH_INTEGRATION.md)。
+[`docs/SEMANTIC_NAVIGATION_SEMANTIC_SEARCH_INTEGRATION.md`](docs/SEMANTIC_NAVIGATION_SEMANTIC_SEARCH_INTEGRATION.md)。
 
 ## Go2-W 内置 RGB + LiDAR 真机部署
 

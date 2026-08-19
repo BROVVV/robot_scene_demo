@@ -54,7 +54,7 @@ class CropVerifier:
                 timeout=self.settings.crop_verify_timeout_seconds,
             )
             response = client.chat.completions.create(
-                model=self.settings.siliconflow_model,
+                model=self.settings.vision_model,
                 messages=[
                     {
                         "role": "system",

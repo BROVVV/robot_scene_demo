@@ -131,7 +131,7 @@ def test_search_end_to_end_state_and_summary(tmp_path) -> None:
     )
     with client:
         client.post("/api/search/start", json={
-            "target": "蓝色垃圾桶", "backend": "mock", "reasoner": "unigoal",
+            "target": "蓝色垃圾桶", "backend": "mock", "reasoner": "semantic_navigation",
         })
         _wait_status(client, {"TARGET_FOUND"})
         state = client.get("/api/search/state").json()

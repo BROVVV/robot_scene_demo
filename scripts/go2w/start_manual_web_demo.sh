@@ -6,7 +6,7 @@ set -euo pipefail
 #   bash scripts/go2w/start_manual_web_demo.sh                 # camera + LLM, motion disabled
 #   bash scripts/go2w/start_manual_web_demo.sh --enable-motion # allow WASD+QE through /go2w/motion
 #
-# This script never starts Nav2, UniGoal, the Pandar driver or Point-LIO.
+# This script never starts Nav2, SemanticNavigation, the Pandar driver or Point-LIO.
 
 ENABLE_MOTION=0
 for arg in "$@"; do

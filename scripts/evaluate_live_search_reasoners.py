@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline, no-API A/B replay for legacy, UniGoal and hybrid policies.
+"""Offline, no-API A/B replay for legacy, SemanticNavigation and hybrid policies.
 
 The evaluator separates three things that must not be conflated:
 
@@ -25,9 +25,9 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.live_robot.search_directive_adapter import directive_to_step_plan
 from app.live_robot.step_planner import plan_scan_step
 from app.live_robot.step_search_runner import StepSearchConfig
-from app.reasoning.unigoal.models import SearchReasoningContext
-from app.reasoning.unigoal.router import SemanticSearchController
-from app.reasoning.unigoal.semantic_memory import SemanticSearchMemory
+from app.reasoning.semantic_navigation.models import SearchReasoningContext
+from app.reasoning.semantic_navigation.router import SemanticSearchController
+from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
 from app.video.schemas import SceneGraph, SceneGraphEdge, SceneGraphNode
 from app.video.target_profile import TargetProfile, TargetProfileResolver
 
@@ -216,7 +216,7 @@ def evaluate(
         forward_estimate_m=config.forward_estimate_m,
     )
     rows = []
-    for backend in ("legacy", "unigoal", "hybrid"):
+    for backend in ("legacy", "semantic_navigation", "hybrid"):
         controller = SemanticSearchController(profile, backend=backend)
         context = SearchReasoningContext(
             scene_graph=graph,

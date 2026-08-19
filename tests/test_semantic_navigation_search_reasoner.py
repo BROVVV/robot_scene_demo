@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import unittest
 
-from app.reasoning.unigoal.models import (
+from app.reasoning.semantic_navigation.models import (
     GraphMatchResult, GraphMatchState, SearchDirectiveKind, SearchReasoningContext,
 )
-from app.reasoning.unigoal.search_reasoner import HybridReasoner, UniGoalReasoner
-from app.reasoning.unigoal.semantic_memory import SemanticSearchMemory
+from app.reasoning.semantic_navigation.search_reasoner import HybridReasoner, SemanticNavigationReasoner
+from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
 
 
 class SearchReasonerTests(unittest.TestCase):
@@ -21,7 +21,7 @@ class SearchReasonerTests(unittest.TestCase):
         )
 
     def test_zero_explores_unseen_without_forward(self):
-        directive = UniGoalReasoner().propose(self._context(GraphMatchState.ZERO))
+        directive = SemanticNavigationReasoner().propose(self._context(GraphMatchState.ZERO))
         self.assertEqual(directive.kind, SearchDirectiveKind.EXPLORE_UNSEEN)
         self.assertFalse(directive.allow_forward)
         self.assertIsNone(directive.preferred_distance_m)
@@ -32,12 +32,12 @@ class SearchReasonerTests(unittest.TestCase):
             "nodes": [{"node_id": "anchor", "label": "water dispenser", "attributes": {"position_2d": "left"}}],
             "edges": [],
         }
-        directive = UniGoalReasoner().propose(context)
+        directive = SemanticNavigationReasoner().propose(context)
         self.assertEqual(directive.kind, SearchDirectiveKind.INSPECT_ANCHOR)
         self.assertGreater(directive.preferred_heading_delta_deg, 0)
 
     def test_strong_only_reobserves_and_never_confirms(self):
-        directive = UniGoalReasoner().propose(
+        directive = SemanticNavigationReasoner().propose(
             self._context(GraphMatchState.STRONG, 0.9)
         )
         self.assertEqual(directive.kind, SearchDirectiveKind.REOBSERVE_SECTOR)
@@ -75,7 +75,7 @@ class SearchReasonerTests(unittest.TestCase):
         self.assertEqual(directive.preferred_heading_delta_deg, -30.0)
         self.assertNotIn("psg:view_left", directive.evidence_refs)
 
-    def test_unigoal_backend_does_not_consume_auxiliary_hints(self):
+    def test_semantic_navigation_backend_does_not_consume_auxiliary_hints(self):
         context = self._context(GraphMatchState.ZERO)
         context.auxiliary_hints = [{
             "hint_id": "psg:view_left",
@@ -83,7 +83,7 @@ class SearchReasonerTests(unittest.TestCase):
             "confidence": 1.0,
             "can_confirm_target": False,
         }]
-        directive = UniGoalReasoner().propose(context)
+        directive = SemanticNavigationReasoner().propose(context)
         self.assertEqual(directive.preferred_heading_delta_deg, -30.0)
         self.assertNotIn("psg:view_left", directive.evidence_refs)
 

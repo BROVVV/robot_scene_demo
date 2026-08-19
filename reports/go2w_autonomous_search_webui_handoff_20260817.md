@@ -58,8 +58,8 @@
 | 验收项 | 结果 |
 | --- | --- |
 | A 相机/状态 Web 启动 | PASS：`/api/status` camera fresh、readiness ready |
-| B 搜索 dry-run（真实相机+LLM+UniGoal+Planner，零运动） | **PASS：TARGET_FOUND（50s，1 cycle）**，识别到 blue_plastic_basket（bbox [0.24,0.61,0.33,0.75]，属性 on floor/near chair/blue） |
-| C turn-only 真机搜索（授权自主运动，≤30° 转向） | **PASS：TARGET_FOUND**，1 个真实自主转向（UniGoal 选向 score 0.61），转向后第 2 周期命中"绿色垃圾桶"；graph 1 节点 1 边 |
+| B 搜索 dry-run（真实相机+LLM+SemanticNavigation+Planner，零运动） | **PASS：TARGET_FOUND（50s，1 cycle）**，识别到 blue_plastic_basket（bbox [0.24,0.61,0.33,0.75]，属性 on floor/near chair/blue） |
+| C turn-only 真机搜索（授权自主运动，≤30° 转向） | **PASS：TARGET_FOUND**，1 个真实自主转向（SemanticNavigation 选向 score 0.61），转向后第 2 周期命中"绿色垃圾桶"；graph 1 节点 1 边 |
 | D 连续搜索（转向）10+ 周期 | **PASS（12-cycle 会话）**：见下 |
 | Pause/Resume 真机验证 | **PASS**：真实搜索中（cycle 5）暂停 → 当前转向完成后停车（PAUSED 保持 15s+ 零运动）→ 恢复继续 cycle 7 |
 | E 目标不存在 | 逻辑已具备（SEARCH_EXHAUSTED / MAX_STEPS_REACHED），D 会话以 MAX_STEPS_REACHED 正常收尾 |
@@ -68,7 +68,7 @@
 ### 12-cycle 连续自主循环会话（`search_20260817_193637`）
 
 - **12 planning cycles / 11 次真实转向 / 12 observations / 12 unique nodes**（超过计划书 D 的 10+ 周期要求）
-- 1 次导航失败自动 replan 恢复；4 次 UniGoal 语义选向 + 8 次 fallback 选向
+- 1 次导航失败自动 replan 恢复；4 次 SemanticNavigation 语义选向 + 8 次 fallback 选向
 - 地图实时增长：12 节点 / 12 边；`MAX_PLANNING_CYCLES_REACHED` 正常收尾（灭火器目标，房间内未见）
 - 中途 pause/resume 一次（cycle 5 暂停 → 转向完成即停车 → 恢复 cycle 7 继续）
 

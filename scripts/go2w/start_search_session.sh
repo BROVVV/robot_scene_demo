@@ -6,7 +6,7 @@ project_root="$(cd -- "${script_dir}/../.." && pwd)"
 python_bin="/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python"
 target=""
 mode="observe_only"
-detector="grounded_sam"
+detector="llm"
 semantic_reasoning="false"
 search_reasoner="legacy"
 search_reasoner_mode="shadow"
@@ -31,7 +31,7 @@ case "${mode}" in
   *) printf 'Unsupported mode: %s\n' "${mode}" >&2; exit 2 ;;
 esac
 case "${search_reasoner}" in
-  legacy|unigoal|hybrid) ;;
+  legacy|semantic_navigation|hybrid) ;;
   *) printf 'Unsupported search reasoner: %s\n' "${search_reasoner}" >&2; exit 2 ;;
 esac
 case "${search_reasoner_mode}" in

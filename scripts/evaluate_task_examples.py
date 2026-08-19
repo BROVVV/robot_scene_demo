@@ -15,7 +15,7 @@ if str(ROOT) not in sys.path:
 from app.knowledge.retrieval import retrieve_relevant_knowledge
 from app.planning.task_planner import plan_task
 from app.reasoning.scene_reasoner import reason_about_scene
-from app.reasoning.task_parser import convert_new_task_to_legacy_format
+from app.reasoning.task_parser import convert_new_task_to_legacy_format, parse_robot_task
 from app.schemas import KnowledgeAwareSceneResult, SceneAnalysisResult
 from app.services.psg_builder import build_predictive_scene_graph
 from app.task_understanding.task_pipeline import run_task_understanding_pipeline
@@ -66,6 +66,13 @@ def _evaluate_one(
     parsed_task = result.parsed_task
     actionability = result.actionability
     legacy_task = convert_new_task_to_legacy_format(result)
+    if result.parsed_task.parser_source in {
+        "llm_unavailable", "llm_verification_failed"
+    }:
+        # This evaluator is also the repository's offline fixture smoke test;
+        # keep it runnable without an API while the live WebUI remains
+        # fail-closed when production task understanding is unavailable.
+        legacy_task = parse_robot_task(task_text)
     scene = _load_scene_fixture(payload.get("scene_fixture"))
     knowledge = retrieve_relevant_knowledge(
         target_text=task_text,

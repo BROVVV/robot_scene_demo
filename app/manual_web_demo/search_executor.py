@@ -259,6 +259,7 @@ class InProcessMockExecutor:
         self._lock = threading.Lock()
         self._status: dict[str, Any] = {"state": "stopped", "session_id": None}
         self._holder: dict[str, Any] = {"explorer": None}
+        self._envelope: dict[str, Any] = {}
 
     # -- lifecycle ----------------------------------------------------- #
     def set_on_message(self, callback: Callable[[dict[str, Any]], None]) -> None:
@@ -268,6 +269,8 @@ class InProcessMockExecutor:
         if self._thread is not None and self._thread.is_alive():
             return
         self._stop.clear()
+        with self._lock:
+            self._status["state"] = "starting"
         self._thread = threading.Thread(
             target=self._run,
             args=(dict(params),),
@@ -275,8 +278,6 @@ class InProcessMockExecutor:
             name="in-process-search",
         )
         self._thread.start()
-        with self._lock:
-            self._status["state"] = "starting"
 
     def pause(self) -> None:
         explorer = self._holder.get("explorer")
@@ -318,6 +319,9 @@ class InProcessMockExecutor:
     # -- internals ------------------------------------------------------ #
     def _run(self, params: dict[str, Any]) -> None:
         try:
+            # Preserve the asynchronous executor contract even when a tiny
+            # deterministic mock scene can finish in a single scheduler tick.
+            time.sleep(0.01)
             from app.live_robot.autonomous_explorer import AutonomousExplorer
             from app.live_robot.mock_observation_scene import (
                 scenario_anchor_then_target,
@@ -327,6 +331,7 @@ class InProcessMockExecutor:
             from app.navigation.backend_factory import MockBackendConfig, create_backend
             from app.navigation.exploration_config import load_exploration_policy
             from app.navigation.exploration_graph import ExplorationGraph
+            from app.task_understanding.search_task_context import SearchTaskContext
 
             scenario = self.scenario
             if self.scene_steps:
@@ -367,9 +372,15 @@ class InProcessMockExecutor:
                 outcome_sequence=self.outcome_sequence,
                 config=MockBackendConfig(latency_sec=self.backend_latency_sec),
             )
-            graph = ExplorationGraph(
-                session_id=time.strftime("explore_mock_%Y%m%d_%H%M%S")
-            )
+            session_id = str(params.get("session_id") or time.strftime("explore_mock_%Y%m%d_%H%M%S"))
+            graph = ExplorationGraph(session_id=session_id)
+            task_context = SearchTaskContext.from_dict(params["task_context"]) if isinstance(params.get("task_context"), dict) else SearchTaskContext.mock_fallback(str(params.get("task_text") or params.get("target") or "测试目标"))
+            self._envelope = {
+                "session_id": session_id,
+                "task_id": task_context.task_id,
+                "executor_id": params.get("executor_id"),
+                "worker_generation": params.get("worker_generation"),
+            }
 
             events: list[dict[str, Any]] = []
 
@@ -383,19 +394,22 @@ class InProcessMockExecutor:
                 self._notify({"type": "event", "event": event})
 
             explorer = AutonomousExplorer(
-                target=str(params.get("target") or "测试目标"),
+                target=task_context.canonical_target,
+                task_context=task_context,
                 observer=scene.observer(),
                 matcher=scene.matcher(),
                 verifier=scene.verifier(),
                 backend=backend,
                 policy=policy,
                 graph=graph,
-                negative_target_key=str(params.get("target") or "测试目标"),
+                negative_target_key=task_context.canonical_target,
                 finish_on_visual_confirmation=bool(
                     params.get("finish_on_visual_confirmation", True)
                 ),
                 turn_only=bool(params.get("turn_only", False)),
                 session_id=graph.session_id,
+                executor_id=str(params.get("executor_id") or ""),
+                worker_generation=params.get("worker_generation"),
                 on_event=on_event,
             )
             self._holder["explorer"] = explorer
@@ -423,7 +437,7 @@ class InProcessMockExecutor:
         if callback is None:
             return
         try:
-            callback(message)
+            callback({**self._envelope, **message})
         except Exception:  # noqa: BLE001
             pass
 
@@ -450,6 +464,40 @@ def _write_mock_artifacts(params: dict[str, Any], explorer: Any, result: Any,
             "".join(
                 json.dumps(event, ensure_ascii=False) + "\n" for event in events
             ),
+            encoding="utf-8",
+        )
+        task_context = getattr(explorer, "task_context", None)
+        if task_context is not None:
+            (run_dir / "task.json").write_text(
+                json.dumps(task_context.to_dict(), ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        (run_dir / "decisions.jsonl").write_text(
+            "".join(json.dumps(item.to_dict(), ensure_ascii=False) + "\n" for item in getattr(explorer, "decision_records", [])),
+            encoding="utf-8",
+        )
+        (run_dir / "semantic_map.json").write_text(
+            json.dumps(explorer.semantic_graph.to_dict(), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        (run_dir / "final_state.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "search_final_state_v1",
+                    "session_id": explorer.session_id,
+                    "state": explorer.state,
+                    "result": result.to_dict(),
+                    "task": task_context.to_dict() if task_context is not None else {},
+                    "current_place_id": explorer.semantic_graph.current_place_id,
+                    "map_revision": explorer.semantic_graph.revision,
+                    "last_decision": (
+                        explorer.decision_records[-1].to_dict()
+                        if getattr(explorer, "decision_records", None) else None
+                    ),
+                },
+                ensure_ascii=False,
+                indent=2,
+            ) + "\n",
             encoding="utf-8",
         )
     except Exception:  # noqa: BLE001 - artifacts must never crash the search

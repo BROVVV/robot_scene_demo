@@ -101,6 +101,7 @@ def _render_sidebar() -> dict:
         save_frame_observations = True
         runtime_settings = get_settings()
         if mode == "视频目标搜索":
+            st.caption("兼容离线分析入口；真机自主搜索请使用 Go2-W 实时目标搜索。")
             uploaded_video = st.file_uploader(
                 "上传机器狗第一视角视频",
                 type=["mp4", "avi", "mov", "mkv"],

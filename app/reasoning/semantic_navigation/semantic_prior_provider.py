@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.reasoning.unigoal.models import GoalGraph
+from app.reasoning.semantic_navigation.models import GoalGraph
 from app.spatial.models import SemanticPrior, SemanticRegion
 
 

@@ -16,6 +16,7 @@ from app.live_robot.search_event import (
     ACTION_FINISHED,
     ACTION_STARTED,
     CANDIDATES_GENERATED,
+    DECISION_RECORDED,
     ERROR,
     FRONTIERS_UPDATED,
     GOAL_SELECTED,
@@ -118,15 +119,15 @@ class ExplorerSearchAdapter:
         payload.pop("event", None)
         payload.pop("state", None)
         payload.pop("host_s", None)
+        # Preserve the worker envelope inside every SearchEvent payload so
+        # downstream logs remain attributable even though SearchEvent keeps a
+        # stable session-only top-level schema.
+        for key in ("task_id", "executor_id", "worker_generation"):
+            if event.get(key) is not None:
+                payload[key] = event[key]
         payload["phase"] = state or payload.get("phase")
 
         if name == "session_start":
-            self._store.reset(
-                session_id=self._session_id,
-                target=str(payload.get("target") or ""),
-                reasoner=str(payload.get("reasoner") or "unigoal"),
-                backend=str(payload.get("backend") or "mock"),
-            )
             # SESSION_CREATED is emitted by the web service; the explorer's
             # session_start only marks the transition to running.
             return [
@@ -254,10 +255,19 @@ class ExplorerSearchAdapter:
                     "phase": "PLAN",
                 })
             ]
+        if name == "decision_recorded":
+            return [
+                self._emit(DECISION_RECORDED, payload={
+                    "decision": payload.get("decision") or {},
+                    "phase": "PLAN",
+                })
+            ]
         if name == "action_start":
             return [
                 self._emit(ACTION_STARTED, payload={
                     "goal": payload.get("goal") or {},
+                    "decision_id": payload.get("decision_id"),
+                    "next_motion_command": payload.get("next_motion_command"),
                     "phase": "EXECUTE",
                 })
             ]
@@ -367,8 +377,11 @@ class ExplorerSearchAdapter:
                     state: str) -> list[SearchEvent]:
         """MAP_UPDATED for map-relevant explorer events (payload carries the
         full graph snapshot injected by the search worker)."""
-        graph = payload.get("graph")
-        if not isinstance(graph, dict) or not graph.get("session_id"):
+        graph = payload.get("semantic_navigation_graph")
+        semantic = isinstance(graph, dict)
+        if not semantic:
+            graph = payload.get("graph")
+        if not isinstance(graph, dict) or (not semantic and not graph.get("session_id")):
             return []
         nodes = list(graph.get("nodes") or [])
         if not nodes:
@@ -393,9 +406,9 @@ class ExplorerSearchAdapter:
                 }
             ]
             graph = {**graph, "nodes": nodes}
-        current_node_id = None
+        current_node_id = graph.get("current_place_id") if semantic else None
         bundle_id = payload.get("bundle_id")
-        if bundle_id:
+        if bundle_id and not semantic:
             current_node_id = f"node_{bundle_id}"
         robot = None
         pose = payload.get("pose")
@@ -411,16 +424,37 @@ class ExplorerSearchAdapter:
         normalized_nodes: list[dict[str, Any]] = []
         for node in nodes:
             item = dict(node)
+            node_type = str(item.get("node_type") or "PLACE").upper()
             node_pose = item.get("pose")
             if isinstance(node_pose, dict):
                 item["x"] = node_pose.get("x")
                 item["y"] = node_pose.get("y")
                 item["yaw"] = node_pose.get("yaw")
+            # Keep the documented legacy map envelope consumable while the
+            # node IDs and graph source are now semantic PLACE/OBJECT/
+            # FRONTIER nodes. ``graph_mode`` below identifies the projection.
+            item.setdefault("timestamp", item.get("last_seen") or item.get("first_seen") or 0.0)
+            item.setdefault("visited_count", item.get("visit_count", 0))
+            item.setdefault("objects", [item.get("label")] if node_type == "OBJECT" and item.get("label") else [])
+            item.setdefault("reachable_state", "VISITED" if item.get("current") else "OBSERVED")
+            item.setdefault(
+                "target_match_level",
+                "confirmed" if item.get("target_confirmed") else (
+                    "candidate" if item.get("target_candidate") else "none"
+                ),
+            )
+            item.setdefault("semantic_relevance", item.get("association_score", 0.0))
+            item.setdefault("information_gain", item.get("confidence", 0.0))
             normalized_nodes.append(item)
+        normalized_graph = {**graph, "nodes": normalized_nodes}
         return [
             self._emit(MAP_UPDATED, payload={
-                "graph": {**graph, "nodes": normalized_nodes},
+                "graph": normalized_graph,
+                # ``map_mode`` is the stable outer WebUI contract. New
+                # clients should use graph_mode/semantic_navigation_graph.
                 "map_mode": "topological",
+                "graph_mode": "semantic_navigation" if semantic else "topological",
+                "semantic_navigation_graph": normalized_graph if semantic else None,
                 "current_node_id": current_node_id,
                 "robot": robot,
                 "phase": state,

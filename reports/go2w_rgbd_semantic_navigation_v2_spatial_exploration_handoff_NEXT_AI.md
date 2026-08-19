@@ -1,8 +1,8 @@
-# Go2-W RGB-D UniGoal V2 Spatial Exploration — 交接书（给下一个 AI）
+# Go2-W RGB-D SemanticNavigation V2 Spatial Exploration — 交接书（给下一个 AI）
 
-> 生成时间：2026-08-18  
-> 主计划书：`robot_scene_demo_RGBD_UniGoalV2_PSG_空间自主探索_一次性重构实施计划书_20260818.md`  
-> 当前工作树：`/home/brov/robot/robot_scene_demo`  
+> 生成时间：2026-08-18
+> 主计划书：`robot_scene_demo_RGBD_SemanticNavigationV2_PSG_空间自主探索_一次性重构实施计划书_20260818.md`
+> 当前工作树：`/home/brov/robot/robot_scene_demo`
 > 当前 HEAD：`b4ba2c41fbba7f0ac6d69ba019d7fdd585bbe734`（工作树 dirty，按计划书规则保留，未 reset/clean）
 
 ---
@@ -17,7 +17,7 @@ D435 原子 RGB-D
   → PlaceGraph / SemanticObjectMap
   → SpatialProvider（RTAB-Map / CameraLocal / LightweightDepthBEVMapper）
   → PSG SemanticPriorProvider
-  → UniGoal V2 SpatialReasoner / LongTermGoalSelector
+  → SemanticNavigation V2 SpatialReasoner / LongTermGoalSelector
   → LocalGoalExecutor
   → Go2-W 真实运动
 ```
@@ -94,14 +94,14 @@ D435 原子 RGB-D
   - `INSPECT_ANCHOR_REGION` / `APPROACH_TARGET` / `VERIFY_TARGET` 映射已实现
 - 已加 `--max-local-rotations`（默认 3）实现 bounded LOCAL_SCAN
 
-### Phase 11：UniGoal V2 Spatial Reasoner
-- `app/reasoning/unigoal/spatial_reasoner.py`
+### Phase 11：SemanticNavigation V2 Spatial Reasoner
+- `app/reasoning/semantic_navigation/spatial_reasoner.py`
 - `ZERO → EXPLORE_FRONTIER`
 - `PARTIAL → INSPECT_ANCHOR_REGION`
 - `STRONG / VERIFY → APPROACH_TARGET / VERIFY_TARGET`
 
 ### Phase 12：PSG SemanticPriorProvider
-- `app/reasoning/unigoal/semantic_prior_provider.py`
+- `app/reasoning/semantic_navigation/semantic_prior_provider.py`
 - 规则版 PSG，预测与观测严格分离
 - `SemanticRegion` / `SemanticPrior` 模型已建
 - 负证据：`app/spatial/spatial_memory.py`
@@ -155,7 +155,7 @@ bash scripts/go2w/start_rgbd_spatial_stack.sh stop
 # 真机 V2 + RTAB-Map（转向）
 /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
   --target "不存在的红色独角兽" \
-  --backend go2w_experimental --reasoner unigoal \
+  --backend go2w_experimental --reasoner semantic_navigation \
   --rgbd-source --spatial-v2 --rtabmap \
   --operator-supervised-experiment --turn-only \
   --max-local-rotations 1 \
@@ -165,7 +165,7 @@ bash scripts/go2w/start_rgbd_spatial_stack.sh stop
 # 真机 V2 多周期 + 前进 relocation
 /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
   --target "不存在的红色独角兽" \
-  --backend go2w_experimental --reasoner unigoal \
+  --backend go2w_experimental --reasoner semantic_navigation \
   --rgbd-source --spatial-v2 --rtabmap \
   --operator-supervised-experiment \
   --max-local-rotations 1 \
@@ -299,8 +299,8 @@ bash scripts/go2w/start_rgbd_spatial_stack.sh stop
 | BEV fallback | `app/spatial/lightweight_depth_bev.py` |
 | LongTermGoalSelector | `app/navigation/long_term_goal_selector.py` |
 | LocalGoalExecutor | `app/navigation/local_goal_executor.py` |
-| PSG Prior | `app/reasoning/unigoal/semantic_prior_provider.py` |
-| UniGoal V2 | `app/reasoning/unigoal/spatial_reasoner.py` |
+| PSG Prior | `app/reasoning/semantic_navigation/semantic_prior_provider.py` |
+| SemanticNavigation V2 | `app/reasoning/semantic_navigation/spatial_reasoner.py` |
 | V2 CLI 接入 | `scripts/go2w/run_semantic_exploration.py` |
 | D435 ROS2 Bridge | `scripts/go2w/realsense_rgbd_bridge.py` |
 | RGB-D Stack 启停 | `scripts/go2w/start_rgbd_spatial_stack.sh` |
@@ -318,7 +318,7 @@ bash scripts/go2w/start_rgbd_spatial_stack.sh stop
    ```bash
    /usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
      --target "不存在的红色独角兽" \
-     --backend go2w_experimental --reasoner unigoal \
+     --backend go2w_experimental --reasoner semantic_navigation \
      --rgbd-source --spatial-v2 --rtabmap \
      --operator-supervised-experiment \
      --max-local-rotations 1 \

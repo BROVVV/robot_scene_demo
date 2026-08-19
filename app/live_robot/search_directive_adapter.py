@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.live_robot.step_planner import PlanKind, StepPlan, describe_step, plan_scan_step
-from app.reasoning.unigoal.models import SearchDirective
+from app.reasoning.semantic_navigation.models import SearchDirective
 
 
 def directive_to_step_plan(

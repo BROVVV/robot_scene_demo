@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Go2-W 自主语义搜索控制台</title>
-  <link rel="stylesheet" href="/static/style.css?v=estop-reset-20260819" />
+  <link rel="stylesheet" href="/static/style.css?v=search-fix-20260819" />
 </head>
 <body>
   <header class="topbar">
@@ -39,7 +39,7 @@
         <button id="btn-search-stop" class="danger" disabled>停止</button>
         <button id="btn-search-estop" class="estop" disabled>急停</button>
         <label class="debug-toggle" title="operator_supervised_experiment：操作者持遥控器监督，转向≤30°、前进≤0.30m">
-          <input type="checkbox" id="chk-motion" checked /> 操作者监督自主运动
+          <input type="checkbox" id="chk-motion" /> 操作者监督自主运动
         </label>
         <label class="debug-toggle"><input type="checkbox" id="chk-debug" /> 调试</label>
         <span id="search-session-info" class="session-info"></span>
@@ -78,6 +78,8 @@
           </div>
           <div class="cell-title" style="margin-top:8px">目标证据</div>
           <div id="st-evidence" class="evidence">--</div>
+          <div class="cell-title" style="margin-top:8px">任务理解</div>
+          <div id="task-understanding" class="task-understanding">等待任务解析…</div>
         </div>
 
         <div class="cell cell-obs">
@@ -89,11 +91,14 @@
 
         <div class="cell cell-decision">
           <div class="cell-title">下一步决策</div>
+          <div id="dec-motion" class="dec-motion">等待决策…</div>
           <div id="dec-intent" class="dec-intent">--</div>
           <div id="dec-reason" class="dec-reason"></div>
           <div id="dec-scores" class="dec-scores"></div>
           <div class="cell-title" style="margin-top:8px">Candidates</div>
           <div id="dec-candidates" class="obs-list"></div>
+          <div class="cell-title" style="margin-top:8px">Decision history</div>
+          <div id="dec-history" class="decision-history"></div>
         </div>
 
         <div class="cell cell-map">
@@ -212,7 +217,7 @@
   </main>
 
   <script src="/static/search_map.js"></script>
-  <script src="/static/search_ui.js?v=estop-reset-20260819"></script>
-  <script src="/static/app.js?v=estop-reset-20260819"></script>
+  <script src="/static/search_ui.js?v=search-fix-20260819"></script>
+  <script src="/static/app.js?v=search-fix-20260819"></script>
 </body>
 </html>

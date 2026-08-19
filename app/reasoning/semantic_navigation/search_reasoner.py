@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 from uuid import uuid4
 
-from app.reasoning.unigoal.models import (
+from app.reasoning.semantic_navigation.models import (
     GraphMatchState,
     SearchDirective,
     SearchDirectiveKind,
@@ -31,7 +31,7 @@ class LegacyReasoner:
         )
 
 
-class UniGoalReasoner:
+class SemanticNavigationReasoner:
     def propose(
         self,
         context: SearchReasoningContext,
@@ -40,7 +40,7 @@ class UniGoalReasoner:
     ) -> SearchDirective:
         match = context.graph_match
         if match is None:
-            return _fallback("缺少可解释的图匹配结果，回退 legacy。", "unigoal")
+            return _fallback("缺少可解释的图匹配结果，回退 legacy。", "semantic_navigation")
         target_key = getattr(context.target_profile, "canonical_name_zh", "target")
         if match.state == GraphMatchState.ZERO:
             heading, penalties, auxiliary_refs = _best_unseen_heading(
@@ -54,7 +54,7 @@ class UniGoalReasoner:
             )
             return SearchDirective(
                 directive_id=_id(), kind=SearchDirectiveKind.EXPLORE_UNSEEN,
-                source_backend="unigoal", match_state=match.state.value,
+                source_backend="semantic_navigation", match_state=match.state.value,
                 confidence=max(0.35, 0.62 - 0.2 * len(penalties)),
                 preferred_heading_delta_deg=heading, allow_forward=False,
                 reason_zh=(
@@ -69,7 +69,7 @@ class UniGoalReasoner:
         if match.state == GraphMatchState.PARTIAL:
             return SearchDirective(
                 directive_id=_id(), kind=SearchDirectiveKind.INSPECT_ANCHOR,
-                source_backend="unigoal", match_state=match.state.value,
+                source_backend="semantic_navigation", match_state=match.state.value,
                 confidence=max(0.45, min(0.88, match.score + 0.18)),
                 preferred_heading_delta_deg=heading,
                 anchor_scene_node_id=_node_field(anchor, "node_id"),
@@ -81,7 +81,7 @@ class UniGoalReasoner:
         # Strong is still only a search-priority signal, never confirmation.
         return SearchDirective(
             directive_id=_id(), kind=SearchDirectiveKind.REOBSERVE_SECTOR,
-            source_backend="unigoal", match_state=match.state.value,
+            source_backend="semantic_navigation", match_state=match.state.value,
             confidence=max(0.55, min(0.95, match.score)),
             preferred_heading_delta_deg=heading,
             anchor_scene_node_id=_node_field(anchor, "node_id"),
@@ -96,7 +96,7 @@ class HybridReasoner:
     """Prefer observed graph facts, then retain legacy as deterministic fallback."""
 
     def __init__(self) -> None:
-        self.semantic = UniGoalReasoner()
+        self.semantic = SemanticNavigationReasoner()
         self.legacy = LegacyReasoner()
 
     def propose(self, context: SearchReasoningContext) -> SearchDirective:

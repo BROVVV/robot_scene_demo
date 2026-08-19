@@ -208,7 +208,7 @@ class GroundingPromptPlanner:
             response = client.chat(system_prompt=system_prompt, user_prompt=user_prompt)
             return self._response_text(response)
         response = client.chat.completions.create(
-            model=self.settings.siliconflow_model,
+            model=self.settings.reasoning_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},

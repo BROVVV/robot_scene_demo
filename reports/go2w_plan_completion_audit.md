@@ -4,7 +4,7 @@ Audit date: 2026-08-06 (Asia/Shanghai)
 Constraint: robot movement is prohibited
 
 > 2026-08-13 addendum: later authorized work is documented in
-> `reports/go2w_unigoal_semantic_search_handoff_20260813.md`. In particular,
+> `reports/go2w_semantic_navigation_semantic_search_handoff_20260813.md`. In particular,
 > current rotation observability is still BLOCKED: a deterministic 720-bearing
 > audit finds unobservable swept-annulus space in every bearing (0.155 m on
 > the lateral axes; worst sampled gap 0.290780 m). A bare

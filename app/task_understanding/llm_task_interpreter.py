@@ -172,13 +172,13 @@ def _call_text_llm(
             )
 
     response = client.chat.completions.create(
-        model=get_settings().siliconflow_model,
+        model=get_settings().reasoning_model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.0,
-        max_tokens=min(1600, get_settings().siliconflow_max_tokens),
+        max_tokens=min(1600, get_settings().siliconflow_reasoning_max_tokens),
     )
     return response.choices[0].message.content
 
@@ -190,7 +190,7 @@ def _default_openai_client() -> OpenAI:
     return OpenAI(
         api_key=settings.siliconflow_api_key,
         base_url=settings.siliconflow_base_url,
-        timeout=settings.siliconflow_timeout_seconds,
+        timeout=settings.siliconflow_reasoning_timeout_seconds,
     )
 
 

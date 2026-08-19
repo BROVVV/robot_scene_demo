@@ -15,7 +15,7 @@
 | ExplorationGraph 空间语义记忆 | ✅ `app/navigation/exploration_graph.py`（节点/边/状态/扇区覆盖/失败计数/序列化） |
 | Live Candidate Goal Generator | ✅ `app/navigation/candidate_goal_generator.py` 扩展（directive/扇区/图节点/anchor/last-known/fallback/metric） |
 | Live Exploration Planner | ✅ `app/navigation/exploration_planner.py` 扩展（10 项可配置权重评分 + tabu + 振荡惩罚） |
-| UniGoal directive → ExplorationGoal 适配 | ✅ Explorer 内 `SemanticMatch.directive` → candidate generator（保留 StepPlan 兼容路径） |
+| SemanticNavigation directive → ExplorationGoal 适配 | ✅ Explorer 内 `SemanticMatch.directive` → candidate generator（保留 StepPlan 兼容路径） |
 | AutonomousExplorer 长周期循环 | ✅ `app/live_robot/autonomous_explorer.py`（13 状态 + budget + recovery + JSONL 事件） |
 | ExperimentReadiness + health probe | ✅ `app/live_robot/experiment_readiness.py`（纯自动检查、机器可读） |
 | CLI / launcher 一键入口 | ✅ `scripts/go2w/run_semantic_exploration.py` + `start_semantic_exploration.sh` |
@@ -69,7 +69,7 @@ tests/test_exploration_replay.py       # 2026-08-17 Round2：确定性 replay �
 
 ## 4. 架构变化
 
-- 高层与硬件彻底解耦：UniGoal / SceneGraph / Memory / Planner / Explorer
+- 高层与硬件彻底解耦：SemanticNavigation / SceneGraph / Memory / Planner / Explorer
   只依赖 `RobotBackend` 协议与 `ExplorationGoal`。
 - `scripts/go2w/run_autonomous_loop.py`（2644 行 legacy runner）**未动**，
   继续作为回归基线；新 CLI 在其运动执行器之上构建（`/go2w/motion` + 全部既有安全门）。
@@ -134,14 +134,14 @@ tests/test_streamlit_natural_language_task_ui.py::…  # 同上
 
 - 会话 `explore_go2w_20260817_162915` → **MAX_STEPS_REACHED**
 - `planning_cycles=8, motion_steps=8, observations=8, unique_nodes=8`
-- `semantic_goal_selection_count=6`（UniGoal 语义选向 6/8），`navigation_failures=0`
+- `semantic_goal_selection_count=6`（SemanticNavigation 语义选向 6/8），`navigation_failures=0`
 - 8 次实际转向全部 odom 验证通过（`step_verified`），`operator_authorized_rotation_applied` 记录齐全
 
 ### Trial 2：转向 + 短步（绿色垃圾桶，12 步）
 
 - 会话 `explore_go2w_20260817_164244` → **MAX_STEPS_REACHED**
 - **`planning_cycles=13, motion_steps=12, observations=13, unique_nodes=13`**
-- `semantic_goal_selection_count=8`，goal sources：unigoal_directive×16 / unvisited_sector×10
+- `semantic_goal_selection_count=8`，goal sources：semantic_navigation_directive×16 / unvisited_sector×10
 - `replans=1, navigation_failures=1`（真实运动失败 → 自动 replan 成功）
 - **满足计划 §39 第 6 条：真实机器人 10+ autonomous planning cycles**
 

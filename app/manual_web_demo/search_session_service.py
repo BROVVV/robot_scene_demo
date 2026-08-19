@@ -24,13 +24,20 @@ from app.live_robot.search_event import (
     OPERATOR_STOP,
     SEARCH_FINISHED,
     SESSION_CREATED,
+    TASK_REJECTED,
+    TASK_UNDERSTANDING,
     SearchEvent,
     make_event,
 )
 from app.live_robot.search_event_bus import SearchEventBus
 from app.live_robot.search_state_store import (
+    STATUS_FAILED,
+    STATUS_FINISHED,
     STATUS_IDLE,
+    STATUS_OPERATOR_STOP,
+    STATUS_SEARCH_EXHAUSTED,
     STATUS_RUNNING,
+    STATUS_TARGET_FOUND,
     SearchStateStore,
 )
 from app.manual_web_demo.control_ownership import ControlOwner, OwnerState
@@ -40,6 +47,7 @@ from app.manual_web_demo.search_models import (
     SearchStartRequest,
     new_session_id,
 )
+from app.task_understanding.search_task_context import SearchTaskContext
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_SESSION_DIR = "outputs/live_runs"
@@ -55,9 +63,14 @@ class SearchSessionService:
         executor_factory: Callable[[], SearchExecutor] | None = None,
         session_dir: str = _DEFAULT_SESSION_DIR,
         event_buffer: int = 500,
+        task_understanding_runner: Callable[[str], Any] | None = None,
+        allow_mock_task_fallback: bool = True,
     ) -> None:
         self.owner = owner
         self._executor_factory = executor_factory or _default_executor_factory
+        self._executor_factory_is_mock = bool(
+            getattr(self._executor_factory, "is_mock_factory", False)
+        )
         self._session_dir = session_dir
         self._bus = SearchEventBus(max_recent=int(event_buffer))
         self._store = SearchStateStore()
@@ -68,6 +81,11 @@ class SearchSessionService:
         self._info: SearchSessionInfo | None = None
         self._started_at: float | None = None
         self._status = STATUS_IDLE
+        self._task_context: SearchTaskContext | None = None
+        self._executor_id: str | None = None
+        self._worker_generation = 0
+        self._task_understanding_runner = task_understanding_runner
+        self._allow_mock_task_fallback = bool(allow_mock_task_fallback)
 
     # ------------------------------------------------------------------ #
     # queries                                                            #
@@ -86,6 +104,8 @@ class SearchSessionService:
                 session_id=self._info.session_id,
                 target=self._info.target,
                 status=store_status,
+                task_text=self._info.task_text,
+                task_context=dict(self._info.task_context),
                 result=store_result or self._info.result,
                 started_at=self._info.started_at,
                 finished_at=self._info.finished_at,
@@ -101,10 +121,19 @@ class SearchSessionService:
             snapshot["session_id"] = session.session_id
             snapshot["status"] = session.status
             snapshot["target"] = session.target
+            snapshot["task"] = dict(session.task_context)
             snapshot["backend"] = session.backend
             snapshot["reasoner"] = session.reasoner
             snapshot["result"] = session.result
             snapshot["elapsed_seconds"] = self._elapsed(session)
+            try:
+                from app.config import get_settings
+
+                settings = get_settings()
+                snapshot["vision_model"] = settings.vision_model
+                snapshot["reasoning_model"] = settings.reasoning_model
+            except Exception:
+                pass
         return snapshot
 
     def map_snapshot(self) -> dict[str, Any]:
@@ -115,6 +144,9 @@ class SearchSessionService:
 
     def objects_snapshot(self) -> dict[str, Any]:
         return self._store.objects_snapshot()
+
+    def decisions_snapshot(self) -> list[dict[str, Any]]:
+        return self._store.decisions_snapshot()
 
     def recent_events(self, limit: int | None = None) -> list[dict[str, Any]]:
         return self._bus.recent_events(limit)
@@ -147,6 +179,8 @@ class SearchSessionService:
         error = request.validate()
         if error:
             return {"ok": False, "error": error}
+        task_text = request.task_text or request.target
+        task_context = self._understand_task(task_text, backend=request.backend)
         with self._lock:
             if self._status not in (STATUS_IDLE, "FINISHED", "SEARCH_EXHAUSTED",
                                     "FAILED", "OPERATOR_STOP", "TARGET_FOUND"):
@@ -159,13 +193,19 @@ class SearchSessionService:
             if not ok:
                 return {"ok": False, "error": reason, "conflict": True}
             session_id = new_session_id()
+            self._worker_generation += 1
+            generation = self._worker_generation
+            self._executor_id = f"executor_{session_id}"
             self._session_id = session_id
+            self._task_context = task_context
             self._status = "STARTING"
             self._started_at = time.time()
             self._info = SearchSessionInfo(
                 session_id=session_id,
-                target=request.target,
+                target=task_context.canonical_target,
                 status="STARTING",
+                task_text=task_context.raw_text,
+                task_context=task_context.to_dict(),
                 backend=request.backend,
                 reasoner=request.reasoner,
                 started_at=self._started_at,
@@ -177,14 +217,25 @@ class SearchSessionService:
             self._store = SearchStateStore()
             self._store.reset(
                 session_id=session_id,
-                target=request.target,
+                target=task_context.canonical_target,
                 reasoner=request.reasoner,
                 backend=request.backend,
+                task_context=task_context.to_dict(),
             )
             self._adapter = ExplorerSearchAdapter(
                 self._bus, self._store, session_id=session_id,
             )
-            executor = self._executor_factory()
+            # A direct ``backend=mock`` request is an offline contract.  The
+            # production default factory is a ROS subprocess, which is both
+            # unnecessary for mock runs and may use a different Python
+            # environment.  Keep explicit test factories authoritative, but
+            # make the WebUI mock path deterministic and dependency-free.
+            if request.backend in {"mock", "mock_metric"} and not self._executor_factory_is_mock:
+                from app.manual_web_demo.search_executor import InProcessMockExecutor
+
+                executor = InProcessMockExecutor()
+            else:
+                executor = self._executor_factory()
             executor.set_on_message(self._on_executor_message)
             self._executor = executor
             session_dir_path = Path(self._session_dir)
@@ -192,7 +243,13 @@ class SearchSessionService:
             run_dir = session_dir_path / session_id
             run_dir.mkdir(parents=True, exist_ok=True)
             params = {
-                "target": request.target,
+                "target": task_context.canonical_target,
+                "task_text": task_context.raw_text,
+                "task_context": task_context.to_dict(),
+                "task_id": task_context.task_id,
+                "session_id": session_id,
+                "executor_id": self._executor_id,
+                "worker_generation": generation,
                 "reasoner": request.reasoner,
                 "backend": request.backend,
                 "finish_on_visual_confirmation": request.finish_on_visual_confirmation,
@@ -200,6 +257,7 @@ class SearchSessionService:
                 "enable_autonomous_motion": request.enable_autonomous_motion,
                 "operator_supervised_experiment": request.operator_supervised_experiment,
                 "dry_run_motion": request.dry_run_motion,
+                "allow_degraded": request.allow_degraded,
                 "rgbd_source": request.rgbd_source,
                 "rgbd_base_url": request.rgbd_base_url,
                 "spatial_v2": request.spatial_v2,
@@ -221,7 +279,9 @@ class SearchSessionService:
                 session_id=session_id,
                 event_type=SESSION_CREATED,
                 payload={
-                    "target": request.target,
+                    "target": task_context.canonical_target,
+                    "task_text": task_context.raw_text,
+                    "task": task_context.to_dict(),
                     "reasoner": request.reasoner,
                     "backend": request.backend,
                     "phase": "STARTING",
@@ -229,6 +289,37 @@ class SearchSessionService:
             )
             self._bus.publish(created)
             self._store.apply(created)
+            understood = make_event(
+                allocator=self._bus.allocator,
+                session_id=session_id,
+                event_type=TASK_UNDERSTANDING,
+                payload={"task": task_context.to_dict()},
+            )
+            self._bus.publish(understood)
+            self._store.apply(understood)
+            if not task_context.executable:
+                rejected = make_event(
+                    allocator=self._bus.allocator,
+                    session_id=session_id,
+                    event_type=TASK_REJECTED,
+                    payload={
+                        "task": task_context.to_dict(),
+                        "reason": task_context.rejection_reason or "任务不可执行",
+                    },
+                )
+                self._bus.publish(rejected)
+                self._store.apply(rejected)
+                self._status = "TASK_REJECTED"
+                if self._info is not None:
+                    self._info.status = "TASK_REJECTED"
+                self.owner.release(OwnerState.AUTONOMOUS)
+                return {
+                    "ok": False,
+                    "task_rejected": True,
+                    "session_id": session_id,
+                    "task": task_context.to_dict(),
+                    "error": task_context.rejection_reason or "任务不可执行",
+                }
             try:
                 executor.start(params)
             except Exception as exc:  # noqa: BLE001
@@ -239,6 +330,7 @@ class SearchSessionService:
                 "ok": True,
                 "session_id": session_id,
                 "status": "STARTING",
+                "task": task_context.to_dict(),
             }
 
     def pause_search(self) -> dict[str, Any]:
@@ -308,16 +400,29 @@ class SearchSessionService:
                 summary = json.loads(summary_path.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError):
                 continue
+            task: dict[str, Any] = {}
+            task_path = directory / "task.json"
+            if task_path.is_file():
+                try:
+                    task = json.loads(task_path.read_text(encoding="utf-8"))
+                except (json.JSONDecodeError, OSError):
+                    task = {}
             sessions.append(
                 {
                     "session_id": directory.name,
                     "target": summary.get("target"),
+                    "task_text": task.get("raw_text") or summary.get("target"),
+                    "canonical_target": task.get("canonical_target") or summary.get("target"),
+                    "task_id": task.get("task_id"),
                     "result": summary.get("result"),
                     "finish_reason": summary.get("finish_reason"),
                     "duration_s": summary.get("duration_s"),
                     "planning_cycles": summary.get("planning_cycles"),
                     "observations": summary.get("observations"),
                     "unique_nodes": summary.get("unique_nodes"),
+                    "unique_places": summary.get("unique_places"),
+                    "unique_objects": summary.get("unique_objects"),
+                    "frontiers_discovered": summary.get("frontiers_discovered"),
                     "updated_at": summary_path.stat().st_mtime,
                 }
             )
@@ -328,19 +433,111 @@ class SearchSessionService:
     # executor message routing                                            #
     # ------------------------------------------------------------------ #
     def _on_executor_message(self, message: dict[str, Any]) -> None:
+        if not self._message_matches_current_worker(message):
+            return
         msg_type = str(message.get("type") or "")
         if msg_type == "event":
             raw = message.get("event")
             if isinstance(raw, dict) and self._adapter is not None:
                 self._adapter.on_explorer_event(raw)
+                # The adapter can expose a terminal explorer event before the
+                # worker emits its final session_result.  Release ownership at
+                # the observable terminal boundary so a stop is not held by a
+                # tiny IPC cleanup race.
+                store_status = self._store.snapshot().get("status")
+                if store_status in {
+                    STATUS_TARGET_FOUND,
+                    STATUS_SEARCH_EXHAUSTED,
+                    STATUS_OPERATOR_STOP,
+                    STATUS_FINISHED,
+                    STATUS_FAILED,
+                }:
+                    self.owner.release(OwnerState.AUTONOMOUS)
         elif msg_type == "session_result":
-            self._apply_session_result(message.get("result") or {})
+            result = message.get("result") or {}
+            if isinstance(result, dict) and result.get("session_id") not in {None, self._session_id}:
+                return
+            self._apply_session_result(result)
         elif msg_type == "worker_status":
             status = message.get("status") or {}
             if str(status.get("state")) == "running":
                 self._mark_status(STATUS_RUNNING)
         elif msg_type == "error":
             self._publish_error(message.get("message") or "search worker error")
+
+    def _message_matches_current_worker(self, message: dict[str, Any]) -> bool:
+        """Reject delayed messages from a retired session before state access."""
+        expected_session = self._session_id
+        expected_task = self._task_context.task_id if self._task_context else None
+        expected_executor = self._executor_id
+        expected_generation = self._worker_generation
+        if not expected_session:
+            return False
+        event = message.get("event") if isinstance(message.get("event"), dict) else {}
+        payload = event.get("payload") if isinstance(event, dict) else {}
+        values = {
+            "session_id": message.get("session_id") or event.get("session_id"),
+            "task_id": message.get("task_id") or payload.get("task_id"),
+            "executor_id": message.get("executor_id") or payload.get("executor_id"),
+            "worker_generation": message.get("worker_generation") or payload.get("worker_generation"),
+        }
+        if values["session_id"] and values["session_id"] != expected_session:
+            return False
+        if values["task_id"] and values["task_id"] != expected_task:
+            return False
+        if values["executor_id"] and values["executor_id"] != expected_executor:
+            return False
+        if values["worker_generation"] is not None:
+            try:
+                if int(values["worker_generation"]) != expected_generation:
+                    return False
+            except (TypeError, ValueError):
+                return False
+        return True
+
+    def _understand_task(self, task_text: str, *, backend: str) -> SearchTaskContext:
+        runner = self._task_understanding_runner
+        # Mock sessions are deterministic/offline by contract.  They must
+        # not unexpectedly spend a network timeout on the production parser.
+        if runner is None and (
+            backend in {"mock", "mock_metric"} or self._executor_factory_is_mock
+        ):
+            return SearchTaskContext.mock_fallback(task_text)
+        if runner is None:
+            from app.task_understanding.task_pipeline import run_task_understanding_pipeline
+
+            runner = lambda text: run_task_understanding_pipeline(
+                text, enable_verifier=False
+            )
+        try:
+            context = runner(task_text)
+            if isinstance(context, SearchTaskContext):
+                return context
+            structured = SearchTaskContext.from_pipeline_result(
+                context, raw_text=task_text
+            )
+            parser_source = str(
+                getattr(getattr(context, "parsed_task", None), "parser_source", "")
+            )
+            if (
+                not structured.executable
+                and backend in {"mock", "mock_metric"}
+                and self._allow_mock_task_fallback
+                and parser_source in {"llm_unavailable", "llm_verification_failed"}
+            ):
+                return SearchTaskContext.mock_fallback(task_text)
+            return structured
+        except Exception as exc:
+            if backend in {"mock", "mock_metric"} and self._allow_mock_task_fallback:
+                return SearchTaskContext.mock_fallback(task_text)
+            return SearchTaskContext(
+                task_id=f"task_error_{int(time.time() * 1000)}",
+                raw_text=task_text,
+                intent="unknown",
+                canonical_target=task_text,
+                executable=False,
+                rejection_reason=f"任务理解失败：{type(exc).__name__}: {exc}",
+            )
 
     def _apply_session_result(self, result: dict[str, Any]) -> None:
         if not isinstance(result, dict):
@@ -370,7 +567,14 @@ class SearchSessionService:
             elif finish_reason == "SEARCH_EXHAUSTED":
                 self._status = "SEARCH_EXHAUSTED"
             else:
-                self._status = "FINISHED"
+                try:
+                    failed_exit = int(result.get("exit_code") or 0) != 0
+                except (TypeError, ValueError):
+                    failed_exit = False
+                if finish_reason == "FAILED" or failed_exit:
+                    self._status = "FAILED"
+                else:
+                    self._status = "FINISHED"
             self.owner.release(OwnerState.AUTONOMOUS)
         # A subprocess worker is intentionally long-lived while a session is
         # active, but it must not survive a terminal session.  Retire it off
@@ -453,4 +657,5 @@ def make_mock_executor_factory(
             scene_steps=list(scene_steps or []),
         )
 
+    factory.is_mock_factory = True  # type: ignore[attr-defined]
     return factory

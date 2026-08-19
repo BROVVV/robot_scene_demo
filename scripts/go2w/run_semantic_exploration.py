@@ -66,9 +66,9 @@ from app.navigation.models import (
     ExplorationGoal,
     LiveObservation,
 )
-from app.reasoning.unigoal.models import SearchReasoningContext
-from app.reasoning.unigoal.router import SemanticSearchController
-from app.reasoning.unigoal.semantic_memory import SemanticSearchMemory
+from app.reasoning.semantic_navigation.models import SearchReasoningContext
+from app.reasoning.semantic_navigation.router import SemanticSearchController
+from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
 from app.video.target_profile import TargetProfileResolver
 
 
@@ -77,14 +77,18 @@ def build_parser() -> argparse.ArgumentParser:
         description="Operator-supervised high-level autonomous semantic exploration"
     )
     parser.add_argument("--target", required=True, help="自然语言搜索目标，如 饮水机旁边的蓝色垃圾桶")
+    parser.add_argument("--task-context-json", default="")
+    parser.add_argument("--session-id", default="")
+    parser.add_argument("--executor-id", default="")
+    parser.add_argument("--worker-generation", type=int, default=None)
     parser.add_argument(
         "--backend", choices=("go2w_experimental", "mock", "mock_metric"),
         default="go2w_experimental",
         help="robot backend: real Go2-W / offline mocks",
     )
     parser.add_argument(
-        "--reasoner", choices=("legacy", "unigoal", "hybrid"),
-        default="unigoal",
+        "--reasoner", choices=("legacy", "semantic", "semantic_navigation", "hybrid"),
+        default="semantic_navigation",
     )
     parser.add_argument(
         "--operator-supervised-experiment", action="store_true",
@@ -107,7 +111,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--turn-only", action="store_true",
                         help="reject forward steps at the motion executor")
     parser.add_argument("--dry-run-motion", action="store_true",
-                        help="run the full real pipeline (camera/LLM/UniGoal/"
+                        help="run the full real pipeline (camera/LLM/SemanticNavigation/"
                              "planner) but never send motion commands "
                              "(REOBSERVE-only backend)")
     parser.add_argument("--output", default="outputs/live_sessions/semantic_exploration.jsonl")
@@ -126,14 +130,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mock-confirm-after-seen", type=int, default=1)
     parser.add_argument("--verify-min-confidence", type=float, default=0.6)
     parser.add_argument("--detector", choices=("llm", "grounded_sam"), default="llm")
-    parser.add_argument("--llm-model", default="Qwen/Qwen3-VL-30B-A3B-Instruct")
+    parser.add_argument("--llm-model", default="")
     parser.add_argument("--spool-root", default="runtime/go2w/spool")
     parser.add_argument("--rgbd-source", action="store_true",
                         help="use the D435 atomic RGB-D HTTP source as the primary "
                              "camera for observation (color+depth attached to LiveObservation)")
     parser.add_argument("--rgbd-base-url", default="http://192.168.123.18:8080")
     parser.add_argument("--spatial-v2", action="store_true",
-                        help="enable UniGoal V2 spatial exploration loop: PlaceGraph, "
+                        help="enable SemanticNavigation V2 spatial exploration loop: PlaceGraph, "
                              "frontier selection, LongTermGoalSelector and LocalGoalExecutor")
     parser.add_argument("--rtabmap", action="store_true",
                         help="use RTAB-Map ROS2 topics (/rtabmap/map, /rtabmap/odom) "
@@ -158,6 +162,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.reasoner == "semantic":
+        args.reasoner = "semantic_navigation"
     if args.no_finish_on_visual_confirmation:
         args.finish_on_visual_confirmation = False
     if args.dry_run and args.backend == "go2w_experimental":
@@ -183,6 +189,39 @@ def _write_session_artifacts(args, explorer: AutonomousExplorer,
     summary_path = run_dir / "summary.json"
     summary_path.write_text(
         json.dumps(result.to_dict(), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    if explorer.task_context is not None:
+        (run_dir / "task.json").write_text(
+            json.dumps(explorer.task_context.to_dict(), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    (run_dir / "decisions.jsonl").write_text(
+        "".join(json.dumps(item.to_dict(), ensure_ascii=False) + "\n" for item in explorer.decision_records),
+        encoding="utf-8",
+    )
+    (run_dir / "semantic_map.json").write_text(
+        json.dumps(explorer.semantic_graph.to_dict(), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (run_dir / "final_state.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "search_final_state_v1",
+                "session_id": session_id,
+                "state": explorer.state,
+                "result": result.to_dict(),
+                "task": explorer.task_context.to_dict() if explorer.task_context else {},
+                "current_place_id": explorer.semantic_graph.current_place_id,
+                "map_revision": explorer.semantic_graph.revision,
+                "last_decision": (
+                    explorer.decision_records[-1].to_dict()
+                    if explorer.decision_records else None
+                ),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ) + "\n",
         encoding="utf-8",
     )
     jsonl_path = Path(args.output)
@@ -234,7 +273,8 @@ def _run_offline(args, event_hook=None) -> int:
     scene = _build_offline_components(args)
     backend_kind = "mock_metric" if args.backend == "mock_metric" else "mock"
     backend = create_backend(backend_kind)
-    graph = ExplorationGraph(session_id=time.strftime("explore_offline_%Y%m%d_%H%M%S"))
+    task_context = _task_context_from_args(args)
+    graph = ExplorationGraph(session_id=args.session_id or time.strftime("explore_offline_%Y%m%d_%H%M%S"))
     holder: dict[str, Any] = {"explorer": None}
 
     def on_event(event: dict[str, Any]) -> None:
@@ -250,17 +290,20 @@ def _run_offline(args, event_hook=None) -> int:
             explorer.events.append(event)
 
     explorer = AutonomousExplorer(
-        target=args.target,
+        target=task_context.canonical_target,
+        task_context=task_context,
         observer=scene.observer(),
         matcher=scene.matcher(),
         verifier=scene.verifier(),
         backend=backend,
         policy=policy,
         graph=graph,
-        negative_target_key=args.target,
+        negative_target_key=task_context.canonical_target,
         finish_on_visual_confirmation=args.finish_on_visual_confirmation,
         turn_only=args.turn_only,
         session_id=graph.session_id,
+        executor_id=args.executor_id or None,
+        worker_generation=args.worker_generation,
         on_event=on_event,
     )
     holder["explorer"] = explorer
@@ -394,6 +437,7 @@ def run_go2w(args, event_hook=None) -> int:
         print(json.dumps({"status": "failed", "error": f"rclpy unavailable: {exc}"}))
         return 2
     from run_autonomous_loop import AutonomousLoop, PROMPT_MAP  # noqa: E402
+    vision_model = str(args.llm_model or get_settings().vision_model)
 
     # Load the repository-owned operator-supervised profile at the real
     # backend boundary.  This does not invoke Stage-2/Nav2 readiness gates.
@@ -440,7 +484,7 @@ def run_go2w(args, event_hook=None) -> int:
     )
     node._target = args.target
     node._detector = args.detector
-    node._llm_model = args.llm_model
+    node._llm_model = vision_model
     node._spool_root = args.spool_root
     node._target_score_min = args.target_score_min
     node._align_threshold = 0.08
@@ -576,7 +620,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             "--output", str(output_path), "--target", args.target,
             "--extra-instructions",
             "完整列出当前画面的可见物体与关系，供下一视角选择；不要确认目标。",
-            "--model", args.llm_model,
+            "--model", vision_model,
         ]
         completed = subprocess.run(
             command, cwd=str(PROJECT_ROOT), env=env, text=True,
@@ -615,7 +659,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         )
         depth_localizer = DepthObjectLocalizer()
 
-    # Optional UniGoal V2 spatial exploration state (plan §62-§90).
+    # Optional SemanticNavigation V2 spatial exploration state (plan §62-§90).
     place_graph = None
     semantic_map = None
     spatial_memory = None
@@ -628,8 +672,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     if args.spatial_v2:
         from app.navigation.local_goal_executor import LocalGoalExecutor
         from app.navigation.long_term_goal_selector import LongTermGoalSelector
-        from app.reasoning.unigoal.semantic_prior_provider import RuleSemanticPriorProvider
-        from app.reasoning.unigoal.spatial_reasoner import SpatialSearchReasoner
+        from app.reasoning.semantic_navigation.semantic_prior_provider import RuleSemanticPriorProvider
+        from app.reasoning.semantic_navigation.spatial_reasoner import SpatialSearchReasoner
         from app.spatial.camera_local_spatial_provider import CameraLocalSpatialProvider
         from app.spatial.frontier_extractor import FrontierExtractor
         from app.spatial.lightweight_depth_bev import LightweightDepthBEVMapper
@@ -819,7 +863,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             },
         )
 
-        # ---- UniGoal V2 spatial state update -------------------------------
+        # ---- SemanticNavigation V2 spatial state update -------------------------------
         if place_graph is not None and pose is not None:
             from app.spatial.models import SpatialPose
 
@@ -891,7 +935,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             target_match_level=(
                 graph_match.state.value if graph_match is not None else "none"
             ),
-            provenance={"source": "unigoal_matcher"},
+            provenance={"source": "semantic_navigation_matcher"},
         )
         state["match"] = match
         return match
@@ -919,7 +963,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             details=result,
         )
 
-    # ---- UniGoal V2 spatial candidate generator / planner ------------------
+    # ---- SemanticNavigation V2 spatial candidate generator / planner ------------------
     def spatial_candidate_generator(**kwargs: Any) -> list[Any]:
         """V2 candidate generator: selects a long-term spatial intent and
         returns the next local primitive for the current intent."""
@@ -1046,7 +1090,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             goal=candidates[0],
             score=1.0,
             components={"spatial_v2": 1.0},
-            reasons=["UniGoal V2 spatial intent"],
+            reasons=["SemanticNavigation V2 spatial intent"],
         )
 
     # ---- backend ---------------------------------------------------------------
@@ -1111,6 +1155,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         cancel=cancel,
         health_probe=health_probe,
         config=Go2WBackendConfig(
+            dry_run=bool(args.dry_run_motion),
             max_turn_deg_per_action=getattr(
                 node, "_experiment_max_turn_deg", args.max_turn_deg
             ),
@@ -1139,7 +1184,9 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             node.get_logger().warn(f"video recording disabled: {exc}")
 
     # ---- explorer ---------------------------------------------------------------
-    graph = ExplorationGraph(session_id=time.strftime("explore_go2w_%Y%m%d_%H%M%S"))
+    from app.task_understanding.search_task_context import SearchTaskContext
+    task_context = _task_context_from_args(args)
+    graph = ExplorationGraph(session_id=args.session_id or time.strftime("explore_go2w_%Y%m%d_%H%M%S"))
     events: list[dict[str, Any]] = []
     holder: dict[str, Any] = {"explorer": None}
 
@@ -1159,7 +1206,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         explorer_kwargs["candidate_generator"] = spatial_candidate_generator
         explorer_kwargs["planner"] = spatial_planner
     explorer = AutonomousExplorer(
-        target=args.target,
+        target=task_context.canonical_target,
+        task_context=task_context,
         observer=observe,
         matcher=matcher,
         verifier=verifier,
@@ -1172,6 +1220,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         finish_on_visual_confirmation=args.finish_on_visual_confirmation,
         turn_only=bool(args.turn_only),
         session_id=graph.session_id,
+        executor_id=args.executor_id or None,
+        worker_generation=args.worker_generation,
         **explorer_kwargs,
     )
     holder["explorer"] = explorer
@@ -1209,6 +1259,19 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 encoding="utf-8",
             )
     return 0 if result.result == "TARGET_FOUND" else 3
+
+
+def _task_context_from_args(args: argparse.Namespace):
+    from app.task_understanding.search_task_context import SearchTaskContext
+
+    if getattr(args, "task_context_json", ""):
+        try:
+            value = json.loads(args.task_context_json)
+            if isinstance(value, dict):
+                return SearchTaskContext.from_dict(value)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            pass
+    return SearchTaskContext.mock_fallback(args.target)
 
 
 def _probe_readiness(args, node):

@@ -41,6 +41,9 @@ _STATE: dict[str, Any] = {
     "holder": None,
     "thread": None,
     "session_id": None,
+    "task_id": None,
+    "executor_id": None,
+    "worker_generation": None,
     "finish_reason": "",
     "shutdown": False,
 }
@@ -62,7 +65,14 @@ def make_event_hook() -> Any:
             _STATE["session_id"] = explorer.session_id
         if event.get("event") == "session_finish":
             _STATE["finish_reason"] = str(event.get("result") or "")
-        emit({"type": "event", "event": event})
+        emit({
+            "type": "event",
+            "event": event,
+            "session_id": event.get("session_id"),
+            "task_id": event.get("task_id"),
+            "executor_id": event.get("executor_id"),
+            "worker_generation": event.get("worker_generation"),
+        })
         return event
 
     return hook
@@ -72,7 +82,7 @@ def build_argv(params: dict[str, Any]) -> list[str]:
     argv = [
         "--target", str(params.get("target") or ""),
         "--backend", str(params.get("backend") or "go2w_experimental"),
-        "--reasoner", str(params.get("reasoner") or "unigoal"),
+        "--reasoner", str(params.get("reasoner") or "semantic_navigation"),
     ]
     if params.get("operator_supervised_experiment") or params.get(
         "enable_autonomous_motion"
@@ -129,19 +139,76 @@ def build_argv(params: dict[str, Any]) -> list[str]:
         argv += ["--mock-confirm-after-seen", str(params["mock_confirm_after_seen"])]
     if params.get("allow_degraded"):
         argv.append("--allow-degraded")
+    if params.get("task_context"):
+        argv += ["--task-context-json", json.dumps(params["task_context"], ensure_ascii=False)]
+    for key, flag in (("session_id", "--session-id"), ("executor_id", "--executor-id"), ("worker_generation", "--worker-generation")):
+        if params.get(key) is not None:
+            argv += [flag, str(params[key])]
     return argv
 
 
 def run_session(params: dict[str, Any]) -> None:
-    import run_semantic_exploration as rse
+    _STATE["session_id"] = params.get("session_id")
+    task_context = params.get("task_context")
+    _STATE["task_id"] = params.get("task_id") or (
+        task_context.get("task_id") if isinstance(task_context, dict) else None
+    )
+    _STATE["executor_id"] = params.get("executor_id")
+    _STATE["worker_generation"] = params.get("worker_generation")
 
-    argv = build_argv(params)
-    parser = rse.build_parser()
     try:
+        # Keep imports inside the guarded worker boundary.  ROS/system Python
+        # environments can miss an optional package (for example OpenAI); a
+        # failed import must still emit an error + terminal session_result so
+        # the WebUI cannot restore a phantom STARTING search after refresh.
+        import run_semantic_exploration as rse
+
+        argv = build_argv(params)
+        parser = rse.build_parser()
         args = parser.parse_args(argv)
     except SystemExit as exc:
-        emit({"type": "error", "message": f"bad start params: {exc}"})
+        emit({
+            "type": "error",
+            "session_id": _STATE.get("session_id"),
+            "task_id": _STATE.get("task_id"),
+            "executor_id": _STATE.get("executor_id"),
+            "worker_generation": _STATE.get("worker_generation"),
+            "message": f"bad start params: {exc}",
+        })
+        emit({
+            "type": "session_result",
+            "session_id": _STATE.get("session_id"),
+            "task_id": _STATE.get("task_id"),
+            "executor_id": _STATE.get("executor_id"),
+            "worker_generation": _STATE.get("worker_generation"),
+            "result": {
+                "exit_code": 2,
+                "session_id": _STATE.get("session_id"),
+                "finish_reason": "FAILED",
+            },
+        })
         return
+    except Exception as exc:  # noqa: BLE001 - dependency/import failures are terminal
+        envelope = {
+            "type": "error",
+            "session_id": _STATE.get("session_id"),
+            "task_id": _STATE.get("task_id"),
+            "executor_id": _STATE.get("executor_id"),
+            "worker_generation": _STATE.get("worker_generation"),
+        }
+        emit({**envelope, "message": f"{type(exc).__name__}: {exc}"})
+        emit({
+            **envelope,
+            "type": "session_result",
+            "result": {
+                "exit_code": 4,
+                "session_id": _STATE.get("session_id"),
+                "finish_reason": "FAILED",
+            },
+        })
+        return
+    if args.reasoner == "semantic":
+        args.reasoner = "semantic_navigation"
     hook = make_event_hook()
     try:
         if args.replay:
@@ -153,12 +220,29 @@ def run_session(params: dict[str, Any]) -> None:
     except Exception as exc:  # noqa: BLE001
         import traceback
 
-        emit({"type": "error", "message": f"{type(exc).__name__}: {exc}"})
-        emit({"type": "error", "message": traceback.format_exc()[-2000:]})
+        envelope = {
+            "type": "error",
+            "session_id": _STATE.get("session_id"),
+            "task_id": _STATE.get("task_id"),
+            "executor_id": _STATE.get("executor_id"),
+            "worker_generation": _STATE.get("worker_generation"),
+        }
+        emit({**envelope, "message": f"{type(exc).__name__}: {exc}"})
+        emit({**envelope, "message": traceback.format_exc()[-2000:]})
         rc = 4
+    if rc != 0 and not _STATE.get("finish_reason"):
+        # The runner can reject a real session during hardware preflight
+        # before an explorer emits session_finish.  Preserve that failure in
+        # the protocol so the WebUI does not turn it into a blank FINISHED
+        # session.
+        _STATE["finish_reason"] = "FAILED"
     emit(
         {
             "type": "session_result",
+            "session_id": _STATE.get("session_id"),
+            "task_id": _STATE.get("task_id"),
+            "executor_id": _STATE.get("executor_id"),
+            "worker_generation": _STATE.get("worker_generation"),
             "result": {
                 "exit_code": rc,
                 "session_id": _STATE.get("session_id"),

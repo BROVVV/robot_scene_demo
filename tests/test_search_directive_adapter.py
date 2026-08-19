@@ -4,13 +4,13 @@ import unittest
 
 from app.live_robot.search_directive_adapter import directive_to_step_plan
 from app.live_robot.step_search_runner import StepSearchConfig
-from app.reasoning.unigoal.models import SearchDirective, SearchDirectiveKind
+from app.reasoning.semantic_navigation.models import SearchDirective, SearchDirectiveKind
 
 
 def _directive(heading=None, *, confidence=0.9, forward=False):
     return SearchDirective(
         directive_id="d1", kind=SearchDirectiveKind.INSPECT_ANCHOR,
-        source_backend="unigoal", match_state="partial_match",
+        source_backend="semantic_navigation", match_state="partial_match",
         confidence=confidence, preferred_heading_delta_deg=heading,
         preferred_distance_m=0.15 if forward else None,
         allow_forward=forward,

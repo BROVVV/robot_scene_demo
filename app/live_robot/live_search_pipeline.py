@@ -14,12 +14,12 @@ from app.live_robot.search_state_machine import (
     SensorSnapshot,
     VisualEvidence,
 )
-from app.reasoning.unigoal.goal_graph_builder import GoalGraphBuilder
-from app.reasoning.unigoal.graph_matcher import UniGoalGraphMatcher
-from app.reasoning.unigoal.models import GraphMatchState, SearchReasoningContext
-from app.reasoning.unigoal.router import SemanticSearchController
-from app.reasoning.unigoal.semantic_memory import SemanticSearchMemory
-from app.reasoning.unigoal.auxiliary_hints import build_psg_auxiliary_hints
+from app.reasoning.semantic_navigation.goal_graph_builder import GoalGraphBuilder
+from app.reasoning.semantic_navigation.graph_matcher import SemanticNavigationGraphMatcher
+from app.reasoning.semantic_navigation.models import GraphMatchState, SearchReasoningContext
+from app.reasoning.semantic_navigation.router import SemanticSearchController
+from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
+from app.reasoning.semantic_navigation.auxiliary_hints import build_psg_auxiliary_hints
 from app.memory.observation_memory_store import ObservationMemoryStore
 from app.video.frame_analyzer import FrameAnalyzer
 from app.video.frame_scene_parser import observation_from_frame_analysis
@@ -201,7 +201,7 @@ def _run_after_sensor_snapshot(
     search["runtime_source"] = "live_frame_bundle"
     search["detector_runtime_is_mock"] = detector == "mock"
 
-    if semantic_reasoning and search_reasoner in {"unigoal", "hybrid"}:
+    if semantic_reasoning and search_reasoner in {"semantic_navigation", "hybrid"}:
         controller = SemanticSearchController(
             profile,
             backend=search_reasoner,
@@ -250,7 +250,7 @@ def _run_after_sensor_snapshot(
         write_json(controller.goal_graph.to_dict(), output / "goal_graph.json")
         write_json(
             context.graph_match.to_dict() if context.graph_match else {},
-            output / "unigoal_match.json",
+            output / "semantic_navigation_match.json",
         )
         write_json(directive.to_dict(), output / "search_directive.json")
         write_json(
@@ -259,7 +259,7 @@ def _run_after_sensor_snapshot(
                 "status": context.auxiliary_status,
                 "can_confirm_target": False,
             },
-            output / "unigoal_auxiliary_hints.json",
+            output / "semantic_navigation_auxiliary_hints.json",
         )
     topology = VideoNavigationTopologyBuilder(observed_only=True).build(scene_graph, [])
     candidates = [
@@ -386,7 +386,7 @@ def enforce_relation_evidence_gate(gate, profile, scene_graph):
     if not getattr(profile, "relation_constraints", None):
         return gate
     goal_graph = GoalGraphBuilder().build(profile)
-    match = UniGoalGraphMatcher().match(
+    match = SemanticNavigationGraphMatcher().match(
         goal_graph,
         scene_graph,
         target_profile=profile,

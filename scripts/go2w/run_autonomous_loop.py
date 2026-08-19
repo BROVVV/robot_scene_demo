@@ -70,9 +70,9 @@ from app.live_robot.pandar_clock import (
 from app.live_robot.stage2_readiness import (
     compute_stage2_readiness,
 )
-from app.reasoning.unigoal.router import SemanticSearchController
-from app.reasoning.unigoal.semantic_memory import SemanticSearchMemory
-from app.reasoning.unigoal.auxiliary_hints import (
+from app.reasoning.semantic_navigation.router import SemanticSearchController
+from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
+from app.reasoning.semantic_navigation.auxiliary_hints import (
     build_precomputed_situated_prior_hints,
     build_psg_auxiliary_hints,
 )
@@ -2376,10 +2376,10 @@ def main() -> None:
     parser.add_argument("--scan360-turn-deg", type=float, default=45.0)
     parser.add_argument(
         "--semantic-reasoning", action="store_true",
-        help="enable event-driven UniGoal-style semantic next-view reasoning",
+        help="enable event-driven SemanticNavigation-style semantic next-view reasoning",
     )
     parser.add_argument(
-        "--search-reasoner", choices=("legacy", "unigoal", "hybrid"),
+        "--search-reasoner", choices=("legacy", "semantic_navigation", "hybrid"),
         default="legacy",
     )
     parser.add_argument(
@@ -2445,7 +2445,7 @@ def main() -> None:
                           args.odom_topic)
     node._target = args.target
     node._detector = args.detector
-    node._llm_model = args.llm_model
+    node._llm_model = args.llm_model or get_settings().vision_model
     node._spool_root = args.spool_root
     node._target_score_min = args.target_score_min
     node._align_threshold = args.align_threshold

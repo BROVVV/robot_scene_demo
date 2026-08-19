@@ -1,7 +1,7 @@
 """End-to-end tests of the AutonomousExplorer against mock backends.
 
 Covers plan section 34.2 scenarios A-I: first-frame target, absent target,
-semantic anchor boost, navigation failure replan, oscillation, UniGoal
+semantic anchor boost, navigation failure replan, oscillation, SemanticNavigation
 exception fallback, operator stop, pose unavailable, future metric backend.
 """
 
@@ -134,7 +134,7 @@ class TestAutonomousExplorerE2E(unittest.TestCase):
         self.assertGreaterEqual(len(set(selected)), 3,
                                 f"exploration should cover directions: {selected}")
 
-    # Scenario F: UniGoal exception -> legacy/fallback candidates continue.
+    # Scenario F: SemanticNavigation exception -> legacy/fallback candidates continue.
     def test_scenario_f_matcher_exception_falls_back(self) -> None:
         scene = scenario_target_appears_after(2)
         explorer = _explorer(scene)

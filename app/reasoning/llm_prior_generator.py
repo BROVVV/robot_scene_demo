@@ -45,7 +45,7 @@ class LLMPriorGenerator:
             self.client = OpenAI(
                 api_key=self.settings.siliconflow_api_key,
                 base_url=self.settings.siliconflow_base_url,
-                timeout=self.settings.llm_reasoning_timeout_seconds,
+                timeout=self.settings.siliconflow_reasoning_timeout_seconds,
             )
 
     def generate(self, prior_input: LLMPriorInput) -> dict[str, Any]:
@@ -55,10 +55,10 @@ class LLMPriorGenerator:
             return _unavailable_result(prior_input.target, "LLM API unavailable")
         try:
             response = self.client.chat.completions.create(
-                model=self.settings.siliconflow_model,
+                model=self.settings.reasoning_model,
                 messages=_messages(prior_input, self.settings),
                 temperature=self.settings.llm_reasoning_temperature,
-                max_tokens=min(1600, self.settings.siliconflow_max_tokens),
+                max_tokens=min(1600, self.settings.siliconflow_reasoning_max_tokens),
             )
             content = response.choices[0].message.content
             if not isinstance(content, str) or not content.strip():

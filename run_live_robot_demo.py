@@ -38,7 +38,7 @@ def parse_args(argv=None):
     parser.add_argument("--no-annotate", action="store_true")
     parser.add_argument("--semantic-reasoning", action="store_true")
     parser.add_argument(
-        "--search-reasoner", choices=["legacy", "unigoal", "hybrid"],
+        "--search-reasoner", choices=["legacy", "semantic_navigation", "hybrid"],
         default="legacy",
     )
     parser.add_argument(

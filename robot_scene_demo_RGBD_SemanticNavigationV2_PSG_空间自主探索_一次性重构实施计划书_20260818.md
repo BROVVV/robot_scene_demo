@@ -1,13 +1,13 @@
-# robot_scene_demo RGB-D × UniGoal V2 Spatial Exploration × PSG 一次性重构实施计划书
+# robot_scene_demo RGB-D × SemanticNavigation V2 Spatial Exploration × PSG 一次性重构实施计划书
 
-> 版本：2026-08-18  
-> 主项目：https://github.com/BROVVV/robot_scene_demo  
-> 参考项目：https://github.com/bagh2178/UniGoal  
-> 当前真机：Unitree Go2-W  
-> 新增主视觉传感器：Intel RealSense D435  
-> 当前部署方式：D435 接在 Go2-W Jetson 上，由 `realsense-stream.service` 提供 RGB-D HTTP 服务  
-> 当前阶段定义：**Operator-Supervised RGB-D Spatial Semantic Exploration Prototype**  
-> 本计划目标：**一次性把当前“2D SceneGraph + heading next-view + 原地旋转式探索”升级为“同步 RGB-D + 3D Semantic SceneGraph + Spatial Map + Frontier + PSG Semantic Prior + UniGoal Long-Term Spatial Goal + Local Executor + PlaceGraph + WebUI”的真实空间自主搜索闭环。**
+> 版本：2026-08-18
+> 主项目：https://github.com/BROVVV/robot_scene_demo
+> 参考项目：https://github.com/bagh2178/SemanticNavigation
+> 当前真机：Unitree Go2-W
+> 新增主视觉传感器：Intel RealSense D435
+> 当前部署方式：D435 接在 Go2-W Jetson 上，由 `realsense-stream.service` 提供 RGB-D HTTP 服务
+> 当前阶段定义：**Operator-Supervised RGB-D Spatial Semantic Exploration Prototype**
+> 本计划目标：**一次性把当前“2D SceneGraph + heading next-view + 原地旋转式探索”升级为“同步 RGB-D + 3D Semantic SceneGraph + Spatial Map + Frontier + PSG Semantic Prior + SemanticNavigation Long-Term Spatial Goal + Local Executor + PlaceGraph + WebUI”的真实空间自主搜索闭环。**
 
 ---
 
@@ -17,13 +17,13 @@
 
 1. 本计划书；
 2. `https://github.com/BROVVV/robot_scene_demo`
-3. `https://github.com/bagh2178/UniGoal`
+3. `https://github.com/bagh2178/SemanticNavigation`
 
 你的任务不是再写一份建议、TODO、架构草图或对比报告。
 
 你的任务是：
 
-> **直接审计当前 `robot_scene_demo` 最新 working tree / GitHub main，复用已经部署好的真机搜索、WebUI、UniGoal、PSG、RobotBackend、RealSense 服务，在不推倒现有成果的前提下，把本计划从 RGB-D 数据入口一直做到真机连续空间搜索、WebUI 地图与最终验收。**
+> **直接审计当前 `robot_scene_demo` 最新 working tree / GitHub main，复用已经部署好的真机搜索、WebUI、SemanticNavigation、PSG、RobotBackend、RealSense 服务，在不推倒现有成果的前提下，把本计划从 RGB-D 数据入口一直做到真机连续空间搜索、WebUI 地图与最终验收。**
 
 最终必须达到：
 
@@ -50,7 +50,7 @@ ZERO / PARTIAL / STRONG
         ↓
 PSG Semantic Prior
         ↓
-UniGoal V2 Long-Term Spatial Goal
+SemanticNavigation V2 Long-Term Spatial Goal
         ↓
 选择真实可达 Frontier / Anchor Region / Target Viewpoint
         ↓
@@ -276,7 +276,7 @@ health/reconnect
 ```text
 Perception
 Spatial Mapping
-UniGoal
+SemanticNavigation
 PSG
 Planner
 WebUI
@@ -380,7 +380,7 @@ FORWARD
 当前 live candidate 主要来自：
 
 ```text
-UniGoal directive
+SemanticNavigation directive
 未访问 heading sector
 graph node
 semantic anchor
@@ -418,9 +418,9 @@ semantic_relevance + expected_information_gain
 
 ---
 
-# 7. 当前 UniGoal V1 的问题
+# 7. 当前 SemanticNavigation V1 的问题
 
-当前 `app/reasoning/unigoal/search_reasoner.py` 的定位本质仍然是：
+当前 `app/reasoning/semantic_navigation/search_reasoner.py` 的定位本质仍然是：
 
 ```text
 next-view policy
@@ -449,13 +449,13 @@ STRONG
 
 本计划要升级为：
 
-# UniGoal V2 Spatial Exploration
+# SemanticNavigation V2 Spatial Exploration
 
 ---
 
-# 8. 原版 UniGoal 应该借鉴什么
+# 8. 原版 SemanticNavigation 应该借鉴什么
 
-参考 `bagh2178/UniGoal`，应学习以下核心架构：
+参考 `bagh2178/SemanticNavigation`，应学习以下核心架构：
 
 ```text
 RGB-D
@@ -496,7 +496,7 @@ turn_left
 
 ---
 
-# 9. 原版 UniGoal 应该借鉴的三阶段逻辑
+# 9. 原版 SemanticNavigation 应该借鉴的三阶段逻辑
 
 原版 `Graph.explore()` 大致根据 SceneGraph 与 GoalGraph overlap：
 
@@ -544,13 +544,13 @@ STRONG
 
 ---
 
-# 10. 不要机械复制原版 UniGoal 的哪些东西
+# 10. 不要机械复制原版 SemanticNavigation 的哪些东西
 
-禁止因为参考 UniGoal 就直接搬：
+禁止因为参考 SemanticNavigation 就直接搬：
 
 ```text
 Habitat 环境
-UniGoal_Agent
+SemanticNavigation_Agent
 原版 FMMPlanner 整套控制
 原版 simulator pose
 原版 dataset glue
@@ -1247,7 +1247,7 @@ Web map
 
 # 34. SpatialProvider
 
-不要让 UniGoal import RTAB-Map topic。
+不要让 SemanticNavigation import RTAB-Map topic。
 
 统一接口：
 
@@ -1417,7 +1417,7 @@ Spatial Map
 5. 计算距离；
 6. 输出候选。
 
-不要直接复制原版 UniGoal FMM 代码。
+不要直接复制原版 SemanticNavigation FMM 代码。
 
 可使用当前 map / path provider。
 
@@ -1924,7 +1924,7 @@ class ExplorationIntent:
 
 ---
 
-# 64. Phase 9：UniGoal V2 Spatial Reasoner
+# 64. Phase 9：SemanticNavigation V2 Spatial Reasoner
 
 保留现有：
 
@@ -3066,7 +3066,7 @@ backend:
 
 ```text
 RGB-only
-UniGoal V1 next-view
+SemanticNavigation V1 next-view
 legacy search
 manual WebUI
 old replay
@@ -3077,8 +3077,8 @@ old replay
 ```text
 search_mode:
   legacy
-  unigoal_v1
-  unigoal_v2_spatial
+  semantic_navigation_v1
+  semantic_navigation_v2_spatial
 ```
 
 默认是否切 V2 由完成验收后决定。
@@ -3249,7 +3249,7 @@ spatial gain > 0
 
 ---
 
-# 126. UniGoal V2 ZERO Test
+# 126. SemanticNavigation V2 ZERO Test
 
 没有 goal related objects：
 
@@ -3622,7 +3622,7 @@ RGBD_SPATIAL_EXPLORATION = PASS
 8. Observation 与 Place 分离；
 9. 原地旋转不增加 Place；
 10. 平移成功增加 Place；
-11. UniGoal ZERO 会选 Frontier；
+11. SemanticNavigation ZERO 会选 Frontier；
 12. PARTIAL 会产生 Anchor Region；
 13. STRONG 进入真实 verify；
 14. PSG 可以影响 Frontier ranking；
@@ -3663,7 +3663,7 @@ app/
     semantic_object_map.py
 
   reasoning/
-    unigoal/
+    semantic_navigation/
       spatial_reasoner.py
       semantic_prior_provider.py
 
@@ -3861,7 +3861,7 @@ PSG strong prediction 直接 TARGET_FOUND
 禁止：
 
 ```text
-复制 UniGoal 的 Habitat/FMM/Agent 整套架构
+复制 SemanticNavigation 的 Habitat/FMM/Agent 整套架构
 ```
 
 禁止：
@@ -3948,7 +3948,7 @@ D435 outputs
 manual web
 AutonomousExplorer
 navigation
-UniGoal
+SemanticNavigation
 PSG
 SearchEvent
 RobotBackend
@@ -3996,7 +3996,7 @@ LOCAL_SCAN / Long-Term Goal / LocalExecutor。
 
 ## Phase 11
 
-UniGoal V2 Spatial ZERO/PARTIAL/STRONG。
+SemanticNavigation V2 Spatial ZERO/PARTIAL/STRONG。
 
 ## Phase 12
 
@@ -4065,7 +4065,7 @@ real robot
 生成：
 
 ```text
-reports/go2w_rgbd_unigoal_v2_spatial_exploration_handoff_<date>.md
+reports/go2w_rgbd_semantic_navigation_v2_spatial_exploration_handoff_<date>.md
 ```
 
 必须包含：
@@ -4082,7 +4082,7 @@ Fallback结果
 Frontier
 PlaceGraph
 PSG
-UniGoal V2
+SemanticNavigation V2
 WebUI
 测试
 真机 session
@@ -4110,7 +4110,7 @@ WebUI
 地图模式
 Spatial Quality
 PSG
-UniGoal V2
+SemanticNavigation V2
 真机实验说明
 ```
 
@@ -4121,7 +4121,7 @@ UniGoal V2
 建议：
 
 ```text
-docs/RGBD_UNIGOAL_V2_SPATIAL_EXPLORATION.md
+docs/RGBD_SEMANTIC_NAVIGATION_V2_SPATIAL_EXPLORATION.md
 ```
 
 详细说明：
@@ -4251,7 +4251,7 @@ RobotBackend
 GoalGraph
 Observed SceneGraph
 PSG
-UniGoal V2
+SemanticNavigation V2
 Semantic Memory
 LongTermGoalSelector
 PlaceGraph semantic layer
@@ -4335,7 +4335,7 @@ WebUI
 [ ] Depth localization tests PASS。
 [ ] Frontier tests PASS。
 [ ] PlaceGraph tests PASS。
-[ ] UniGoal V2 ZERO/PARTIAL/STRONG tests PASS。
+[ ] SemanticNavigation V2 ZERO/PARTIAL/STRONG tests PASS。
 [ ] PSG tests PASS。
 [ ] Web tests PASS。
 [ ] 真 D435 300+ frame RGB-D 测试 PASS。
@@ -4360,7 +4360,7 @@ RGBD_OBJECT_LOCALIZATION = PASS
 SPATIAL_PROVIDER = PASS
 TRUE_FRONTIER_EXPLORATION = PASS
 PLACE_GRAPH = PASS
-UNIGOAL_V2_SPATIAL = PASS
+SEMANTIC_NAVIGATION_V2_SPATIAL = PASS
 PSG_SEMANTIC_FRONTIER_PRIOR = PASS
 RGBD_SPATIAL_WEBUI = PASS
 GO2W_SPATIAL_AUTONOMOUS_SEARCH_E2E = PASS
@@ -4380,7 +4380,7 @@ GO2W_SPATIAL_AUTONOMOUS_SEARCH_E2E = PASS
 
 真正的任务是：
 
-> **利用 D435 提供的同步 RGB-D，把当前 `robot_scene_demo` 从 next-view semantic search 升级成 UniGoal-style spatial semantic exploration；利用 Spatial Map 产生真实 Frontier，利用 Observed 3D SceneGraph 提供事实，利用 PSG 提供可被负证据修正的语义空间先验，再由 UniGoal V2 选择长期空间目标，最后由 RobotBackend 执行局部运动。**
+> **利用 D435 提供的同步 RGB-D，把当前 `robot_scene_demo` 从 next-view semantic search 升级成 SemanticNavigation-style spatial semantic exploration；利用 Spatial Map 产生真实 Frontier，利用 Observed 3D SceneGraph 提供事实，利用 PSG 提供可被负证据修正的语义空间先验，再由 SemanticNavigation V2 选择长期空间目标，最后由 RobotBackend 执行局部运动。**
 
 最终四层职责必须清楚：
 
@@ -4394,7 +4394,7 @@ Observed 3D SceneGraph
 PSG
 → 根据目标和已观察事实，哪些未知区域更值得找
 
-UniGoal V2
+SemanticNavigation V2
 → 综合事实、预测、Frontier、记忆，决定下一个长期空间目标
 
 LocalGoalExecutor / RobotBackend

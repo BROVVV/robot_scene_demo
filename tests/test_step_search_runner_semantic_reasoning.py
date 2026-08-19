@@ -6,7 +6,7 @@ from app.live_robot.search_state_machine import SensorSnapshot
 from app.live_robot.step_search_runner import (
     Detection, StepSearchConfig, StepSearchRunner, VerificationResult,
 )
-from app.reasoning.unigoal.models import SearchDirective, SearchDirectiveKind
+from app.reasoning.semantic_navigation.models import SearchDirective, SearchDirectiveKind
 
 
 def _directive(_context):

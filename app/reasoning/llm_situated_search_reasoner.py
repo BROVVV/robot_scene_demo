@@ -36,7 +36,7 @@ class LLMSituatedSearchReasoner:
             self.client = OpenAI(
                 api_key=self.settings.siliconflow_api_key,
                 base_url=self.settings.siliconflow_base_url,
-                timeout=self.settings.llm_reasoning_timeout_seconds,
+                timeout=self.settings.siliconflow_reasoning_timeout_seconds,
             )
 
     def reason(self, request: LLMReasoningRequest) -> LLMReasoningResult:
@@ -47,10 +47,10 @@ class LLMSituatedSearchReasoner:
         try:
             messages = build_situated_search_reasoning_prompt(request)
             response = self.client.chat.completions.create(
-                model=self.settings.siliconflow_model,
+                model=self.settings.reasoning_model,
                 messages=messages,
                 temperature=self.settings.llm_reasoning_temperature,
-                max_tokens=self.settings.siliconflow_max_tokens,
+                max_tokens=self.settings.siliconflow_reasoning_max_tokens,
             )
             content = response.choices[0].message.content
             if not isinstance(content, str) or not content.strip():

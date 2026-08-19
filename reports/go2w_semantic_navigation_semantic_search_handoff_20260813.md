@@ -1,4 +1,4 @@
-# Go2-W UniGoal-style Semantic Search Integration Handoff
+# Go2-W SemanticNavigation-style Semantic Search Integration Handoff
 
 ## 基线
 
@@ -10,7 +10,7 @@
 
 开工前已读：当前 README、`go2w_codex_handoff_20260813.md`、
 `go2w_codex_handoff_20260807.md`、`go2w_codex_continuation_status_20260806.md` 和
-用户指定 UniGoal 详细计划。没有重复实现已经通过的相机、LiDAR、wheel/fused odom、
+用户指定 SemanticNavigation 详细计划。没有重复实现已经通过的相机、LiDAR、wheel/fused odom、
 LLM quick/verify 或既有状态机闭环。
 
 ## 已实现
@@ -26,7 +26,7 @@ LLM quick/verify 或既有状态机闭环。
   bbox/provenance，不产生 3D/map 坐标。
 - `SemanticSearchMemory`：session negative evidence、sector penalty、TTL、解封、任务
   reset；可只读复用 `ObservationMemoryStore`，不自动持久化失败 scan。
-- reasoner：legacy / unigoal / hybrid，输出可审计 `SearchDirective`；zero 优先未观察
+- reasoner：legacy / semantic_navigation / hybrid，输出可审计 `SearchDirective`；zero 优先未观察
   sector，partial 检查 anchor，strong 换角度重观测。
 - `directive_to_step_plan`：转向 clamp ≤30°，低置信度/异常回退 legacy；semantic
   forward 默认关闭，显式开启后仍受 radius 和既有运动安全链约束。
@@ -40,11 +40,11 @@ LLM quick/verify 或既有状态机闭环。
   `scene_relations` 给 semantic observer。
 - CLI / config / UI status：增加 semantic enable、backend、shadow/active、forward 等配置；
   仓库默认 disabled + legacy + shadow + no-forward。
-- observe-only pipeline 输出 `goal_graph.json`、`unigoal_match.json`、
+- observe-only pipeline 输出 `goal_graph.json`、`semantic_navigation_match.json`、
   `search_directive.json`。
 - 新增离线 `scripts/evaluate_live_search_reasoners.py`，从已有 session scene graph 比较
-  legacy/unigoal/hybrid，输出 JSON/Markdown；不可用的真实运动指标明确为 null。
-- README 与 `docs/UNIGOAL_SEMANTIC_SEARCH_INTEGRATION.md` 已补充架构、边界、命令、
+  legacy/semantic_navigation/hybrid，输出 JSON/Markdown；不可用的真实运动指标明确为 null。
+- README 与 `docs/SEMANTIC_NAVIGATION_SEMANTIC_SEARCH_INTEGRATION.md` 已补充架构、边界、命令、
   回滚和分级验收说明。
 
 ## 安全状态
@@ -58,7 +58,7 @@ LLM quick/verify 或既有状态机闭环。
 - 受保护记忆：全量测试曾追加一条临时 observation；已精确移除。最终两个 memory
   文件相对 Git baseline 均无 diff（当前行数 24 / 28）。
 - API key / token：无新增或写入。
-- 第三方源码：没有复制 UniGoal 文件，不需要新增 vendored MIT notice；文档保留了
+- 第三方源码：没有复制 SemanticNavigation 文件，不需要新增 vendored MIT notice；文档保留了
   算法思想来源和未来复制源码时的 notice 要求。
 
 ## 测试
@@ -94,7 +94,7 @@ FAILED (failures=2, errors=2)
    `navigate_to_location` 与当前 LLM-first task schema 断言不一致；
 4. `test_task_planner...count_objects...`：同一 legacy task-type 断言不一致。
 
-没有新增 UniGoal/live_robot 用例失败。测试期间没有 GPU、API 或真机调用。
+没有新增 SemanticNavigation/live_robot 用例失败。测试期间没有 GPU、API 或真机调用。
 
 ### 其它检查
 
@@ -104,7 +104,7 @@ FAILED (failures=2, errors=2)
 - `bash -n scripts/go2w/start_search_session.sh` PASS；
 - offline reasoner evaluator smoke PASS；
 - 既有真实 session `live_20260806_204728/scene_graph.json` 离线 policy replay PASS：
-  2 nodes / 1 edge，legacy=`legacy_scan`，unigoal/hybrid=`inspect_anchor(0.69)`；
+  2 nodes / 1 edge，legacy=`legacy_scan`，semantic_navigation/hybrid=`inspect_anchor(0.69)`；
 - `git diff --check` PASS。
 
 ## 如何启用
@@ -122,7 +122,7 @@ FAILED (failures=2, errors=2)
   --semantic-no-forward \
   --max-radius 1.0 \
   --odom-topic /go2w/odom/fused \
-  --output outputs/live_sessions/unigoal_shadow.jsonl
+  --output outputs/live_sessions/semantic_navigation_shadow.jsonl
 ```
 
 此模式会调用 semantic observer / matcher / reasoner，但 execute_step 仍收到 legacy
@@ -197,7 +197,7 @@ plan；用 `reasoner_shadow_compare` 事件做 A/B。
 “饮水机旁边的蓝色垃圾桶”。输出目录：
 
 ```text
-outputs/live_runs/unigoal_observe_20260813_01/live_20260807_163307
+outputs/live_runs/semantic_navigation_observe_20260813_01/live_20260807_163307
 ```
 
 视觉模型观察到蓝色垃圾桶和饮水机，并给出二者相邻关系，置信度 0.9。首次运行暴露
@@ -281,7 +281,7 @@ evidence gate: visual_confirmed, target_found=true, blocking_rules=[]
 复核 crop 保存在：
 
 ```text
-outputs/live_runs/unigoal_context_verify_replay_20260813/video_crops/
+outputs/live_runs/semantic_navigation_context_verify_replay_20260813/video_crops/
 ```
 
 这证明真实输入上的多帧视觉确认链已可通过，但没有产生 3D/map pose，也没有触发运动。
@@ -425,9 +425,9 @@ replay：
 ```text
 phone_live_20260806:
   match partial；semantic proposed l30；shadow executed r30
-unigoal_live_20260813_01:
+semantic_navigation_live_20260813_01:
   match partial；semantic proposed l25；shadow executed r30
-unigoal_live_20260813_02:
+semantic_navigation_live_20260813_02:
   match strong；semantic proposed l25；shadow executed r30
   detector_calls=3；recorded_llm_calls_inferred=6
   time_to_candidate=0.0s；verify_reject_count=3
@@ -472,7 +472,7 @@ rotation_clearance_valid: false
 `observe_only + detector=llm + semantic_reasoning + hybrid + shadow`，输出：
 
 ```text
-outputs/live_runs/unigoal_observe_20260813_03/live_20260813_clearance_status
+outputs/live_runs/semantic_navigation_observe_20260813_03/live_20260813_clearance_status
 ```
 
 结果：
@@ -614,8 +614,8 @@ arm/Action/motion-control graph: not started
 严格 JSONL 与自动汇总的 10 项检查全部通过：
 
 ```text
-outputs/live_sessions/unigoal_shadow_fail_closed_20260813_03.jsonl
-outputs/go2w_acceptance/unigoal_shadow_fail_closed_20260813/result.json
+outputs/live_sessions/semantic_navigation_shadow_fail_closed_20260813_03.jsonl
+outputs/go2w_acceptance/semantic_navigation_shadow_fail_closed_20260813/result.json
 ```
 
 这证明 Stage 1 在当前真机传感器上保持 legacy 决策且安全 fail-closed；不是“成功转动
@@ -719,7 +719,7 @@ outputs/go2w_acceptance/lidar_rotation_observability_20260813/result.json
 - situated prior 只消费上游已经产生、明确 `can_confirm_target=false` 的 payload；没有安全
   payload 时状态为 unavailable，不在真机循环发起重复 LLM API；
 - 只有 Hybrid 的 `zero_match` 在 visited/negative-memory 成本同分时才使用辅助 hint；
-  negative memory 可压过置信度为 1.0 的 PSG hint；纯 UniGoal backend 不消费辅助层；
+  negative memory 可压过置信度为 1.0 的 PSG hint；纯 SemanticNavigation backend 不消费辅助层；
 - artifact 与 observe-only 输出新增 source status、hints、used refs、
   `can_confirm_target=false` 和 replan 状态。
 
@@ -730,7 +730,7 @@ outputs/go2w_acceptance/lidar_rotation_observability_20260813/result.json
 计划点名的离线 `unittest` 回归共 63 项通过。全目录回归没有出现断言失败，但在旧
 `tests/test_task_planner.py` 调用真实 SiliconFlow/OpenAI 兼容端点时长期停在 TLS
 握手，13 分钟后人工中止；该项属于外部服务可用性，不能记作完整全量通过，也与本次
-LiDAR/UniGoal 改动无关。
+LiDAR/SemanticNavigation 改动无关。
 
 ## 2026-08-13 原位旋转短时许可与四向标定工具
 

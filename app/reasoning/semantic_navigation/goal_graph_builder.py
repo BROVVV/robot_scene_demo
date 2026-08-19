@@ -6,7 +6,7 @@ import hashlib
 import re
 from typing import TYPE_CHECKING, Any
 
-from app.reasoning.unigoal.models import GoalGraph, GoalGraphEdge, GoalGraphNode
+from app.reasoning.semantic_navigation.models import GoalGraph, GoalGraphEdge, GoalGraphNode
 
 if TYPE_CHECKING:
     from app.video.target_profile import TargetProfile

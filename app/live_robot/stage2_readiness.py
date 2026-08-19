@@ -1,4 +1,4 @@
-"""Machine-readable UniGoal Stage 2/3 readiness.
+"""Machine-readable SemanticNavigation Stage 2/3 readiness.
 
 Every check is fail-closed: a missing or false input makes the stage not
 ready.  ``stage2_ready`` requires all twelve checks; ``stage3_ready``

@@ -19,6 +19,7 @@ from app.live_robot.search_event import (
     ACTION_FINISHED,
     ACTION_STARTED,
     CANDIDATES_GENERATED,
+    DECISION_RECORDED,
     ERROR,
     FRONTIERS_UPDATED,
     GOAL_SELECTED,
@@ -40,6 +41,8 @@ from app.live_robot.search_event import (
     SEMANTIC_OBJECT_LOCALIZED,
     SEMANTIC_REGION_CREATED,
     SESSION_CREATED,
+    TASK_REJECTED,
+    TASK_UNDERSTANDING,
     SESSION_STARTED,
     SPATIAL_MAP_UPDATED,
     SPATIAL_POSE_UPDATED,
@@ -50,6 +53,9 @@ from app.live_robot.search_event import (
 )
 
 TIMELINE_LIMIT = 500
+# Keep the public state envelope stable for existing WebUI clients.  The
+# graph carried inside it is the unified semantic graph and advertises its
+# own ``semantic_navigation_graph_v1`` schema when produced by the explorer.
 MAP_SCHEMA_VERSION = "live_exploration_graph_v1"
 
 # Search-session status values (plan book §38).
@@ -71,7 +77,8 @@ def _empty_snapshot() -> dict[str, Any]:
         "status": STATUS_IDLE,
         "result": "",
         "target": "",
-        "reasoner": "unigoal",
+        "reasoner": "semantic",
+        "task": {},
         "backend": "",
         "phase": "",
         "cycle": 0,
@@ -112,6 +119,9 @@ def _empty_snapshot() -> dict[str, Any]:
         },
         "goal_graph": None,
         "selected_goal": None,
+        "next_motion_command": None,
+        "last_decision": None,
+        "decisions": [],
         "candidates": [],
         "robot": {
             "motion_status": "IDLE",
@@ -122,6 +132,7 @@ def _empty_snapshot() -> dict[str, Any]:
             "schema_version": MAP_SCHEMA_VERSION,
             "revision": 0,
             "map_mode": "topological",
+            "graph_mode": "topological",
             "current_node_id": None,
             "robot": None,
             "nodes": [],
@@ -160,14 +171,22 @@ class SearchStateStore:
     # ------------------------------------------------------------------ #
     # lifecycle                                                          #
     # ------------------------------------------------------------------ #
-    def reset(self, *, session_id: str, target: str, reasoner: str = "unigoal",
-              backend: str = "mock") -> None:
+    def reset(
+        self,
+        *,
+        session_id: str,
+        target: str,
+        reasoner: str = "semantic",
+        backend: str = "mock",
+        task_context: dict[str, Any] | None = None,
+    ) -> None:
         with self._lock:
             self._snapshot = _empty_snapshot()
             self._snapshot["session_id"] = session_id
             self._snapshot["target"] = target
             self._snapshot["reasoner"] = reasoner
             self._snapshot["backend"] = backend
+            self._snapshot["task"] = copy.deepcopy(task_context or {})
             self._snapshot["status"] = STATUS_STARTING
             self._snapshot["started_at"] = time.time()
             self._map_revision = 0
@@ -182,6 +201,8 @@ class SearchStateStore:
     def apply(self, event: SearchEvent) -> None:
         handler = {
             SESSION_CREATED: self._on_session_created,
+            TASK_UNDERSTANDING: self._on_task_understanding,
+            TASK_REJECTED: self._on_task_rejected,
             SESSION_STARTED: self._on_session_started,
             SEARCH_STATE_CHANGED: self._on_search_state_changed,
             OBSERVATION_UPDATED: self._on_observation,
@@ -205,6 +226,7 @@ class SearchStateStore:
             SEMANTIC_REGION_CREATED: self._on_semantic_region_created,
             LONG_TERM_GOAL_SELECTED: self._on_long_term_goal_selected,
             LOCAL_GOAL_PROGRESS: self._on_local_goal_progress,
+            DECISION_RECORDED: self._on_decision_recorded,
             PAUSED: self._on_paused,
             RESUMED: self._on_resumed,
             SEARCH_EXHAUSTED: self._on_search_exhausted,
@@ -237,6 +259,10 @@ class SearchStateStore:
         with self._lock:
             return copy.deepcopy(self._snapshot["objects"])
 
+    def decisions_snapshot(self) -> list[dict[str, Any]]:
+        with self._lock:
+            return copy.deepcopy(self._snapshot["decisions"])
+
     # ------------------------------------------------------------------ #
     # handlers (callers hold the lock)                                   #
     # ------------------------------------------------------------------ #
@@ -249,6 +275,21 @@ class SearchStateStore:
         if not self._snapshot["started_at"]:
             self._snapshot["started_at"] = event.timestamp
         self._snapshot["health"] = dict(payload.get("health") or self._snapshot["health"])
+
+    def _on_task_understanding(self, event: SearchEvent) -> None:
+        task = dict(event.payload.get("task") or {})
+        self._snapshot["task"] = task
+        if task.get("canonical_target"):
+            self._snapshot["target"] = task["canonical_target"]
+        self._snapshot["phase"] = "TASK_UNDERSTANDING"
+
+    def _on_task_rejected(self, event: SearchEvent) -> None:
+        self._snapshot["status"] = "TASK_REJECTED"
+        self._snapshot["phase"] = "TASK_REJECTED"
+        self._snapshot["error"] = {
+            "error_type": "TASK_REJECTED",
+            "message": event.payload.get("reason") or "任务不可执行",
+        }
 
     def _on_session_started(self, event: SearchEvent) -> None:
         self._snapshot["status"] = STATUS_RUNNING
@@ -384,9 +425,26 @@ class SearchStateStore:
             )
         self._snapshot["phase"] = "PLAN"
 
+    def _on_decision_recorded(self, event: SearchEvent) -> None:
+        record = dict(event.payload.get("decision") or event.payload)
+        if not record:
+            return
+        decision_id = record.get("decision_id")
+        decisions = [
+            item for item in self._snapshot["decisions"]
+            if item.get("decision_id") != decision_id
+        ]
+        decisions.append(record)
+        self._snapshot["decisions"] = decisions
+        self._snapshot["last_decision"] = record
+        self._snapshot["next_motion_command"] = record.get("next_motion_command")
+
     def _on_action_started(self, event: SearchEvent) -> None:
         self._snapshot["robot"]["motion_status"] = "EXECUTING"
         self._snapshot["phase"] = "EXECUTE"
+        command = event.payload.get("next_motion_command")
+        if command:
+            self._snapshot["next_motion_command"] = command
 
     def _on_action_finished(self, event: SearchEvent) -> None:
         payload = event.payload
@@ -467,12 +525,32 @@ class SearchStateStore:
             "schema_version": MAP_SCHEMA_VERSION,
             "revision": self._map_revision,
             "map_mode": payload.get("map_mode") or "topological",
+            "graph_mode": payload.get("graph_mode") or payload.get("map_mode") or "topological",
             "current_node_id": payload.get("current_node_id"),
             "robot": payload.get("robot"),
             "nodes": list(graph.get("nodes") or []),
             "edges": list(graph.get("edges") or []),
             "observed_sectors": list(graph.get("observed_sectors") or []),
         }
+        if graph.get("schema_version") == "semantic_navigation_graph_v1":
+            self._snapshot["map"]["semantic_navigation_graph"] = copy.deepcopy(graph)
+            # Keep the dedicated spatial endpoints as projections of the same
+            # unified graph; they must never become a second source of truth.
+            self._snapshot["spatial"]["spatial_map"] = copy.deepcopy(graph)
+            self._snapshot["spatial"]["place_graph"] = {
+                "places": copy.deepcopy(graph.get("places") or []),
+                "edges": [
+                    edge for edge in graph.get("edges") or []
+                    if edge.get("from", "").startswith("P")
+                    or edge.get("to", "").startswith("P")
+                ],
+            }
+            self._snapshot["spatial"]["semantic_objects"] = copy.deepcopy(
+                graph.get("objects") or []
+            )
+            self._snapshot["spatial"]["frontiers"] = copy.deepcopy(
+                graph.get("frontiers") or []
+            )
 
     def _on_paused(self, event: SearchEvent) -> None:
         self._snapshot["status"] = STATUS_PAUSED
@@ -516,6 +594,8 @@ class SearchStateStore:
             self._snapshot["status"] = STATUS_OPERATOR_STOP
         elif result == "SEARCH_EXHAUSTED":
             self._snapshot["status"] = STATUS_SEARCH_EXHAUSTED
+        elif result == "FAILED":
+            self._snapshot["status"] = STATUS_FAILED
         else:
             self._snapshot["status"] = STATUS_FINISHED
         for key in (

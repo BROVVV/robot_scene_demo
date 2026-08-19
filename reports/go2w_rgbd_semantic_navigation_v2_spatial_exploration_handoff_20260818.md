@@ -1,7 +1,7 @@
-# Go2-W RGB-D UniGoal V2 Spatial Exploration Handoff (2026-08-18)
+# Go2-W RGB-D SemanticNavigation V2 Spatial Exploration Handoff (2026-08-18)
 
 > 对应计划书：
-> `robot_scene_demo_RGBD_UniGoalV2_PSG_空间自主探索_一次性重构实施计划书_20260818.md`
+> `robot_scene_demo_RGBD_SemanticNavigationV2_PSG_空间自主探索_一次性重构实施计划书_20260818.md`
 
 ## 1. Git 状态
 
@@ -22,7 +22,7 @@ DepthObjectLocalizer → 3D SemanticObjectMap
         ↓
 SpatialProvider / FrontierExtractor / PlaceGraph
         ↓
-UniGoal V2 SpatialReasoner / PSG SemanticPriorProvider
+SemanticNavigation V2 SpatialReasoner / PSG SemanticPriorProvider
         ↓
 LongTermGoalSelector → ExplorationIntent
         ↓
@@ -43,8 +43,8 @@ RobotBackend / Go2-W
   lightweight_depth_bev)
 - `app/navigation/long_term_goal_selector.py`
 - `app/navigation/local_goal_executor.py`
-- `app/reasoning/unigoal/semantic_prior_provider.py`
-- `app/reasoning/unigoal/spatial_reasoner.py`
+- `app/reasoning/semantic_navigation/semantic_prior_provider.py`
+- `app/reasoning/semantic_navigation/spatial_reasoner.py`
 - `configs/go2w/rgbd_spatial_exploration.yaml`
 - `scripts/go2w/validate_rgbd_spatial_stack.py`
 - `scripts/go2w/realsense_rgbd_bridge.py`

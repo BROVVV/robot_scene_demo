@@ -70,7 +70,7 @@ def generate_live_exploration_candidates(
     turn_only: bool = False,
     max_candidates: int = 12,
 ) -> list[ExplorationGoal]:
-    """Build exploration goals from UniGoal directive / unvisited sectors /
+    """Build exploration goals from SemanticNavigation directive / unvisited sectors /
     graph nodes / semantic anchors / last-known / fallback (plan section 9)."""
     config = config or CandidateConfig()
     capabilities = capabilities or RobotCapabilities()
@@ -105,7 +105,7 @@ def generate_live_exploration_candidates(
         seen.add(key)
         candidates.append(goal)
 
-    # A. UniGoal semantic directive ----------------------------------------
+    # A. SemanticNavigation semantic directive ----------------------------------------
     if directive is not None:
         kind = getattr(directive, "kind", None)
         kind_value = kind.value if hasattr(kind, "value") else str(kind or "")
@@ -120,10 +120,10 @@ def generate_live_exploration_candidates(
                     goal_type=GOAL_INSPECT_ANCHOR,
                     relative_dyaw=_clamp_heading(heading, config.fallback_turn_deg),
                     semantic_anchor=str(anchor_label),
-                    semantic_reason=f"unigoal:{directive_id}",
+                    semantic_reason=f"semantic_navigation:{directive_id}",
                     heading_sector=_sector_for_delta(current_yaw_deg, heading, sector_deg),
                     semantic_relevance=max(0.4, confidence),
-                    provenance={"source": "unigoal_directive", "directive_id": directive_id,
+                    provenance={"source": "semantic_navigation_directive", "directive_id": directive_id,
                                 "kind": kind_value},
                 )
             )
@@ -135,9 +135,9 @@ def generate_live_exploration_candidates(
                         goal_id=f"cand_{len(candidates) + 1:03d}",
                         goal_type=GOAL_REOBSERVE,
                         heading_sector=current_sector,
-                        semantic_reason=f"unigoal:{directive_id} hold and reobserve",
+                        semantic_reason=f"semantic_navigation:{directive_id} hold and reobserve",
                         semantic_relevance=max(0.3, confidence),
-                        provenance={"source": "unigoal_directive", "directive_id": directive_id,
+                        provenance={"source": "semantic_navigation_directive", "directive_id": directive_id,
                                     "kind": kind_value},
                     )
                 )
@@ -148,10 +148,10 @@ def generate_live_exploration_candidates(
                         goal_type=GOAL_ROTATE_VIEW,
                         relative_dyaw=_clamp_heading(heading, config.fallback_turn_deg),
                         semantic_anchor=anchor_label,
-                        semantic_reason=f"unigoal:{directive_id}",
+                        semantic_reason=f"semantic_navigation:{directive_id}",
                         heading_sector=_sector_for_delta(current_yaw_deg, heading, sector_deg),
                         semantic_relevance=max(0.3, confidence),
-                        provenance={"source": "unigoal_directive", "directive_id": directive_id,
+                        provenance={"source": "semantic_navigation_directive", "directive_id": directive_id,
                                     "kind": kind_value},
                     )
                 )

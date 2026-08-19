@@ -41,12 +41,16 @@ from app.navigation.exploration_planner import (
     select_exploration_goal,
 )
 from app.navigation.models import LiveObservation
+from app.navigation.decision_models import DecisionRecord, make_motion_command
+from app.navigation.live_graph_path_planner import plan_live_graph_path
 from app.navigation.robot_backend import (
     NavigationResult,
     NavigationStatus,
     RobotBackend,
     TERMINAL_NAVIGATION_STATUSES,
 )
+from app.spatial.semantic_navigation_graph import SemanticNavigationGraph
+from app.task_understanding.search_task_context import SearchTaskContext
 
 
 class ExplorerState(str, Enum):
@@ -110,6 +114,10 @@ class SessionResult:
     motion_steps: int = 0
     observations: int = 0
     unique_nodes: int = 0
+    unique_places: int = 0
+    unique_objects: int = 0
+    frontiers_discovered: int = 0
+    map_nodes_total: int = 0
     replans: int = 0
     navigation_failures: int = 0
     verify_attempts: int = 0
@@ -128,6 +136,10 @@ class SessionResult:
             "motion_steps": self.motion_steps,
             "observations": self.observations,
             "unique_nodes": self.unique_nodes,
+            "unique_places": self.unique_places,
+            "unique_objects": self.unique_objects,
+            "frontiers_discovered": self.frontiers_discovered,
+            "map_nodes_total": self.map_nodes_total,
             "replans": self.replans,
             "navigation_failures": self.navigation_failures,
             "verify_attempts": self.verify_attempts,
@@ -149,7 +161,8 @@ class AutonomousExplorer:
     def __init__(
         self,
         *,
-        target: str,
+        target: str = "",
+        task_context: SearchTaskContext | None = None,
         observer: Callable[[], LiveObservation | None],
         matcher: Callable[[LiveObservation], SemanticMatch],
         verifier: Callable[[LiveObservation, SemanticMatch], VerificationOutcome],
@@ -166,14 +179,19 @@ class AutonomousExplorer:
         session_id: str | None = None,
         max_perception_retries: int = 2,
         now: Callable[[], float] = time.time,
+        semantic_graph: SemanticNavigationGraph | None = None,
+        executor_id: str | None = None,
+        worker_generation: int | None = None,
     ) -> None:
-        self.target = target
+        self.task_context = task_context
+        self.target = task_context.canonical_target if task_context else target
         self._observer = observer
         self._matcher = matcher
         self._verifier = verifier
         self._backend = backend
         self.policy = policy or load_exploration_policy()
         self.graph = graph or ExplorationGraph(session_id=session_id or "exploration_session")
+        self.semantic_graph = semantic_graph or SemanticNavigationGraph()
         self.negative_memory = negative_memory
         self.negative_target_key = negative_target_key
         self._candidate_generator = candidate_generator or generate_live_exploration_candidates
@@ -192,6 +210,10 @@ class AutonomousExplorer:
         self._seen_labels: set[str] = set()
         self._no_information_cycles = 0
         self._last_goal_source: str | None = None
+        self._current_place_id: str | None = None
+        self.executor_id = executor_id
+        self.worker_generation = worker_generation
+        self.decision_records: list[DecisionRecord] = []
 
     # ---- operator interface ----------------------------------------------
 
@@ -223,6 +245,11 @@ class AutonomousExplorer:
         return self._paused
 
     @property
+    def state(self) -> str:
+        """Public terminal/current state used by session artifact writers."""
+        return self._state.value
+
+    @property
     def operator_stop_requested(self) -> bool:
         return self._operator_stop_requested
 
@@ -243,6 +270,8 @@ class AutonomousExplorer:
 
         self._state = ExplorerState.BOOTSTRAP
         self._emit("session_start", target=self.target, session_id=self.session_id,
+                   task_id=self.task_context.task_id if self.task_context else None,
+                   task_context=self.task_context.to_dict() if self.task_context else None,
                    budget=budget.to_dict(), policy=asdict(self.policy) if hasattr(self.policy, "__dataclass_fields__") else self.policy.to_dict())
 
         # ---- BOOTSTRAP ------------------------------------------------------
@@ -396,12 +425,50 @@ class AutonomousExplorer:
                         # small re-observe between verify attempts
                         time.sleep(1.0)
                 if verification is not None and verification.confirmed:
+                    # A target can be confirmed on the first frame, before the
+                    # normal UPDATE_MEMORY phase.  Persist that observation in
+                    # the semantic graph first so the terminal state still
+                    # contains a Place, Object evidence and map provenance.
+                    spatial_update = self.semantic_graph.update_observation(
+                        observation_id=observation.bundle_id,
+                        heading_sector=observation.heading_sector,
+                        scene_objects=observation.scene_objects,
+                        scene_relations=observation.scene_relations,
+                        pose=observation.pose,
+                        timestamp=observation.timestamp,
+                        target_candidate=True,
+                    )
+                    self._current_place_id = spatial_update["place_id"]
+                    semantic_map = self.semantic_graph.to_dict()
+                    self._emit(
+                        "memory_update",
+                        node_id=self._current_node_id(observation),
+                        place_id=self._current_place_id,
+                        new_labels=observation.object_labels,
+                        new_relations=[],
+                        new_sector=True,
+                        information_gain=1.0,
+                        no_information_cycles=0,
+                        unique_nodes=len(self.graph.nodes),
+                        unique_places=len(self.semantic_graph.place_graph.places),
+                        unique_objects=len(self.semantic_graph.object_map.objects),
+                        frontiers_discovered=len(self.semantic_graph.frontiers),
+                        map_nodes_total=len(semantic_map.get("nodes") or []),
+                        semantic_navigation_graph=semantic_map,
+                    )
                     self.graph.mark_target_confirmed(self._current_node_id(observation))
+                    self.semantic_graph.mark_target_confirmed(
+                        object_id=self._target_object_id(observation),
+                        observation_id=observation.bundle_id,
+                    )
                     self._state = ExplorerState.TARGET_FOUND
                     finish_reason = "TARGET_FOUND"
                     self._emit("target_found",
                                reason_zh=verification.reason_zh,
-                               attempts=verification.attempts)
+                               attempts=verification.attempts,
+                               place_id=self._current_place_id,
+                               object_id=self._target_object_id(observation),
+                               observation_id=observation.bundle_id)
                     try:
                         self._backend.stop()
                     except Exception:
@@ -423,12 +490,19 @@ class AutonomousExplorer:
                 self._no_information_cycles = 0
             else:
                 self._no_information_cycles += 1
+            semantic_map = self.semantic_graph.to_dict()
             self._emit("memory_update", node_id=self._current_node_id(observation),
+                       place_id=self._current_place_id,
                        new_labels=new_labels, new_relations=new_relations,
                        new_sector=new_sector,
                        information_gain=info_gain,
                        no_information_cycles=self._no_information_cycles,
-                       unique_nodes=len(self.graph.nodes))
+                       unique_nodes=len(self.graph.nodes),
+                       unique_places=len(self.semantic_graph.place_graph.places),
+                       unique_objects=len(self.semantic_graph.object_map.objects),
+                       frontiers_discovered=len(self.semantic_graph.frontiers),
+                       map_nodes_total=len(semantic_map.get("nodes") or []),
+                       semantic_navigation_graph=semantic_map)
             if self._no_information_cycles >= max(1, budget.max_consecutive_no_information_cycles):
                 finish_reason = "SEARCH_EXHAUSTED"
                 self._state = ExplorerState.SEARCH_EXHAUSTED
@@ -520,7 +594,7 @@ class AutonomousExplorer:
                        selected_goal_id=scored.goal.goal_id,
                        planning_cycles=planning_cycles)
             source = str(goal.provenance.get("source", "unknown"))
-            if source in {"unigoal_directive", "semantic_anchor"}:
+            if source in {"semantic_navigation_directive", "semantic_anchor"}:
                 semantic_goal_selection_count += 1
             else:
                 fallback_goal_selection_count += 1
@@ -530,10 +604,24 @@ class AutonomousExplorer:
                        reasons=scored.reasons,
                        planning_cycles=planning_cycles)
 
+            decision = self._make_decision_record(
+                observation=observation,
+                match=match,
+                goal=goal,
+                scored=scored,
+                candidates=all_scored,
+                cycle=planning_cycles,
+            )
+            self.decision_records.append(decision)
+            self._emit("decision_recorded", decision=decision.to_dict(),
+                       next_motion_command=decision.next_motion_command)
+
             # ---- EXECUTE -----------------------------------------------------
             self._state = ExplorerState.EXECUTE
             self._emit("action_start", goal=goal.to_dict(),
-                       planning_cycles=planning_cycles)
+                       planning_cycles=planning_cycles,
+                       decision_id=decision.decision_id,
+                       next_motion_command=decision.next_motion_command)
             handle = self._backend.execute_goal(goal)
             self._state = ExplorerState.WAIT_RESULT
             result = self._wait_result(handle, timeout_sec=max(10.0, self.policy.recovery.timeout_retry_count * 15.0))
@@ -542,6 +630,15 @@ class AutonomousExplorer:
                        requested_motion=result.requested_motion,
                        observed_motion=result.observed_motion,
                        elapsed_sec=result.elapsed_sec)
+            updated_decision = decision.with_execution(
+                status="SUCCEEDED" if result.succeeded else "FAILED",
+                message=result.message,
+                requested_motion=result.requested_motion,
+                observed_motion=result.observed_motion,
+                replan_reason=None if result.succeeded else result.message,
+            )
+            self.decision_records.append(updated_decision)
+            self._emit("decision_recorded", decision=updated_decision.to_dict())
             self.graph.record_navigation(
                 result,
                 goal_type=goal.goal_type,
@@ -636,8 +733,11 @@ class AutonomousExplorer:
         )
 
     def _current_node_id(self, observation: LiveObservation) -> str:
-        bundle = observation.bundle_id or "node"
-        return f"node_{bundle}"
+        # ExplorationGraph remains an internal scoring/recovery ledger keyed
+        # by observation bundles.  The exposed navigation map is the separate
+        # semantic graph, whose current stable node is ``current_place_id``.
+        bundle_id = str(getattr(observation, "bundle_id", "") or "")
+        return f"node_{bundle_id}" if bundle_id else "node_unknown"
 
     def _update_memory(
         self,
@@ -645,6 +745,16 @@ class AutonomousExplorer:
         match: SemanticMatch,
         pose: Any,
     ) -> tuple[float, list[str], list[str], bool]:
+        spatial_update = self.semantic_graph.update_observation(
+            observation_id=observation.bundle_id,
+            heading_sector=observation.heading_sector,
+            scene_objects=observation.scene_objects,
+            scene_relations=observation.scene_relations,
+            pose=observation.pose,
+            timestamp=observation.timestamp,
+            target_candidate=observation.target_present,
+        )
+        self._current_place_id = spatial_update["place_id"]
         node_id = self._current_node_id(observation)
         labels = observation.object_labels
         new_labels = [label for label in labels if label not in self._seen_labels]
@@ -676,7 +786,7 @@ class AutonomousExplorer:
             semantic_relevance=match.target_score,
             information_gain=info_gain,
             source_bundle_id=observation.bundle_id,
-            provenance={"source": "live_observation"},
+            provenance={"source": "live_observation", "place_id": self._current_place_id},
         )
         # node_or_create keeps kwargs only for new nodes; refresh the view
         # fields on revisits so sector coverage stays correct.
@@ -703,6 +813,98 @@ class AutonomousExplorer:
             self.graph.mark_target_candidate(node_id)
         return info_gain, new_labels, new_relations, new_sector
 
+    def _target_object_id(self, observation: LiveObservation) -> str | None:
+        labels = {
+            str(item.get("label_zh") or item.get("label") or item.get("name") or "")
+            for item in observation.scene_objects
+        }
+        for object_id, entry in self.semantic_graph.object_map.objects.items():
+            if entry.label in labels:
+                return object_id
+        return None
+
+    def _make_decision_record(
+        self,
+        *,
+        observation: LiveObservation,
+        match: SemanticMatch,
+        goal: Any,
+        scored: ScoredGoal,
+        candidates: list[ScoredGoal],
+        cycle: int,
+    ) -> DecisionRecord:
+        decision_id = f"decision_{self.session_id}_{cycle}_{len(self.decision_records) + 1}"
+        command = make_motion_command(
+            plan_id=f"live_plan_{self.session_id}_{cycle}",
+            decision_id=decision_id,
+            turn_deg=float(goal.relative_dyaw or 0.0),
+            forward_m=abs(float(goal.relative_dx or 0.0)),
+            reason_zh="；".join(scored.reasons) or goal.semantic_reason or "选择当前可达候选",
+            target_place_id=self._current_place_id,
+            target_frontier_id=goal.provenance.get("frontier_id") if isinstance(goal.provenance, dict) else None,
+            safety_limited=True,
+        )
+        # Rebuild with the stable decision id used by the record.
+        command = type(command)(**{**command.to_dict(), "decision_id": decision_id})
+        live_plan = self._build_live_navigation_plan(goal, observation)
+        navigation_plan = (
+            live_plan.to_dict()
+            if live_plan is not None
+            else {
+                "plan_id": command.plan_id,
+                "planning_frame": "odom",
+                "start_pose": observation.pose,
+                "goal": goal.to_dict(),
+                "executable": True,
+                "planner": "relative_goal_fallback",
+            }
+        )
+        return DecisionRecord(
+            decision_id=decision_id,
+            session_id=self.session_id,
+            task_id=self.task_context.task_id if self.task_context else f"task_{self.target}",
+            cycle=cycle,
+            timestamp=float(self._now()),
+            raw_task_text=self.task_context.raw_text if self.task_context else self.target,
+            canonical_target=self.target,
+            map_revision=self.semantic_graph.revision,
+            current_place_id=self._current_place_id,
+            current_pose=observation.pose,
+            target_match_level=match.target_match_level,
+            selected_long_term_goal=goal.to_dict(),
+            candidate_ranking=[item.to_dict() for item in candidates],
+            navigation_plan=navigation_plan,
+            next_motion_command=command.to_dict(),
+            reason_zh=command.reason_zh,
+            evidence=[{"type": "visual_observation", "observation_id": observation.bundle_id}],
+            negative_evidence=[],
+            requested_motion=command.requested_motion,
+        )
+
+    def _build_live_navigation_plan(
+        self, goal: Any, observation: LiveObservation
+    ) -> Any | None:
+        """Plan against the current semantic graph when a frontier exists.
+
+        Relative turn goals remain executable primitives for RGB-only robots;
+        the shared NavigationPlan is still attached whenever the live graph
+        has a concrete frontier for the selected heading.
+        """
+        sector = getattr(goal, "heading_sector", None)
+        if sector is None or self._current_place_id is None:
+            return None
+        frontier_id = f"F{int(sector) + 1:02d}"
+        try:
+            return plan_live_graph_path(
+                self.semantic_graph.to_dict(),
+                current_place_id=self._current_place_id,
+                goal={"target_frontier_id": frontier_id, "confidence": 0.8},
+                robot_pose=observation.pose,
+                target_status="target_candidate" if observation.target_present else "target_not_seen",
+            )
+        except (KeyError, TypeError, ValueError):
+            return None
+
     def _emit(self, name: str, **details: Any) -> None:
         event: dict[str, Any] = {
             "event": name,
@@ -710,6 +912,9 @@ class AutonomousExplorer:
             "host_s": round(float(self._now()), 6),
             **details,
         }
+        event.setdefault("task_id", self.task_context.task_id if self.task_context else None)
+        event.setdefault("executor_id", self.executor_id)
+        event.setdefault("worker_generation", self.worker_generation)
         self.events.append(event)
         self._on_event(event)
 
@@ -727,6 +932,10 @@ class AutonomousExplorer:
             "motion_steps": motion_steps,
             "observations": observations,
             "unique_nodes": len(self.graph.nodes),
+            "unique_places": len(self.semantic_graph.place_graph.places),
+            "unique_objects": len(self.semantic_graph.object_map.objects),
+            "frontiers_discovered": len(self.semantic_graph.frontiers),
+            "map_nodes_total": len(self.semantic_graph.to_dict().get("nodes") or []),
             "replans": replans,
             "navigation_failures": navigation_failures,
             "verify_attempts": verify_attempts,
@@ -742,6 +951,10 @@ class AutonomousExplorer:
             motion_steps=motion_steps,
             observations=observations,
             unique_nodes=len(self.graph.nodes),
+            unique_places=len(self.semantic_graph.place_graph.places),
+            unique_objects=len(self.semantic_graph.object_map.objects),
+            frontiers_discovered=len(self.semantic_graph.frontiers),
+            map_nodes_total=len(self.semantic_graph.to_dict().get("nodes") or []),
             replans=replans,
             navigation_failures=navigation_failures,
             verify_attempts=verify_attempts,
@@ -753,6 +966,13 @@ class AutonomousExplorer:
         )
 
     def save_artifacts(self, session_dir: str | Path) -> Path:
-        """Persist exploration graph for this session (JSON)."""
-        target = Path(session_dir) / self.session_id / "exploration_graph.json"
-        return self.graph.save(target)
+        """Persist compatibility ledger plus the authoritative semantic map."""
+        run_dir = Path(session_dir) / self.session_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        target = run_dir / "exploration_graph.json"
+        graph_path = self.graph.save(target)
+        (run_dir / "semantic_map.json").write_text(
+            json.dumps(self.semantic_graph.to_dict(), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        return graph_path

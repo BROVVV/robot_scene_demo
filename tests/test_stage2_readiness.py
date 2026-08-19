@@ -1,4 +1,4 @@
-"""Tests for the machine-readable UniGoal Stage 2/3 readiness."""
+"""Tests for the machine-readable SemanticNavigation Stage 2/3 readiness."""
 
 from __future__ import annotations
 

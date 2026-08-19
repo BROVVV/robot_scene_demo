@@ -1,8 +1,8 @@
-# RGB-D UniGoal V2 Spatial Exploration
+# RGB-D SemanticNavigation V2 Spatial Exploration
 
 > 本文档描述 `robot_scene_demo` 从 2D next-view 搜索升级为 RGB-D 空间语义探索的
 > 模块化设计与当前实现状态。计划书：
-> `robot_scene_demo_RGBD_UniGoalV2_PSG_空间自主探索_一次性重构实施计划书_20260818.md`
+> `robot_scene_demo_RGBD_SemanticNavigationV2_PSG_空间自主探索_一次性重构实施计划书_20260818.md`
 
 ## 1. 目标
 
@@ -10,7 +10,7 @@
 
 ```text
 D435 RGB-D → 3D Semantic SceneGraph → Spatial Map → Frontier → PSG Prior
-→ UniGoal V2 Long-Term Spatial Goal → LocalGoalExecutor → Go2-W 短步平移
+→ SemanticNavigation V2 Long-Term Spatial Goal → LocalGoalExecutor → Go2-W 短步平移
 → 新 Place → Replan → TARGET_FOUND
 ```
 
@@ -63,14 +63,14 @@ GET /rgbd/frame/<id>/depth.png
 
 ### 2.5 PSG Semantic Prior
 
-- `app/reasoning/unigoal/semantic_prior_provider.py`：`RuleSemanticPriorProvider`
+- `app/reasoning/semantic_navigation/semantic_prior_provider.py`：`RuleSemanticPriorProvider`
   - 输入 GoalGraph + Observed SceneGraph + SpatialContext；
   - 输出 `SemanticPrior`（predicted nodes / relations / regions / frontier_scores）；
   - 预测与观测严格分离。
 
-### 2.6 UniGoal V2 Spatial Reasoner
+### 2.6 SemanticNavigation V2 Spatial Reasoner
 
-- `app/reasoning/unigoal/spatial_reasoner.py`：`SpatialSearchReasoner`
+- `app/reasoning/semantic_navigation/spatial_reasoner.py`：`SpatialSearchReasoner`
   - ZERO → `EXPLORE_FRONTIER`
   - PARTIAL → `INSPECT_ANCHOR_REGION`
   - STRONG / VERIFY → `APPROACH_TARGET` / `VERIFY_TARGET`

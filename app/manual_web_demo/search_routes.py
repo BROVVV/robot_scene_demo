@@ -109,7 +109,17 @@ def create_search_router(
         if not isinstance(raw, dict):
             raw = {}
         req = SearchStartRequest.from_dict(raw)
-        result = service.start_search(req)
+        # Task understanding may call the configured LLM and can take
+        # seconds (or hit a provider timeout).  Never run it on the ASGI
+        # event-loop thread: a synchronous call here makes every fetch,
+        # websocket heartbeat, and status poll look like a network failure.
+        try:
+            result = await asyncio.to_thread(service.start_search, req)
+        except Exception as exc:  # noqa: BLE001 - return a usable API error
+            return JSONResponse(
+                {"ok": False, "error": f"search start failed: {type(exc).__name__}: {exc}"},
+                status_code=500,
+            )
         if result.get("ok"):
             return JSONResponse(
                 {
@@ -163,11 +173,31 @@ def create_search_router(
 
     @router.get("/semantic-map")
     async def search_semantic_map() -> dict[str, Any]:
-        return {"semantic_objects": (service.spatial_snapshot() or {}).get("semantic_objects") or []}
+        spatial = service.spatial_snapshot() or {}
+        graph = spatial.get("spatial_map") or {}
+        return {
+            "schema_version": graph.get("schema_version", "semantic_navigation_graph_v1"),
+            "graph": graph,
+            "semantic_objects": spatial.get("semantic_objects") or [],
+            "places": (spatial.get("place_graph") or {}).get("places") or [],
+            "frontiers": spatial.get("frontiers") or [],
+        }
 
     @router.get("/objects")
     async def search_objects() -> dict[str, Any]:
         return service.objects_snapshot()
+
+    @router.get("/decisions")
+    async def search_decisions(limit: int = 200) -> dict[str, Any]:
+        decisions = service.decisions_snapshot()
+        return {"decisions": decisions[-max(1, min(limit, 2000)):]
+                }
+
+    @router.get("/history/decisions")
+    async def search_decision_history(limit: int = 200) -> dict[str, Any]:
+        decisions = service.decisions_snapshot()
+        return {"decisions": decisions[-max(1, min(limit, 2000)):]
+                }
 
     @router.get("/events")
     async def search_events(limit: int = 200) -> dict[str, Any]:

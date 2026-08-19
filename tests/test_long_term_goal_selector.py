@@ -7,15 +7,15 @@ from app.navigation.long_term_goal_selector import (
     MATCH_ZERO,
     LongTermGoalSelector,
 )
-from app.reasoning.unigoal.models import (
+from app.reasoning.semantic_navigation.models import (
     GoalGraph,
     GoalGraphEdge,
     GoalGraphNode,
     GraphMatchResult,
     GraphMatchState,
 )
-from app.reasoning.unigoal.semantic_prior_provider import RuleSemanticPriorProvider
-from app.reasoning.unigoal.spatial_reasoner import SpatialSearchReasoner
+from app.reasoning.semantic_navigation.semantic_prior_provider import RuleSemanticPriorProvider
+from app.reasoning.semantic_navigation.spatial_reasoner import SpatialSearchReasoner
 from app.spatial.models import (
     INTENT_EXPLORE_FRONTIER,
     INTENT_INSPECT_ANCHOR_REGION,

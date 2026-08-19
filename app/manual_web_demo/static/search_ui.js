@@ -14,6 +14,9 @@
     objects: {},
     targetMatch: {},
     selectedGoal: null,
+    task: {},
+    decisions: [],
+    nextMotionCommand: null,
     candidates: [],
     map: {},
     events: [],
@@ -57,6 +60,7 @@
     stAction: document.getElementById("st-action"),
     stPose: document.getElementById("st-pose"),
     stEvidence: document.getElementById("st-evidence"),
+    taskUnderstanding: document.getElementById("task-understanding"),
     // observation
     obsCurrent: document.getElementById("obs-current"),
     obsSeen: document.getElementById("obs-seen"),
@@ -65,6 +69,8 @@
     decReason: document.getElementById("dec-reason"),
     decScores: document.getElementById("dec-scores"),
     decCandidates: document.getElementById("dec-candidates"),
+    decMotion: document.getElementById("dec-motion"),
+    decHistory: document.getElementById("dec-history"),
     // map
     mapMeta: document.getElementById("map-meta"),
     mapNodeDetail: document.getElementById("map-node-detail"),
@@ -161,8 +167,11 @@
     appState.search = state;
     appState.observation = state.observation || {};
     appState.objects = state.objects || {};
-    appState.targetMatch = state.targetMatch || {};
+    appState.targetMatch = state.target_match || state.targetMatch || {};
     appState.selectedGoal = state.selected_goal || null;
+    appState.task = state.task || {};
+    appState.decisions = state.decisions || [];
+    appState.nextMotionCommand = state.next_motion_command || null;
     appState.candidates = state.candidates || [];
     appState.map = state.map || {};
     appState.spatial = state.spatial || {};
@@ -188,10 +197,23 @@
         appState.search.session_id = event.session_id;
         appState.search.status = "STARTING";
         appState.search.phase = payload.phase || "STARTING";
+        appState.task = payload.task || {};
+        appState.decisions = [];
+        appState.nextMotionCommand = null;
         appState.targetMatch = {};
         appState.selectedGoal = null;
         appState.candidates = [];
         appState.map = {};
+        break;
+      case "TASK_UNDERSTANDING":
+        appState.task = payload.task || {};
+        appState.search.task = appState.task;
+        appState.search.phase = "TASK_UNDERSTANDING";
+        break;
+      case "TASK_REJECTED":
+        appState.search.status = "TASK_REJECTED";
+        appState.search.phase = "TASK_REJECTED";
+        showBanner("任务不可执行: " + (payload.reason || "请修改任务描述"), "error");
         break;
       case "SESSION_STARTED":
         appState.search.status = "RUNNING";
@@ -256,6 +278,17 @@
       case "ACTION_STARTED":
         appState.search.phase = "EXECUTE";
         appState.robotAction = "EXECUTING";
+        if (payload.next_motion_command) appState.nextMotionCommand = payload.next_motion_command;
+        break;
+      case "DECISION_RECORDED":
+        var decision = payload.decision || payload;
+        appState.nextMotionCommand = decision.next_motion_command || appState.nextMotionCommand;
+        appState.decisions = appState.decisions || [];
+        var did = decision.decision_id;
+        appState.decisions = appState.decisions.filter(function (item) {
+          return !did || item.decision_id !== did;
+        });
+        appState.decisions.push(decision);
         break;
       case "ACTION_FINISHED":
         appState.robotAction = payload.status === "succeeded" ? "SUCCEEDED" : "FAILED";
@@ -379,9 +412,13 @@
     var target = els.target.value.trim();
     if (!target) { showBanner("请输入搜索目标", "error"); return; }
     api("/api/search/start", {
+      task_text: target,
+      // One-release compatibility alias for an already-running old worker.
       target: target,
       enable_autonomous_motion: els.chkMotion.checked,
       operator_supervised_experiment: els.chkMotion.checked,
+      dry_run_motion: !els.chkMotion.checked,
+      allow_degraded: !els.chkMotion.checked,
     }).then(function (data) {
       if (!data.ok) {
         if (data.error === "emergency_stop_latched") {
@@ -418,6 +455,7 @@
   // Rendering                                                           //
   // ------------------------------------------------------------------ //
   function renderAll() {
+    renderTaskUnderstanding();
     renderStatus();
     renderObservation();
     renderDecision();
@@ -511,6 +549,12 @@
 
   function renderDecision() {
     var goal = appState.selectedGoal;
+    var command = appState.nextMotionCommand ||
+      (appState.search || {}).next_motion_command ||
+      ((appState.search || {}).last_decision || {}).next_motion_command;
+    var instruction = command && (command.instruction_zh || command.instruction);
+    els.decMotion.textContent = instruction || "等待决策…";
+    renderDecisionHistory();
     if (!goal) {
       els.decIntent.textContent = "--";
       els.decReason.textContent = "";
@@ -543,6 +587,45 @@
       if (value === undefined || value === null) return "";
       return '<div class="score-row"><span>' + row[1] + "</span><b>" +
         Number(value).toFixed(2) + "</b></div>";
+    }).join("");
+  }
+
+  function renderTaskUnderstanding() {
+    var task = appState.task || (appState.search || {}).task || {};
+    if (!els.taskUnderstanding) return;
+    if (!task || !Object.keys(task).length) {
+      els.taskUnderstanding.textContent = "等待任务解析…";
+      return;
+    }
+    var target = task.canonical_target || task.raw_text || "--";
+    var intent = task.intent || "--";
+    var attrs = task.target_attributes || {};
+    var relations = task.target_relations || [];
+    var constraints = task.constraints || [];
+    var status = task.executable === false ? "不可执行" : "可执行";
+    var html = "<div><b>规范目标：</b>" + esc(target) + "</div>";
+    html += "<div><b>意图：</b>" + esc(intent) + " · " + esc(status) + "</div>";
+    if (Object.keys(attrs).length) html += "<div><b>属性：</b>" + esc(pretty(attrs)) + "</div>";
+    if (relations.length) html += "<div><b>关系：</b>" + esc(pretty(relations)) + "</div>";
+    if (constraints.length) html += "<div><b>约束：</b>" + esc(pretty(constraints)) + "</div>";
+    if (task.rejection_reason) html += "<div class='no'><b>拒绝原因：</b>" + esc(task.rejection_reason) + "</div>";
+    els.taskUnderstanding.innerHTML = html;
+  }
+
+  function renderDecisionHistory() {
+    if (!els.decHistory) return;
+    var decisions = (appState.decisions || []).slice(-12).reverse();
+    if (!decisions.length) {
+      els.decHistory.innerHTML = '<div class="muted">暂无决策记录</div>';
+      return;
+    }
+    els.decHistory.innerHTML = decisions.map(function (item) {
+      var command = item.next_motion_command || {};
+      var text = command.instruction_zh || command.instruction || item.decision_id || "决策";
+      var result = item.execution_status ? " · " + item.execution_status : "";
+      return '<div class="decision-history-row"><span>' + esc(text) +
+        '</span><span class="cnt">' + esc(String(item.decision_id || "")) +
+        esc(result) + '</span></div>';
     }).join("");
   }
 

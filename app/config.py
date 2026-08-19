@@ -15,10 +15,17 @@ except ModuleNotFoundError:  # ROS system Python may intentionally omit dotenv.
 
 
 DEFAULT_SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
+# Keep the legacy model as the vision default.  Text planning and image
+# understanding deliberately have separate configuration contracts.
 DEFAULT_SILICONFLOW_MODEL = "Qwen/Qwen3-VL-8B-Instruct"
+DEFAULT_SILICONFLOW_REASONING_MODEL = "deepseek-ai/DeepSeek-V4-Flash"
+DEFAULT_SILICONFLOW_VISION_MODEL = DEFAULT_SILICONFLOW_MODEL
 DEFAULT_OUTPUT_DIR = "outputs"
 DEFAULT_SILICONFLOW_TIMEOUT_SECONDS = 25.0
 DEFAULT_SILICONFLOW_MAX_TOKENS = 2048
+DEFAULT_SILICONFLOW_REASONING_TIMEOUT_SECONDS = 40.0
+DEFAULT_SILICONFLOW_REASONING_MAX_TOKENS = 2048
+DEFAULT_SILICONFLOW_REASONING_EFFORT = "high"
 DEFAULT_IMAGE_MAX_SIDE = 1280
 DEFAULT_IMAGE_DETAIL = "high"
 DEFAULT_ENABLE_LOW_OBJECT_RETRY = True
@@ -254,10 +261,17 @@ class SettingsError(RuntimeError):
 class Settings:
     siliconflow_api_key: str
     siliconflow_base_url: str = DEFAULT_SILICONFLOW_BASE_URL
+    # Deprecated compatibility field.  New callers must use vision_model or
+    # reasoning_model so the two model IDs cannot be coupled accidentally.
     siliconflow_model: str = DEFAULT_SILICONFLOW_MODEL
+    siliconflow_reasoning_model: str = DEFAULT_SILICONFLOW_REASONING_MODEL
+    siliconflow_vision_model: str | None = None
     output_dir: str = DEFAULT_OUTPUT_DIR
     siliconflow_timeout_seconds: float = DEFAULT_SILICONFLOW_TIMEOUT_SECONDS
     siliconflow_max_tokens: int = DEFAULT_SILICONFLOW_MAX_TOKENS
+    siliconflow_reasoning_timeout_seconds: float = DEFAULT_SILICONFLOW_REASONING_TIMEOUT_SECONDS
+    siliconflow_reasoning_max_tokens: int = DEFAULT_SILICONFLOW_REASONING_MAX_TOKENS
+    siliconflow_reasoning_effort: str = DEFAULT_SILICONFLOW_REASONING_EFFORT
     image_max_side: int = DEFAULT_IMAGE_MAX_SIDE
     image_detail: str = DEFAULT_IMAGE_DETAIL
     enable_low_object_retry: bool = DEFAULT_ENABLE_LOW_OBJECT_RETRY
@@ -568,6 +582,20 @@ class Settings:
     go2w_current_state_config: str = DEFAULT_GO2W_CURRENT_STATE_CONFIG
     go2w_pandar_preprocess_config: str = DEFAULT_GO2W_PANDAR_PREPROCESS_CONFIG
 
+    @property
+    def vision_model(self) -> str:
+        """The model used for image/scene understanding.
+
+        ``SILICONFLOW_MODEL`` remains a compatibility fallback for existing
+        test fixtures and local launchers, but is never used by text planners.
+        """
+        return self.siliconflow_vision_model or self.siliconflow_model
+
+    @property
+    def reasoning_model(self) -> str:
+        """The model used for text task understanding and planning."""
+        return self.siliconflow_reasoning_model
+
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parents[1]
@@ -622,18 +650,35 @@ def get_settings() -> Settings:
 
     load_dotenv(_project_root() / ".env")
 
+    legacy_model = _env_value("SILICONFLOW_MODEL", DEFAULT_SILICONFLOW_MODEL)
+    vision_model = _env_value("SILICONFLOW_VISION_MODEL", legacy_model)
     return Settings(
         siliconflow_api_key=_env_value("SILICONFLOW_API_KEY", ""),
         siliconflow_base_url=_env_value(
             "SILICONFLOW_BASE_URL", DEFAULT_SILICONFLOW_BASE_URL
         ),
-        siliconflow_model=_env_value("SILICONFLOW_MODEL", DEFAULT_SILICONFLOW_MODEL),
+        siliconflow_model=legacy_model,
+        siliconflow_reasoning_model=_env_value(
+            "SILICONFLOW_REASONING_MODEL", DEFAULT_SILICONFLOW_REASONING_MODEL
+        ),
+        siliconflow_vision_model=vision_model,
         output_dir=_env_value("OUTPUT_DIR", DEFAULT_OUTPUT_DIR),
         siliconflow_timeout_seconds=_env_float(
             "SILICONFLOW_TIMEOUT_SECONDS", DEFAULT_SILICONFLOW_TIMEOUT_SECONDS
         ),
         siliconflow_max_tokens=_env_int(
             "SILICONFLOW_MAX_TOKENS", DEFAULT_SILICONFLOW_MAX_TOKENS
+        ),
+        siliconflow_reasoning_timeout_seconds=_env_float(
+            "SILICONFLOW_REASONING_TIMEOUT_SECONDS",
+            DEFAULT_SILICONFLOW_REASONING_TIMEOUT_SECONDS,
+        ),
+        siliconflow_reasoning_max_tokens=_env_int(
+            "SILICONFLOW_REASONING_MAX_TOKENS",
+            DEFAULT_SILICONFLOW_REASONING_MAX_TOKENS,
+        ),
+        siliconflow_reasoning_effort=_env_value(
+            "SILICONFLOW_REASONING_EFFORT", DEFAULT_SILICONFLOW_REASONING_EFFORT
         ),
         image_max_side=_env_int("IMAGE_MAX_SIDE", DEFAULT_IMAGE_MAX_SIDE),
         image_detail=_env_value("IMAGE_DETAIL", DEFAULT_IMAGE_DETAIL),
