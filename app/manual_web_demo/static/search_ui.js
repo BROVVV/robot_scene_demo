@@ -87,6 +87,8 @@
     // map
     mapMeta: document.getElementById("map-meta"),
     mapNodeDetail: document.getElementById("map-node-detail"),
+    mapViewToggle: document.getElementById("map-view-toggle"),
+    mapLegend: document.getElementById("map-legend"),
     // timeline
     timeline: document.getElementById("search-timeline"),
     tlWsState: document.getElementById("tl-ws-state"),
@@ -464,6 +466,25 @@
     }).catch(function () {});
   });
 
+  // Map view toggle: 语义拓扑 (default) / 空间地图 (plan §17).
+  if (els.mapViewToggle) {
+    els.mapViewToggle.addEventListener("click", function (event) {
+      var btn = event.target.closest ? event.target.closest("button") : null;
+      if (!btn || !btn.dataset || !btn.dataset.mode) return;
+      var mode = btn.dataset.mode === "spatial_map" ? "spatial_map" : "semantic_topology";
+      Array.prototype.forEach.call(els.mapViewToggle.querySelectorAll(".vtab"), function (b) {
+        b.classList.toggle("active", b.dataset.mode === mode);
+      });
+      mapRenderer.setMode(mode);
+      if (els.mapLegend) {
+        els.mapLegend.style.display = mode === "spatial_map" ? "" : "none";
+      }
+      renderAll();
+    });
+  }
+  // Default: semantic topology; hide the metric legend by default.
+  if (els.mapLegend) els.mapLegend.style.display = "none";
+
   // ------------------------------------------------------------------ //
   // Rendering                                                           //
   // ------------------------------------------------------------------ //
@@ -480,13 +501,27 @@
     var hasOldMap = appState.map && Array.isArray(appState.map.nodes) && appState.map.nodes.length;
     var hasPlaces = spatial && spatial.place_graph &&
       Array.isArray(spatial.place_graph.places) && spatial.place_graph.places.length;
-    if (hasOldMap || hasPlaces) {
+    var mode = mapRenderer.getMode();
+    if (mode === "semantic_topology") {
+      // Semantic topology projection: show only topology stats, never metric
+      // map / place metrics (they belong to the spatial map view).
+      var topology = (spatial && spatial.semantic_graph && spatial.semantic_graph.object_topology) || null;
+      var nodes = (topology && topology.nodes) || [];
+      var edges = (topology && topology.edges) || [];
+      var empty = (nodes.length === 0);
+      els.mapMeta.textContent = empty
+        ? "等待语义拓扑…"
+        : "拓扑节点 " + nodes.length + " · 关系 " + edges.length +
+          " · rev " + ((topology && topology.revision) || 0);
       mapRenderer.render(appState.map || {}, spatial);
-      var placeCount = hasPlaces ? spatial.place_graph.places.length : 0;
-      els.mapMeta.textContent = "rev " + ((appState.map || {}).revision || 0) +
-        " nodes " + ((appState.map || {}).nodes || []).length +
-        " places " + placeCount +
-        " frontiers " + ((spatial && spatial.frontiers) || []).length;
+    } else {
+      if (hasOldMap || hasPlaces) {
+        mapRenderer.render(appState.map || {}, spatial);
+        var placeCount = hasPlaces ? spatial.place_graph.places.length : 0;
+        els.mapMeta.textContent = "Map revision " + ((appState.map || {}).revision || 0) +
+          " · Place " + placeCount +
+          " · Frontier " + ((spatial && spatial.frontiers) || []).length;
+      }
     }
     drawOverlay();
   }

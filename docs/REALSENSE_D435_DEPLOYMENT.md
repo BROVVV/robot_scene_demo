@@ -107,6 +107,37 @@
    `--width 1280 --height 720`；`/health` 的 `age_s` 可用于监控流中断。
 5. 相机 USB 供电对线材敏感，出现 `age_s` 增大时先检查 USB 连接。
 
+## 7.5 取景范围（FOV）说明 —— 为什么“只能看到正前方一小块”
+
+**核心物理事实：D435 的最大硬件视场是固定的，但低分辨率模式会“更窄”。**
+- 满宽度视场：彩色（RGB）约 **69.4°(H) × 42.5°(V)**、深度（Depth）约 **87°(H) × 58°(V)**。
+- **重要：640×480 等低分辨率是中心裁剪**，实测彩色 HFOV 只有约 **55°**、深度约
+  **70°**——这就是“只能看到正前方一小块”的常见且可修复的原因。
+- 本项目默认已切到 **848×480**（约 69° 彩色 / 87° 深度），或可用 `--wide` 上
+  **1280×720**（同为约 69°，但更清晰），即可把取景范围真正拉宽。
+- 深度对齐（depth-aligned）到彩色后，感知 FOV 受彩色约 69° 限制；想用满深度 87°
+  需另做深度为主投影（超本节范围）。
+
+**SSH 能做/应做的（工具已写好）：**
+
+```bash
+bash scripts/go2w/tune_d435_fov.sh status   # SSH 查看当前分辨率 + 实测 HFOV/VFOV
+bash scripts/go2w/tune_d435_fov.sh wide     # SSH 切到 1280x720 最宽最清晰
+bash scripts/go2w/tune_d435_fov.sh mode 848 480 30
+bash scripts/go2w/tune_d435_fov.sh reset    # 恢复默认 848x480
+```
+- 本机免 SSH 校验当前模式是否用满硬件视场：
+  ```bash
+  python3 scripts/go2w/validate_camera_fov.py --base http://192.168.123.18:8080
+  ```
+- 流服务本身现在会实时上报 **FOV**：`.html` 页面状态栏、`/fov`、`/info.json` 的
+  `fov_deg` 字段（彩色 + 深度），用于核对当前模式没有裁剪。
+
+**想真正“看得更大范围”的可行方向：**
+1. 调高相机安装/压低倾角 → 扩大近处地面视场；
+2. 让机器狗转头/多方向扫视（语义搜索逻辑本身已在多 heading_sector 旋转扫视）；
+3. 硬件换广角/鱼眼镜头或改用 FOV 更宽的相机。
+
 ## 8. 本仓库文件
 
 | 文件 | 说明 |
@@ -114,3 +145,5 @@
 | `scripts/go2w/realsense_stream.py` | 机器狗上运行的 RGB-D 流服务源码 |
 | `scripts/go2w/view_realsense.py` | 本机 OpenCV 查看/录制工具（`s` 快照 / `r` 录制 / `d` 原始深度 / `q` 退出） |
 | `scripts/go2w/start_realsense_stream.sh` | 部署/启停/状态一键脚本 |
+| `scripts/go2w/tune_d435_fov.sh` | SSH 进入机器狗查看/切换 D435 分辨率模式与实时 FOV（status/wide/mode/reset） |
+| `scripts/go2w/validate_camera_fov.py` | 本机免 SSH 校验 D435 用满硬件视场（/fov、/info.json） |

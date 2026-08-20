@@ -45,3 +45,26 @@ exploration:
 
 backend:
   type: go2w_experimental
+
+# Semantic object topology (plan §27): persistent OBJECT->OBJECT relation graph
+# and WebUI semantic-topology projection.  These params only affect the display
+# projection; they never change navigation/motion/safety.
+semantic_topology:
+  enabled: true
+  default_web_view: true
+
+  relation_min_confidence: 0.45
+  relation_confirm_min_observations: 2
+  relation_stale_after_seconds: 180
+
+  include_tentative_objects: true
+  include_stale_objects: true
+  include_view_relative_relations: true
+
+  max_relation_descriptions: 5
+
+  layout:
+    mode: layered_bfs
+    layer_gap_x: 180
+    row_gap_y: 90
+    component_gap_y: 150

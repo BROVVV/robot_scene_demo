@@ -105,9 +105,13 @@
         </div>
 
         <div class="cell cell-map">
-          <div class="cell-title">探索地图
+          <div class="cell-title">地图
+            <span class="view-toggle" id="map-view-toggle">
+              <button class="vtab active" data-mode="semantic_topology" type="button">语义拓扑</button>
+              <button class="vtab" data-mode="spatial_map" type="button">空间地图</button>
+            </span>
             <span class="sub" id="map-meta"></span>
-            <span class="legend">
+            <span class="legend" id="map-legend">
               <i class="l-cur">▲</i><span>当前</span>
               <i class="l-vis">●</i><span>已访问</span>
               <i class="l-int">★</i><span>语义兴趣</span>

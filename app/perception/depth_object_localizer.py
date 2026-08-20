@@ -51,6 +51,25 @@ class ObjectSpatialObservation:
         }
 
 
+def _source_object_id(item: dict[str, Any]) -> str | None:
+    """Return the stable source object id for a scene object dict.
+
+    The real-time semantic observer uses ``frame_object_id`` (e.g.
+    ``semantic_obj_001``) as the per-frame identity.  Falling back to the other
+    common key names keeps compatibility with older payloads while still
+    preserving the frame-object identity through the RGB-D chain.
+    """
+    value = (
+        item.get("id")
+        or item.get("object_id")
+        or item.get("frame_object_id")
+    )
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
 class DepthObjectLocalizer:
     """Localize detected objects in a depth image using robust median sampling."""
 
@@ -101,7 +120,7 @@ class DepthObjectLocalizer:
             bearing, elevation = self._angles(xyz)
             result.append(
                 ObjectSpatialObservation(
-                    object_id=item.get("id") or item.get("object_id"),
+                    object_id=_source_object_id(item),
                     label=str(
                         item.get("label_zh")
                         or item.get("label")
@@ -119,6 +138,7 @@ class DepthObjectLocalizer:
                         "source": "depth_object_localizer",
                         "depth_valid_pixels": self._last_sample_count,
                         "frame_id": frame.frame_id,
+                        "source_object_id": _source_object_id(item),
                     },
                 )
             )
@@ -126,14 +146,18 @@ class DepthObjectLocalizer:
 
     def _rgb_only(self, item: dict[str, Any], frame: RGBDFrame) -> ObjectSpatialObservation:
         return ObjectSpatialObservation(
-            object_id=item.get("id") or item.get("object_id"),
+            object_id=_source_object_id(item),
             label=str(
                 item.get("label_zh") or item.get("label") or item.get("name") or "object"
             ),
             bbox=list(item.get("bbox_2d") or item.get("bbox") or []),
             spatial_quality=SPATIAL_QUALITY_RGB_ONLY,
             confidence=float(item.get("confidence", item.get("score", 0.5))),
-            provenance={"source": "depth_object_localizer_rgb_only", "frame_id": frame.frame_id},
+            provenance={
+                "source": "depth_object_localizer_rgb_only",
+                "frame_id": frame.frame_id,
+                "source_object_id": _source_object_id(item),
+            },
         )
 
     def _load_depth(self, frame: RGBDFrame) -> np.ndarray | None:

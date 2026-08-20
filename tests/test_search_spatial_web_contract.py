@@ -99,3 +99,48 @@ def test_start_btn_state_gates_active():
     # The service-level gate already rejects a second start; verify that the
     # snapshot reflects STARTING so the front-end disables the button.
     assert store.snapshot()["status"] == "STARTING"
+
+
+def test_snapshot_has_object_topology_projection():
+    """Plan §35 / §38: spatial.semantic_graph.object_topology must exist.
+
+    The WebUI semantic-topology view reads
+    ``state.spatial.semantic_graph.object_topology`` directly - no second state
+    store, no extra endpoint.
+    """
+    store = SearchStateStore()
+    store.reset(session_id="s1", target="目标")
+    graph = {
+        "schema_version": "semantic_entity_graph_v1",
+        "revision": 7,
+        "nodes": [],
+        "edges": [],
+        "places": [],
+        "objects": [],
+        "frontiers": [],
+        "object_topology": {
+            "schema_version": "semantic_object_topology_v1",
+            "revision": 7,
+            "generated_at": 1.0,
+            "nodes": [
+                {"node_id": "obj_001", "node_type": "OBJECT", "label": "桌",
+                 "status": "CONFIRMED", "confidence": 0.9, "observation_count": 4}
+            ],
+            "edges": [
+                {"edge_id": "obj_001__near__obj_002", "from": "obj_001", "to": "obj_002",
+                 "relation": "near", "relation_scope": "STRUCTURAL", "directed": False,
+                 "status": "CONFIRMED", "confidence": 0.8, "observation_count": 2}
+            ],
+            "stats": {"node_count": 1, "edge_count": 1, "connected_components": 1},
+        },
+        "route_plan": None,
+    }
+    store.apply(_event(MAP_UPDATED, {"graph": graph}))
+    spatial = store.spatial_snapshot()
+    assert spatial["semantic_graph"] is not None
+    topology = spatial["semantic_graph"].get("object_topology")
+    assert topology is not None
+    assert topology["schema_version"] == "semantic_object_topology_v1"
+    assert isinstance(topology["nodes"], list)
+    assert isinstance(topology["edges"], list)
+    assert topology["revision"] == 7

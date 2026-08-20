@@ -381,3 +381,14 @@ button.danger { background: var(--yellow) !important; color: #1a1200 !important;
   .search-layout { grid-template-columns: 1fr; grid-template-areas: "camera" "status" "obs" "decision" "timeline" "map" "debug"; }
   .status-lights { flex-wrap: wrap; gap: 6px; }
 }
+
+/* Semantic topology / spatial map view toggle (plan §17) */
+.view-toggle { display: inline-flex; gap: 2px; margin-left: 4px; }
+.view-toggle .vtab {
+  background: #161c24; color: var(--muted);
+  border: 1px solid #2a323a; border-radius: 5px;
+  padding: 2px 9px; font-size: 11px; cursor: pointer;
+}
+.view-toggle .vtab.active {
+  background: var(--accent); color: #0b1220; font-weight: 700; border-color: var(--accent);
+}

@@ -14,12 +14,13 @@ realsense_stream.py — Intel RealSense D435 RGB-D 网络流服务（运行在�
   /snap/        快照文件目录浏览与下载
 
 用法：
-  python3 realsense_stream.py [--width 640] [--height 480] [--fps 30]
+  python3 realsense_stream.py [--width 848] [--height 480] [--fps 30]
                               [--port 8080] [--max-depth 6.0] [--snap-dir ~/realsense_snapshots]
 依赖：pyrealsense2（aarch64 wheel，2.55.1）、numpy、opencv-python（机器狗已有 cv2 4.2.0）
 """
 import argparse
 import json
+import math
 import os
 import threading
 import time
@@ -44,6 +45,39 @@ DEVICE_INFO = {}     # 设备/内参/外参缓存（由采集线程启动后填�
 
 
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 视场（FOV）计算：D435 镜头的最大硬件视场是彩色约 69.4°x42.5°、深度约 87°x58°。
+# 但低分辨率模式（640x480 默认）是对更宽传感器中心区域的“裁剪”，实际 HFOV 只有
+# 彩色约 55°、深度约 70°——这正是“只能看到正前方一小块”的常见原因。
+# 切到 848x480 / 1280x720 用满传感器宽度就能把取景范围真正“拉宽”到约 69°/87°。
+# 这里从内参实时算出 HFOV/VFOV 用于校验模式；真正超过硬件上限需要改镜头或让机器狗
+# 转头/换位扫视。见 docs/REALSENSE_D435_DEPLOYMENT.md。
+# ---------------------------------------------------------------------------
+def fov_deg_from_intrinsics(intr):
+    """从内参（fx/fy/width/height）计算水平/垂直视场（度）。"""
+    if not intr:
+        return None
+    fx = float(intr.get("fx") or 0.0)
+    fy = float(intr.get("fy") or 0.0)
+    w = float(intr.get("width") or intr.get("width", 0) or 0)
+    h = float(intr.get("height") or intr.get("height", 0) or 0)
+    depth_intr = None
+    # DEVICE_INFO 的内参结构里 width/height 就是颜色流尺寸
+    if fx > 0 and w > 0:
+        hfov = 2.0 * math.degrees(math.atan((w / 2.0) / fx))
+    else:
+        hfov = None
+    if fy > 0 and h > 0:
+        vfov = 2.0 * math.degrees(math.atan((h / 2.0) / fy))
+    else:
+        vfov = None
+    if hfov is None and vfov is None:
+        return None
+    return {"h_deg": (round(hfov, 2) if hfov is not None else None),
+            "v_deg": (round(vfov, 2) if vfov is not None else None)}
+
+
 # RealSense 采集线程
 # ---------------------------------------------------------------------------
 def rs_capture_loop():
@@ -102,9 +136,12 @@ def rs_capture_loop():
                     },
                     "depth_intrinsics": intrinsics(depth_stream),
                     "color_intrinsics": intrinsics(color_stream),
+                    "depth_fov_deg": fov_deg_from_intrinsics(intrinsics(depth_stream)),
+                    "color_fov_deg": fov_deg_from_intrinsics(intrinsics(color_stream)),
                     "depth_to_color_extrinsics": extrinsics(depth_stream, color_stream),
                     "color_to_depth_extrinsics": extrinsics(color_stream, depth_stream),
-                    "notes": "extrinsics 为相机内部标定；相对机器狗 base_link 的外参尚未标定",
+                    "notes": "extrinsics 为相机内部标定；相对机器狗 base_link 的外参尚未标定。"
+                             "FOV 由 D435 镜头硬件决定，软件无法拉宽；当前 FOV 仅用于校验模式未裁剪。",
                 })
             except Exception as e:
                 print("[rs] device info warn:", e, flush=True)
@@ -176,6 +213,9 @@ def rs_capture_loop():
                 frame_id = str(frames.frame_number)
                 device_timestamp_ms = _safe_frame_timestamp_ms(color)
                 color_intr = ((DEVICE_INFO.get("color_intrinsics") or {}) if DEVICE_INFO else {})
+                color_fov = fov_deg_from_intrinsics(color_intr)
+                depth_intr = ((DEVICE_INFO.get("depth_intrinsics") or {}) if DEVICE_INFO else {})
+                depth_fov = fov_deg_from_intrinsics(depth_intr)
                 info = {
                     "stamp": stamp,
                     "frame_number": frames.frame_number,
@@ -198,6 +238,12 @@ def rs_capture_loop():
                         "width": int(color.get_width()),
                         "height": int(color.get_height()),
                     },
+                    "fov_deg": {
+                        "color": color_fov,
+                        "depth": depth_fov,
+                    },
+                    "fov_widen_note": "D435 满宽度视场彩色约69°x42°、深度约87°x58°；"
+                                       "若当前模式 HFOV 明显小于该值（如 640x480 约为55°），请切到 848x480/1280x720 即可明显拉宽取景范围。",
                     "depth_aligned_to_color": True,
                     "depth_unit_m": 0.001,
                     "sensor": sensor_info,
@@ -289,7 +335,9 @@ a{color:#4fc3f7}
 </style></head><body>
 <h1>Go2-W &rsaquo; Intel RealSense D435 (192.168.123.18:8080)</h1>
 <div class="status">彩色 <span id="s_color">-</span> &nbsp; 深度 <span id="s_depth">-</span> &nbsp;
-中心距离 <span id="s_center">-</span> &nbsp; 帧龄 <span id="s_age">-</span></div>
+中心距离 <span id="s_center">-</span> &nbsp; 帧龄 <span id="s_age">-</span> &nbsp; FOV <span id="s_fov">-</span></div>
+<div class="status" style="color:#ffb74d;font-size:11px">提示：D435 满宽度视场约彩色 69°×42°、深度 87°×58°；
+低分辨率 640x480 是中心裁剪，只有约 55°，会明显显得“取景小”。切 848x480 / 1280x720 即可真正拉宽取景范围。</div>
 <div class="grid">
   <div class="panel"><h2>&#9654; COLOR (MJPEG)</h2><img id="img_color" src="/color"></div>
   <div class="panel"><h2>&#9654; DEPTH (jet, aligned to color)</h2><img id="img_depth" src="/depth"></div>
@@ -322,6 +370,11 @@ setInterval(()=>{
     if(j.color) document.getElementById('s_color').textContent = j.color.width+'x'+j.color.height+'@'+j.color.fps+'fps';
     if(j.depth) document.getElementById('s_depth').textContent = j.depth.width+'x'+j.depth.height+'@'+j.depth.fps+'fps';
     document.getElementById('s_center').textContent = (j.center_depth_mm/1000).toFixed(3)+' m';
+    var fovh = j.fov_deg && j.fov_deg.color;
+    if (fovh && fovh.h_deg != null) {
+      document.getElementById('s_fov').textContent =
+        'H '+fovh.h_deg+'° V '+(fovh.v_deg != null ? fovh.v_deg+'°' : '-');
+    }
   });
   fetch('/health?_='+Date.now()).then(r=>r.json()).then(j=>{
     document.getElementById('s_age').textContent = 'age '+j.age_s.toFixed(2)+'s / fps '+j.fps.toFixed(1);
@@ -414,6 +467,20 @@ class Handler(BaseHTTPRequestHandler):
                     self._send_bytes(data, "image/png")
                 else:
                     self._send_json({"error": "no frame yet"}, 503)
+            elif path == "/fov":
+                with BUFFER_LOCK:
+                    info = BUFFER.get("info")
+                dev = build_device_info()
+                out = {
+                    "ok": True,
+                    "fov_deg": (info or {}).get("fov_deg"),
+                    "device_fov_deg": {
+                        "color": dev.get("color_fov_deg"),
+                        "depth": dev.get("depth_fov_deg"),
+                    },
+                    "note": "D435 FOV 由镜头硬件固定；软件只负责保持满分辨率非裁剪模式。",
+                }
+                self._send_json(out)
             elif path == "/info.json":
                 with BUFFER_LOCK:
                     info = BUFFER.get("info")
@@ -548,15 +615,25 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     global ARGS
     ap = argparse.ArgumentParser(description="RealSense D435 RGB-D stream server")
-    ap.add_argument("--width", type=int, default=640)
+    # 默认 848x480：该模式在 D435 上使用更宽的传感器区域（比 640x480 的中心裁剪
+    # 明显更“广”，彩色约 55°→69°、深度约 70°→87°），同时带宽低于 1280x720。
+    ap.add_argument("--width", type=int, default=848)
     ap.add_argument("--height", type=int, default=480)
     ap.add_argument("--fps", type=int, default=30)
+    ap.add_argument("--wide", action="store_true",
+                    help="使用最大分辨率 1280x720 满视场模式（与 848x480 同样用满宽度视场约 69°；像素更多更清晰；需 USB3）")
+    ap.add_argument("--fov-warn", action="store_true",
+                    help="启动时若检测到分辨率导致可用视场明显偏小（<约65°）则告警打印")
     ap.add_argument("--port", type=int, default=8080)
     ap.add_argument("--max-depth", type=float, default=6.0, help="depth colormap range (m)")
     ap.add_argument("--snap-dir", type=str,
                     default=os.path.expanduser("~/realsense_snapshots"))
     ap.add_argument("--verbose", action="store_true")
     ARGS = ap.parse_args()
+    if ARGS.wide:
+        ARGS.width, ARGS.height, ARGS.fps = 1280, 720, max(ARGS.fps, 15)
+        print("[rs] --wide: 使用 1280x720 满分辨率/满视场模式（FOV 由镜头固定，不因分辨率变化）",
+              flush=True)
     os.makedirs(ARGS.snap_dir, exist_ok=True)
 
     t = threading.Thread(target=rs_capture_loop, daemon=True)

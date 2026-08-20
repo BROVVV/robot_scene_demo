@@ -1,9 +1,16 @@
-/* SearchMapRenderer: SVG topological exploration map (plan book §52-§54).
+/* SearchMapRenderer: SVG map renderer with two display modes
+ *   "semantic_topology" (default) - stable persistent OBJECT relation graph
+ *   "spatial_map"                 - original metric exploration map
  *
- * Renders nodes / edges / robot heading from the live ExplorationGraph
- * snapshot.  Pure display: coordinates are display-only (pose if available,
- * otherwise a heading-sector polar layout) and are NEVER used for robot
- * navigation.
+ * Semantic topology (plan §16-§24):
+ *   - nodes are only persistent OBJECT ids (obj_xxx)
+ *   - edges are backend-persisted OBJECT->OBJECT relations only
+ *   - node screen positions come from a deterministic BFS/layered display
+ *     layout; they NEVER use map_xyz / camera_xyz (pure display)
+ *   - live updates keep the same structure at the same positions
+ *
+ * Spatial map keeps the original RTAB / Place / Frontier / Route / map_xyz
+ * view for navigation debugging; it is never used by the topology layout.
  */
 (function () {
   "use strict";
@@ -36,13 +43,379 @@
   var HEIGHT = 400;
   var PAD = 34;
 
+  // Semantic topology layout constants (plan §19.7) - display only.
+  var TOPO_PAD = 26;
+  var LAYER_GAP_X = 180;
+  var ROW_GAP_Y = 92;
+  var COMPONENT_GAP_Y = 150;
+  var ISOLATED_GAP_X = 150;
+  var ISOLATED_GAP_Y = 90;
+  var NODE_WIDTH = 124;
+  var NODE_HEIGHT = 56;
+  var NODE_RX = 8;
+
+  var TOPO_STATUS_COLOR = {
+    CONFIRMED: "#34d399",
+    TENTATIVE: "#38bdf8",
+    STALE: "#8b95a3",
+  };
+
+  var RELATION_ZH = {
+    near: "邻近",
+    adjacent_to: "相邻",
+    left_of: "左侧",
+    right_of: "右侧",
+    in_front_of: "前方",
+    behind: "后方",
+    on: "位于其上",
+    under: "位于其下",
+    above: "上方",
+    below: "下方",
+    in: "内部",
+    inside: "内部",
+    contains: "包含",
+    attached_to: "连接",
+    blocks: "阻挡",
+  };
+
+  var RELATION_DIRECTED = {
+    left_of: true, right_of: true, in_front_of: true, behind: true,
+    above: true, below: true, under: true, contains: true, inside: true,
+    in: true,
+  };
+
   function SearchMapRenderer(svg, detailEl) {
     this.svg = svg;
     this.detailEl = detailEl;
     this.data = null;
+    this.spatial = null;
+
+    // View mode: "semantic_topology" (default) or "spatial_map".
+    this.mode = "semantic_topology";
+
+    // Stable display layout cache for the semantic topology (pure display).
+    this.topologyPositions = {};
+    this.lastTopologyFingerprint = null;
   }
 
+  // ------------------------------------------------------------------ //
+  // Mode switching                                                     //
+  // ------------------------------------------------------------------ //
+  SearchMapRenderer.prototype.setMode = function (mode) {
+    if (mode !== "spatial_map") mode = "semantic_topology";
+    this.mode = mode;
+    this.render(this.data, this.spatial);
+  };
+
+  SearchMapRenderer.prototype.getMode = function () {
+    return this.mode;
+  };
+
+  // ------------------------------------------------------------------ //
+  // Main render dispatch                                               //
+  // ------------------------------------------------------------------ //
   SearchMapRenderer.prototype.render = function (mapData, spatialData) {
+    this.data = mapData || this.data || {};
+    this.spatial = spatialData || this.spatial || {};
+
+    if (this.mode === "semantic_topology") {
+      var graph = this.spatial.semantic_graph || null;
+      var topology = (graph && graph.object_topology) || null;
+      this.renderObjectTopology(topology, this.spatial.semantic_objects || []);
+      return;
+    }
+    this.renderSpatialMap(this.data, this.spatial);
+  };
+
+  // ================================================================== //
+  // SEMANTIC TOPOLOGY VIEW                                            //
+  // ================================================================== //
+  SearchMapRenderer.prototype.renderObjectTopology = function (topology, semanticObjects) {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = this.svg;
+    this.svg.textContent = "";
+
+    if (!topology || !Array.isArray(topology.nodes) || topology.nodes.length === 0) {
+      this.drawTopologyEmptyState("尚未识别到可建立语义拓扑的物体");
+      return;
+    }
+    var nodes = topology.nodes || [];
+    var edges = topology.edges || [];
+
+    // Stable layout: recompute only when the graph structure changes; label /
+    // status only refreshes in place otherwise (no jitter on every WS message).
+    var fingerprint = topologyFingerprint(nodes, edges);
+    if (fingerprint !== this.lastTopologyFingerprint) {
+      this.topologyPositions = computeTopologyLayout(nodes, edges, this.topologyPositions);
+      this.lastTopologyFingerprint = fingerprint;
+    }
+    var positions = this.topologyPositions;
+    if (!positions || Object.keys(positions).length === 0) {
+      this.drawTopologyEmptyState("已识别物体，正在计算语义拓扑布局…");
+      return;
+    }
+
+    // Fit to all node positions.
+    var b = topoBounds(positions);
+    this.svg.setAttribute("viewBox", boundsToViewBox(b));
+
+    // arrow marker def for directed relation edges
+    var defs = document.createElementNS(ns, "defs");
+    var marker = document.createElementNS(ns, "marker");
+    marker.setAttribute("id", "topo-arrow");
+    marker.setAttribute("markerWidth", "7"); marker.setAttribute("markerHeight", "7");
+    marker.setAttribute("refX", "6"); marker.setAttribute("refY", "3.5");
+    marker.setAttribute("orient", "auto");
+    var path = document.createElementNS(ns, "path");
+    path.setAttribute("d", "M0,0 L7,3.5 L0,7 z");
+    path.setAttribute("fill", "#c084fc");
+    marker.appendChild(path);
+    defs.appendChild(marker);
+    this.svg.appendChild(defs);
+
+    // 1) edges (under nodes)
+    edges.forEach(function (edge) {
+      this.drawTopologyEdge(edge, positions, ns, edges);
+    }.bind(this));
+
+    // 2) node cards
+    var objectById = {};
+    (semanticObjects || []).forEach(function (obj) { objectById[obj.object_id] = obj; });
+    var edgesByNode = indexEdgesByNode(edges);
+    nodes.forEach(function (node) {
+      var pos = positions[node.node_id];
+      if (!pos) return;
+      this.drawTopologyNode(
+        node,
+        pos,
+        ns,
+        edgesByNode[node.node_id] || [],
+        objectById[node.node_id]
+      );
+    }.bind(this));
+
+    // 3) empty-relation hint
+    if (!edges.length && nodes.length) {
+      drawTopologyCaption(svg, ns, "已识别 " + nodes.length + " 个物体，暂未获得可靠物体关系");
+    } else {
+      var tentative = edges.filter(function (e) {
+        return String(e.status || "").toUpperCase() === "TENTATIVE";
+      }).length;
+      if (tentative > 0) {
+        drawTopologyCaption(svg, ns, "关系仍在确认中 · " + tentative + " 条待确认");
+      }
+    }
+  };
+
+  SearchMapRenderer.prototype.drawTopologyEmptyState = function (msg) {
+    var ns = "http://www.w3.org/2000/svg";
+    this.svg.setAttribute("viewBox", "0 0 600 400");
+    var text = document.createElementNS(ns, "text");
+    text.setAttribute("x", 300);
+    text.setAttribute("y", 190);
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("fill", "#64748b");
+    text.setAttribute("font-size", "13");
+    text.textContent = msg;
+    this.svg.appendChild(text);
+  };
+
+  SearchMapRenderer.prototype.drawTopologyEdge = function (edge, positions, ns, allEdges) {
+    var svg = this.svg;
+    var a = positions[edge.from];
+    var b = positions[edge.to];
+    if (!a || !b) return;
+    var ax = a.x + NODE_WIDTH / 2, ay = a.y + NODE_HEIGHT / 2;
+    var bx = b.x + NODE_WIDTH / 2, by = b.y + NODE_HEIGHT / 2;
+    var g = document.createElementNS(ns, "g");
+    var status = String(edge.status || "TENTATIVE").toUpperCase();
+    var scope = String(edge.relation_scope || "STRUCTURAL").toUpperCase();
+    var structural = scope !== "VIEW_RELATIVE";
+    var confirmed = status === "CONFIRMED";
+    var line = document.createElementNS(ns, "line");
+    line.setAttribute("x1", ax);
+    line.setAttribute("y1", ay);
+    line.setAttribute("x2", bx);
+    line.setAttribute("y2", by);
+    var color = structural ? "#34d399" : "#c084fc";
+    line.setAttribute("stroke", color);
+    line.setAttribute("stroke-width", confirmed ? 1.6 : 1.1);
+    line.setAttribute("stroke-opacity", confirmed ? 0.9 : 0.45);
+    line.setAttribute("stroke-dasharray", structural ? "none" : "5 4");
+    if (edge.directed && RELATION_DIRECTED[edge.relation]) {
+      line.setAttribute("marker-end", "url(#topo-arrow)");
+    }
+    g.appendChild(line);
+
+    // Edge label (merged for a pair with multiple relations).
+    var labelText = edgeLabelZh(edge, allEdges);
+    if (labelText) {
+      var mx = (ax + bx) / 2, my = (ay + by) / 2;
+      var rect = document.createElementNS(ns, "rect");
+      var w = 8 + labelText.length * 6.6;
+      rect.setAttribute("x", mx - w / 2);
+      rect.setAttribute("y", my - 8);
+      rect.setAttribute("width", w);
+      rect.setAttribute("height", 16);
+      rect.setAttribute("rx", 3);
+      rect.setAttribute("fill", "#0d1117");
+      rect.setAttribute("stroke", color);
+      rect.setAttribute("stroke-opacity", "0.35");
+      rect.setAttribute("stroke-width", "0.5");
+      g.appendChild(rect);
+      var text = document.createElementNS(ns, "text");
+      text.setAttribute("x", mx);
+      text.setAttribute("y", my + 3.5);
+      text.setAttribute("text-anchor", "middle");
+      text.setAttribute("fill", color);
+      text.setAttribute("font-size", "8.5");
+      text.setAttribute("font-weight", "bold");
+      text.textContent = labelText;
+      g.appendChild(text);
+    }
+    g.addEventListener("click", function (event) {
+      event.stopPropagation();
+      this.showTopologyEdgeDetail(edge, allEdges);
+    }.bind(this));
+    svg.appendChild(g);
+  };
+
+  SearchMapRenderer.prototype.drawTopologyNode = function (node, pos, ns, edges, objectEntry) {
+    var svg = this.svg;
+    var g = document.createElementNS(ns, "g");
+    g.setAttribute("transform", "translate(" + pos.x + "," + pos.y + ")");
+    var status = String(node.status || "TENTATIVE").toUpperCase();
+    var color = TOPO_STATUS_COLOR[status] || "#8b95a3";
+    var confirmed = status === "CONFIRMED";
+    var tentative = status === "TENTATIVE";
+    var stale = status === "STALE";
+
+    var rect = document.createElementNS(ns, "rect");
+    rect.setAttribute("width", NODE_WIDTH);
+    rect.setAttribute("height", NODE_HEIGHT);
+    rect.setAttribute("rx", NODE_RX);
+    rect.setAttribute("fill", "rgba(20,27,36,0.92)");
+    rect.setAttribute("stroke", color);
+    rect.setAttribute("stroke-width", confirmed ? 1.6 : 1.1);
+    rect.setAttribute("stroke-dasharray", tentative ? "4 3" : "none");
+    rect.setAttribute("opacity", stale ? 0.45 : (tentative ? 0.72 : 1));
+    g.appendChild(rect);
+
+    var title = document.createElementNS(ns, "text");
+    title.setAttribute("x", 8);
+    title.setAttribute("y", 15);
+    title.setAttribute("fill", color);
+    title.setAttribute("font-size", "10");
+    title.setAttribute("font-weight", "bold");
+    var titleText = String(node.node_id || "");
+    if (node.is_target_confirmed || node.is_target_candidate) {
+      titleText = "★ " + titleText;
+    }
+    title.textContent = titleText;
+    g.appendChild(title);
+
+    var label = document.createElementNS(ns, "text");
+    label.setAttribute("x", 8);
+    label.setAttribute("y", 31);
+    label.setAttribute("fill", "#cbd5e1");
+    label.setAttribute("font-size", "10");
+    label.textContent = ellipsis(String(node.label || "object"), 15);
+    g.appendChild(label);
+
+    var meta = document.createElementNS(ns, "text");
+    meta.setAttribute("x", 8);
+    meta.setAttribute("y", 46);
+    meta.setAttribute("fill", "#8b95a3");
+    meta.setAttribute("font-size", "8.5");
+    var metaText = status;
+    if (node.observation_count != null) metaText += " · ×" + node.observation_count;
+    meta.textContent = metaText;
+    g.appendChild(meta);
+
+    g.addEventListener("click", function (event) {
+      event.stopPropagation();
+      this.showTopologyNodeDetail(node, edges, objectEntry);
+    }.bind(this));
+    svg.appendChild(g);
+  };
+
+  // ------------------------------------------------------------------ //
+  // Topology detail panels                                             //
+  // ------------------------------------------------------------------ //
+  SearchMapRenderer.prototype.showTopologyNodeDetail = function (node, edges, objectEntry) {
+    if (!this.detailEl) return;
+    var html =
+      "<div><b>" + esc(node.node_id || "") + "</b> <span style='color:" +
+      (TOPO_STATUS_COLOR[node.status] || "#8b95a3") + "'>" + esc(node.status || "TENTATIVE") +
+      "</span></div>" +
+      "<div>标签 " + esc(node.label || "") + "</div>" +
+      "<div>置信度 " + (node.confidence || 0).toFixed(2) + "</div>" +
+      "<div>观测次数 " + (node.observation_count || 0) + "</div>" +
+      "<div>空间质量 " + esc(node.spatial_quality || "-") + "</div>";
+    if (objectEntry) {
+      if (objectEntry.first_seen) html += "<div>首次观测 " + fmtTime(objectEntry.first_seen) + "</div>";
+      if (objectEntry.last_seen) html += "<div>最近观测 " + fmtTime(objectEntry.last_seen) + "</div>";
+      if (objectEntry.seen_from_places && objectEntry.seen_from_places.length) {
+        html += "<div>观测地点 " + esc(objectEntry.seen_from_places.join(", ")) + "</div>";
+      }
+      if (objectEntry.map_xyz) {
+        html += "<div>map_xyz " + esc(objectEntry.map_xyz.map(function (v) { return v.toFixed(2); }).join(", ")) + "</div>";
+      }
+      if (objectEntry.association_score != null) {
+        html += "<div>关联分 " + Number(objectEntry.association_score).toFixed(2) + "</div>";
+      }
+    }
+    if (edges && edges.length) {
+      html += "<div style='margin-top:6px'>关系 " + edges.length + " 条：</div>";
+      edges.forEach(function (e) {
+        var zh = RELATION_ZH[e.relation] || e.relation;
+        var scope = e.relation_scope === "VIEW_RELATIVE" ? "(视角)" : "";
+        html += "<div style='font-size:11px'>&rarr; " + esc(e.to || e.from) +
+          " " + esc(zh + scope) + " ×" + (e.observation_count || 1) + "</div>";
+      });
+    }
+    this.detailEl.innerHTML = html;
+    this.detailEl.classList.remove("hidden");
+  };
+
+  SearchMapRenderer.prototype.showTopologyEdgeDetail = function (edge, allEdges) {
+    if (!this.detailEl) return;
+    var zh = RELATION_ZH[edge.relation] || edge.relation;
+    var html =
+      "<div><b>" + esc(zh) + "</b> <span style='color:" +
+      (edge.relation_scope === "VIEW_RELATIVE" ? "#c084fc" : "#34d399") +
+      "'>" + esc(edge.relation_scope || "STRUCTURAL") + "</span></div>" +
+      "<div>源 " + esc(edge.from) + " &rarr; 目标 " + esc(edge.to) + "</div>" +
+      "<div>状态 <span style='color:" + (TOPO_STATUS_COLOR[edge.status] || "#8b95a3") + "'>" +
+      esc(edge.status || "TENTATIVE") + "</span></div>" +
+      "<div>置信度 " + (edge.confidence || 0).toFixed(2) + "</div>" +
+      "<div>观测次数 " + (edge.observation_count || 0) + "</div>";
+    if (edge.first_seen) html += "<div>首次 " + fmtTime(edge.first_seen) + "</div>";
+    if (edge.last_seen) html += "<div>最近 " + fmtTime(edge.last_seen) + "</div>";
+    if (edge.descriptions_zh && edge.descriptions_zh.length) {
+      html += "<div>描述 " + esc(edge.descriptions_zh[edge.descriptions_zh.length - 1]) + "</div>";
+    }
+    var samePair = (allEdges || []).filter(function (e) {
+      return (e.from === edge.from && e.to === edge.to) || (e.from === edge.to && e.to === edge.from);
+    });
+    if (samePair.length > 1) {
+      var other = samePair.filter(function (e) { return e.edge_id !== edge.edge_id; });
+      if (other.length) {
+        html += "<div style='margin-top:6px'>同对物体其他关系：</div>";
+        other.forEach(function (e) {
+          html += "<div style='font-size:11px'>&rarr; " + esc(RELATION_ZH[e.relation] || e.relation) +
+            " ×" + (e.observation_count || 1) + "</div>";
+        });
+      }
+    }
+    this.detailEl.innerHTML = html;
+    this.detailEl.classList.remove("hidden");
+  };
+
+  // ================================================================== //
+  // SPATIAL MAP VIEW (original metric map, unchanged behavior)        //
+  // ================================================================== //
+  SearchMapRenderer.prototype.renderSpatialMap = function (mapData, spatialData) {
     this.data = mapData || this.data || {};
     var map = this.data;
     var nodes = Array.isArray(map.nodes) ? map.nodes.slice() : [];
@@ -167,6 +540,20 @@
     marker.appendChild(path);
     defs.appendChild(marker);
     this.svg.insertBefore(defs, this.svg.firstChild);
+
+    // topology arrow marker (used only by semantic topology edges)
+    var topoDefs = document.createElementNS(ns, "defs");
+    var tm = document.createElementNS(ns, "marker");
+    tm.setAttribute("id", "topo-arrow");
+    tm.setAttribute("markerWidth", "7"); tm.setAttribute("markerHeight", "7");
+    tm.setAttribute("refX", "6"); tm.setAttribute("refY", "3.5");
+    tm.setAttribute("orient", "auto");
+    var tp = document.createElementNS(ns, "path");
+    tp.setAttribute("d", "M0,0 L7,3.5 L0,7 z");
+    tp.setAttribute("fill", "#c084fc");
+    tm.appendChild(tp);
+    topoDefs.appendChild(tm);
+    this.svg.insertBefore(topoDefs, this.svg.firstChild);
   };
 
   SearchMapRenderer.prototype.drawSpatialOverlay = function (spatial, layout, robot) {
@@ -313,7 +700,7 @@
   };
 
   // Semantic graph edges (MOVED_TO / OBSERVED_FROM) with Place <-> object
-  // links (plan §8).
+  // links (plan §8) - only used in spatial_map mode.
   SearchMapRenderer.prototype.drawSemanticEdges = function (spatial, layout) {
     var ns = "http://www.w3.org/2000/svg";
     var svg = this.svg;
@@ -322,22 +709,23 @@
     var objects = Array.isArray(spatial.semantic_objects) ? spatial.semantic_objects : [];
     var objectById = {};
     objects.forEach(function (obj) { objectById[obj.object_id] = obj; });
-    var places = (graph && Array.isArray(graph.places)) ? graph.places : [];
 
     // OBSERVED_FROM edges: object -> place thin lines
     edges.forEach(function (edge) {
       var rel = String(edge.relation || "").toUpperCase();
       if (rel !== "OBSERVED_FROM") return;
-      var aName = edge.relation === "OBSERVED_FROM" ? edge.from : edge.to;
-      var bName = edge.relation === "OBSERVED_FROM" ? edge.to : edge.from;
-      var placeLayout = layout["P" === String(aName).slice(0,1) ? aName : bName];
+      var aId = edge.from;
+      var bId = edge.to;
+      var placeLayout = layout[aId] || layout[bId];
       var objLayout = null;
-      var objId = edge.relation === "OBSERVED_FROM" ? edge.to : edge.from;
+      var objId = String(aId).indexOf("P") === 0 ? bId : aId;
       if (objectById[objId] && objectById[objId].map_xyz) {
         objLayout = { x: objectById[objId].map_xyz[0], y: -objectById[objId].map_xyz[1] };
       } else if (layout[objId]) {
         objLayout = layout[objId];
       }
+      var placeId = String(aId).indexOf("P") === 0 ? aId : bId;
+      placeLayout = layout[placeId];
       if (!placeLayout || !objLayout) return;
       var line = document.createElementNS(ns, "line");
       line.setAttribute("x1", placeLayout.x); line.setAttribute("y1", placeLayout.y);
@@ -461,6 +849,237 @@
     return layout;
   }
 
+  // ------------------------------------------------------------------ //
+  // Semantic topology layout (deterministic, display-only)            //
+  // ------------------------------------------------------------------ //
+  function topologyFingerprint(nodes, edges) {
+    var nodeIds = (nodes || []).map(function (n) { return n.node_id; }).sort();
+    var edgeKeys = (edges || []).map(function (e) {
+      return [e.from, e.to, e.relation].join("~");
+    }).sort();
+    return JSON.stringify({ nodes: nodeIds, edges: edgeKeys });
+  }
+
+  function buildAdjacency(nodes, edges) {
+    var adj = {};
+    nodes.forEach(function (n) { adj[n.node_id] = []; });
+    edges.forEach(function (e) {
+      if (adj[e.from] && adj[e.to]) {
+        adj[e.from].push(e.to);
+        adj[e.to].push(e.from);
+      }
+    });
+    return adj;
+  }
+
+  function findConnectedComponents(nodes, adj) {
+    var seen = {};
+    var comps = [];
+    nodes.forEach(function (n) {
+      var id = n.node_id;
+      if (seen[id]) return;
+      var stack = [id];
+      var comp = [];
+      seen[id] = true;
+      while (stack.length) {
+        var cur = stack.pop();
+        comp.push(cur);
+        (adj[cur] || []).forEach(function (nb) {
+          if (!seen[nb]) { seen[nb] = true; stack.push(nb); }
+        });
+      }
+      comps.push(comp);
+    });
+    return comps;
+  }
+
+  function selectStableRoot(component, nodeById) {
+    var confirmedTarget = null;
+    var candidateTarget = null;
+    component.forEach(function (id) {
+      var node = nodeById[id];
+      if (!node) return;
+      if (node.is_target_confirmed && !confirmedTarget) confirmedTarget = id;
+      if (node.is_target_candidate && !candidateTarget) candidateTarget = id;
+    });
+    if (confirmedTarget) return confirmedTarget;
+    if (candidateTarget) return candidateTarget;
+    var best = null;
+    var bestCount = -1;
+    component.forEach(function (id) {
+      var node = nodeById[id];
+      var count = node ? (node.observation_count || 0) : 0;
+      if (count > bestCount) { bestCount = count; best = id; }
+    });
+    if (best) return best;
+    return component.slice().sort()[0];
+  }
+
+  function bfsLayers(root, component, adj) {
+    var layers = [];
+    var visited = {};
+    var frontier = [root];
+    visited[root] = true;
+    var depth = 0;
+    while (frontier.length) {
+      layers[depth] = frontier;
+      var next = [];
+      frontier.forEach(function (id) {
+        (adj[id] || []).forEach(function (nb) {
+          if (component.indexOf(nb) >= 0 && !visited[nb]) {
+            visited[nb] = true;
+            next.push(nb);
+          }
+        });
+      });
+      frontier = next;
+      depth += 1;
+    }
+    return layers;
+  }
+
+  function stableSortLayer(layer, previousPositions) {
+    return layer.slice().sort(function (x, y) {
+      var px = previousPositions && previousPositions[x];
+      var py = previousPositions && previousPositions[y];
+      if (px && py && px.y !== py.y) return px.y - py.y;
+      if (px && !py) return -1;
+      if (py && !px) return 1;
+      return x < y ? -1 : (x > y ? 1 : 0);
+    });
+  }
+
+  function computeTopologyLayout(nodes, edges, previousPositions) {
+    previousPositions = previousPositions || {};
+    var nodeById = {};
+    nodes.forEach(function (n) { nodeById[n.node_id] = n; });
+    var adj = buildAdjacency(nodes, edges);
+    var comps = findConnectedComponents(nodes, adj);
+
+    // Deterministic component ordering: target confirmed, target candidate,
+    // then size desc, then lexicographic stable id.
+    function componentRank(comp) {
+      var hasTarget = false, hasCandidate = false, size = comp.length;
+      comp.forEach(function (id) {
+        var node = nodeById[id];
+        if (node && node.is_target_confirmed) hasTarget = true;
+        if (node && node.is_target_candidate) hasCandidate = true;
+      });
+      var minId = comp.slice().sort()[0];
+      return [hasTarget ? 0 : 1, hasCandidate ? 0 : 1, -size, minId];
+    }
+    comps.sort(function (a, b) {
+      var ra = componentRank(a), rb = componentRank(b);
+      for (var i = 0; i < ra.length; i++) {
+        if (ra[i] !== rb[i]) return ra[i] < rb[i] ? -1 : 1;
+      }
+      return 0;
+    });
+
+    var positions = {};
+    var yOffset = TOPO_PAD;
+    var connectedIds = {};
+    comps.forEach(function (comp) {
+      if (comp.length === 0) return;
+      var root = selectStableRoot(comp, nodeById);
+      var layers = bfsLayers(root, comp, adj);
+      // Measure component height.
+      var maxRows = 0;
+      layers.forEach(function (layer) {
+        if (layer.length > maxRows) maxRows = layer.length;
+      });
+      var layerGap = LAYER_GAP_X;
+      for (var depth = 0; depth < layers.length; depth++) {
+        var layer = stableSortLayer(layers[depth], previousPositions);
+        for (var row = 0; row < layer.length; row++) {
+          var id = layer[row];
+          positions[id] = {
+            x: TOPO_PAD + depth * layerGap,
+            y: yOffset + row * ROW_GAP_Y,
+          };
+          connectedIds[id] = true;
+        }
+      }
+      yOffset += maxRows * ROW_GAP_Y + COMPONENT_GAP_Y;
+    });
+
+    // Isolated nodes (no relation yet): grid at the bottom.
+    var isolated = nodes.filter(function (n) { return !connectedIds[n.node_id]; });
+    isolated.sort(function (a, b) {
+      var pa = previousPositions[a.node_id], pb = previousPositions[b.node_id];
+      if (pa && pb) return pa.y - pb.y;
+      return a.node_id < b.node_id ? -1 : 1;
+    });
+    var cols = 4;
+    isolated.forEach(function (node, i) {
+      positions[node.node_id] = {
+        x: TOPO_PAD + (i % cols) * ISOLATED_GAP_X,
+        y: yOffset + Math.floor(i / cols) * ISOLATED_GAP_Y,
+      };
+    });
+    return positions;
+  }
+
+  function topoBounds(positions) {
+    var xs = Object.keys(positions).map(function (id) { return positions[id].x; });
+    var ys = Object.keys(positions).map(function (id) { return positions[id].y; });
+    xs.push(0); ys.push(0);
+    xs.push(LAYER_GAP_X * 4 + NODE_WIDTH); ys.push(ROW_GAP_Y * 6 + NODE_HEIGHT);
+    var minX = Math.min.apply(null, xs);
+    var maxX = Math.max.apply(null, xs) + NODE_WIDTH;
+    var minY = Math.min.apply(null, ys);
+    var maxY = Math.max.apply(null, ys) + NODE_HEIGHT;
+    return { minX: minX - TOPO_PAD, maxX: maxX + TOPO_PAD, minY: minY - TOPO_PAD, maxY: maxY + TOPO_PAD };
+  }
+
+  function indexEdgesByNode(edges) {
+    var index = {};
+    edges.forEach(function (e) {
+      (index[e.from] = index[e.from] || []).push(e);
+      (index[e.to] = index[e.to] || []).push(e);
+    });
+    return index;
+  }
+
+  function edgeLabelZh(edge, allEdges) {
+    var zh = RELATION_ZH[edge.relation] || edge.relation;
+    var label = zh + " · ×" + (edge.observation_count || 1);
+    if (edge.relation_scope === "VIEW_RELATIVE") {
+      label = zh + " · 视角";
+    }
+    // Merge labels for multiple relations between the same pair.
+    var samePair = (allEdges || []).filter(function (e) {
+      return ((e.from === edge.from && e.to === edge.to) ||
+              (e.from === edge.to && e.to === edge.from)) && e.edge_id !== edge.edge_id;
+    });
+    if (samePair.length) {
+      var parts = [zh];
+      if (edge.relation_scope === "VIEW_RELATIVE") parts.push("视角");
+      samePair.forEach(function (e) {
+        if (parts.indexOf(RELATION_ZH[e.relation] || e.relation) < 0) {
+          parts.push(RELATION_ZH[e.relation] || e.relation);
+        }
+      });
+      label = parts.join(" · ");
+    }
+    return label;
+  }
+
+  function drawTopologyCaption(svg, ns, msg) {
+    var text = document.createElementNS(ns, "text");
+    text.setAttribute("x", 10);
+    text.setAttribute("y", 16);
+    text.setAttribute("fill", "#64748b");
+    text.setAttribute("font-size", "11");
+    text.textContent = msg;
+    svg.appendChild(text);
+  }
+
+  function ellipsis(text, max) {
+    if (text.length <= max) return text;
+    return text.slice(0, max - 1) + "…";
+  }
+
   function fitBounds(layout, robot, spatial) {
     var xs = [];
     var ys = [];
@@ -576,4 +1195,13 @@
   }
 
   window.SearchMapRenderer = SearchMapRenderer;
+
+  // Expose pure display-layout helpers for headless tests (plan §36).  They
+  // never touch DOM / metric data.
+  window.TopologyLayout = {
+    computeLayout: computeTopologyLayout,
+    fingerprint: topologyFingerprint,
+    components: findConnectedComponents,
+    relationLabel: edgeLabelZh,
+  };
 })();

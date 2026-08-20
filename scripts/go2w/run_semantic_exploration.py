@@ -928,7 +928,6 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                     spatial_provenance = {}
             # Phase 2: write map_xyz into each localized observation BEFORE
             # entity association so cross-view fusion can use world coords.
-            map_xyz_by_label: dict[str, tuple[float, float, float]] = {}
             if camera_provider is not None:
                 provider_quality = getattr(camera_provider, "quality", lambda: "CAMERA_LOCAL")()
                 for obs_item in localized:
@@ -948,8 +947,6 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                             **spatial_provenance,
                             "map_frame": spatial_provenance.get("target_frame", "map"),
                         }
-                        if getattr(obs_item, "label", None):
-                            map_xyz_by_label[obs_item.label] = mapped
             place_id, created = place_graph.register_observation(
                 observation_id=observation.bundle_id,
                 heading_sector=semantic.heading_sector,
@@ -973,6 +970,23 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 bev_mapper.update(rgbd_frame, spatial_pose)
             state["localized"] = localized
 
+            # Identity bridge (plan §5): frame_object_id -> entity association
+            # -> persistent_object_id.  The WebUI object events and the object
+            # relation graph must NEVER use label-based identity, so that two
+            # chairs / bins keep distinct persistent ids.
+            association_by_index: dict[int, Any] = {}
+            persistent_by_source_id: dict[str, str] = {}
+            if update_result is not None:
+                association_by_index = {
+                    assoc.observation_index: assoc
+                    for assoc in update_result.associations
+                }
+                persistent_by_source_id = {
+                    str(assoc.source_object_id): assoc
+                    for assoc in update_result.associations
+                    if assoc.source_object_id
+                }
+
             # Phase 3: publish spatial events for the WebUI, including the real
             # map_xyz on every localized object.
             if camera_provider is not None and observation.rgbd_frame_id:
@@ -991,20 +1005,33 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 "quality": getattr(camera_provider, "quality", lambda: "CAMERA_LOCAL")(),
                 "host_s": node._host_s(),
             })
-            for obs_item in localized:
+            for index, obs_item in enumerate(localized):
                 if getattr(obs_item, "map_xyz", None) is None:
                     continue
+                assoc = association_by_index.get(index)
+                if assoc is None:
+                    # No reliable persistent identity this frame; do not guess
+                    # from the label (two same-label objects must stay distinct).
+                    continue
+                entity = None
+                if semantic_map is not None:
+                    entity = semantic_map.objects.get(assoc.persistent_object_id)
+                event_object = {}
+                if entity is not None:
+                    event_object = entity.to_dict()
+                event_object.update({
+                    "object_id": assoc.persistent_object_id,
+                    "label": obs_item.label,
+                    "camera_xyz": list(obs_item.camera_xyz) if obs_item.camera_xyz else None,
+                    "map_xyz": list(obs_item.map_xyz),
+                    "spatial_quality": obs_item.spatial_quality,
+                    "source_object_id": assoc.source_object_id,
+                    "association_score": assoc.association_score,
+                    "association_action": assoc.action,
+                })
                 node._write({
                     "event": "semantic_object_localized",
-                    "object": {
-                        "object_id": state.get("persistent_id_for_label", {}).get(obs_item.label),
-                        "label": obs_item.label,
-                        "camera_xyz": list(obs_item.camera_xyz) if obs_item.camera_xyz else None,
-                        "map_xyz": list(obs_item.map_xyz),
-                        "spatial_quality": obs_item.spatial_quality,
-                        "association_score": getattr(obs_item, "confidence", 0.0),
-                        "status": "OBSERVED",
-                    },
+                    "object": event_object,
                     "host_s": node._host_s(),
                 })
             node._write({
@@ -1022,16 +1049,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                     timestamp=observation.timestamp,
                     place_id=place_id,
                     update_result=update_result,
+                    relations=list(getattr(semantic, "relations", None) or []),
                 )
-                # Map persistent ids back to labels for the object events above.
-                persistent_by_label: dict[str, str] = {}
-                for oid, entry in semantic_map.objects.items():
-                    persistent_by_label[entry.label] = entry.object_id
-                persistent_by_label.update(state.get("persistent_id_for_label", {}))
-                for entry in semantic_map.objects.values():
-                    if entry.label in persistent_by_label:
-                        persistent_by_label[entry.label] = entry.object_id
-                state["persistent_id_for_label"] = persistent_by_label
 
         return observation
 
