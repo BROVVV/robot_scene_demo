@@ -431,7 +431,13 @@
     }).then(function (r) { return r.json(); });
   }
 
+  var startRetried = false;
+
   function startSearch() {
+    doStartSearch(false);
+  }
+
+  function doStartSearch(forceRestart) {
     var target = els.target.value.trim();
     if (!target) { showBanner("请输入搜索目标", "error"); return; }
     api("/api/search/start", {
@@ -444,13 +450,40 @@
       allow_degraded: !els.chkMotion.checked,
     }).then(function (data) {
       if (!data.ok) {
+        // A session stuck in STARTING/STOPPING (worker crashed, LLM/RGB-D
+        // preflight stalled) blocks every new start.  Auto-recover once:
+        // request a stop and retry after the service has reset the slot.
+        if (!forceRestart && /already active/.test(data.error || "")) {
+          if (startRetried) { startRetried = false; showErrorRetry(data.error); return; }
+          startRetried = true;
+          api("/api/search/stop").catch(function () {}).then(function () {
+            setTimeout(function () { doStartSearch(true); }, 600);
+          });
+          return;
+        }
+        startRetried = false;
         if (data.error === "emergency_stop_latched") {
           showBanner("无法开始：请先点击顶部“解除急停”，确认状态正常后再搜索", "error");
         } else {
-          showBanner("无法开始: " + (data.error || "unknown"), "error");
+          showErrorRetry(data.error);
         }
+        return;
       }
+      startRetried = false;
+      // Refresh the status bar immediately instead of waiting for the WS
+      // snapshot/event round-trip (the worker can be slow to reach STARTING).
+      appState.search = appState.search || {};
+      appState.search.session_id = data.session_id;
+      appState.search.status = data.status || "STARTING";
+      appState.search.phase = "STARTING";
+      showBanner("已开始搜索（等待后端就绪）…", "");
+      renderStatus();
+      renderButtons();
     }).catch(function () { showBanner("无法开始搜索（网络错误）", "error"); });
+  }
+
+  function showErrorRetry(error) {
+    showBanner("无法开始: " + (error || "unknown") + "（已自动尝试释放占用，可再点一次开始）", "error");
   }
 
   els.btnStart.addEventListener("click", startSearch);
@@ -464,8 +497,17 @@
     api("/api/search/resume").catch(function () {});
   });
   els.btnStop.addEventListener("click", function () {
-    api("/api/search/stop").then(function () {
-      showBanner("已请求停止…", "error");
+    api("/api/search/stop").then(function (data) {
+      if (data && data.status === "IDLE") {
+        appState.search = appState.search || {};
+        appState.search.status = "IDLE";
+        appState.search.phase = "IDLE";
+        renderStatus();
+        renderButtons();
+        showBanner("已停止当前会话", "error");
+      } else {
+        showBanner("已请求停止…", "error");
+      }
     }).catch(function () {});
   });
   els.btnEstop.addEventListener("click", function () {

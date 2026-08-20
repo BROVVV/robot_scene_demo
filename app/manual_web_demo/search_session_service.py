@@ -53,6 +53,16 @@ from app.task_understanding.search_task_context import SearchTaskContext
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_SESSION_DIR = "outputs/live_runs"
 
+# Lifecycle constants.  A STARTING transition is synchronous from the web API
+# but the worker (ROS subprocess / LLM task understanding / RGB-D preflight)
+# can take a while, fail silently, or get killed.  Without a recovery path the
+# session permanently appears "already active in state STARTING" and the WebUI
+# cannot start a new search until the web process restarts.
+STATUS_STARTING = "STARTING"
+STATUS_STOPPING = "STOPPING"
+# 超过该时限仍未离开 STARTING/STOPPING 且 worker 不再存活 -> 视为僵尸会话回收
+STARTING_TIMEOUT_SEC = 120.0
+
 
 class SearchSessionService:
     """Lifecycle + state hub for one web process."""
@@ -116,6 +126,7 @@ class SearchSessionService:
             return info
 
     def state_snapshot(self) -> dict[str, Any]:
+        self.reap_stale_session()
         snapshot = self._store.snapshot()
         session = self.current_session()
         if session is not None:
@@ -159,6 +170,7 @@ class SearchSessionService:
         return lambda: self._bus.unsubscribe(callback)
 
     def executor_state(self) -> dict[str, Any]:
+        self.reap_stale_session()
         if self._executor is None:
             return {"state": "stopped", "session_id": None}
         status = dict(self._executor.status() or {})
@@ -168,6 +180,50 @@ class SearchSessionService:
     # ------------------------------------------------------------------ #
     # session commands                                                    #
     # ------------------------------------------------------------------ #
+    # ------------------------------------------------------------------ #
+    # stale-session recovery                                           #
+    # ------------------------------------------------------------------ #
+    def _reset_session_locked(self) -> None:
+        """Drop an un-recoverable session back to IDLE (caller holds lock)."""
+        self._status = STATUS_IDLE
+        self._info = None
+        self._session_id = None
+        self._task_context = None
+        self._started_at = None
+        self._executor = None
+        self._adapter = None
+        self._store = SearchStateStore()
+        try:
+            self.owner.release(OwnerState.AUTONOMOUS)
+        except Exception:  # noqa: BLE001 - release is best effort/idempotent
+            pass
+
+    def _reap_stale_locked(self) -> bool:
+        """Return True and reset when a STARTING/STOPPING session is stale.
+
+        A session is stale when:
+          * the worker subprocess has exited without delivering a terminal
+            event (crash / kill / failed spawn), or
+          * it has been stuck in STARTING/STOPPING for ``STARTING_TIMEOUT_SEC``.
+
+        Caller must hold ``self._lock``.
+        """
+        if self._status not in (STATUS_STARTING, STATUS_STOPPING):
+            return False
+        executor_alive = bool(self._executor is not None and self._executor.alive())
+        timed_out = False
+        if self._started_at is not None:
+            timed_out = (time.time() - self._started_at) > STARTING_TIMEOUT_SEC
+        if timed_out or not executor_alive:
+            self._reset_session_locked()
+            return True
+        return False
+
+    def reap_stale_session(self) -> bool:
+        """Public recovery: reset a zombie STARTING/STOPPING session."""
+        with self._lock:
+            return self._reap_stale_locked()
+
     def _active_status(self) -> str:
         """Status gate source: the store once a session exists (it tracks
         PAUSED / RUNNING / terminal states from SearchEvents), otherwise the
@@ -183,8 +239,12 @@ class SearchSessionService:
         task_text = request.task_text or request.target
         task_context = self._understand_task(task_text, backend=request.backend)
         with self._lock:
+            # A session stuck in STARTING (worker died, timed out) must not
+            # block a fresh search; recover it automatically first.
+            self._reap_stale_locked()
             if self._status not in (STATUS_IDLE, "FINISHED", "SEARCH_EXHAUSTED",
-                                    "FAILED", "OPERATOR_STOP", "TARGET_FOUND"):
+                                    "FAILED", "OPERATOR_STOP", "TARGET_FOUND",
+                                    "TASK_REJECTED"):
                 return {
                     "ok": False,
                     "error": f"search already active in state {self._status}",
@@ -352,8 +412,18 @@ class SearchSessionService:
 
     def stop_search(self, *, reason: str = "operator_stop") -> dict[str, Any]:
         with self._lock:
+            self._reap_stale_locked()
             if self._active_status() == STATUS_IDLE:
                 return {"ok": True, "status": "IDLE", "note": "no active session"}
+            alive = bool(self._executor is not None and self._executor.alive())
+            if not alive:
+                # Worker is gone / never came up (e.g. stuck STARTING after a
+                # crash): clean up immediately so the operator can start again.
+                self._reset_session_locked()
+                return {"ok": True, "status": "IDLE", "note": "stopped stale session"}
+            self._status = STATUS_STOPPING
+            if self._info is not None:
+                self._info.status = STATUS_STOPPING
         if self._executor is not None:
             self._executor.stop()
         return {"ok": True, "status": "STOPPING"}
