@@ -53,6 +53,14 @@ class SearchExecutor(Protocol):
 class SubprocessSearchExecutor:
     """Owns the autonomous search worker subprocess (JSONL IPC)."""
 
+    # Worker interpreter resolution.  The search worker must import
+    # ``run_semantic_exploration`` AND talk to ROS (rclpy) on real hardware.
+    # Neither dependency lives in a single interpreter on every machine:
+    #   * /usr/bin/python3 (ROS system py) has rclpy but may lack openai;
+    #   * the Web conda python has openai but may lack rclpy.
+    # We therefore probe candidates and pick the first that satisfies both,
+    # falling back to the ROS interpreter so a real robot still gets rclpy.
+    # Operators can force a choice with GO2W_WORKER_PYTHON.
     def __init__(
         self,
         *,
@@ -60,7 +68,13 @@ class SubprocessSearchExecutor:
         cwd: str | Path | None = None,
         log_path: str | Path | None = None,
     ) -> None:
-        self._cmd = list(cmd or ("/usr/bin/python3", "scripts/go2w/autonomous_search_worker.py"))
+        if cmd is not None:
+            self._cmd = list(cmd)
+        else:
+            self._cmd = [
+                _resolve_worker_python(),
+                "scripts/go2w/autonomous_search_worker.py",
+            ]
         self._cwd = str(cwd or _PROJECT_ROOT)
         self._log_path = Path(log_path) if log_path else None
         self._on_message: Callable[[dict[str, Any]], None] | None = None
@@ -349,6 +363,10 @@ class InProcessMockExecutor:
                 from app.live_robot.mock_observation_scene import scenario_semantic_topology
 
                 scene = scenario_semantic_topology()
+            elif scenario == "green_bin":
+                from app.live_robot.mock_observation_scene import scenario_green_bin
+
+                scene = scenario_green_bin()
             elif scenario == "no_target":
                 scene = scenario_no_target()
             else:
@@ -506,3 +524,55 @@ def _write_mock_artifacts(params: dict[str, Any], explorer: Any, result: Any,
         )
     except Exception:  # noqa: BLE001 - artifacts must never crash the search
         pass
+
+
+def _resolve_worker_python() -> str:
+    """Pick the interpreter that can run the real search worker.
+
+    Preference order:
+      1. GO2W_WORKER_PYTHON (explicit operator override),
+      2. /usr/bin/python3 (ROS system python -> rclpy on the robot),
+      3. sys.executable (the Web/Conda python).
+    The first candidate that successfully imports ``rclpy`` and
+    ``run_semantic_exploration`` is used; if none passes the probe the first
+    candidate is used anyway so the failure is reported *with a reason* by the
+    worker instead of a silent "cannot find interpreter".
+    """
+    project = str(_PROJECT_ROOT)
+    scripts = str(_PROJECT_ROOT / "scripts" / "go2w")
+    probe_code = (
+        "import sys; "
+        f"sys.path.insert(0, {project!r}); "
+        f"sys.path.insert(0, {scripts!r}); "
+        "import rclpy, run_semantic_exploration"
+    )
+    candidates: list[str] = []
+    env_py = os.environ.get("GO2W_WORKER_PYTHON")
+    if env_py:
+        candidates.append(env_py)
+    for cand in ("/usr/bin/python3", sys.executable):
+        if cand not in candidates:
+            candidates.append(cand)
+
+    for cand in candidates:
+        if not os.path.isfile(cand):
+            continue
+        try:
+            result = subprocess.run(
+                [cand, "-c", probe_code],
+                cwd=project,
+                capture_output=True,
+                text=True,
+                timeout=25,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if result.returncode == 0:
+            return cand
+    # Nothing passed the probe (e.g. offline dev box without ROS): fall back to
+    # the ROS interpreter so real hardware still works and dev boxes get a
+    # clear "rclpy unavailable" reason instead of a generic FAILED.
+    for cand in candidates:
+        if os.path.isfile(cand):
+            return cand
+    return sys.executable

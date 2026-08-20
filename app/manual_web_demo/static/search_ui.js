@@ -409,7 +409,21 @@
         appState.search.result = payload.result;
         appState.search.finish_reason = payload.finish_reason;
         appState.search.summary = payload;
-        if (!appState.search.status || appState.search.status === "FINISHED") {
+        appState.search.last_error = payload.error || payload.reason || "";
+        var failed = payload.result === "FAILED" || payload.result === "TIMEOUT"
+          || payload.result === "BACKEND_FAILURE" || payload.result === "PERCEPTION_FAILURE";
+        if (payload.result === "TARGET_FOUND") {
+          showBanner("搜索成功：已找到目标！", "success");
+        } else if (failed) {
+          var reason = payload.error || payload.reason || payload.finish_reason || "FAILED";
+          var hint = "";
+          if (/No module named|ModuleNotFoundError|ImportError/.test(reason)) {
+            hint = "（worker 缺少依赖，请检查 outputs/autonomous_search/logs/search_worker.log；或用 --mock 离线演示）";
+          } else if (/rclpy|import.*rclpy/.test(reason)) {
+            hint = "（当前 worker 解释器没有 ROS rclpy：真机请确认用 ROS Python 启服务；本机演示请用 --mock 模式）";
+          }
+          showBanner("搜索失败: " + reason.slice(0, 220) + hint, "error");
+        } else {
           showBanner("搜索结束: " + (payload.result || "FINISHED"), "exhausted");
         }
         break;

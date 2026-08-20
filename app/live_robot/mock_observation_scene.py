@@ -258,6 +258,60 @@ def scenario_semantic_topology() -> MockObservationScene:
     return MockObservationScene(scenes=scenes, confirm_after_seen=1)
 
 
+def scenario_green_bin():
+    """确定性场景：搜「绿色垃圾桶」。
+    前两帧办公室有「办公桌/办公椅/纸箱」（无目标），最后一帧出现「绿色垃圾桶」
+    且 near 办公桌 -> 目标出现并可确认。用于 WebUI mock 演示 + 端到端自测。
+    """
+
+    def item(oid: str, label: str, xyz: tuple) -> dict:
+        return {
+            "id": oid,
+            "label": label,
+            "label_zh": label,
+            "name": label,
+            "map_xyz": list(xyz),
+            "confidence": 0.9,
+            "bbox_2d": [0.35, 0.3, 0.65, 0.7],
+        }
+
+    scenes = [
+        MockSceneStep(
+            objects=[
+                item("gb_001", "办公桌", (1.0, 0.0, 0.0)),
+                item("gb_002", "办公椅", (0.3, 0.2, 0.0)),
+                item("gb_003", "纸箱", (2.0, 0.0, 0.0)),
+            ],
+            relations=[
+                {"subject_id": "gb_002", "object_id": "gb_001", "relation": "left_of", "confidence": 0.8},
+            ],
+            bundle_id="obs_gb_1",
+        ),
+        MockSceneStep(
+            objects=[
+                item("gb_101", "办公桌", (1.02, 0.0, 0.0)),
+                item("gb_102", "办公椅", (0.32, 0.2, 0.0)),
+            ],
+            relations=[],
+            bundle_id="obs_gb_2",
+        ),
+        MockSceneStep(
+            objects=[
+                item("gb_201", "办公桌", (1.0, 0.0, 0.0)),
+                item("gb_202", "绿色垃圾桶", (1.4, 0.0, 0.0)),
+            ],
+            relations=[
+                {"subject_id": "gb_201", "object_id": "gb_202", "relation": "near", "confidence": 0.92,
+                 "description_zh": "办公桌靠近绿色垃圾桶"},
+            ],
+            target_present=True,
+            target_score=0.99,
+            bundle_id="obs_gb_final",
+        ),
+    ]
+    return MockObservationScene(scenes=scenes, confirm_after_seen=1)
+
+
 def _spatial_provider_for_scene(scene: "MockObservationScene") -> Any:
     """A minimal fake SpatialProvider that emits map_xyz for scripted objects.
 

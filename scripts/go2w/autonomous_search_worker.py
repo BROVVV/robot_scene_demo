@@ -217,6 +217,8 @@ def run_session(params: dict[str, Any]) -> None:
                 "exit_code": 2,
                 "session_id": _STATE.get("session_id"),
                 "finish_reason": "FAILED",
+                "error": f"bad start params: {exc}",
+                "reason": f"bad start params: {exc}",
             },
         })
         return
@@ -237,6 +239,8 @@ def run_session(params: dict[str, Any]) -> None:
                 "exit_code": 4,
                 "session_id": _STATE.get("session_id"),
                 "finish_reason": "FAILED",
+                "error": f"{type(exc).__name__}: {exc}",
+                "reason": f"{type(exc).__name__}: {exc}",
             },
         })
         return
@@ -256,6 +260,7 @@ def run_session(params: dict[str, Any]) -> None:
     except Exception as exc:  # noqa: BLE001
         import traceback
 
+        _STATE["last_error"] = f"{type(exc).__name__}: {exc}"
         envelope = {
             "type": "error",
             "session_id": _STATE.get("session_id"),
@@ -272,6 +277,14 @@ def run_session(params: dict[str, Any]) -> None:
         # the protocol so the WebUI does not turn it into a blank FINISHED
         # session.
         _STATE["finish_reason"] = "FAILED"
+    final_result = {
+        "exit_code": rc,
+        "session_id": _STATE.get("session_id"),
+        "finish_reason": _STATE.get("finish_reason") or "",
+    }
+    if _STATE.get("last_error"):
+        final_result["error"] = _STATE["last_error"]
+        final_result["reason"] = _STATE["last_error"]
     emit(
         {
             "type": "session_result",
@@ -279,11 +292,7 @@ def run_session(params: dict[str, Any]) -> None:
             "task_id": _STATE.get("task_id"),
             "executor_id": _STATE.get("executor_id"),
             "worker_generation": _STATE.get("worker_generation"),
-            "result": {
-                "exit_code": rc,
-                "session_id": _STATE.get("session_id"),
-                "finish_reason": _STATE.get("finish_reason") or "",
-            },
+            "result": final_result,
         }
     )
 

@@ -335,6 +335,19 @@ bash scripts/go2w/stop_autonomous_search_web.sh                      # 停止（
 > 再次点「开始」会自动先释放被占用的僵尸会话再重试；也可以直接点「停止」立即解锁，
 > 之后即可重新开始。服务端还会对超过 120s 仍卡在启动中的会话做超时回收。
 
+> 如果输入目标后立刻 **"搜索结束: FAILED"**：现在界面上会直接显示具体失败原因
+> （例如缺依赖 / rclpy 缺失）。常见情况与解决：
+> - **本机/开发环境没有 ROS**：这是正常现象（真机搜索需要 ROS 的 rclpy 驱动运动）。
+>   想先看完整效果，用离线模式：
+>   ```bash
+>   bash scripts/go2w/start_autonomous_search_web.sh --mock   # 无需 ROS/真机
+>   ```
+>   然后在浏览器输入「绿色垃圾桶」即可看到：搜索→建图→语义拓扑→找到目标的全流程。
+> - **真机**：用 `--enable-autonomous-motion` 启动，并在页面勾选「操作者监督自主运动」；
+>   后端会自动挑选带 rclpy 的 ROS Python 来跑搜索 worker（优先 `/usr/bin/python3`，
+>   可用 `GO2W_WORKER_PYTHON` 显式覆盖）。若仍失败，`outputs/autonomous_search/logs/
+>   search_worker.log` 里有完整错误。
+
 **地图默认显示「语义拓扑」**：识别出的持久物体（`obj_xxx`）会实时聚成关系拓扑图
 （重复识别不新建节点/边，同类别多物体不混淆；节点位置是显示布局、不用物理坐标）。
 右上角可切换「空间地图」查看 RTAB / Place / Frontier / 轨迹等导航调试数据。

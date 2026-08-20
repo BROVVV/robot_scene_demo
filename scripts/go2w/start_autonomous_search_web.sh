@@ -189,6 +189,10 @@ export MANUAL_DEMO_RUNTIME_DIR="${MANUAL_DEMO_RUNTIME_DIR:-outputs/manual_web_de
 export MANUAL_DEMO_LOGS_DIR="${MANUAL_DEMO_LOGS_DIR:-outputs/manual_web_demo/logs}"
 export AUTONOMOUS_SEARCH_RUNTIME_DIR="${runtime_root}"
 export AUTONOMOUS_SEARCH_LOGS_DIR="${log_root}"
+# Search worker interpreter is auto-detected at start (prefers /usr/bin/python3
+# with rclpy, falls back to the Conda python).  Only force an explicit Python
+# when the operator sets GO2W_WORKER_PYTHON; do not force the Conda python here
+# because the real robot needs the ROS python (rclpy) to actually drive motion.
 if [[ "$MOCK" == 1 ]]; then
   export AUTONOMOUS_SEARCH_DEFAULT_BACKEND="mock"
   export AUTONOMOUS_SEARCH_ENABLE_AUTONOMOUS_MOTION="0"

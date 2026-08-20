@@ -123,7 +123,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--replay", default="",
                         help="replay observations from a previous session JSONL")
     parser.add_argument("--mock-scenario",
-                        choices=("target_appears_after_n", "no_target", "anchor_then_target"),
+                        choices=("target_appears_after_n", "no_target", "anchor_then_target",
+                                 "semantic_topology", "green_bin"),
                         default="anchor_then_target")
     parser.add_argument("--mock-target-after", type=int, default=3,
                         help="observations before the target appears (mock scenario)")
@@ -249,6 +250,10 @@ def _build_offline_components(args):
         from app.live_robot.mock_observation_scene import scenario_semantic_topology
 
         return scenario_semantic_topology()
+    if args.mock_scenario == "green_bin":
+        from app.live_robot.mock_observation_scene import scenario_green_bin
+
+        return scenario_green_bin()
     if args.mock_scenario == "target_appears_after_n":
         scene = scenario_target_appears_after(max(1, args.mock_target_after))
     elif args.mock_scenario == "no_target":
