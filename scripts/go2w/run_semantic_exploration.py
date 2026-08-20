@@ -245,6 +245,10 @@ def _write_session_artifacts(args, explorer: AutonomousExplorer,
 
 
 def _build_offline_components(args):
+    if args.mock_scenario == "semantic_topology":
+        from app.live_robot.mock_observation_scene import scenario_semantic_topology
+
+        return scenario_semantic_topology()
     if args.mock_scenario == "target_appears_after_n":
         scene = scenario_target_appears_after(max(1, args.mock_target_after))
     elif args.mock_scenario == "no_target":

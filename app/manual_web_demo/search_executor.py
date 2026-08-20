@@ -345,6 +345,10 @@ class InProcessMockExecutor:
                 )
             elif scenario == "target_appears_after_n":
                 scene = scenario_target_appears_after(self.mock_target_after)
+            elif scenario == "semantic_topology":
+                from app.live_robot.mock_observation_scene import scenario_semantic_topology
+
+                scene = scenario_semantic_topology()
             elif scenario == "no_target":
                 scene = scenario_no_target()
             else:

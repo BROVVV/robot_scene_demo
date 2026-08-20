@@ -340,6 +340,14 @@
           nodes: (payload.graph || {}).nodes || [],
           edges: (payload.graph || {}).edges || [],
         };
+        // Semantic topology view reads state.spatial.semantic_graph.object_topology.
+        // Only the semantic_navigation_graph snapshot carries the object_topology
+        // projection (observation/navigation_result graphs are exploration-only
+        // and must NOT overwrite it, or the topology list would flip to empty).
+        appState.spatial = appState.spatial || {};
+        if (payload.semantic_navigation_graph) {
+          appState.spatial.semantic_graph = payload.semantic_navigation_graph;
+        }
         break;
       case "RGBD_FRAME_UPDATED":
         appState.spatial = appState.spatial || {};

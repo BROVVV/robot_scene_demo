@@ -12,6 +12,7 @@ from typing import Any
 
 from app.perception.depth_object_localizer import ObjectSpatialObservation
 from app.spatial.models import SpatialPose
+from app.spatial.object_relation_store import ObjectRelationStore
 from app.spatial.place_graph import PlaceGraph
 from app.spatial.semantic_object_map import SemanticObjectMap
 
@@ -23,6 +24,12 @@ class SemanticNavigationGraph:
         place_graph: PlaceGraph | None = None,
         object_map: SemanticObjectMap | None = None,
         heading_sectors: int = 12,
+        relation_min_confidence: float = 0.45,
+        relation_confirm_min_observations: int = 2,
+        relation_stale_after_seconds: float = 180.0,
+        include_tentative_objects: bool = True,
+        include_stale_objects: bool = True,
+        include_view_relative_relations: bool = True,
     ) -> None:
         self.place_graph = place_graph or PlaceGraph()
         self.object_map = object_map or SemanticObjectMap()
@@ -32,6 +39,14 @@ class SemanticNavigationGraph:
         self.observations: list[dict[str, Any]] = []
         self.revision = 0
         self._frontier_sequence = 0
+        self.relation_store = ObjectRelationStore(
+            relation_min_confidence=relation_min_confidence,
+            relation_confirm_min_observations=relation_confirm_min_observations,
+            relation_stale_after_seconds=relation_stale_after_seconds,
+            include_tentative_objects=include_tentative_objects,
+            include_stale_objects=include_stale_objects,
+            include_view_relative_relations=include_view_relative_relations,
+        )
 
     @property
     def current_place_id(self) -> str | None:
@@ -67,7 +82,18 @@ class SemanticNavigationGraph:
             spatial_objects
             or self._object_observations(scene_objects, pose, observation_id)
         )
-        new_object_ids = self.object_map.update(objects, place_id=place_id, now=observation_time)
+        update_result = self.object_map.update_with_associations(
+            objects,
+            place_id=place_id,
+            now=observation_time,
+        )
+        new_object_ids = list(update_result.created_ids)
+        self.relation_store.sync(
+            relations=scene_relations,
+            update_result=update_result,
+            observation_id=observation_id,
+            timestamp=observation_time,
+        )
         observation_object_ids = [
             object_id
             for object_id, entry in self.object_map.objects.items()
@@ -157,7 +183,15 @@ class SemanticNavigationGraph:
             "objects": objects,
             "frontiers": frontiers,
             "observations": list(self.observations),
+            "object_topology": self.object_topology_snapshot(),
         }
+
+    def object_topology_snapshot(self) -> dict[str, Any]:
+        """WebUI semantic-topology projection (OBJECT nodes + relations)."""
+        return self.relation_store.object_topology_snapshot(
+            self.object_map.objects,
+            revision=self.revision,
+        )
 
     def _object_observations(
         self,
@@ -174,7 +208,7 @@ class SemanticNavigationGraph:
                 map_xyz = _camera_to_map(camera, pose)
             result.append(
                 ObjectSpatialObservation(
-                    object_id=item.get("id") or item.get("object_id"),
+                    object_id=_frame_object_id(item),
                     label=label or "object",
                     bbox=item.get("bbox_2d") or item.get("bbox"),
                     depth_m=item.get("depth_m") or item.get("estimated_distance_m"),
@@ -282,6 +316,19 @@ class SemanticNavigationGraph:
                 self.edges[index] = {**existing, **edge}
                 return
         self.edges.append(edge)
+
+
+def _frame_object_id(item: dict[str, Any]) -> str | None:
+    """Return the per-frame object id (frame_object_id first)."""
+    value = (
+        item.get("frame_object_id")
+        or item.get("id")
+        or item.get("object_id")
+    )
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
 
 
 def _label(item: dict[str, Any]) -> str:

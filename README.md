@@ -330,6 +330,12 @@ bash scripts/go2w/stop_autonomous_search_web.sh                      # 停止（
 然后浏览器打开 `http://127.0.0.1:8765`，在"自主搜索"Tab 输入目标并点击"开始搜索"。
 页面左上角"自主运动"勾选框按次授权机器狗运动（对应服务端 `enable_autonomous_motion`）。
 
+**地图默认显示「语义拓扑」**：识别出的持久物体（`obj_xxx`）会实时聚成关系拓扑图
+（重复识别不新建节点/边，同类别多物体不混淆；节点位置是显示布局、不用物理坐标）。
+右上角可切换「空间地图」查看 RTAB / Place / Frontier / 轨迹等导航调试数据。
+D435 RGB-D 镜头默认 **1280×720** 满宽度模式（约 69° 彩色 / 87° 深度视场）；用
+`bash scripts/go2w/tune_d435_fov.sh status|wide|mode|reset` 可在真机上 SSH 查看/调整。
+
 关键接口（详见 `docs/GO2W_AUTONOMOUS_SEARCH_WEBUI.md`）：
 
 ```text

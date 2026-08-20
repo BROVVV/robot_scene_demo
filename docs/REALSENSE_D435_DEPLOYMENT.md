@@ -123,8 +123,8 @@
 ```bash
 bash scripts/go2w/tune_d435_fov.sh status   # SSH 查看当前分辨率 + 实测 HFOV/VFOV
 bash scripts/go2w/tune_d435_fov.sh wide     # SSH 切到 1280x720 最宽最清晰
-bash scripts/go2w/tune_d435_fov.sh mode 848 480 30
-bash scripts/go2w/tune_d435_fov.sh reset    # 恢复默认 848x480
+bash scripts/go2w/tune_d435_fov.sh mode 1280 720 30
+bash scripts/go2w/tune_d435_fov.sh reset    # 恢复默认 1280x720
 ```
 - 本机免 SSH 校验当前模式是否用满硬件视场：
   ```bash
@@ -145,5 +145,5 @@ bash scripts/go2w/tune_d435_fov.sh reset    # 恢复默认 848x480
 | `scripts/go2w/realsense_stream.py` | 机器狗上运行的 RGB-D 流服务源码 |
 | `scripts/go2w/view_realsense.py` | 本机 OpenCV 查看/录制工具（`s` 快照 / `r` 录制 / `d` 原始深度 / `q` 退出） |
 | `scripts/go2w/start_realsense_stream.sh` | 部署/启停/状态一键脚本 |
-| `scripts/go2w/tune_d435_fov.sh` | SSH 进入机器狗查看/切换 D435 分辨率模式与实时 FOV（status/wide/mode/reset） |
+| `scripts/go2w/tune_d435_fov.sh` | SSH 进入机器狗查看/切换 D435 分辨率模式与实时 FOV（status/wide/mode/reset；默认 1280x720） |
 | `scripts/go2w/validate_camera_fov.py` | 本机免 SSH 校验 D435 用满硬件视场（/fov、/info.json） |

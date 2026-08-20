@@ -615,10 +615,10 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     global ARGS
     ap = argparse.ArgumentParser(description="RealSense D435 RGB-D stream server")
-    # 默认 848x480：该模式在 D435 上使用更宽的传感器区域（比 640x480 的中心裁剪
-    # 明显更“广”，彩色约 55°→69°、深度约 70°→87°），同时带宽低于 1280x720。
-    ap.add_argument("--width", type=int, default=848)
-    ap.add_argument("--height", type=int, default=480)
+    # 默认 1280x720：D435 满宽度分辨率，彩色约 69°x42°、深度约 87°x58° 的完整
+    # 硬件视场都拿到，且比 640x480（中心裁剪只有约 55°）像素多、更清晰。需 USB3。
+    ap.add_argument("--width", type=int, default=1280)
+    ap.add_argument("--height", type=int, default=720)
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--wide", action="store_true",
                     help="使用最大分辨率 1280x720 满视场模式（与 848x480 同样用满宽度视场约 69°；像素更多更清晰；需 USB3）")

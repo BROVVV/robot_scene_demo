@@ -107,8 +107,8 @@ case "${1:-status}" in
     _fetch_fov
     ;;
   reset)
-    echo "== 恢复默认 848x480@30（宽视场 69°H 模式） =="
-    _restart_service "--port ${D435_PORT}"
+    echo "== 恢复默认 1280x720@30（满宽度满分辨率模式） =="
+    _restart_service "--width 1280 --height 720 --fps 30 --port ${D435_PORT}"
     echo "  重启完成："
     _fetch_fov
     ;;

@@ -43,7 +43,7 @@ After=network-online.target
 [Service]
 Type=simple
 User=${ROBOT_USER}
-ExecStart=/usr/bin/python3 ${REMOTE_SCRIPT} --port 8080
+ExecStart=/usr/bin/python3 ${REMOTE_SCRIPT} --width 1280 --height 720 --fps 30 --port 8080
 Restart=always
 RestartSec=3
 

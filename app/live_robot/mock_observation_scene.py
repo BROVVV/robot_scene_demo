@@ -55,17 +55,29 @@ class MockObservationScene:
             self.index += 1
             self.observations_made += 1
             bundle_id = step.bundle_id or f"mock_{self.observations_made:03d}"
-            objects = [
-                {
-                    "label": label,
-                    "label_zh": label,
-                    "name": label,
-                    "position_2d": "center",
-                    "confidence": 0.9,
-                    "bbox_2d": [0.4, 0.3, 0.6, 0.7],
-                }
-                for label in step.objects
-            ]
+            objects = []
+            for i, raw in enumerate(step.objects):
+                if isinstance(raw, dict):
+                    obj = dict(raw)
+                    obj.setdefault("label", obj.get("label_zh") or obj.get("name") or "object")
+                    obj.setdefault("label_zh", obj.get("label_zh") or obj.get("label") or "object")
+                    obj.setdefault("name", obj.get("name") or obj["label"])
+                    obj.setdefault("confidence", 0.9)
+                    obj.setdefault("bbox_2d", [0.4, 0.3, 0.6, 0.7])
+                    obj.setdefault("id", obj.get("frame_object_id") or f"mock_obj_{self.observations_made:03d}_{i:02d}")
+                    obj["id"] = str(obj["id"])
+                else:
+                    label = str(raw)
+                    obj = {
+                        "label": label,
+                        "label_zh": label,
+                        "name": label,
+                        "position_2d": "center",
+                        "confidence": 0.9,
+                        "bbox_2d": [0.4, 0.3, 0.6, 0.7],
+                        "id": f"mock_obj_{self.observations_made:03d}_{i:02d}",
+                    }
+                objects.append(obj)
             observation = LiveObservation(
                 bundle_id=bundle_id,
                 timestamp=time.time(),
@@ -194,6 +206,56 @@ def scenario_no_target(*, empty_scenes: int = 6) -> MockObservationScene:
 
 def scenario_anchor_then_target() -> MockObservationScene:
     return scenario_target_appears_after(3)
+
+
+def scenario_semantic_topology() -> MockObservationScene:
+    """确定性场景：两帧 3 物体、2 条关系（办公桌 near 垃圾桶、办公椅 left_of 办公桌）。
+
+    第二帧使用全新 frame id 但相同 map_xyz，验证 persistent merge：最终仍是
+    3 个 persistent 节点、2 条关系边，near 被证据融合为 CONFIRMED ×2。
+    用于 WebUI mock 演示「语义拓扑」视图。
+    """
+
+    def item(oid: str, label: str, xyz: tuple) -> dict:
+        return {
+            "id": oid,
+            "label": label,
+            "label_zh": label,
+            "name": label,
+            "map_xyz": list(xyz),
+            "confidence": 0.9,
+            "bbox_2d": [0.35, 0.3, 0.65, 0.7],
+        }
+
+    scenes = [
+        MockSceneStep(
+            objects=[
+                item("topo_obj_001", "办公桌", (1.0, 0.0, 0.0)),
+                item("topo_obj_002", "绿色垃圾桶", (1.3, 0.0, 0.0)),
+                item("topo_obj_003", "办公椅", (0.3, 0.2, 0.0)),
+            ],
+            relations=[
+                {"subject_id": "topo_obj_001", "object_id": "topo_obj_002",
+                 "relation": "near", "confidence": 0.72, "description_zh": "办公桌靠近绿色垃圾桶"},
+                {"subject_id": "topo_obj_003", "object_id": "topo_obj_001",
+                 "relation": "left_of", "confidence": 0.80, "description_zh": "办公椅在办公桌左侧"},
+            ],
+            bundle_id="obs_topo_1",
+        ),
+        MockSceneStep(
+            objects=[
+                item("topo_obj_101", "办公桌", (1.02, 0.0, 0.0)),
+                item("topo_obj_102", "绿色垃圾桶", (1.28, 0.0, 0.0)),
+                item("topo_obj_103", "办公椅", (0.32, 0.2, 0.0)),
+            ],
+            relations=[
+                {"subject_id": "topo_obj_101", "object_id": "topo_obj_102",
+                 "relation": "near", "confidence": 0.80, "description_zh": "办公桌靠近绿色垃圾桶"},
+            ],
+            bundle_id="obs_topo_2",
+        ),
+    ]
+    return MockObservationScene(scenes=scenes, confirm_after_seen=1)
 
 
 def _spatial_provider_for_scene(scene: "MockObservationScene") -> Any:
