@@ -74,6 +74,56 @@ start_rtabmap() {
   echo "rtabmap started pid $(<"$RTAB_PID")"
 }
 
+check_stack() {
+  echo "#---- RGB-D spatial stack health (plan §5, §21.2) ----"
+  local issues=0
+  if ros2 topic list 2>/dev/null | grep -q '/go2w/d435/color/image_raw'; then
+    echo "  [ok] D435 RGB topic"
+  else
+    echo "  [warn] D435 RGB topic missing (bridge may take time)"
+  fi
+  if ros2 topic list 2>/dev/null | grep -q '/go2w/d435/depth/image_rect_raw'; then
+    echo "  [ok] D435 Depth topic"
+  else
+    echo "  [warn] D435 Depth topic missing"
+  fi
+  if ros2 topic list 2>/dev/null | grep -q '/go2w/d435/color/camera_info'; then
+    echo "  [ok] CameraInfo topic"
+  else
+    echo "  [warn] CameraInfo topic missing"
+  fi
+  if ros2 topic list 2>/dev/null | grep -q '^/rtabmap/map$'; then
+    echo "  [ok] RTAB map topic"
+  else
+    echo "  [warn] RTAB map topic missing"
+  fi
+  if ros2 topic list 2>/dev/null | grep -q '^/rtabmap/odom$'; then
+    echo "  [ok] RTAB odom topic"
+  else
+    echo "  [warn] RTAB odom topic missing"
+  fi
+  # TF base <-> camera is the backbone of camera_xyz -> map_xyz (plan §5).
+  if command -v ros2 >/dev/null 2>&1; then
+    local tf_out
+    tf_out="$(timeout 8 ros2 run tf2_ros tf2_echo base_link d435_color_optical_frame 2>&1 || true)"
+    if echo "$tf_out" | grep -q 'Translation'; then
+      echo "  [ok] TF base_link -> d435_color_optical_frame"
+    else
+      echo "  [warn] TF base_link -> d435_color_optical_frame not ready"
+      issues=$((issues + 1))
+    fi
+    local tf_base_out
+    tf_base_out="$(timeout 8 ros2 run tf2_ros tf2_echo odom_fused base_link 2>&1 || true)"
+    if echo "$tf_base_out" | grep -q 'Translation'; then
+      echo "  [ok] TF odom_fused -> base_link"
+    else
+      echo "  [warn] TF odom_fused -> base_link not ready"
+      issues=$((issues + 1))
+    fi
+  fi
+  echo "  # total issues: ${issues}"
+}
+
 stop_stack() {
   for pidfile in "$RTAB_PID" "$TF2_PID" "$TF1_PID" "$BRIDGE_PID"; do
     if [[ -f "$pidfile" ]]; then
@@ -96,17 +146,22 @@ case "${1:-start}" in
     for _ in $(seq 1 30); do
       if ros2 topic list 2>/dev/null | grep -q '^/rtabmap/map$'; then
         echo "RTAB-Map ready"
+        check_stack
         exit 0
       fi
       sleep 1
     done
     echo "WARNING: /rtabmap/map not seen within 30s; check runtime/go2w/*.log"
+    check_stack
+    ;;
+  check)
+    check_stack
     ;;
   stop)
     stop_stack
     ;;
   *)
-    echo "usage: $0 start|stop" >&2
+    echo "usage: $0 start|stop|check" >&2
     exit 2
     ;;
 esac

@@ -23,6 +23,7 @@ from app.live_robot.search_event import (
     ERROR,
     OPERATOR_STOP,
     SEARCH_FINISHED,
+    SEARCH_STATE_CHANGED,
     SESSION_CREATED,
     TASK_REJECTED,
     TASK_UNDERSTANDING,
@@ -462,6 +463,28 @@ class SearchSessionService:
             status = message.get("status") or {}
             if str(status.get("state")) == "running":
                 self._mark_status(STATUS_RUNNING)
+            # Surface concrete startup stage progression to the store so the
+            # WebUI can render "正在等待 RGB-D" instead of an undifferentiated
+            # STARTING phase, and can detect a stalled startup.
+            startup_payload = dict(status or {})
+            startup_payload["worker_state"] = startup_payload.get("state")
+            startup_payload["stage_started_at"] = startup_payload.get("stage_started_at")
+            startup_payload["last_progress_at"] = startup_payload.get("last_progress_at")
+            startup_payload["worker_alive"] = True
+            startup_payload["last_worker_message_at"] = time.time()
+            startup_payload["last_error"] = startup_payload.get("last_error")
+            self._store.apply(
+                make_event(
+                    allocator=self._bus.allocator,
+                    session_id=self._session_id or "",
+                    event_type=SEARCH_STATE_CHANGED,
+                    payload={"startup": startup_payload, "phase": "STARTING"},
+                )
+            )
+            if self._adapter is not None:
+                self._adapter.on_explorer_event(
+                    {"event": "search_state_changed", "phase": "STARTING", "startup": startup_payload}
+                )
         elif msg_type == "error":
             self._publish_error(message.get("message") or "search worker error")
 
@@ -474,7 +497,7 @@ class SearchSessionService:
         if not expected_session:
             return False
         event = message.get("event") if isinstance(message.get("event"), dict) else {}
-        payload = event.get("payload") if isinstance(event, dict) else {}
+        payload = event.get("payload") if isinstance(event, dict) and isinstance(event.get("payload"), dict) else {}
         values = {
             "session_id": message.get("session_id") or event.get("session_id"),
             "task_id": message.get("task_id") or payload.get("task_id"),

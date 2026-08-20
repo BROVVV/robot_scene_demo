@@ -30,7 +30,9 @@ search:
   spatial_v2: true
 
   # Use RTAB-Map ROS2 topics when the D435 bridge + rtabmap_slam are running.
-  rtabmap: false
+  # ``auto`` resolves to rtabmap when its topics are healthy, else degrades to
+  # the camera-local relative provider (never blocks the search).
+  rtabmap: auto
 
   max_search_seconds: 600
   max_planning_cycles: 100
@@ -45,6 +47,46 @@ map:
 supervision:
   operator_supervised: true
   stop_search_on_last_browser_disconnect: false
+
+# --- Spatial semantic world-model tuning (plan §11 / §114) -------------------
+spatial:
+  provider: auto
+
+  rtabmap:
+    enabled: auto
+    map_topic: /rtabmap/map
+    odom_topic: /rtabmap/odom
+    map_frame: map
+    odom_frame: odom
+    camera_frame: d435_color_optical_frame
+    base_frame: base_link
+
+  camera_extrinsic:
+    mode: tf2_then_nominal
+    nominal_translation_m: [0.10, 0.0, 0.30]
+
+  place_graph:
+    merge_distance_m: 0.35
+    relocation_min_displacement_m: 0.10
+
+  entity_map:
+    base_merge_distance_m: 0.35
+    confirm_min_observations: 2
+    stale_after_seconds: 120
+    geometry_weight: 0.60
+    semantic_weight: 0.15
+    place_weight: 0.10
+    appearance_weight: 0.10
+    temporal_weight: 0.05
+
+  route_planner:
+    mode: auto
+    allow_unknown: false
+    inflation_radius_m: 0.25
+    max_waypoints: 32
+
+  decision:
+    keep_alternatives: 3
 
 outputs:
   session_dir: outputs/live_runs

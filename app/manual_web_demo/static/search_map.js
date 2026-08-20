@@ -65,7 +65,7 @@
     var layout = computeLayout(nodes, robot);
 
     // fit
-    var bounds = fitBounds(layout, robot);
+    var bounds = fitBounds(layout, robot, spatial);
     var vb = boundsToViewBox(bounds);
     this.svg.setAttribute("viewBox", vb);
 
@@ -150,6 +150,8 @@
     // spatial overlays (frontiers / semantic objects / PSG regions / goal)
     if (spatial) {
       this.drawSpatialOverlay(spatial, layout, robot);
+      this.drawSemanticEdges(spatial, layout);
+      this.drawRoute(spatial, layout);
     }
 
     // arrow marker def
@@ -220,28 +222,58 @@
       svg.appendChild(g);
     });
 
-    // Semantic objects with a real map position (plan §95)
+    // Semantic objects with a real map position (plan §95, §12.2).
+    // CONFIRMED entities are primary solid nodes; TENTATIVE are semi-transparent
+    // and visually distinct; STALE are muted.
     var objects = Array.isArray(spatial.semantic_objects) ? spatial.semantic_objects : [];
     objects.forEach(function (obj) {
       if (!obj.map_xyz) return;
       var x = obj.map_xyz[0];
       var y = -obj.map_xyz[1];
+      var status = String(obj.status || "TENTATIVE").toUpperCase();
+      var confirmed = status === "CONFIRMED";
+      var stale = status === "STALE";
       var g = document.createElementNS(ns, "g");
       g.setAttribute("transform", "translate(" + x + "," + y + ")");
       var diamond = document.createElementNS(ns, "rect");
       diamond.setAttribute("x", "-4"); diamond.setAttribute("y", "-4");
       diamond.setAttribute("width", "8"); diamond.setAttribute("height", "8");
       diamond.setAttribute("transform", "rotate(45)");
-      diamond.setAttribute("fill", obj.spatial_quality === "METRIC_RGBD" ? "#34d399" : "#38bdf8");
-      diamond.setAttribute("fill-opacity", "0.6");
+      if (confirmed) {
+        diamond.setAttribute("fill", obj.spatial_quality === "METRIC_RGBD" ? "#34d399" : "#38bdf8");
+        diamond.setAttribute("fill-opacity", "0.9");
+        diamond.setAttribute("stroke", "#ecfdf5");
+        diamond.setAttribute("stroke-width", "1");
+      } else if (stale) {
+        diamond.setAttribute("fill", "#6b7280");
+        diamond.setAttribute("fill-opacity", "0.35");
+      } else {
+        // TENTATIVE
+        diamond.setAttribute("fill", "#38bdf8");
+        diamond.setAttribute("fill-opacity", "0.3");
+        diamond.setAttribute("stroke", "#38bdf8");
+        diamond.setAttribute("stroke-width", "0.8");
+      }
       g.appendChild(diamond);
+      // Object id + label + obs count (plan §12.2)
+      var idText = document.createElementNS(ns, "text");
+      idText.setAttribute("y", "-8");
+      idText.setAttribute("text-anchor", "middle");
+      idText.setAttribute("fill", confirmed ? "#34d399" : "#94a3b8");
+      idText.setAttribute("font-size", "7");
+      idText.textContent = String(obj.object_id || "");
+      g.appendChild(idText);
       var label = document.createElementNS(ns, "text");
       label.setAttribute("y", "12");
       label.setAttribute("text-anchor", "middle");
       label.setAttribute("fill", "#8b95a3");
       label.setAttribute("font-size", "8");
-      label.textContent = String(obj.label || "").slice(0, 8);
+      label.textContent = String(obj.label || "").slice(0, 8) + (obj.observation_count ? "·" + obj.observation_count : "");
       g.appendChild(label);
+      g.addEventListener("click", function (event) {
+        event.stopPropagation();
+        this.showObjectDetail(obj);
+      }.bind(this));
       svg.appendChild(g);
     });
 
@@ -280,6 +312,82 @@
     }
   };
 
+  // Semantic graph edges (MOVED_TO / OBSERVED_FROM) with Place <-> object
+  // links (plan §8).
+  SearchMapRenderer.prototype.drawSemanticEdges = function (spatial, layout) {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = this.svg;
+    var graph = spatial.semantic_graph || null;
+    var edges = (graph && Array.isArray(graph.edges)) ? graph.edges : [];
+    var objects = Array.isArray(spatial.semantic_objects) ? spatial.semantic_objects : [];
+    var objectById = {};
+    objects.forEach(function (obj) { objectById[obj.object_id] = obj; });
+    var places = (graph && Array.isArray(graph.places)) ? graph.places : [];
+
+    // OBSERVED_FROM edges: object -> place thin lines
+    edges.forEach(function (edge) {
+      var rel = String(edge.relation || "").toUpperCase();
+      if (rel !== "OBSERVED_FROM") return;
+      var aName = edge.relation === "OBSERVED_FROM" ? edge.from : edge.to;
+      var bName = edge.relation === "OBSERVED_FROM" ? edge.to : edge.from;
+      var placeLayout = layout["P" === String(aName).slice(0,1) ? aName : bName];
+      var objLayout = null;
+      var objId = edge.relation === "OBSERVED_FROM" ? edge.to : edge.from;
+      if (objectById[objId] && objectById[objId].map_xyz) {
+        objLayout = { x: objectById[objId].map_xyz[0], y: -objectById[objId].map_xyz[1] };
+      } else if (layout[objId]) {
+        objLayout = layout[objId];
+      }
+      if (!placeLayout || !objLayout) return;
+      var line = document.createElementNS(ns, "line");
+      line.setAttribute("x1", placeLayout.x); line.setAttribute("y1", placeLayout.y);
+      line.setAttribute("x2", objLayout.x); line.setAttribute("y2", objLayout.y);
+      line.setAttribute("stroke", "#64748b");
+      line.setAttribute("stroke-width", "0.8");
+      line.setAttribute("stroke-dasharray", "2 3");
+      line.setAttribute("stroke-opacity", "0.5");
+      svg.appendChild(line);
+    });
+  };
+
+  // Route overlay: robot -> waypoints -> target (plan §12.4).
+  SearchMapRenderer.prototype.drawRoute = function (spatial, layout) {
+    var ns = "http://www.w3.org/2000/svg";
+    var svg = this.svg;
+    var route = spatial.route_plan || null;
+    // Legacy fallback: a route may be nested inside semantic_graph.route_plan.
+    if (!route && spatial.semantic_graph && spatial.semantic_graph.route_plan) {
+      route = spatial.semantic_graph.route_plan;
+    }
+    if (!route || !Array.isArray(route.waypoints) || !route.waypoints.length) return;
+    var pts = route.waypoints.map(function (wp) {
+      return { x: wp[0], y: -wp[1] };
+    });
+    if (pts.length < 2) return;
+    var poly = document.createElementNS(ns, "polyline");
+    var points = pts.map(function (p) { return p.x.toFixed(2) + "," + p.y.toFixed(2); }).join(" ");
+    poly.setAttribute("points", points);
+    poly.setAttribute("fill", "none");
+    poly.setAttribute("stroke", "#22d3ee");
+    poly.setAttribute("stroke-width", "3");
+    poly.setAttribute("stroke-opacity", "0.8");
+    poly.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(poly);
+    // Target marker
+    if (route.target_position) {
+      var g = document.createElementNS(ns, "g");
+      g.setAttribute("transform", "translate(" + route.target_position[0] + "," + (-route.target_position[1]) + ")");
+      var star = document.createElementNS(ns, "text");
+      star.setAttribute("text-anchor", "middle");
+      star.setAttribute("dominant-baseline", "central");
+      star.setAttribute("fill", "#22d3ee");
+      star.setAttribute("font-size", "14");
+      star.textContent = "◎";
+      g.appendChild(star);
+      svg.appendChild(g);
+    }
+  };
+
   SearchMapRenderer.prototype.showDetail = function (node) {
     if (!this.detailEl) return;
     var state = resolveState(node, this.data.current_node_id);
@@ -295,6 +403,24 @@
       "<div>语义相关 " + (node.semantic_relevance || 0).toFixed(2) + "</div>" +
       "<div>信息增益 " + (node.information_gain || 0).toFixed(2) + "</div>" +
       "<div>Objects: " + esc((node.objects || []).join(", ") || "-") + "</div>";
+    this.detailEl.innerHTML = html;
+    this.detailEl.classList.remove("hidden");
+  };
+
+  SearchMapRenderer.prototype.showObjectDetail = function (obj) {
+    if (!this.detailEl) return;
+    var html =
+      "<div><b>" + esc(obj.object_id || "") + "</b> <span style='color:" +
+      (String(obj.status || "").toUpperCase() === "CONFIRMED" ? "#34d399" : "#38bdf8") +
+      "'>" + esc(obj.status || "TENTATIVE") + "</span></div>" +
+      "<div>标签 " + esc(obj.label || "") + "</div>" +
+      "<div>map_xyz " + esc((obj.map_xyz || []).map(function (v) { return v.toFixed(2); }).join(", ")) + "</div>" +
+      "<div>置信度 " + (obj.confidence || 0).toFixed(2) + "</div>" +
+      "<div>观测次数 " + (obj.observation_count || 0) + "</div>" +
+      "<div>空间质量 " + esc(obj.spatial_quality || "-") + "</div>" +
+      "<div>seen_from " + esc((obj.seen_from_places || []).join(", ") || "-") + "</div>" +
+      "<div>关联分 " + (obj.association_score || 0).toFixed(2) + "</div>" +
+      "<div>位置方差 " + esc((obj.position_variance_xyz || []).map(function (v) { return v.toFixed(3); }).join(", ") || "-") + "</div>";
     this.detailEl.innerHTML = html;
     this.detailEl.classList.remove("hidden");
   };
@@ -335,7 +461,7 @@
     return layout;
   }
 
-  function fitBounds(layout, robot) {
+  function fitBounds(layout, robot, spatial) {
     var xs = [];
     var ys = [];
     Object.keys(layout).forEach(function (id) {
@@ -343,6 +469,23 @@
     });
     if (robot && robot.x !== undefined && robot.y !== undefined) {
       xs.push(robot.x); ys.push(-(robot.y || 0));
+    }
+    // Include persistent objects with a map position (plan §12.6).
+    var spatial2 = spatial || null;
+    if (spatial2 && Array.isArray(spatial2.semantic_objects)) {
+      spatial2.semantic_objects.forEach(function (obj) {
+        if (obj.map_xyz) { xs.push(obj.map_xyz[0]); ys.push(-obj.map_xyz[1]); }
+      });
+    }
+    // Include route / frontiers positions.
+    var route = spatial2 && (spatial2.route_plan || (spatial2.semantic_graph && spatial2.semantic_graph.route_plan));
+    if (route && Array.isArray(route.waypoints)) {
+      route.waypoints.forEach(function (wp) { xs.push(wp[0]); ys.push(-wp[1]); });
+    }
+    if (spatial2 && Array.isArray(spatial2.frontiers)) {
+      spatial2.frontiers.forEach(function (f) {
+        if (f.position) { xs.push(f.position[0]); ys.push(-f.position[1]); }
+      });
     }
     if (!xs.length) return { minX: -WIDTH / 2, maxX: WIDTH / 2, minY: -HEIGHT / 2, maxY: HEIGHT / 2 };
     var minX = Math.min.apply(null, xs);

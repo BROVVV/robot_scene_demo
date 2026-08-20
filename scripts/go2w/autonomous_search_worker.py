@@ -147,6 +147,35 @@ def build_argv(params: dict[str, Any]) -> list[str]:
     return argv
 
 
+_STARTUP_STAGES = [
+    "SPAWN_WORKER",
+    "WORKER_READY",
+    "LOAD_PIPELINE",
+    "WAIT_RGBD",
+    "WAIT_SPATIAL_PROVIDER",
+    "START_EXPLORER",
+    "RUNNING",
+]
+
+
+def _emit_stage(stage: str, *, state: str = "starting", error: str | None = None) -> None:
+    emit({
+        "type": "worker_status",
+        "session_id": _STATE.get("session_id"),
+        "task_id": _STATE.get("task_id"),
+        "executor_id": _STATE.get("executor_id"),
+        "worker_generation": _STATE.get("worker_generation"),
+        "status": {
+            "state": state,
+            "stage": stage,
+            "stage_started_at": time.time(),
+            "last_progress_at": time.time(),
+            "worker_alive": True,
+            "last_error": error,
+        },
+    })
+
+
 def run_session(params: dict[str, Any]) -> None:
     _STATE["session_id"] = params.get("session_id")
     task_context = params.get("task_context")
@@ -155,18 +184,21 @@ def run_session(params: dict[str, Any]) -> None:
     )
     _STATE["executor_id"] = params.get("executor_id")
     _STATE["worker_generation"] = params.get("worker_generation")
+    _emit_stage("SPAWN_WORKER")
 
     try:
         # Keep imports inside the guarded worker boundary.  ROS/system Python
         # environments can miss an optional package (for example OpenAI); a
         # failed import must still emit an error + terminal session_result so
         # the WebUI cannot restore a phantom STARTING search after refresh.
+        _emit_stage("WORKER_READY")
         import run_semantic_exploration as rse
 
         argv = build_argv(params)
         parser = rse.build_parser()
         args = parser.parse_args(argv)
     except SystemExit as exc:
+        _emit_stage("FAILED", state="failed", error=f"bad start params: {exc}")
         emit({
             "type": "error",
             "session_id": _STATE.get("session_id"),
@@ -196,6 +228,7 @@ def run_session(params: dict[str, Any]) -> None:
             "executor_id": _STATE.get("executor_id"),
             "worker_generation": _STATE.get("worker_generation"),
         }
+        _emit_stage("FAILED", state="failed", error=f"{type(exc).__name__}: {exc}")
         emit({**envelope, "message": f"{type(exc).__name__}: {exc}"})
         emit({
             **envelope,
@@ -209,12 +242,15 @@ def run_session(params: dict[str, Any]) -> None:
         return
     if args.reasoner == "semantic":
         args.reasoner = "semantic_navigation"
+    _emit_stage("LOAD_PIPELINE")
     hook = make_event_hook()
     try:
         if args.replay:
             rc = rse.run_replay(args, hook)
         elif args.backend == "go2w_experimental":
+            _emit_stage("START_EXPLORER")
             rc = rse.run_go2w(args, hook)
+            _emit_stage("RUNNING", state="running")
         else:
             rc = rse._run_offline(args, hook)
     except Exception as exc:  # noqa: BLE001

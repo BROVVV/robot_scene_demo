@@ -146,9 +146,22 @@ def _empty_snapshot() -> dict[str, Any]:
             "frontiers": [],
             "place_graph": None,
             "semantic_objects": [],
+            "semantic_graph": None,
+            "route_plan": None,
+            "map_health": {},
+            "association_debug": [],
             "psg_prior": None,
             "long_term_goal": None,
             "local_goal_progress": None,
+        },
+        "startup": {
+            "stage": "IDLE",
+            "stage_started_at": None,
+            "last_progress_at": None,
+            "worker_alive": False,
+            "worker_state": "idle",
+            "last_worker_message_at": None,
+            "last_error": None,
         },
         "health": {},
         "timeline": [],
@@ -306,6 +319,14 @@ class SearchStateStore:
             self._snapshot["health"] = health
         if payload.get("robot"):
             self._snapshot["robot"].update(payload["robot"])
+        if payload.get("startup"):
+            self._snapshot["startup"] = dict(payload["startup"])
+        if payload.get("worker"):
+            worker = dict(self._snapshot["startup"])
+            worker.update(payload["worker"])
+            worker["last_worker_message_at"] = event.timestamp
+            worker["worker_alive"] = True
+            self._snapshot["startup"] = worker
 
     def _on_observation(self, event: SearchEvent) -> None:
         payload = event.payload
@@ -513,6 +534,8 @@ class SearchStateStore:
 
     def _on_long_term_goal_selected(self, event: SearchEvent) -> None:
         self._snapshot["spatial"]["long_term_goal"] = event.payload.get("intent")
+        if event.payload.get("route_plan"):
+            self._snapshot["spatial"]["route_plan"] = event.payload.get("route_plan")
 
     def _on_local_goal_progress(self, event: SearchEvent) -> None:
         self._snapshot["spatial"]["local_goal_progress"] = event.payload.get("progress")
@@ -532,7 +555,10 @@ class SearchStateStore:
             "edges": list(graph.get("edges") or []),
             "observed_sectors": list(graph.get("observed_sectors") or []),
         }
-        if graph.get("schema_version") == "semantic_navigation_graph_v1":
+        if graph.get("schema_version") in {
+    "semantic_navigation_graph_v1",
+    "semantic_entity_graph_v1",
+}:
             self._snapshot["map"]["semantic_navigation_graph"] = copy.deepcopy(graph)
             # Keep the dedicated spatial endpoints as projections of the same
             # unified graph; they must never become a second source of truth.
@@ -550,6 +576,18 @@ class SearchStateStore:
             )
             self._snapshot["spatial"]["frontiers"] = copy.deepcopy(
                 graph.get("frontiers") or []
+            )
+            self._snapshot["spatial"]["semantic_graph"] = copy.deepcopy(graph)
+            self._snapshot["spatial"]["route_plan"] = copy.deepcopy(
+                graph.get("route_plan") or self._snapshot["spatial"].get("route_plan")
+            )
+            self._snapshot["spatial"]["map_health"] = dict(
+                self._snapshot["spatial"].get("map_health") or {}
+            )
+            self._snapshot["spatial"]["association_debug"] = copy.deepcopy(
+                graph.get("association_debug")
+                or self._snapshot["spatial"].get("association_debug")
+                or []
             )
 
     def _on_paused(self, event: SearchEvent) -> None:

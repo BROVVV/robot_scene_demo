@@ -194,3 +194,109 @@ def scenario_no_target(*, empty_scenes: int = 6) -> MockObservationScene:
 
 def scenario_anchor_then_target() -> MockObservationScene:
     return scenario_target_appears_after(3)
+
+
+def _spatial_provider_for_scene(scene: "MockObservationScene") -> Any:
+    """A minimal fake SpatialProvider that emits map_xyz for scripted objects.
+
+    It ties the object labels observed in the mock scene to concrete map
+    positions (plan §20 deterministic spatial mock).
+    """
+    map_positions = {
+        "办公桌": (1.0, 0.5),
+        "desk": (1.0, 0.5),
+        "垃圾桶": (2.0, 0.5),
+        "green trash bin": (2.0, 0.5),
+        "蓝色垃圾桶": (2.0, 0.5),
+        "饮水机": (0.8, 2.0),
+        "water dispenser": (0.8, 2.0),
+    }
+    class _MockSpatialProvider:
+        def quality(self) -> str:
+            return "RELATIVE_RGBD"
+        def get_pose(self):
+            return None
+        def get_map(self):
+            return None
+        def get_frontiers(self):
+            return []
+        def camera_point_to_spatial(
+            self, xyz_camera, pose=None,
+        ):
+            # Provide a default mild forward projection so camera-local gets a
+            # (relative) map coordinate.
+            if xyz_camera is None:
+                return None
+            return (round(float(xyz_camera[0]), 3), round(float(xyz_camera[1]), 3), 0.0)
+    return _MockSpatialProvider()
+
+
+def scenario_spatial_semantic_search(
+    *,
+    target: str = "绿色垃圾桶",
+    anchor: str = "办公桌",
+) -> MockObservationScene:
+    """Deterministic spatial mock scene for E2E (plan §20).
+
+    Provides a small metric-ish world with scripted map_xyz per object so the
+    whole online spatial stack (map_xyz -> entity association -> route ->
+    decision) can be exercised without a robot.  The returned scene's observer
+    attaches map_xyz to each object's camera_xyz, and exposes a
+    ``spatial_provider`` attribute callers can wire into the pipeline.
+    """
+    obj_map = {
+        anchor: (1.0, 0.5),
+        "办公桌": (1.0, 0.5),
+        target: (2.0, 0.5),
+        "饮水机": (0.8, 2.0),
+        "凳子": (0.2, 1.5),
+    }
+    scenes: list[MockSceneStep] = [
+        MockSceneStep(
+            objects=[anchor],
+            bundle_id="exp_obs_001",
+            anchor_labels=[anchor],
+        ),
+        MockSceneStep(
+            objects=["饮水机", "凳子"],
+            bundle_id="exp_obs_002",
+        ),
+        MockSceneStep(
+            objects=[anchor, target],
+            relations=[
+                {"subject_label": target, "object_label": anchor,
+                 "relation": "near", "confidence": 0.9},
+            ],
+            target_present=True,
+            anchor_labels=[anchor],
+            target_score=0.92,
+            bundle_id="exp_obs_target",
+        ),
+    ]
+    scene = MockObservationScene(scenes=scenes, confirm_after_seen=1)
+
+    base_observe = scene.observer()
+
+    def spatialized_observe() -> LiveObservation:
+        observation = base_observe()
+        for obj in observation.scene_objects:
+            label = str(obj.get("label") or obj.get("label_zh") or obj.get("name") or "")
+            map_xyz = obj_map.get(label) or obj_map.get(_canon(label))
+            if map_xyz is not None:
+                obj["map_xyz"] = [map_xyz[0], map_xyz[1], 0.0]
+                obj["depth_m"] = 1.0
+                obj["bearing_deg"] = 0.0
+                obj["camera_xyz"] = [0.0, 0.0, 1.0]
+                obj["spatial_quality"] = "RELATIVE_RGBD"
+                obj["confidence"] = 0.9
+        scene.last_observation = observation
+        return observation
+
+    # Make scene.observer() return the decorated observer.
+    scene.observer = (lambda: spatialized_observe)  # type: ignore[assignment]
+    scene.spatial_provider = _spatial_provider_for_scene(scene)  # type: ignore[attr-defined]
+    return scene
+
+
+def _canon(label: str) -> str:
+    return label.strip()

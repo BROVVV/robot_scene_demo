@@ -69,6 +69,7 @@
           <div class="kv">
             <div><span>Target</span><b id="st-target">--</b></div>
             <div><span>Phase</span><b id="st-phase">IDLE</b></div>
+            <div id="startup-stage-wrap" class="startup-stage hidden"><span>启动</span><b id="st-startup-stage">--</b><span id="st-startup-error" class="no"></span></div>
             <div><span>Cycle</span><b id="st-cycle">0</b></div>
             <div><span>Elapsed</span><b id="st-elapsed">00:00</b></div>
             <div><span>Match</span><b id="st-match">none</b></div>
@@ -95,6 +96,8 @@
           <div id="dec-intent" class="dec-intent">--</div>
           <div id="dec-reason" class="dec-reason"></div>
           <div id="dec-scores" class="dec-scores"></div>
+          <div class="cell-title" style="margin-top:8px">未选候选</div>
+          <div id="dec-alternatives" class="obs-list muted">无其他候选</div>
           <div class="cell-title" style="margin-top:8px">Candidates</div>
           <div id="dec-candidates" class="obs-list"></div>
           <div class="cell-title" style="margin-top:8px">Decision history</div>

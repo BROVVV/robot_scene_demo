@@ -23,6 +23,19 @@
     health: {},
   };
 
+  var STARTUP_STAGE_ZH = {
+    "IDLE": "空闲",
+    "SPAWN_WORKER": "正在启动搜索进程",
+    "WORKER_READY": "工作进程就绪",
+    "LOAD_PIPELINE": "正在初始化 SemanticNavigation",
+    "WAIT_RGBD": "正在等待 D435 RGB-D",
+    "WAIT_SPATIAL_PROVIDER": "正在连接 RTAB-Map",
+    "START_EXPLORER": "正在启动探索器",
+    "RUNNING": "运行中",
+    "FAILED": "启动异常",
+    "INIT": "初始化",
+  };
+
   var ws = null;
   var wsState = "OFFLINE";
   var wsAttempt = 0;
@@ -484,6 +497,30 @@
     els.stPhase.textContent = s.phase || (s.status || "IDLE");
     els.stCycle.textContent = String(s.cycle || 0);
     els.stElapsed.textContent = fmtDuration(s.elapsed_seconds);
+
+    // Startup stage (plan §4): render explicit progress and disable the start
+    // button while a search is STARTING/RUNNING to avoid the double-start
+    // conflict.
+    var startup = s.startup || {};
+    var startupWrap = document.getElementById("startup-stage-wrap");
+    var startupStageEl = document.getElementById("st-startup-stage");
+    var startupErrorEl = document.getElementById("st-startup-error");
+    if (startupWrap && startupStageEl && startupErrorEl) {
+      if (s.status === "STARTING" || s.status === "RUNNING" || s.status === "PAUSED") {
+        startupWrap.classList.remove("hidden");
+        var stageZh = STARTUP_STAGE_ZH[String(startup.stage || "")] || String(startup.stage || "INIT");
+        startupStageEl.textContent = stageZh;
+        startupErrorEl.textContent = startup.last_error ? (" " + esc(String(startup.last_error))) : "";
+      } else {
+        startupWrap.classList.add("hidden");
+      }
+    }
+    // Start button gating.
+    var startBtn = document.getElementById("btn-search-start");
+    if (startBtn) {
+      var activeStates = ["STARTING", "RUNNING", "PAUSED", "STOPPING"];
+      startBtn.disabled = activeStates.indexOf(s.status || "IDLE") >= 0;
+    }
     var m = appState.targetMatch || {};
     els.stMatch.textContent = m.level || "none";
     els.stAnchor.textContent = (m.anchor_labels || []).length
@@ -562,24 +599,35 @@
       return;
     }
     var g = goal.goal || {};
-    els.decIntent.textContent = g.goal_type || "--";
+
+    // Prefer the real structured reason_zh when available (plan §13.2).
+    var lastDecision = (appState.search || {}).last_decision || null;
+    var structuredReason = lastDecision && lastDecision.reason_zh;
+    var structuredBreakdown = lastDecision && lastDecision.score_breakdown;
+    var selectedIntent = lastDecision && lastDecision.selected_intent;
+
+    els.decIntent.textContent = (selectedIntent && selectedIntent.intent_type) || g.goal_type || "--";
     var detail = goalDetailText(g);
-    els.decReason.textContent = detail;
-    var reasons = (goal.reasons || []).join("；");
-    if (reasons) els.decReason.textContent += (detail ? " — " : "") + reasons;
-    var comps = goal.components || {};
+    if (structuredReason) {
+      els.decReason.textContent = structuredReason;
+    } else {
+      els.decReason.textContent = detail;
+      var reasons = (goal.reasons || []).join("；");
+      if (reasons) els.decReason.textContent += (detail ? " — " : "") + reasons;
+    }
+    // Score breakdown: prefer the structured decision breakdown, fall back to
+    // the selected-goal components.
+    var comps = structuredBreakdown || goal.components || {};
     var scoreRows = [
-      ["semantic_relevance", "语义相关"],
-      ["information_gain", "信息增益"],
+      ["semantic_relevance", "语义相关度"],
+      ["spatial_gain", "空间信息增益"],
+      ["psg_prior", "PSG 先验"],
       ["novelty", "新颖度"],
-      ["frontier_bonus", "前沿奖励"],
-      ["continuity_bonus", "连续性"],
+      ["continuity", "连续性"],
+      ["route_cost_penalty", "路径代价"],
       ["visited_penalty", "已访问惩罚"],
       ["negative_evidence_penalty", "负证据惩罚"],
-      ["navigation_failure_penalty", "导航失败惩罚"],
-      ["estimated_motion_cost", "运动代价"],
-      ["oscillation_penalty", "振荡惩罚"],
-      ["score", "总分"],
+      ["score", "综合"],
     ];
     els.decScores.innerHTML = scoreRows.map(function (row) {
       var key = row[0];
@@ -588,6 +636,21 @@
       return '<div class="score-row"><span>' + row[1] + "</span><b>" +
         Number(value).toFixed(2) + "</b></div>";
     }).join("");
+
+    // Alternatives with real rejection reasons (plan §13.4).
+    var alternatives = (lastDecision && lastDecision.alternatives) || [];
+    var altEl = document.getElementById("dec-alternatives");
+    if (altEl) {
+      if (!alternatives.length) {
+        altEl.textContent = "无其他候选";
+      } else {
+        altEl.innerHTML = alternatives.map(function (alt) {
+          return '<div class="alt-row"><b>' + esc(alt.candidate_id || "候选") +
+            "</b> " + (alt.score == null ? "" : " " + Number(alt.score).toFixed(2)) +
+            '<br><span class="muted">' + esc(alt.rejected_reason_zh || "") + "</span></div>";
+        }).join("");
+      }
+    }
   }
 
   function renderTaskUnderstanding() {

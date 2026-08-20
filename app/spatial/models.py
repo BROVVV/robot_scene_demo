@@ -112,16 +112,22 @@ class PlaceNode:
     observation_ids: list[str] = field(default_factory=list)
     heading_coverage: dict[str, int] = field(default_factory=dict)
     observed_object_ids: list[str] = field(default_factory=list)
+    observed_object_labels: list[str] = field(default_factory=list)
     semantic_interest: float = 0.0
     visit_count: int = 0
     negative_evidence: int = 0
     target_candidate: bool = False
     target_confirmed: bool = False
+    revisited: bool = False
+    pose_observation_count: int = 0
+    pose_mean: SpatialPose | None = None
+    last_pose_update: float | None = None
     provenance: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         value = asdict(self)
         value["pose"] = self.pose.to_dict() if self.pose else None
+        value["pose_mean"] = self.pose_mean.to_dict() if self.pose_mean else None
         return value
 
 

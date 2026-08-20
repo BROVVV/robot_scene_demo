@@ -541,6 +541,26 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     import rclpy  # noqa: F401  (used by the observer closure; rclpy.init already done)
     settings = get_settings()
     env = node._load_detector_env()
+    # `vision_model` is used by the nested ``analyze_semantic`` observer.  It
+    # is a local variable of the caller ``run_go2w`` and is never passed into
+    # this function, so re-derive it here (fixes NameError in the worker).
+    vision_model = str(args.llm_model or settings.vision_model or "Qwen/Qwen3-VL-8B-Instruct")
+    # The detector subprocess (SiliconFlow vision worker) must reach the API
+    # directly.  The host shell exports http(s)/socks proxies (HTTP_PROXY etc.)
+    # which otherwise route the OpenAI SDK through a proxy and stall the
+    # vision call far past its timeout.  Strip them for child processes.
+    for _proxy_key in (
+        "http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
+        "ALL_PROXY", "all_proxy", "socks_proxy", "SOCKS_PROXY", "ws_proxy",
+    ):
+        env.pop(_proxy_key, None)
+    # Ensure the detector subprocess uses a real interpreter on this machine
+    # instead of the author's hard-coded path.
+    if not env.get("SILICONFLOW_PYTHON") and not env.get("GROUNDED_SAM_PYTHON"):
+        env["SILICONFLOW_PYTHON"] = os.environ.get(
+            "GO2W_CONDA_PYTHON",
+            "/home/mxt/anaconda3/envs/go2_robot_scene_demo/bin/python",
+        )
     spool_root = args.spool_root
     state: dict[str, Any] = {"image_path": None, "semantic": None}
     operator_authorized = bool(
@@ -662,6 +682,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     # Optional SemanticNavigation V2 spatial exploration state (plan §62-§90).
     place_graph = None
     semantic_map = None
+    entity_graph = None
+    route_planner = None
     spatial_memory = None
     camera_provider = None
     bev_mapper = None
@@ -670,22 +692,36 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     spatial_reasoner = None
     local_executor = None
     if args.spatial_v2:
+        from app.navigation.decision_record import build_decision_record
         from app.navigation.local_goal_executor import LocalGoalExecutor
         from app.navigation.long_term_goal_selector import LongTermGoalSelector
+        from app.navigation.semantic_route_planner import SemanticRoutePlanner
         from app.reasoning.semantic_navigation.semantic_prior_provider import RuleSemanticPriorProvider
         from app.reasoning.semantic_navigation.spatial_reasoner import SpatialSearchReasoner
         from app.spatial.camera_local_spatial_provider import CameraLocalSpatialProvider
         from app.spatial.frontier_extractor import FrontierExtractor
         from app.spatial.lightweight_depth_bev import LightweightDepthBEVMapper
         from app.spatial.place_graph import PlaceGraph
+        from app.spatial.semantic_entity_graph import SemanticEntityGraph
         from app.spatial.semantic_object_map import SemanticObjectMap
         from app.spatial.spatial_memory import SpatialMemory
 
         place_graph = PlaceGraph(
-            merge_distance_m=0.25,
+            merge_distance_m=0.35,
             relocation_min_displacement_m=0.10,
         )
-        semantic_map = SemanticObjectMap()
+        semantic_map = SemanticObjectMap(
+            merge_distance_m=0.4,
+            confirm_min_observations=2,
+        )
+        entity_graph = SemanticEntityGraph(
+            place_graph=place_graph, object_map=semantic_map, frame_id="map"
+        )
+        route_planner = SemanticRoutePlanner(
+            inflation_radius_m=0.25,
+            allow_unknown=False,
+            max_waypoints=32,
+        )
         spatial_memory = SpatialMemory()
         if args.rtabmap:
             from app.spatial.rtabmap_spatial_provider import RtabmapSpatialProvider
@@ -720,6 +756,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         state["spatial_v2"] = {
             "place_graph": place_graph,
             "semantic_map": semantic_map,
+            "entity_graph": entity_graph,
+            "route_planner": route_planner,
             "spatial_memory": spatial_memory,
             "local_executor": local_executor,
         }
@@ -875,6 +913,43 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 quality="relative",
                 source="go2w_wheel_odom",
             )
+            # Phase 1 (plan §5.6): establish the spatial provider pose first so
+            # camera_xyz -> map_xyz can run before entity association.
+            if camera_provider is not None:
+                spin = getattr(camera_provider, "spin_once", None)
+                if spin is not None:
+                    spin()
+                camera_provider.set_pose(spatial_pose)
+            spatial_provenance = {}
+            if camera_provider is not None and hasattr(camera_provider, "transform_provenance"):
+                try:
+                    spatial_provenance = camera_provider.transform_provenance()
+                except Exception:  # noqa: BLE001
+                    spatial_provenance = {}
+            # Phase 2: write map_xyz into each localized observation BEFORE
+            # entity association so cross-view fusion can use world coords.
+            map_xyz_by_label: dict[str, tuple[float, float, float]] = {}
+            if camera_provider is not None:
+                provider_quality = getattr(camera_provider, "quality", lambda: "CAMERA_LOCAL")()
+                for obs_item in localized:
+                    if getattr(obs_item, "camera_xyz", None) is None:
+                        continue
+                    try:
+                        mapped = camera_provider.camera_point_to_spatial(
+                            obs_item.camera_xyz, pose=spatial_pose
+                        )
+                    except Exception:  # noqa: BLE001 - degraded mapping must not crash
+                        mapped = None
+                    if mapped is not None:
+                        obs_item.map_xyz = mapped
+                        obs_item.spatial_quality = provider_quality
+                        obs_item.provenance = {
+                            **dict(obs_item.provenance or {}),
+                            **spatial_provenance,
+                            "map_frame": spatial_provenance.get("target_frame", "map"),
+                        }
+                        if getattr(obs_item, "label", None):
+                            map_xyz_by_label[obs_item.label] = mapped
             place_id, created = place_graph.register_observation(
                 observation_id=observation.bundle_id,
                 heading_sector=semantic.heading_sector,
@@ -886,16 +961,77 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             )
             state["place_id"] = place_id
             state["created_place"] = created
+            update_result = None
             if semantic_map is not None:
-                semantic_map.update(localized, place_id=place_id, now=observation.timestamp)
-            if camera_provider is not None:
-                spin = getattr(camera_provider, "spin_once", None)
-                if spin is not None:
-                    spin()
-                camera_provider.set_pose(spatial_pose)
+                update_result = semantic_map.update_with_associations(
+                    localized,
+                    place_id=place_id,
+                    now=observation.timestamp,
+                    frame_id=observation.rgbd_frame_id,
+                )
             if bev_mapper is not None and rgbd_frame is not None:
                 bev_mapper.update(rgbd_frame, spatial_pose)
             state["localized"] = localized
+
+            # Phase 3: publish spatial events for the WebUI, including the real
+            # map_xyz on every localized object.
+            if camera_provider is not None and observation.rgbd_frame_id:
+                node._write({
+                    "event": "rgbd_frame_updated",
+                    "frame_id": observation.rgbd_frame_id,
+                    "depth_ref": observation.depth_ref,
+                    "intrinsics": observation.intrinsics,
+                    "depth_scale": observation.depth_scale,
+                    "spatial_quality": getattr(camera_provider, "quality", lambda: "CAMERA_LOCAL")(),
+                    "host_s": node._host_s(),
+                })
+            node._write({
+                "event": "spatial_pose_updated",
+                "pose": spatial_pose.to_dict(),
+                "quality": getattr(camera_provider, "quality", lambda: "CAMERA_LOCAL")(),
+                "host_s": node._host_s(),
+            })
+            for obs_item in localized:
+                if getattr(obs_item, "map_xyz", None) is None:
+                    continue
+                node._write({
+                    "event": "semantic_object_localized",
+                    "object": {
+                        "object_id": state.get("persistent_id_for_label", {}).get(obs_item.label),
+                        "label": obs_item.label,
+                        "camera_xyz": list(obs_item.camera_xyz) if obs_item.camera_xyz else None,
+                        "map_xyz": list(obs_item.map_xyz),
+                        "spatial_quality": obs_item.spatial_quality,
+                        "association_score": getattr(obs_item, "confidence", 0.0),
+                        "status": "OBSERVED",
+                    },
+                    "host_s": node._host_s(),
+                })
+            node._write({
+                "event": "place_updated",
+                "place": place_graph.places[place_id].to_dict(),
+                "host_s": node._host_s(),
+            })
+            if update_result is not None and entity_graph is not None:
+                entity_graph.sync_from_observation(
+                    observation_id=observation.bundle_id,
+                    heading_sector=semantic.heading_sector,
+                    labels=observation.object_labels,
+                    spatial_objects=localized,
+                    pose=spatial_pose,
+                    timestamp=observation.timestamp,
+                    place_id=place_id,
+                    update_result=update_result,
+                )
+                # Map persistent ids back to labels for the object events above.
+                persistent_by_label: dict[str, str] = {}
+                for oid, entry in semantic_map.objects.items():
+                    persistent_by_label[entry.label] = entry.object_id
+                persistent_by_label.update(state.get("persistent_id_for_label", {}))
+                for entry in semantic_map.objects.values():
+                    if entry.label in persistent_by_label:
+                        persistent_by_label[entry.label] = entry.object_id
+                state["persistent_id_for_label"] = persistent_by_label
 
         return observation
 
@@ -1056,6 +1192,30 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             {key: value.to_dict() for key, value in spatial_memory.frontiers.items()}
             if spatial_memory is not None else {}
         )
+        # Build route costs for every frontier through the shared route
+        # planner so the LongTermGoalSelector sees real path cost / reachability.
+        route_costs: dict[str, dict[str, Any]] = {}
+        if route_planner is not None and camera_provider is not None:
+            rt_pose = camera_provider.get_pose() or state.get("spatial_pose")
+            for f in frontiers:
+                rp = route_planner.plan(
+                    start_pose=rt_pose if rt_pose is not None else None,
+                    target_type="FRONTIER_CANDIDATE",
+                    target_id=f.frontier_id,
+                    target_position=f.position,
+                    map_snapshot=(
+                        camera_provider.get_map()
+                        if hasattr(camera_provider, "get_map") else None
+                    ),
+                    place_graph=place_graph,
+                    object_map=semantic_map,
+                    frame_id="map",
+                )
+                if rp is not None:
+                    route_plan_dict = rp.to_dict()
+                    route_costs[f.frontier_id] = route_plan_dict
+                    if entity_graph is not None:
+                        entity_graph.set_route_plan(route_plan_dict)
         scored = spatial_reasoner.propose(
             graph_match=graph_match,
             frontiers=frontiers,
@@ -1063,6 +1223,9 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             semantic_map=semantic_map,
             psg_prior=psg_prior,
             frontier_memory=frontier_memory,
+            route_costs=route_costs,
+            semantic_relevance={f.frontier_id: 0.0 for f in frontiers},
+            current_yaw_deg=current_yaw_deg,
         )
         if scored is None:
             return []
@@ -1078,19 +1241,128 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             return []
         goal.semantic_relevance = max(0.0, min(1.0, scored.score))
         goal.expected_information_gain = intent.spatial_gain
-        goal.provenance = {**goal.provenance, "intent": intent.to_dict()}
+        goal.provenance = {
+            **goal.provenance,
+            "intent": intent.to_dict(),
+            "scored_intent": scored.to_dict(),
+            "route_plan": route_costs.get(intent.target_frontier_id)
+            if intent.target_frontier_id else None,
+        }
+        # Publish real long-term goal selection + decision record.
+        if entity_graph is not None:
+            selected_route = route_costs.get(intent.target_frontier_id)
+            if selected_route:
+                entity_graph.set_route_plan(selected_route)
+        _publish_decision_record(
+            cycle=state.get("cycle", 0),
+            match_state=match_state,
+            scored=scored,
+            goal=goal,
+            intent=intent,
+            observation=observation,
+            route_plan=route_costs.get(intent.target_frontier_id),
+        )
         return [goal]
 
+    def _publish_decision_record(
+        *,
+        cycle: int,
+        match_state: str,
+        scored: Any,
+        goal: Any,
+        intent: Any,
+        observation: Any,
+        route_plan: dict[str, Any] | None,
+    ) -> None:
+        """Build and emit a real structured DecisionRecord (plan §10)."""
+        from app.navigation.decision_record import (
+            alternative_from_candidate,
+            build_decision_record,
+        )
+
+        breakdown = dict(scored.components or {})
+        matched_normalized = {
+            "ZERO": "ZERO", "PARTIAL": "PARTIAL", "STRONG": "STRONG",
+            "VERIFY": "VERIFY",
+        }.get(str(match_state).upper(), str(match_state).upper())
+        record = build_decision_record(
+            cycle=int(cycle),
+            match_state=matched_normalized,
+            selected_intent=intent.to_dict(),
+            selected_goal=goal.to_dict(),
+            next_motion_command={"instruction_zh": goal.semantic_reason},
+            score=float(scored.score),
+            score_breakdown=breakdown,
+            evidence={
+                "anchor_object_ids": [
+                    entry.object_id for entry in (semantic_map.objects.values() if semantic_map else [])
+                    if getattr(entry, "status", "") == "CONFIRMED"
+                ][:3],
+                "anchor_labels": getattr(observation, "scene_objects", None)
+                and [
+                    str(item.get("label_zh") or item.get("label") or "")
+                    for item in observation.scene_objects[:3]
+                ]
+                or [],
+                "current_place_id": place_graph.current_place().place_id
+                if place_graph and place_graph.current_place() else None,
+                "spatial_quality": getattr(camera_provider, "quality", lambda: "CAMERA_LOCAL")(),
+                "route_id": (route_plan or {}).get("route_id"),
+            },
+            alternatives=[],
+            map_revision=entity_graph.revision if entity_graph is not None else 0,
+            canonical_target=args.target,
+            task_text=args.target,
+            current_place_id=place_graph.current_place().place_id
+            if place_graph and place_graph.current_place() else None,
+            session_id=args.session_id or "",
+        )
+        state["last_decision"] = record.to_dict()
+        node._write({
+            "event": "long_term_goal_selected",
+            "intent": intent.to_dict(),
+            "route_plan": route_plan,
+            "scored": scored.to_dict(),
+            "host_s": node._host_s(),
+        })
+        node._write({
+            "event": "decision_recorded",
+            "decision": record.to_dict(),
+            "host_s": node._host_s(),
+        })
+        node._write({
+            "event": "local_goal_progress",
+            "progress": {
+                "goal_id": goal.goal_id,
+                "goal_type": goal.goal_type,
+                "decision_id": record.decision_id,
+            },
+            "host_s": node._host_s(),
+        })
+
     def spatial_planner(candidates: list[Any], **kwargs: Any) -> Any:
+        """Real explainable planner: score the produced goal from the intent.
+
+        The score and components come from the LongTermGoalSelector's real
+        ScoredIntent rather than a hard-coded ``spatial_v2=1.0``.
+        """
         from app.navigation.exploration_planner import ScoredGoal
 
         if not candidates:
             return None
+        goal = candidates[0]
+        prov = dict(goal.provenance or {})
+        scored_intent = prov.get("scored_intent") or {}
+        score = float(scored_intent.get("score", 0.0) or 0.0)
+        components = dict(scored_intent.get("components", {}) or {})
+        reasons = list(scored_intent.get("reasons", []) or [])
+        if not reasons:
+            reasons = [goal.semantic_reason or "semantic navigation intent"]
         return ScoredGoal(
-            goal=candidates[0],
-            score=1.0,
-            components={"spatial_v2": 1.0},
-            reasons=["SemanticNavigation V2 spatial intent"],
+            goal=goal,
+            score=score if score > 0 else 0.5,
+            components=components if components else {"semantic_relevance": score or 0.5},
+            reasons=reasons,
         )
 
     # ---- backend ---------------------------------------------------------------

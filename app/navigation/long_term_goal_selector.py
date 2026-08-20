@@ -2,6 +2,9 @@
 
 This is the module that separates *where to explore* (Frontier / Anchor Region /
 Target Viewpoint) from *how to execute it* (LocalGoalExecutor).
+
+It produces a :class:`ScoredIntent` whose ``components`` and ``reasons`` are
+real explainable numbers, not placeholder ``spatial_v2=1.0``.
 """
 
 from __future__ import annotations
@@ -54,6 +57,13 @@ class LongTermGoalSelector:
         psg_verify_weight: float = 0.0,
         travel_cost_weight: float = 0.25,
         visited_penalty: float = 0.2,
+        semantic_relevance_weight: float = 0.30,
+        spatial_gain_weight: float = 0.25,
+        psg_prior_weight: float = 0.20,
+        novelty_weight: float = 0.10,
+        continuity_weight: float = 0.05,
+        route_cost_weight: float = 0.20,
+        negative_evidence_weight: float = 0.20,
     ) -> None:
         self.psg_weights = {
             MATCH_ZERO: psg_zero_weight,
@@ -63,6 +73,16 @@ class LongTermGoalSelector:
         }
         self.travel_cost_weight = float(travel_cost_weight)
         self.visited_penalty = float(visited_penalty)
+        self.weights = {
+            "semantic_relevance": float(semantic_relevance_weight),
+            "spatial_gain": float(spatial_gain_weight),
+            "psg_prior": float(psg_prior_weight),
+            "novelty": float(novelty_weight),
+            "continuity": float(continuity_weight),
+            "route_cost": float(route_cost_weight),
+            "visited_penalty": float(visited_penalty),
+            "negative_evidence": float(negative_evidence_weight),
+        }
 
     def select(
         self,
@@ -73,6 +93,9 @@ class LongTermGoalSelector:
         semantic_map: SemanticObjectMap | None = None,
         psg_prior: SemanticPrior | None = None,
         frontier_memory: dict[str, dict[str, Any]] | None = None,
+        route_costs: dict[str, dict[str, Any]] | None = None,
+        semantic_relevance: dict[str, float] | None = None,
+        current_yaw_deg: float = 0.0,
     ) -> ScoredIntent | None:
         match_state = match_state.upper()
         if match_state in {MATCH_STRONG, MATCH_VERIFY}:
@@ -85,6 +108,9 @@ class LongTermGoalSelector:
             place_graph=place_graph,
             psg_prior=psg_prior,
             frontier_memory=frontier_memory or {},
+            route_costs=route_costs or {},
+            semantic_relevance=semantic_relevance or {},
+            current_yaw_deg=current_yaw_deg,
         )
 
     def _select_frontier(
@@ -95,27 +121,89 @@ class LongTermGoalSelector:
         place_graph: PlaceGraph | None,
         psg_prior: SemanticPrior | None,
         frontier_memory: dict[str, dict[str, Any]],
+        route_costs: dict[str, dict[str, Any]],
+        semantic_relevance: dict[str, float],
+        current_yaw_deg: float,
     ) -> ScoredIntent | None:
         if not frontiers:
             return None
         psg_weight = self.psg_weights.get(match_state, 0.5)
         psg_scores = (psg_prior.frontier_scores if psg_prior else {}) or {}
         scored: list[ScoredIntent] = []
+        current_place = place_graph.current_place() if place_graph is not None else None
+        current_place_id = current_place.place_id if current_place is not None else None
         for frontier in frontiers:
+            components: dict[str, float] = {}
             spatial = max(0.0, min(1.0, frontier.spatial_information_gain))
+            components["spatial_gain"] = spatial
+
+            semantic = max(
+                0.0,
+                min(
+                    1.0,
+                    float(semantic_relevance.get(frontier.frontier_id, 0.0)),
+                ),
+            )
+            components["semantic_relevance"] = semantic
+
             psg = max(0.0, min(1.0, float(psg_scores.get(frontier.frontier_id, 0.0)))) * psg_weight
-            distance = frontier.distance_m if frontier.distance_m is not None else 0.5
-            travel = min(1.0, distance / 5.0) * self.travel_cost_weight
+            components["psg_prior"] = psg
+
             memory = frontier_memory.get(frontier.frontier_id, {})
-            visited = min(1.0, int(memory.get("visit_count", 0)) / 3.0) * self.visited_penalty
-            score = spatial + psg - travel - visited
+            visit_count = int(memory.get("visit_count", 0) or 0)
+            novelty = max(0.0, min(1.0, 1.0 - visit_count / max(1, 3)))
+            components["novelty"] = novelty
+
+            bearing = frontier.bearing_deg
+            continuity = 1.0
+            if bearing is not None:
+                dyaw = abs(((float(bearing) - float(current_yaw_deg) + 180.0) % 360.0) - 180.0)
+                continuity = max(0.0, min(1.0, 1.0 - dyaw / 180.0))
+            components["continuity"] = continuity
+
+            route_info = route_costs.get(frontier.frontier_id, {})
+            route_cost = 0.0
+            route_reachable = bool(route_info.get("reachable", True))
+            if route_info.get("path_length_m") is not None:
+                route_cost = min(1.0, float(route_info["path_length_m"]) / 5.0)
+            elif frontier.distance_m is not None:
+                route_cost = min(1.0, float(frontier.distance_m) / 5.0)
+            route_penalty = route_cost if route_reachable else 1.0
+            components["route_cost_penalty"] = route_penalty
+
+            visited = min(1.0, visit_count / 3.0)
+            components["visited_penalty"] = visited
+
+            negative = 0.0
+            if current_place is not None and current_place.place_id in (place_graph.places if place_graph else {}):
+                negative = min(1.0, current_place.negative_evidence * 0.35)
+            if negative == 0.0:
+                negative = min(1.0, float(memory.get("negative_evidence", 0) or 0) * 0.35)
+            components["negative_evidence_penalty"] = negative
+
+            score = (
+                self.weights["semantic_relevance"] * components["semantic_relevance"]
+                + self.weights["spatial_gain"] * components["spatial_gain"]
+                + self.weights["psg_prior"] * components["psg_prior"]
+                + self.weights["novelty"] * components["novelty"]
+                + self.weights["continuity"] * components["continuity"]
+                - self.weights["route_cost"] * components["route_cost_penalty"]
+                - self.weights["visited_penalty"] * components["visited_penalty"]
+                - self.weights["negative_evidence"] * components["negative_evidence_penalty"]
+            )
             reasons = []
+            if semantic > 0:
+                reasons.append(f"semantic relevance {semantic:.2f}")
             if spatial > 0:
                 reasons.append(f"spatial gain {spatial:.2f}")
             if psg > 0:
                 reasons.append(f"PSG prior {psg:.2f}")
-            if travel > 0:
-                reasons.append(f"travel {travel:.2f}")
+            if route_penalty > 0:
+                reasons.append(f"route cost {route_penalty:.2f}")
+            if visited > 0:
+                reasons.append(f"visited penalty {visited:.2f}")
+            if negative > 0:
+                reasons.append(f"negative evidence {negative:.2f}")
             intent = ExplorationIntent(
                 intent_id=f"intent_{len(scored) + 1:03d}",
                 intent_type=INTENT_EXPLORE_FRONTIER,
@@ -123,23 +211,20 @@ class LongTermGoalSelector:
                 preferred_position=frontier.position,
                 preferred_bearing_deg=frontier.bearing_deg,
                 semantic_reason="; ".join(reasons) or "frontier exploration",
-                semantic_score=0.0,
+                semantic_score=semantic,
                 psg_score=psg,
                 spatial_gain=spatial,
-                travel_cost=travel,
+                travel_cost=route_cost,
                 provenance={
                     "frontier": frontier.to_dict(),
                     "match_state": match_state,
+                    "route_plan": route_info,
+                    "current_place_id": current_place_id,
                 },
             )
-            scored.append(ScoredIntent(intent, score, {
-                "spatial_gain": spatial,
-                "psg_prior": psg,
-                "travel_cost": travel,
-                "visited_penalty": visited,
-            }, reasons))
+            scored.append(ScoredIntent(intent, score, components, reasons))
         scored.sort(key=lambda item: item.score, reverse=True)
-        return scored[0]
+        return scored[0] if scored else None
 
     def _select_anchor_region(self, psg_prior: SemanticPrior) -> ScoredIntent:
         # Pick the highest-confidence PSG region that is still predicted.
@@ -164,13 +249,18 @@ class LongTermGoalSelector:
             travel_cost=0.0,
             provenance={"source": "psg_semantic_region", "region_id": region.region_id},
         )
-        return ScoredIntent(intent, score=0.8, components={"semantic": 0.8, "psg": 0.8},
-                            reasons=["PARTIAL match", "anchor spatially located", "PSG region"])
+        return ScoredIntent(
+            intent,
+            score=0.8,
+            components={"semantic": region.confidence, "psg": region.confidence, "spatial_gain": 0.4},
+            reasons=["PARTIAL match", "anchor spatially located", "PSG region"],
+        )
 
     def _select_verify(self, *, semantic_map: SemanticObjectMap | None, match_state: str) -> ScoredIntent:
         intent_type = INTENT_VERIFY_TARGET if match_state == MATCH_VERIFY else INTENT_APPROACH_TARGET
         bearing = None
         object_id = None
+        confidence = 0.9
         if semantic_map is not None:
             best = max(
                 semantic_map.objects.values(),
@@ -180,17 +270,22 @@ class LongTermGoalSelector:
             if best is not None:
                 bearing = best.bearing_deg
                 object_id = best.object_id
+                confidence = best.confidence
         intent = ExplorationIntent(
             intent_id="intent_verify_target",
             intent_type=intent_type,
             target_object_id=object_id,
             preferred_bearing_deg=bearing,
             semantic_reason="STRONG/VERIFY target candidate requires real visual verification",
-            semantic_score=1.0,
+            semantic_score=confidence,
             psg_score=0.0,
             spatial_gain=0.0,
             travel_cost=0.0,
             provenance={"source": "semantic_navigation_v2", "match_state": match_state},
         )
-        return ScoredIntent(intent, score=1.0, components={"semantic": 1.0},
-                            reasons=[f"{match_state} match -> {intent_type}"])
+        return ScoredIntent(
+            intent,
+            score=confidence,
+            components={"semantic": confidence, "spatial_gain": 0.0, "route_cost_penalty": 0.0},
+            reasons=[f"{match_state} match -> {intent_type}, detected candidate confidence {confidence:.2f}"],
+        )

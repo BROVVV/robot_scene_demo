@@ -397,6 +397,69 @@ bash scripts/go2w/start_rgbd_spatial_stack.sh start
 
 详细文档：`docs/RGBD_SEMANTIC_NAVIGATION_V2_SPATIAL_EXPLORATION.md`。
 
+### 在线语义建图 × 导航融合 × 可解释决策（2026-08-19 一次性修改）
+
+本次修改把视觉识别结果从“一次性 detection”升级为**持久空间语义世界模型**
+（Persistent Spatial Semantic World Model），并打通了
+`camera_xyz → map_xyz → Place/Object 实体图 → 路线 → 结构化决策 → WebUI`。
+
+#### 新模块
+
+```text
+app/spatial/spatial_transform.py         # 纯 Python camera→base→world 变换（可离线测试）
+app/spatial/semantic_entity_graph.py     # PLACE/OBJECT + MOVED_TO/OBSERVED_FROM 实体图
+app/navigation/semantic_route_planner.py # metric grid A* + 拓扑 PlaceGraph 路线回退
+app/navigation/decision_record.py        # 结构化、可复现、可解释的决策记录
+```
+
+#### 升级的既有模块
+
+```text
+app/spatial/rtabmap_spatial_provider.py  # 实现 camera_point_to_spatial（TF2 优先 + nominal 回退）
+app/spatial/place_graph.py               # 全局最近 Place 关联 / revisit / movement edge / pose 融合
+app/spatial/semantic_object_map.py       # 一对一 data association + 动态阈值 + 概率位置融合 + lifecycle
+app/navigation/long_term_goal_selector.py# 真实 semantic_relevance / route_cost / negative_evidence 评分
+app/live_robot/search_state_store.py     # spatial.semantic_graph / route_plan / startup stage
+```
+
+#### 关键链路
+
+1. **camera_xyz → map_xyz**：D435 optical 帧 → base_link（轴约定修正）→ map/odom。
+   TF2 可用时走真值；否则用 nominal 外参 + 平面 yaw 回退（声明为 `RELATIVE_RGBD`，
+   绝不假装 `METRIC_RGBD`）。
+2. **实体去重**：几何为主证据、语义为 gate、一对一 greedy 分配；`obj_id` 稳定持久，
+   跨视角回到同一物体不复建节点，两个并排同类物体不会被误合并。
+3. **路线**：`SemanticRoutePlanner` 在 occupancy grid 上做膨胀 A*，无地图时用
+   PlaceGraph 拓扑最短路径。
+4. **决策**：`DecisionRecord` 携带真实 `score_breakdown`、证据、未选候选原因、
+   `reason_zh`（规则模板，无 LLM chain-of-thought），不再是 `spatial_v2=1.0` 占位。
+
+#### 真机启动顺序
+
+```bash
+# 1) 健康检查
+bash scripts/go2w/check_go2w_ready.sh --json
+
+# 2) D435 + RTAB 空间栈（含 TF 健康检查）
+bash scripts/go2w/start_rgbd_spatial_stack.sh start
+bash scripts/go2w/start_rgbd_spatial_stack.sh check
+
+# 3) dry-run（零运动验证空间链）
+/usr/bin/python3 scripts/go2w/run_semantic_exploration.py \
+  --target "绿色垃圾桶" --backend go2w_experimental --reasoner semantic_navigation \
+  --rgbd-source --spatial-v2 --rtabmap --dry-run-motion \
+  --max-planning-cycles 5 --max-motion-steps 5
+
+# 4) WebUI（rtabmap=auto，无 RTAB 时自动降级）
+bash scripts/go2w/start_autonomous_search_web.sh --enable-autonomous-motion
+```
+
+#### 已知 degraded 行为
+
+- 无 RTAB → `RELATIVE_RGBD`（BEV / nominal 外参）
+- TF 不可用 → nominal optical 外参
+- 无 metric backend → 短步 receding-horizon 执行
+
 ### WebUI 真机验证结果（2026-08-17，机器狗重启后）
 
 | 验收项 | 结果 |
