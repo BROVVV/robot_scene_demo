@@ -173,6 +173,12 @@ class SemanticNavigationGraph:
                 },
                 **frontier,
             })
+        try:
+            _ot = self.object_topology_snapshot()
+        except Exception as _e:  # noqa: BLE001 - display projection must never crash search
+            _ot = {"schema_version": "semantic_object_topology_v1", "revision": self.revision,
+                   "generated_at": 0.0, "nodes": [], "edges": [],
+                   "stats": {"node_count": 0, "edge_count": 0}}
         return {
             "schema_version": "semantic_navigation_graph_v1",
             "revision": self.revision,
@@ -183,7 +189,7 @@ class SemanticNavigationGraph:
             "objects": objects,
             "frontiers": frontiers,
             "observations": list(self.observations),
-            "object_topology": self.object_topology_snapshot(),
+            "object_topology": _ot,
         }
 
     def object_topology_snapshot(self) -> dict[str, Any]:
