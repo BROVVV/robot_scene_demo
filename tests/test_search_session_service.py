@@ -120,9 +120,14 @@ def test_search_exhausted() -> None:
     service = _service(scenario="no_target")
     result = _start(service, max_planning_cycles=50, max_motion_steps=50)
     assert result["ok"] is True
-    _wait_status(service, {"SEARCH_EXHAUSTED", "FINISHED", "FAILED"})
+    _wait_status(service, {"SEARCH_EXHAUSTED", "FINISHED", "FAILED",
+                            "MAX_STEPS_REACHED", "MAX_PLANNING_CYCLES_REACHED"})
     state = service.state_snapshot()
-    assert state["result"] == "SEARCH_EXHAUSTED"
+    # 新语义：未找到目标时机器人会持续探索到预算为止，而不是在约 8 轮
+    # “连续无新信息”就被 SEARCH_EXHAUSTED 提前终止。
+    assert state["result"] in {"SEARCH_EXHAUSTED", "MAX_STEPS_REACHED",
+                                "MAX_PLANNING_CYCLES_REACHED", "FINISHED"}
+    assert (state.get("summary") or {}).get("planning_cycles", 0) >= 8
     service.shutdown()
 
 

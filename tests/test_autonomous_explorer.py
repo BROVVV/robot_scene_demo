@@ -77,8 +77,11 @@ class TestAutonomousExplorerE2E(unittest.TestCase):
                                           max_planning_cycles=40)
         explorer = _explorer(scene, policy=policy)
         result = explorer.run()
-        self.assertIn(result.result, {"SEARCH_EXHAUSTED", "MAX_STEPS_REACHED"})
-        self.assertLess(result.planning_cycles, 40)
+        # 机器狗仍在成功移动探索：应持续找直到预算，而不是在 8 轮左右被
+        # “连续无新信息”提前判穷尽。
+        self.assertIn(result.result, {"SEARCH_EXHAUSTED", "MAX_STEPS_REACHED",
+                                       "MAX_PLANNING_CYCLES_REACHED", "TIMEOUT"})
+        self.assertGreaterEqual(result.planning_cycles, 8)
 
     # Scenario C: semantic anchor raises candidate priority.
     def test_scenario_c_anchor_boosts_selection(self) -> None:

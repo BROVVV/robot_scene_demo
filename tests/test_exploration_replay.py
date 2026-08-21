@@ -95,10 +95,27 @@ class TestExplorationReplay(unittest.TestCase):
         self.assertGreaterEqual(result.observations, 1)
 
     def test_replay_is_deterministic(self) -> None:
+        """Replay 两次应产生相同结果；真实执行时长（duration_s）允许不同。"""
         _, events = _run_session()
         first = _replay(events, target="蓝色垃圾桶").run()
         second = _replay(events, target="蓝色垃圾桶").run()
-        self.assertEqual(first.to_dict(), second.to_dict())
+
+        def _sanitized(value: dict) -> dict:
+            value = dict(value)
+            value.pop("duration_s", None)
+            if isinstance(value.get("summary"), dict):
+                summary = dict(value["summary"])
+                summary.pop("duration_s", None)
+                value["summary"] = summary
+            return value
+
+        def _clean(items):
+            return _sanitized(items) if isinstance(items, dict) else items
+
+        self.assertEqual(
+            _clean(first.to_dict()),
+            _clean(second.to_dict()),
+        )
 
     def test_replay_jsonl_roundtrip(self) -> None:
         _, events = _run_session()

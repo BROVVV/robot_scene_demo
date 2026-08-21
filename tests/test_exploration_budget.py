@@ -78,7 +78,8 @@ class TestExplorationBudget(unittest.TestCase):
         result = explorer.run()
         self.assertEqual(result.result, "TIMEOUT")
 
-    def test_no_information_cycles_exhaust(self) -> None:
+    def test_no_information_exhausts_only_when_stuck(self) -> None:
+        """机器人走不动（每次运动失败）且无新信息时，按阈值判 SEARCH_EXHAUSTED。"""
         scene = scenario_no_target(empty_scenes=1)
         policy = load_exploration_policy()
         policy.budget = ExplorationBudget(
@@ -87,11 +88,31 @@ class TestExplorationBudget(unittest.TestCase):
         )
         explorer = AutonomousExplorer(
             target="t", observer=scene.observer(), matcher=scene.matcher(),
-            verifier=scene.verifier(), backend=MockBackend(),
+            verifier=scene.verifier(),
+            backend=MockBackend(outcome_sequence=["failed"]),
             graph=ExplorationGraph(session_id="t"), policy=policy,
         )
         result = explorer.run()
         self.assertEqual(result.result, "SEARCH_EXHAUSTED")
+
+    def test_moving_without_new_info_does_not_early_exhaust(self) -> None:
+        """关键回归：即使连续多轮没有新信息，只要机器狗还在成功移动探索，
+        就不得过早判 SEARCH_EXHAUSTED（黑色沙发被 8 轮提前终止的修复）。"""
+        scene = scenario_no_target(empty_scenes=1)
+        policy = load_exploration_policy()
+        policy.budget = ExplorationBudget(
+            max_motion_steps=30, max_planning_cycles=30,
+            max_consecutive_no_information_cycles=3,  # 低阈值也压不住移动中的探索
+        )
+        explorer = AutonomousExplorer(
+            target="t", observer=scene.observer(), matcher=scene.matcher(),
+            verifier=scene.verifier(), backend=MockBackend(),
+            graph=ExplorationGraph(session_id="t"), policy=policy,
+        )
+        result = explorer.run()
+        self.assertNotEqual(result.result, "SEARCH_EXHAUSTED")
+        self.assertIn(result.result, {"MAX_STEPS_REACHED", "MAX_PLANNING_CYCLES_REACHED"})
+        self.assertGreaterEqual(result.planning_cycles, 3)
 
     def test_default_policy_from_yaml(self) -> None:
         policy = load_exploration_policy()

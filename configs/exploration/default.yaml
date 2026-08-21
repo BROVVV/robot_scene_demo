@@ -13,7 +13,9 @@ exploration:
     max_replans: 100
     max_same_node_visits: 2
     max_navigation_failures_per_goal: 2
-    max_consecutive_no_information_cycles: 8
+    # 连续“无新信息”轮数：只要机器人仍在成功移动/转向探索，不计入空转；
+    # 仅在走不动（导航失败/无候选）时累计。20 轮作为最后的兜底阈值，避免无限空转。
+    max_consecutive_no_information_cycles: 20
     verify_attempts: 3
     negative_memory_ttl_seconds: 120
 

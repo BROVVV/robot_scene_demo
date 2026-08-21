@@ -209,6 +209,11 @@ class AutonomousExplorer:
         self.events: list[dict[str, Any]] = []
         self._seen_labels: set[str] = set()
         self._no_information_cycles = 0
+        # True when the previous EXECUTE step actually moved/turned the robot.
+        # As long as it keeps moving we keep exploring and do not count "no new
+        # information" against the exhaust budget (a sofa may just not be
+        # visible from this office corner yet).
+        self._last_execution_moved = False
         self._last_goal_source: str | None = None
         self._current_place_id: str | None = None
         self.executor_id = executor_id
@@ -486,10 +491,13 @@ class AutonomousExplorer:
                 node = self.graph.get_node(self._current_node_id(observation))
                 if node is not None:
                     self.graph.mark_target_candidate(node.node_id)
-            if new_labels or new_relations or new_sector:
+            if new_labels or new_relations or new_sector or self._last_execution_moved:
                 self._no_information_cycles = 0
             else:
                 self._no_information_cycles += 1
+            # Per-cycle flag: the next cycle's UPDATE_MEMORY only sees a
+            # movement that happened in the cycle just before it.
+            self._last_execution_moved = False
             semantic_map = self.semantic_graph.to_dict()
             self._emit("memory_update", node_id=self._current_node_id(observation),
                        place_id=self._current_place_id,
@@ -630,6 +638,9 @@ class AutonomousExplorer:
                        requested_motion=result.requested_motion,
                        observed_motion=result.observed_motion,
                        elapsed_sec=result.elapsed_sec)
+            # If this goal physically moved the robot (even without new visual
+            # info), it is still active exploration - don't penalize it.
+            self._last_execution_moved = bool(result.succeeded)
             updated_decision = decision.with_execution(
                 status="SUCCEEDED" if result.succeeded else "FAILED",
                 message=result.message,

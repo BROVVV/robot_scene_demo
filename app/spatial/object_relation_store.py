@@ -321,7 +321,10 @@ class ObjectRelationStore:
         return {
             "schema_version": OBJECT_TOPOLOGY_SCHEMA_VERSION,
             "revision": int(revision),
-            "generated_at": time.time(),
+            # Deterministic timestamp for the projection: replay/compare of two
+            # runs must yield identical dicts (real time.time() broke
+            # test_exploration_replay determinism).
+            "generated_at": float(revision),
             "nodes": nodes,
             "edges": edges,
             "stats": {

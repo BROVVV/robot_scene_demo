@@ -25,7 +25,7 @@ class ExplorationBudget:
     max_replans: int = 100
     max_same_node_visits: int = 2
     max_navigation_failures_per_goal: int = 2
-    max_consecutive_no_information_cycles: int = 8
+    max_consecutive_no_information_cycles: int = 20
     verify_attempts: int = 3
     negative_memory_ttl_seconds: float = 120.0
 
@@ -210,7 +210,7 @@ def _budget_from(value: dict[str, Any]) -> ExplorationBudget:
         max_same_node_visits=int(value.get("max_same_node_visits", 2)),
         max_navigation_failures_per_goal=int(value.get("max_navigation_failures_per_goal", 2)),
         max_consecutive_no_information_cycles=int(
-            value.get("max_consecutive_no_information_cycles", 8)
+            value.get("max_consecutive_no_information_cycles", 20)
         ),
         verify_attempts=int(value.get("verify_attempts", 3)),
         negative_memory_ttl_seconds=float(value.get("negative_memory_ttl_seconds", 120.0)),
