@@ -198,6 +198,27 @@ class SearchSessionService:
         except Exception:  # noqa: BLE001 - release is best effort/idempotent
             pass
 
+    def _force_stop_locked(self) -> None:
+        """Forcefully terminate a lingering STOPPING session.
+
+        A STOPPING state means the old worker is still shutting down.  A new
+        start request should not wait for it forever; terminate the executor
+        (best-effort) and drop the session back to IDLE so the user can start
+        immediately.
+        Caller must hold ``self._lock``.
+        """
+        executor = self._executor
+        if executor is not None:
+            try:
+                executor.stop()
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                executor.shutdown()
+            except Exception:  # noqa: BLE001 - cleanup is best effort
+                pass
+        self._reset_session_locked()
+
     def _reap_stale_locked(self) -> bool:
         """Return True and reset when a STARTING/STOPPING session is stale.
 
@@ -241,7 +262,11 @@ class SearchSessionService:
         with self._lock:
             # A session stuck in STARTING (worker died, timed out) must not
             # block a fresh search; recover it automatically first.
+            # A STOPPING session is "the old one is shutting down" - terminate
+            # it now so the new search can start immediately.
             self._reap_stale_locked()
+            if self._status == STATUS_STOPPING:
+                self._force_stop_locked()
             if self._status not in (STATUS_IDLE, "FINISHED", "SEARCH_EXHAUSTED",
                                     "FAILED", "OPERATOR_STOP", "TARGET_FOUND",
                                     "TASK_REJECTED"):

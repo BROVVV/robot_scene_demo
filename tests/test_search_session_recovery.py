@@ -121,3 +121,31 @@ def test_alive_but_timedout_starting_is_reaped():
     svc.state_snapshot()
     assert svc._status == "IDLE"
     assert svc.start_search(_req())["ok"] is True
+
+
+# --------------------------------------------------------------------------- #
+# STOPPING 卡死：新开始应能强制覆盖旧停止中的会话                            #
+# --------------------------------------------------------------------------- #
+
+def _zombie_stopping(svc, executor) -> None:
+    svc._status = "STOPPING"
+    svc._executor = executor
+    svc._started_at = time.time()
+    svc._session_id = "stale_stop_session"
+
+
+def test_stopping_alive_can_be_overridden():
+    """旧 worker 还“活着”但在 STOPPING：新搜索必须能把旧会话停掉并立即开始。"""
+    svc = _make_service(_AliveExecutor())
+    _zombie_stopping(svc, _AliveExecutor())
+    result = svc.start_search(_req("新目标"))
+    assert result["ok"] is True, f"STOPPING 不应阻塞新开始: {result}"
+    assert svc._status == "STARTING"
+
+
+def test_stopping_dead_can_be_overridden():
+    svc = _make_service(_DeadExecutor())
+    _zombie_stopping(svc, _DeadExecutor())
+    result = svc.start_search(_req("新目标"))
+    assert result["ok"] is True, f"死 worker 的 STOPPING 也不应阻塞: {result}"
+    assert svc._status == "STARTING"
