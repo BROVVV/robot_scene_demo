@@ -146,7 +146,7 @@ def _quick_detect(settings, image_path: str, target_text: str,
             }
         ],
         temperature=0.1,
-        max_tokens=256,
+        max_tokens=768,
     )
     raw_content = response.choices[0].message.content
     if not isinstance(raw_content, str) or not raw_content.strip():
@@ -239,11 +239,11 @@ _QUICK_SYSTEM_PROMPT = """你是机器狗第一人称视觉目标搜索模块。
   {{"found": false, "reason_zh": "一句话说明画面中有什么，为什么没找到",
     "objects": [{{"name": "chair", "name_zh": "办公椅", "bbox_2d": [x1,y1,x2,y2], "confidence": 0.8}}, ...]}}
 约束：
-- bbox_2d 是相对图像宽高的归一化坐标 [左上x, 左上y, 右下x, 右下y]，必须紧贴目标，不要用整张图。
+- bbox_2d 必须是 0 到 1 之间的归一化小数坐标 [左上x, 左上y, 右下x, 右下y]，禁止用像素值；取值保留两位小数以缩短输出。
 - confidence 取值 0 到 1。
 - 如果画面有多个候选，只输出最像目标的一个。
-- objects 字段：无论找到与否，都必须列出当前画面中至少 3 个可见物体（含非目标物体），禁止空数组。
-- 严格只输出 JSON。"""
+- objects 字段：无论找到与否，列出当前画面 2 到 4 个最明显的可见物体（含非目标物体）即可，不要列太多以免超长；切勿截断 JSON。
+- 严格只输出合法、完整的 JSON，数组和花括号必须闭合。"""
 
 
 _VERIFY_SYSTEM_PROMPT = """你是机器狗目标复核模块。
@@ -299,7 +299,7 @@ def _verify_detect(settings, image_path: str, target_text: str,
             }
         ],
         temperature=0.0,
-        max_tokens=256,
+        max_tokens=768,
     )
     raw_content = response.choices[0].message.content
     if not isinstance(raw_content, str) or not raw_content.strip():

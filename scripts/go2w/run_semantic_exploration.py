@@ -628,13 +628,9 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     def analyze_semantic(image_path: object, _profile: object) -> dict:
         if not isinstance(image_path, str):
             raise RuntimeError("semantic observation has no stable image")
-        quick_reuse = semantic_payload_from_quick_target_absence(
-            getattr(node, "_last_llm_detection_payload", None),
-            image_path=image_path,
-            frame_id=str(state.get("frame_id", "semantic_live")),
-        )
-        if quick_reuse is not None:
-            return quick_reuse
+        # 始终走全场景分析（objects + relations 一起拿）。快速“无目标”捷径只返回
+        # objects、不返回 relations，会导致拓扑只有孤立节点；全场景更长但能
+        # 既建节点又连边（用 max_tokens=2048，不截断）。
         python = env.get(
             "SILICONFLOW_PYTHON",
             env.get(
@@ -651,16 +647,33 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             "完整列出当前画面的可见物体与关系，供下一视角选择；不要确认目标。",
             "--model", vision_model,
         ]
-        completed = subprocess.run(
-            command, cwd=str(PROJECT_ROOT), env=env, text=True,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=180.0, check=False,
-        )
-        if completed.returncode != 0:
-            raise RuntimeError(
-                f"semantic observer worker failed rc={completed.returncode}: "
-                f"{completed.stderr[-600:]}"
+        last_err = ""
+        for attempt in range(2):
+            completed = subprocess.run(
+                command, cwd=str(PROJECT_ROOT), env=env, text=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=180.0, check=False,
             )
+            if completed.returncode == 0:
+                break
+            last_err = completed.stderr[-600:]
+        if completed.returncode != 0:
+            # 单帧视觉解析失败绝不中断整场搜索：降级为“含摘要、无新物体”的
+            # 观察，下一帧继续识别/建图（避免一次 JSON 截断 -> PERCEPTION_FAILURE）。
+            node.get_logger().warn(
+                f"semantic observer parse degraded (2 tries): {last_err}"
+            )
+            payload = {
+                "scene_objects": [],
+                "scene_relations": [],
+                "scene_summary_zh": "视觉分析暂时失败，继续搜索",
+                "source": "siliconflow_parse_fallback",
+            }
+            payload.update({
+                "image_path": image_path,
+                "frame_id": str(state.get("frame_id", "semantic_live")),
+            })
+            return payload
         payload = json.loads(output_path.read_text(encoding="utf-8"))
         payload.update({
             "image_path": image_path,

@@ -193,6 +193,7 @@ def _build_fast_user_prompt(
 }}
 
 约束：
+- route_plan.steps 最多 3 步；task_understanding 和 scene_reasoning_hints 若无关键信息就省略，保持输出紧凑，确保 JSON 完整闭合、不被截断。
 - relation_type 只能用 left_of/right_of/in_front_of/behind/on/under/above/below/in/near/far/contains/occluding。
 - 每个可见物体必须输出 bbox_2d，坐标是相对图像宽高归一化到 0~1 的 x1/y1/x2/y2。
 - bbox_2d 必须尽量紧贴物体，不要用整张图 [0,0,1,1] 代替局部物体。
