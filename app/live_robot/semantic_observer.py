@@ -100,13 +100,14 @@ def semantic_payload_from_quick_target_absence(
     image_path: str,
     frame_id: str,
 ) -> dict[str, Any] | None:
-    """Reuse a definitive quick negative without inventing scene objects.
+    """Reuse a definitive quick negative WITHOUT dropping the visible objects.
 
-    The quick worker may provide a useful scene summary while intentionally
-    returning only target-matched objects.  When it explicitly says the target
-    is absent, an empty/zero-match semantic observation is sufficient for
-    next-view reasoning and avoids a duplicate full-scene API call.  Ambiguous
-    or positive decisions must still use the full semantic observer.
+    The quick worker may already have listed the scene's visible objects even
+    when the target is absent.  We keep them so the persistent object list /
+    semantic topology keep building from the very first frame.  Only when the
+    quick payload provides no object list at all do we fall through (return
+    None) so the full scene analysis runs and enumerates every visible object
+    (sitting around just looking for the target must still build a map).
     """
 
     value = payload if isinstance(payload, dict) else {}
@@ -114,14 +115,22 @@ def semantic_payload_from_quick_target_absence(
     summary = str(value.get("scene_summary_zh") or "").strip()
     if decision.get("is_present") is not False or not summary:
         return None
+    objects = list(
+        value.get("scene_objects") or value.get("objects") or []
+    )
+    if not objects:
+        # 没有物体列表 -> 不打断 full-scene 分析（它会列出所有可见物体以建图/拓扑）
+        return None
     return {
-        "scene_objects": [],
-        "scene_relations": [],
+        "scene_objects": objects,
+        "scene_relations": list(
+            value.get("scene_relations") or value.get("relations") or []
+        ),
         "scene_summary_zh": summary,
         "image_path": image_path,
         "frame_id": frame_id,
-        "source": "siliconflow_quick_explicit_target_absence",
-        "semantic_reuse_reason": "quick_target_decision_explicitly_absent",
+        "source": "siliconflow_quick_target_absence_with_objects",
+        "semantic_reuse_reason": "quick_target_decision_explicitly_absent_keep_objects",
         "target_decision": decision,
     }
 

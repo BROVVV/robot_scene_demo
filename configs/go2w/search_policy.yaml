@@ -3,7 +3,7 @@ default_mode: observe_only
 motion_enabled: false
 max_search_duration_sec: 300
 max_search_steps: 30
-max_forward_step_m: 0.3
+max_forward_step_m: 1.5
 minimum_forward_step_m: 0.1
 max_turn_step_deg: 30
 minimum_turn_step_deg: 10

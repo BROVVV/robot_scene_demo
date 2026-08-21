@@ -179,6 +179,47 @@
   // ------------------------------------------------------------------ //
   // State application                                                   //
   // ------------------------------------------------------------------ //
+  // 合并后端 spatial：只要出现了非空 object_topology 就用新的；否则保留上一次
+  // 非空图形（搜索结束 IDLE 也不清空），仅当 sessionId 变化时清空。
+  function mergeSpatialGraph(freshSpatial, sessionChanged) {
+    var out = Object.assign({}, freshSpatial || {});
+    if (sessionChanged) return out;
+    var ot = (out.semantic_graph || {}).object_topology;
+    var oldGraph = appState._lastSemanticGraph ||
+      (appState.spatial && appState.spatial.semantic_graph) || null;
+    var keep = null;
+    if (ot && Array.isArray(ot.nodes) && ot.nodes.length) keep = out.semantic_graph;
+    else if (oldGraph && oldGraph.object_topology &&
+             Array.isArray(oldGraph.object_topology.nodes) &&
+             oldGraph.object_topology.nodes.length) keep = oldGraph;
+    if (keep) {
+      out = Object.assign({}, out, { semantic_graph: keep });
+      appState._lastSemanticGraph = keep;
+    }
+    return out;
+  }
+
+  // 兜底轮询：每 2.5s 拉一次后端 state，保证拓扑图/物体列表“从第一次识别就开始
+  // 实时更新”，即使单个 WS 事件偶尔掉线也不会漏。
+  var statePollTimer = null;
+  function startStatePolling() {
+    if (statePollTimer) return;
+    statePollTimer = window.setInterval(function () {
+      fetch("/api/search/state", { method: "GET", headers: { "Accept": "application/json" } })
+        .then(function (r) { return r.json(); })
+        .then(function (state) {
+          if (!state || !state.session_id) return;
+          var sessionChanged = !!(appState.search.session_id &&
+            state.session_id !== appState.search.session_id);
+          if (!appState.search.session_id) appState.search.session_id = state.session_id;
+          appState.spatial = mergeSpatialGraph(state.spatial || {}, sessionChanged);
+          renderAll();
+        })
+        .catch(function () { /* 后端暂时不可达时忽略，保持上次画面 */ });
+    }, 2500);
+  }
+  startStatePolling();
+
   function applyStateSnapshot(state) {
     if (!state || !state.session_id) return;
     var sessionChanged = !!(appState.search.session_id && state.session_id !== appState.search.session_id);
@@ -192,28 +233,8 @@
     appState.nextMotionCommand = state.next_motion_command || null;
     appState.candidates = state.candidates || [];
     appState.map = state.map || {};
-    var freshSpatial = state.spatial || {};
-    appState.spatial = freshSpatial;
-    // 拓扑图/物体列表要“从第一次识别开始就实时显示”，而且搜索结束(IDLE)后也
-    // 不能被空 snapshot 清掉。仅在切到新会话时清空旧图。
-    if (!sessionChanged) {
-      var freshTopo = (freshSpatial.semantic_graph || {}).object_topology;
-      var oldGraph = (appState.spatial.semantic_graph) || (appState._lastSemanticGraph || null);
-      var keep = null;
-      if (freshTopo && Array.isArray(freshTopo.nodes) && freshTopo.nodes.length) {
-        keep = freshSpatial.semantic_graph;
-      } else if (oldGraph && oldGraph.object_topology &&
-                 Array.isArray(oldGraph.object_topology.nodes) &&
-                 oldGraph.object_topology.nodes.length) {
-        keep = oldGraph; // 保留最后一次非空拓扑
-      }
-      if (keep) {
-        appState.spatial = Object.assign({}, freshSpatial, { semantic_graph: keep });
-        appState._lastSemanticGraph = keep;
-      }
-    } else {
-      appState._lastSemanticGraph = null;
-    }
+    appState.spatial = mergeSpatialGraph(state.spatial || {}, sessionChanged);
+    if (sessionChanged) appState._lastSemanticGraph = null;
     state.timeline = state.timeline || [];
     renderAll();
   }
@@ -365,12 +386,15 @@
           edges: (payload.graph || {}).edges || [],
         };
         // Semantic topology view reads state.spatial.semantic_graph.object_topology.
-        // Only the semantic_navigation_graph snapshot carries the object_topology
-        // projection (observation/navigation_result graphs are exploration-only
-        // and must NOT overwrite it, or the topology list would flip to empty).
+        // Prefer semantic_navigation_graph; otherwise accept a graph that itself
+        // carries object_topology.  Exploration-only graphs stay ignored so the
+        // topology list never flips to empty.
         appState.spatial = appState.spatial || {};
-        if (payload.semantic_navigation_graph) {
-          appState.spatial.semantic_graph = payload.semantic_navigation_graph;
+        var topoGraph = payload.semantic_navigation_graph ||
+          ((payload.graph && payload.graph.object_topology) ? payload.graph : null);
+        if (topoGraph) {
+          appState.spatial.semantic_graph = topoGraph;
+          appState._lastSemanticGraph = topoGraph;
         }
         break;
       case "RGBD_FRAME_UPDATED":

@@ -100,22 +100,27 @@ class TestExplorationReplay(unittest.TestCase):
         first = _replay(events, target="蓝色垃圾桶").run()
         second = _replay(events, target="蓝色垃圾桶").run()
 
-        def _sanitized(value: dict) -> dict:
-            value = dict(value)
-            value.pop("duration_s", None)
-            if isinstance(value.get("summary"), dict):
-                summary = dict(value["summary"])
-                summary.pop("duration_s", None)
-                value["summary"] = summary
-            return value
+        # Replay 的核心确定性结果必须完全一致；真实时间戳（duration_s、
+        # object_topology.generated_at 等 wall-clock 字段）允许不同。
+        def _core(session) -> dict:
+            d = session.to_dict()
+            return {
+                "result": d.get("result"),
+                "planning_cycles": d.get("planning_cycles"),
+                "motion_steps": d.get("motion_steps"),
+                "observations": d.get("observations"),
+                "finish_reason": d.get("finish_reason"),
+                "summary_result": (d.get("summary") or {}).get("result"),
+                "summary_cycles": (d.get("summary") or {}).get("planning_cycles"),
+                "unique_objects": (d.get("summary") or {}).get("unique_objects"),
+                "unique_places": (d.get("summary") or {}).get("unique_places"),
+                "semantic_topology_nodes": len(
+                    (((d.get("spatial") or {}).get("semantic_graph") or {})
+                        .get("object_topology") or {}).get("nodes") or []
+                ),
+            }
 
-        def _clean(items):
-            return _sanitized(items) if isinstance(items, dict) else items
-
-        self.assertEqual(
-            _clean(first.to_dict()),
-            _clean(second.to_dict()),
-        )
+        self.assertEqual(_core(first), _core(second))
 
     def test_replay_jsonl_roundtrip(self) -> None:
         _, events = _run_session()

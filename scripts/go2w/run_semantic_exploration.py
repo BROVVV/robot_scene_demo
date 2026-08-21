@@ -152,7 +152,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--target-score-min", type=float, default=0.15)
     parser.add_argument("--reach-area-ratio", type=float, default=0.15)
     parser.add_argument("--max-turn-deg", type=float, default=30.0)
-    parser.add_argument("--forward-step-m", type=float, default=0.20)
+    parser.add_argument("--forward-step-m", type=float, default=1.5)
     parser.add_argument("--semantic-allow-forward", action="store_true")
     parser.add_argument("--allow-degraded", action="store_true",
                         help="continue when non-critical readiness checks degrade")
@@ -463,8 +463,8 @@ def run_go2w(args, event_hook=None) -> int:
     )
     forward_step_m = min(
         max(0.0, float(args.forward_step_m)),
-        max(0.0, float(profile_limits.get("max_forward_step_m", 0.30))),
-        0.30,
+        max(0.0, float(profile_limits.get("max_forward_step_m", 1.5))),
+        1.5,
     )
 
     policy = load_exploration_policy(args.exploration_config, overrides={

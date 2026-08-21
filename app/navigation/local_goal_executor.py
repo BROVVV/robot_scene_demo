@@ -35,7 +35,7 @@ class LocalGoalExecutor:
     def __init__(
         self,
         *,
-        forward_step_m: float = 0.25,
+        forward_step_m: float = 1.5,
         max_turn_deg: float = 30.0,
         turn_only: bool = False,
     ) -> None:

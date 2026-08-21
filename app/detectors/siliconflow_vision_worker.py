@@ -170,6 +170,21 @@ def _quick_detect(settings, image_path: str, target_text: str,
                     "bbox_2d": bbox,
                 }
             )
+    # 目标不在时：列举画面可见的非目标物体，保证持续建图/拓扑
+    for raw_obj in data.get("objects") or []:
+        bbox = _normalize_quick_bbox(
+            raw_obj.get("bbox_2d") or raw_obj.get("bbox"), image_width, image_height
+        )
+        if bbox is None:
+            continue
+        name = str(raw_obj.get("name_zh") or raw_obj.get("name") or "物体")
+        if any(name in item["label"] for item in objects):
+            continue
+        objects.append({
+            "label": name.strip(),
+            "score": _clamp01(raw_obj.get("confidence", 0.6)),
+            "bbox_2d": bbox,
+        })
     return {
         "objects": objects,
         "scene_summary_zh": str(data.get("reason_zh") or ""),
@@ -221,11 +236,13 @@ _QUICK_SYSTEM_PROMPT = """你是机器狗第一人称视觉目标搜索模块。
 - 如果图片中存在该目标：
   {{"found": true, "bbox_2d": [x1, y1, x2, y2], "confidence": 0.8, "name_zh": "目标中文名"}}
 - 如果不存在：
-  {{"found": false, "reason_zh": "一句话说明画面中有什么，为什么没找到"}}
+  {{"found": false, "reason_zh": "一句话说明画面中有什么，为什么没找到",
+    "objects": [{{"name": "chair", "name_zh": "办公椅", "bbox_2d": [x1,y1,x2,y2], "confidence": 0.8}}, ...]}}
 约束：
 - bbox_2d 是相对图像宽高的归一化坐标 [左上x, 左上y, 右下x, 右下y]，必须紧贴目标，不要用整张图。
 - confidence 取值 0 到 1。
 - 如果画面有多个候选，只输出最像目标的一个。
+- objects 字段：无论找到与否，都必须列出当前画面中至少 3 个可见物体（含非目标物体），禁止空数组。
 - 严格只输出 JSON。"""
 
 

@@ -65,8 +65,8 @@ backend:
   type: go2w_experimental
   go2w_experimental:
     max_turn_deg_per_action: 30
-    forward_step_m: 0.20
-    max_forward_step_m: 0.30
+    forward_step_m: 1.5
+    max_forward_step_m: 1.5
     allow_lateral: false
     motion_timeout_sec: 60.0
     relative_pose_source: auto
