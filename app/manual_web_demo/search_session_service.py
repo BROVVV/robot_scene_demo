@@ -220,18 +220,31 @@ class SearchSessionService:
         self._reset_session_locked()
 
     def _reap_stale_locked(self) -> bool:
-        """Return True and reset when a STARTING/STOPPING session is stale.
+        """Return True and reset when a RUNNING/STARTING/STOPPING session's
+        worker is gone.
 
-        A session is stale when:
-          * the worker subprocess has exited without delivering a terminal
-            event (crash / kill / failed spawn), or
-          * it has been stuck in STARTING/STOPPING for ``STARTING_TIMEOUT_SEC``.
+        The WebUI survives page refreshes, but the in-memory search session is
+        only cleaned up by the worker's terminal event.  If the worker has
+        exited (crash / kill / page-reload orphan) without sending that event,
+        the backend would keep showing RUNNING/STARTING and the frontend would
+        keep the Start button disabled until the user manually hits Stop.  We
+        therefore auto-reap:
+
+          * STARTING/STOPPING: worker dead OR stuck for STARTING_TIMEOUT_SEC
+          * RUNNING: worker dead only (a long-running search must not be
+            killed just because it exceeded a timeout).
 
         Caller must hold ``self._lock``.
         """
-        if self._status not in (STATUS_STARTING, STATUS_STOPPING):
+        if self._status not in (STATUS_STARTING, STATUS_STOPPING, STATUS_RUNNING):
             return False
         executor_alive = bool(self._executor is not None and self._executor.alive())
+        if self._status == STATUS_RUNNING:
+            if not executor_alive:
+                self._reset_session_locked()
+                return True
+            # 正常搜索在跑：不因超时回收（搜索有自己的 max_seconds 预算）
+            return False
         timed_out = False
         if self._started_at is not None:
             timed_out = (time.time() - self._started_at) > STARTING_TIMEOUT_SEC

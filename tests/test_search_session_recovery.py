@@ -149,3 +149,34 @@ def test_stopping_dead_can_be_overridden():
     result = svc.start_search(_req("新目标"))
     assert result["ok"] is True, f"死 worker 的 STOPPING 也不应阻塞: {result}"
     assert svc._status == "STARTING"
+
+
+# --------------------------------------------------------------------------- #
+# 刷新页面后：RUNNING 但 worker 已死 -> 自动清成 IDLE，开始按钮可直接用      #
+# --------------------------------------------------------------------------- #
+
+def _zombie_running(svc, executor) -> None:
+    svc._status = "RUNNING"
+    svc._executor = executor
+    svc._started_at = time.time()
+    svc._session_id = "stale_running_session"
+
+
+def test_running_dead_worker_auto_reaped_on_snapshot():
+    """页面刷新后只剩 RUNNING 状态但 worker 已死：state_snapshot 应自动回 IDLE。"""
+    svc = _make_service(_DeadExecutor())
+    _zombie_running(svc, _DeadExecutor())
+    svc.state_snapshot()  # 等价于前端刷新拉快照
+    assert svc._status == "IDLE"
+    assert svc.start_search(_req("新目标"))["ok"] is True
+
+
+def test_running_alive_worker_not_reaped():
+    """正常搜索中的 worker 活着，绝不能因为刷新被误回收。"""
+    svc = _make_service(_AliveExecutor())
+    _zombie_running(svc, _AliveExecutor())
+    svc.state_snapshot()
+    assert svc._status == "RUNNING"
+    blocked = svc.start_search(_req())
+    assert blocked["ok"] is False
+    assert "already active" in blocked["error"]
