@@ -392,3 +392,9 @@ button.danger { background: var(--yellow) !important; color: #1a1200 !important;
 .view-toggle .vtab.active {
   background: var(--accent); color: #0b1220; font-weight: 700; border-color: var(--accent);
 }
+
+/* 地图缩放/平移提示 */
+.viewport-hint {
+  font-size: 10px; color: #7dd3fc66; border: 1px solid #164e63;
+  border-radius: 4px; padding: 1px 6px; user-select: none;
+}

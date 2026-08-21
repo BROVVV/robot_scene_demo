@@ -84,6 +84,56 @@
     in: true,
   };
 
+  // ------------------------------------------------------------------ //
+  // SVG viewport helpers (pure, testable) - wheel zoom + drag pan      //
+  // ------------------------------------------------------------------ //
+  var VIEWPORT_MIN_SPAN = 8;
+  var VIEWPORT_MAX_SPAN = 2000000;
+
+  function clampViewSpan(value) {
+    return Math.max(VIEWPORT_MIN_SPAN, Math.min(VIEWPORT_MAX_SPAN, value));
+  }
+
+  // Zoom the viewBox by `factor` keeping the SVG-pixel point (px,py) fixed in
+  // world space (factor < 1 zooms in, e.g. wheel up).
+  function viewportZoom(view, factor, px, py, svgW, svgH) {
+    if (!view) return null;
+    var fx = (isFinite(factor) && factor > 0) ? factor : 1.0;
+    var nw = clampViewSpan(view.width * fx);
+    var nh = clampViewSpan(view.height * fx);
+    var xr = svgW > 0 ? Math.max(0, Math.min(1, px / svgW)) : 0.5;
+    var yr = svgH > 0 ? Math.max(0, Math.min(1, py / svgH)) : 0.5;
+    var wx = view.minX + xr * view.width;
+    var wy = view.minY + yr * view.height;
+    return {
+      minX: wx - xr * nw,
+      minY: wy - yr * nh,
+      width: nw,
+      height: nh,
+    };
+  }
+
+  // Pan the viewBox by a pixel delta (drag).
+  function viewportPan(view, dxPx, dyPx, svgW, svgH) {
+    if (!view) return null;
+    var sx = svgW > 0 ? (dxPx / svgW) * view.width : 0;
+    var sy = svgH > 0 ? (dyPx / svgH) * view.height : 0;
+    return {
+      minX: view.minX - sx,
+      minY: view.minY - sy,
+      width: view.width,
+      height: view.height,
+    };
+  }
+
+  function viewToBoxString(view) {
+    if (!view) return null;
+    return (
+      view.minX.toFixed(2) + " " + view.minY.toFixed(2) + " " +
+      view.width.toFixed(2) + " " + view.height.toFixed(2)
+    );
+  }
+
   function SearchMapRenderer(svg, detailEl) {
     this.svg = svg;
     this.detailEl = detailEl;
@@ -96,7 +146,129 @@
     // Stable display layout cache for the semantic topology (pure display).
     this.topologyPositions = {};
     this.lastTopologyFingerprint = null;
+
+    // Interactive viewport: once the operator zooms/pans, the viewBox is kept
+    // across live re-renders instead of being re-fit every frame.
+    this._view = null;            // {minX,minY,width,height}
+    this._userTransformed = false;
+    this._drag = null;            // {startX,startY,startView}
+    this._bindViewportGestures();
   }
+
+  // ------------------------------------------------------------------ //
+  // Viewport plumbing                                                  //
+  // ------------------------------------------------------------------ //
+  SearchMapRenderer.prototype._svgSize = function () {
+    var rect = this.svg.getBoundingClientRect ? this.svg.getBoundingClientRect() : null;
+    return {
+      w: (rect && rect.width) ? rect.width : (this.svg.clientWidth || 600),
+      h: (rect && rect.height) ? rect.height : (this.svg.clientHeight || 400),
+    };
+  };
+
+  SearchMapRenderer.prototype._readView = function () {
+    if (this._view) return this._view;
+    var vb = this.svg.getAttribute ? this.svg.getAttribute("viewBox") : "";
+    var parts = String(vb || "").trim().split(/\s+/).map(Number);
+    if (parts.length === 4 && isFinite(parts[0]) && parts[2] > 0) {
+      return { minX: parts[0], minY: parts[1], width: parts[2], height: parts[3] };
+    }
+    return { minX: 0, minY: 0, width: 600, height: 400 };
+  };
+
+  SearchMapRenderer.prototype._applyView = function (view) {
+    if (!view) return;
+    this._view = view;
+    var box = viewToBoxString(view);
+    if (box && this.svg.setAttribute) this.svg.setAttribute("viewBox", box);
+  };
+
+  // Fit the content unless the operator has already zoomed/panned the view.
+  SearchMapRenderer.prototype._fitViewBox = function (bounds) {
+    if (this._userTransformed) {
+      this._applyView(this._view || this._readView());
+      return;
+    }
+    // boundsToViewBox returns a "minX minY width height" string; parse it into
+    // the object form so subsequent wheel-zoom math has a real view.
+    var box = boundsToViewBox(bounds);
+    var parts = String(box).trim().split(/\s+/).map(Number);
+    this._applyView({
+      minX: parts[0], minY: parts[1], width: parts[2], height: parts[3],
+    });
+  };
+
+  SearchMapRenderer.prototype._resetViewport = function () {
+    this._userTransformed = false;
+    this._view = null;
+    this._drag = null;
+    // Re-render so the next render() auto-fits the content.
+    this.render(this.data, this.spatial);
+  };
+
+  SearchMapRenderer.prototype._bindViewportGestures = function () {
+    var self = this;
+    var svg = this.svg;
+
+    // Wheel zoom-in / zoom-out anchored at the cursor.
+    svg.addEventListener("wheel", function (event) {
+      if (!self.svg) return;
+      event.preventDefault();
+      var factor = event.deltaY < 0 ? 0.82 : 1.22; // wheel-up => zoom in
+      var rect = svg.getBoundingClientRect ? svg.getBoundingClientRect() : null;
+      var px = rect ? (event.clientX - rect.left) : (event.offsetX || 0);
+      var py = rect ? (event.clientY - rect.top) : (event.offsetY || 0);
+      var size = self._svgSize();
+      var current = self._readView();
+      var next = viewportZoom(current, factor, px, py, size.w, size.h);
+      if (next) {
+        self._userTransformed = true;
+        self._applyView(next);
+      }
+    }, { passive: false });
+
+    // Drag to pan.
+    svg.addEventListener("mousedown", function (event) {
+      if (event.button !== 0) return;
+      var rect = svg.getBoundingClientRect ? svg.getBoundingClientRect() : null;
+      self._userTransformed = true;
+      self._drag = {
+        startX: rect ? (event.clientX - rect.left) : (event.offsetX || 0),
+        startY: rect ? (event.clientY - rect.top) : (event.offsetY || 0),
+        startView: self._readView(),
+      };
+      svg.style.cursor = "grabbing";
+      event.preventDefault();
+    });
+
+    svg.addEventListener("mousemove", function (event) {
+      if (!self._drag) return;
+      var rect = svg.getBoundingClientRect ? svg.getBoundingClientRect() : null;
+      var px = rect ? (event.clientX - rect.left) : (event.offsetX || 0);
+      var py = rect ? (event.clientY - rect.top) : (event.offsetY || 0);
+      var size = self._svgSize();
+      var next = viewportPan(
+        self._drag.startView, px - self._drag.startX, py - self._drag.startY,
+        size.w, size.h
+      );
+      if (next) self._applyView(next);
+    });
+
+    function endDrag() {
+      if (!self._drag) return;
+      self._drag = null;
+      svg.style.cursor = "grab";
+    }
+    svg.addEventListener("mouseup", endDrag);
+    svg.addEventListener("mouseleave", endDrag);
+
+    // Double-click resets to auto-fit.
+    svg.addEventListener("dblclick", function () {
+      self._resetViewport();
+    });
+
+    svg.style.cursor = "grab";
+  };
 
   // ------------------------------------------------------------------ //
   // Mode switching                                                     //
@@ -155,9 +327,9 @@
       return;
     }
 
-    // Fit to all node positions.
+    // Fit to all node positions (kept when the operator has zoomed/panned).
     var b = topoBounds(positions);
-    this.svg.setAttribute("viewBox", boundsToViewBox(b));
+    this._fitViewBox(b);
 
     // arrow marker def for directed relation edges
     var defs = document.createElementNS(ns, "defs");
@@ -209,7 +381,7 @@
 
   SearchMapRenderer.prototype.drawTopologyEmptyState = function (msg) {
     var ns = "http://www.w3.org/2000/svg";
-    this.svg.setAttribute("viewBox", "0 0 600 400");
+    this._fitViewBox({ minX: 0, minY: 0, maxX: 600, maxY: 400 });
     var text = document.createElementNS(ns, "text");
     text.setAttribute("x", 300);
     text.setAttribute("y", 190);
@@ -439,8 +611,7 @@
 
     // fit
     var bounds = fitBounds(layout, robot, spatial);
-    var vb = boundsToViewBox(bounds);
-    this.svg.setAttribute("viewBox", vb);
+    this._fitViewBox(bounds);
 
     var ns = "http://www.w3.org/2000/svg";
     this.svg.textContent = "";
@@ -1203,5 +1374,13 @@
     fingerprint: topologyFingerprint,
     components: findConnectedComponents,
     relationLabel: edgeLabelZh,
+  };
+
+  // Pure SVG viewport math (wheel zoom / drag pan) for headless tests.
+  window.SvgViewport = {
+    zoom: viewportZoom,
+    pan: viewportPan,
+    toBoxString: viewToBoxString,
+    clampSpan: clampViewSpan,
   };
 })();
