@@ -445,6 +445,18 @@ def create_app(
 
     app = FastAPI(title="Go2-W Manual + Autonomous Search Console", lifespan=lifespan)
 
+    # Never cache the console page or its static assets: the frontend has been
+    # updated repeatedly (semantic topology / viewport gestures) and a stale
+    # search_map.js in the browser cache made the new UI look "not installed".
+    @app.middleware("http")
+    async def _no_store_static(request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path == "/" or path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+        return response
+
     if STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
