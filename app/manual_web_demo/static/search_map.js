@@ -308,7 +308,7 @@
     this.svg.textContent = "";
 
     if (!topology || !Array.isArray(topology.nodes) || topology.nodes.length === 0) {
-      this.drawTopologyEmptyState("尚未识别到可建立语义拓扑的物体");
+      this.drawTopologyEmptyState("尚未识别到可建立语义拓扑的物体（识别到第一个物体后自动开始建图，并实时更新）");
       return;
     }
     var nodes = topology.nodes || [];

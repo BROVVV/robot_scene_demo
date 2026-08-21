@@ -77,6 +77,8 @@
     // observation
     obsCurrent: document.getElementById("obs-current"),
     obsSeen: document.getElementById("obs-seen"),
+    obsObjects: document.getElementById("obs-objects"),
+    obsObjectsMeta: document.getElementById("obs-objects-meta"),
     // decision
     decIntent: document.getElementById("dec-intent"),
     decReason: document.getElementById("dec-reason"),
@@ -179,6 +181,7 @@
   // ------------------------------------------------------------------ //
   function applyStateSnapshot(state) {
     if (!state || !state.session_id) return;
+    var sessionChanged = !!(appState.search.session_id && state.session_id !== appState.search.session_id);
     appState.search = state;
     appState.observation = state.observation || {};
     appState.objects = state.objects || {};
@@ -189,7 +192,28 @@
     appState.nextMotionCommand = state.next_motion_command || null;
     appState.candidates = state.candidates || [];
     appState.map = state.map || {};
-    appState.spatial = state.spatial || {};
+    var freshSpatial = state.spatial || {};
+    appState.spatial = freshSpatial;
+    // 拓扑图/物体列表要“从第一次识别开始就实时显示”，而且搜索结束(IDLE)后也
+    // 不能被空 snapshot 清掉。仅在切到新会话时清空旧图。
+    if (!sessionChanged) {
+      var freshTopo = (freshSpatial.semantic_graph || {}).object_topology;
+      var oldGraph = (appState.spatial.semantic_graph) || (appState._lastSemanticGraph || null);
+      var keep = null;
+      if (freshTopo && Array.isArray(freshTopo.nodes) && freshTopo.nodes.length) {
+        keep = freshSpatial.semantic_graph;
+      } else if (oldGraph && oldGraph.object_topology &&
+                 Array.isArray(oldGraph.object_topology.nodes) &&
+                 oldGraph.object_topology.nodes.length) {
+        keep = oldGraph; // 保留最后一次非空拓扑
+      }
+      if (keep) {
+        appState.spatial = Object.assign({}, freshSpatial, { semantic_graph: keep });
+        appState._lastSemanticGraph = keep;
+      }
+    } else {
+      appState._lastSemanticGraph = null;
+    }
     state.timeline = state.timeline || [];
     renderAll();
   }
@@ -552,10 +576,44 @@
   // ------------------------------------------------------------------ //
   // Rendering                                                           //
   // ------------------------------------------------------------------ //
+  function renderObjects() {
+    // 识别物体列表：与语义拓扑同源（spatial.semantic_graph.object_topology），
+    // 从第一次识别到物体就开始显示，并随每次 memory_update 实时刷新。
+    var spatial = appState.spatial || {};
+    var ot = ((spatial.semantic_graph || {}).object_topology) || null;
+    var nodes = ot && Array.isArray(ot.nodes) ? ot.nodes : [];
+    if (els.obsObjectsMeta) {
+      els.obsObjectsMeta.textContent = nodes.length ? nodes.length + " 个" : "";
+    }
+    if (!els.obsObjects) return;
+    if (!nodes.length) {
+      els.obsObjects.innerHTML =
+        '<div class="empty">等待首次识别…（识别到第一个物体后自动开始建物体列表 / 拓扑图）</div>';
+      return;
+    }
+    var statusColor = { CONFIRMED: "#34d399", TENTATIVE: "#38bdf8", STALE: "#8b95a3" };
+    var html = nodes.slice().sort(function (a, b) {
+      return String(a.node_id).localeCompare(String(b.node_id));
+    }).map(function (n) {
+      var color = statusColor[n.status] || "#8b95a3";
+      var star = n.is_target_confirmed ? "★ " : (n.is_target_candidate ? "◎ " : "");
+      var meta = String(n.status || "TENTATIVE");
+      if (n.observation_count != null) meta += " ×" + n.observation_count;
+      var label = esc(n.label || "");
+      return '<div class="obj-item">' +
+        '<b style="color:' + color + '">' + star + esc(n.node_id) + '</b> ' +
+        '<span>' + label + '</span>' +
+        '<span class="obj-meta">' + esc(meta) + '</span>' +
+        '</div>';
+    }).join("");
+    els.obsObjects.innerHTML = html;
+  }
+
   function renderAll() {
     renderTaskUnderstanding();
     renderStatus();
     renderObservation();
+    renderObjects();
     renderDecision();
     renderCandidates();
     renderTimeline();
@@ -569,12 +627,13 @@
     if (mode === "semantic_topology") {
       // Semantic topology projection: show only topology stats, never metric
       // map / place metrics (they belong to the spatial map view).
+      var hasGraph = !!(spatial && spatial.semantic_graph && spatial.semantic_graph.object_topology);
       var topology = (spatial && spatial.semantic_graph && spatial.semantic_graph.object_topology) || null;
       var nodes = (topology && topology.nodes) || [];
       var edges = (topology && topology.edges) || [];
       var empty = (nodes.length === 0);
       els.mapMeta.textContent = empty
-        ? "等待语义拓扑…"
+        ? (hasGraph ? "已建图 0 节点 · 等待识别到物体" : "等待首次物体识别…识别后自动开始建拓扑")
         : "拓扑节点 " + nodes.length + " · 关系 " + edges.length +
           " · rev " + ((topology && topology.revision) || 0);
       mapRenderer.render(appState.map || {}, spatial);

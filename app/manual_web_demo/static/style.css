@@ -398,3 +398,13 @@ button.danger { background: var(--yellow) !important; color: #1a1200 !important;
   font-size: 10px; color: #7dd3fc66; border: 1px solid #164e63;
   border-radius: 4px; padding: 1px 6px; user-select: none;
 }
+
+/* 识别物体列表（persistent objects，实时） */
+#obs-objects .obj-item {
+  display: flex; align-items: baseline; gap: 6px;
+  font-size: 12px; line-height: 1.55;
+  border-bottom: 1px dashed #1f2937; padding: 2px 2px;
+}
+#obs-objects .obj-item b { font-weight: 700; }
+#obs-objects .obj-item .obj-meta { margin-left: auto; color: var(--muted); font-size: 10px; }
+#obs-objects .empty { color: var(--muted); font-size: 12px; }
