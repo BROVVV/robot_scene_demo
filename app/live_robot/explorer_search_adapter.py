@@ -57,8 +57,10 @@ from app.live_robot.search_state_store import SearchStateStore
 # field (injected by the search worker) which becomes MAP_UPDATED.
 _MAP_RELEVANT = frozenset({"observation", "memory_update", "navigation_result"})
 
-# Explorer events that become error SearchEvents.
-_ERROR_EVENTS = {
+# Explorer stages that are recoverable by design.  They must remain warnings:
+# the explorer either retries or falls back and only ``session_finish`` knows
+# whether the whole task ultimately failed.
+_RECOVERABLE_EVENTS = {
     "perception_failure": ("PERCEPTION_ERROR", "perception"),
     "observer_error": ("PERCEPTION_ERROR", "observer"),
     "observer_retry": ("PERCEPTION_ERROR", "observer_retry"),
@@ -144,6 +146,16 @@ class ExplorerSearchAdapter:
             return [
                 self._emit(SEARCH_STATE_CHANGED, payload={
                     "phase": "BOOTSTRAP", "health": health,
+                })
+            ]
+        if name == "phase_progress":
+            return [
+                self._emit(SEARCH_STATE_CHANGED, payload={
+                    "phase": payload.get("phase") or state or "RUNNING",
+                    "phase_detail": payload.get("detail_zh") or "",
+                    "operation": payload.get("operation") or "",
+                    "phase_started_at": payload.get("phase_started_at")
+                    or event.get("host_s"),
                 })
             ]
         if name == "observation":
@@ -268,6 +280,7 @@ class ExplorerSearchAdapter:
                     "goal": payload.get("goal") or {},
                     "decision_id": payload.get("decision_id"),
                     "next_motion_command": payload.get("next_motion_command"),
+                    "phase_detail": "正在等待动作服务器执行并回传结果",
                     "phase": "EXECUTE",
                 })
             ]
@@ -280,6 +293,7 @@ class ExplorerSearchAdapter:
                     "requested_motion": payload.get("requested_motion") or {},
                     "observed_motion": payload.get("observed_motion") or {},
                     "elapsed_sec": payload.get("elapsed_sec"),
+                    "phase_detail": payload.get("message") or "动作已结束",
                     "phase": "WAIT_RESULT",
                 }),
                 *self._map_events(event, payload, state),
@@ -345,8 +359,7 @@ class ExplorerSearchAdapter:
             events: list[SearchEvent] = []
             if result == "OPERATOR_STOP":
                 events.append(self._emit(OPERATOR_STOP, payload={"phase": "OPERATOR_STOP"}))
-            elif result in {"TIMEOUT", "MAX_STEPS_REACHED",
-                            "MAX_PLANNING_CYCLES_REACHED", "BACKEND_FAILURE",
+            elif result in {"TIMEOUT", "BACKEND_FAILURE",
                             "PERCEPTION_FAILURE"}:
                 events.append(self._emit(ERROR, payload={
                     "error_type": _finish_to_error_type(result),
@@ -355,16 +368,21 @@ class ExplorerSearchAdapter:
                 }))
             events.append(self._emit(SEARCH_FINISHED, payload=finish_payload))
             return events
-        if name in _ERROR_EVENTS:
-            error_type, source = _ERROR_EVENTS[name]
+        if name in _RECOVERABLE_EVENTS:
+            error_type, source = _RECOVERABLE_EVENTS[name]
+            message = str(
+                payload.get("error") or payload.get("reason") or name
+            )
             return [
-                self._emit(ERROR, payload={
-                    "error_type": error_type,
-                    "source": source,
-                    "message": str(
-                        payload.get("error") or payload.get("reason") or name
-                    ),
-                    "phase": "FAILED",
+                self._emit(SEARCH_STATE_CHANGED, payload={
+                    "phase": state or "OBSERVE",
+                    "phase_detail": f"可恢复异常，正在重试或降级继续：{message}",
+                    "warning": {
+                        "warning_type": error_type,
+                        "source": source,
+                        "message": message,
+                        "recoverable": True,
+                    },
                 })
             ]
         # Unknown explorer events still surface as state changes.

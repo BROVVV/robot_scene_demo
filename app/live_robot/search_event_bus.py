@@ -72,6 +72,20 @@ class SearchEventBus:
             items = items[-max(0, int(limit)):]
         return [event.to_dict() for event in items]
 
+    def restore_recent(self, values: list[dict[str, Any]]) -> None:
+        """Restore the tail of a persisted event stream at web startup."""
+        restored: list[SearchEvent] = []
+        for value in values:
+            try:
+                restored.append(SearchEvent.from_dict(value))
+            except (TypeError, ValueError):
+                continue
+        with self._lock:
+            self._recent.clear()
+            self._recent.extend(restored[-self._recent.maxlen:])
+        if restored:
+            self._allocator.ensure_after(max(item.event_id for item in restored))
+
     @property
     def allocator(self) -> EventIdAllocator:
         return self._allocator

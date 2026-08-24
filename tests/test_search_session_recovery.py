@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import time
 
+import pytest
+
 from app.manual_web_demo.control_ownership import ControlOwner
 from app.manual_web_demo.search_models import SearchStartRequest
 from app.manual_web_demo.search_session_service import (
@@ -43,13 +45,22 @@ class _AliveExecutor(_DeadExecutor):
     def alive(self) -> bool: return True
 
 
+_TEST_SESSION_DIR = "outputs/live_runs_test_recovery"
+
+
+@pytest.fixture(autouse=True)
+def _isolate_archives(tmp_path):
+    global _TEST_SESSION_DIR
+    _TEST_SESSION_DIR = str(tmp_path / "sessions")
+
+
 def _make_service(executor=None) -> SearchSessionService:
     # backend=go2w_experimental（非 mock）会真正走 executor_factory，因此这里的
     # Dead/Alive executor 才会生效；task 理解用本地 mock_fallback，避免调用网络 LLM。
     return SearchSessionService(
         owner=ControlOwner(),
         executor_factory=lambda: executor or _DeadExecutor(),
-        session_dir="outputs/live_runs",
+        session_dir=_TEST_SESSION_DIR,
         task_understanding_runner=lambda text: SearchTaskContext.mock_fallback(text),
     )
 
@@ -83,7 +94,8 @@ def test_state_snapshot_reaps_stale_starting():
     svc = _make_service(_DeadExecutor())
     _zombie_starting(svc, _DeadExecutor())
     svc.state_snapshot()
-    assert svc._status == "IDLE"
+    assert svc._status == "FAILED"
+    assert svc.state_snapshot()["error"]["code"] == "WORKER_INTERRUPTED"
     assert svc.start_search(_req())["ok"] is True
 
 
@@ -92,7 +104,8 @@ def test_stop_search_resets_stale_starting():
     _zombie_starting(svc, _DeadExecutor())
     result = svc.stop_search()
     assert result["ok"] is True
-    assert result["status"] == "IDLE"
+    assert result["status"] == "FAILED"
+    assert svc.state_snapshot()["finish_reason"] == "WORKER_INTERRUPTED"
     assert svc.start_search(_req())["ok"] is True
 
 
@@ -119,7 +132,7 @@ def test_alive_but_timedout_starting_is_reaped():
     _zombie_starting(svc, _AliveExecutor())
     svc._started_at = time.time() - 3600  # 早就超过 STARTING_TIMEOUT_SEC
     svc.state_snapshot()
-    assert svc._status == "IDLE"
+    assert svc._status == "FAILED"
     assert svc.start_search(_req())["ok"] is True
 
 
@@ -167,7 +180,10 @@ def test_running_dead_worker_auto_reaped_on_snapshot():
     svc = _make_service(_DeadExecutor())
     _zombie_running(svc, _DeadExecutor())
     svc.state_snapshot()  # 等价于前端刷新拉快照
-    assert svc._status == "IDLE"
+    assert svc._status == "FAILED"
+    state = svc.state_snapshot()
+    assert state["error"]["code"] == "WORKER_INTERRUPTED"
+    assert state["finish_reason"] == "WORKER_INTERRUPTED"
     assert svc.start_search(_req("新目标"))["ok"] is True
 
 

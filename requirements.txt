@@ -1,5 +1,6 @@
 python-dotenv
 PyYAML
+numpy
 openai
 pydantic
 networkx
@@ -11,3 +12,5 @@ socksio
 streamlit
 fastapi
 uvicorn
+httpx
+pytest

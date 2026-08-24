@@ -72,6 +72,14 @@ bash scripts/go2w/stop_autonomous_search_web.sh   # 只停项目自有 web.pid
 
 ### POST /api/search/start
 
+普通 WebUI 只提交自然语言，运动权限、backend、RGB-D 和预算均继承服务启动配置：
+
+```json
+{"task_text": "饮水机旁边的蓝色垃圾桶"}
+```
+
+调试客户端仍可显式覆盖高级字段：
+
 ```json
 {
   "target": "饮水机旁边的蓝色垃圾桶",
@@ -99,7 +107,8 @@ bash scripts/go2w/stop_autonomous_search_web.sh   # 只停项目自有 web.pid
 | GET | `/api/search/map` | 探索图快照（`live_exploration_graph_v1`） |
 | GET | `/api/search/objects` | `{current, session_seen, target_evidence}` |
 | GET | `/api/search/events?limit=N` | 最近 SearchEvent |
-| GET | `/api/search/history?limit=N` | `outputs/live_runs/*/summary.json` 列表 |
+| GET | `/api/search/history?limit=N` | 最近 10 次 WebUI 会话列表 |
+| GET | `/api/search/history/{session_id}` | 某次会话的完整状态、事件和产物索引 |
 | GET | `/api/search/readiness` | 自动就绪检查（人工标定不阻塞） |
 | GET | `/api/search/executor` | 搜索 worker 状态 |
 | WS | `/ws/search` | 连接→snapshot→增量事件（15s 心跳） |
@@ -166,8 +175,9 @@ OPERATOR_STOP | FAILED | FINISHED)`
 - Stop（§41）：取消当前 goal、backend.stop、`OPERATOR_STOP`、flush 日志。
 - 急停（§42）：`/api/estop` 与 `/api/search/estop` 都会 owner→ESTOP、停手动、
   停搜索，之后不再产生新动作（latched）。
-- 产物（§56）：`outputs/live_runs/<session_id>/{events.jsonl, summary.json,
-  exploration_graph.json}`。
+- 产物（§56）：worker 原有产物之外，WebUI 原子维护
+  `webui_state.json / webui_events.jsonl / webui_session.json`。刷新、停止和失败都不清空；
+  完整 WebUI 会话滚动保留最近 10 次。旧 CLI/实验目录不带 WebUI 标记，不会被滚动清理。
 
 ## 9. Manual / Autonomous 互斥（ControlOwner）
 
@@ -205,8 +215,8 @@ tests/test_control_ownership.py tests/test_live_exploration_graph.py`
    `unitree_go2w_control` 的 motion control），确认 `check_go2w_ready.sh`。
 2. `bash scripts/go2w/start_autonomous_search_web.sh [--enable-autonomous-motion]`。
 3. 浏览器输入目标（如"饮水机旁边的蓝色垃圾桶"、"蓝色塑料篮"）。
-4. 如需机器人运动，勾选"自主运动"（或启动时 `--enable-autonomous-motion` 使
-   之默认开启；未授权时搜索以 dry-run 方式运行：真实感知/推理但不下发运动）。
+4. 如需机器人运动，用 `--enable-autonomous-motion` 启动服务；页面提交任务时自动
+   继承该权限。未授权时为 dry-run：真实感知/推理但不下发运动。
 5. 全程手持遥控器监督；异常时按页面急停或遥控器急停。
 
 搜索 worker 日志：`outputs/autonomous_search/logs/search_worker.log`；
@@ -223,6 +233,9 @@ Web 日志：`outputs/autonomous_search/logs/web_server.log`。
 | 搜索一直在 BOOTSTRAP | backend.health() 未就绪（motion action server 未起） |
 | 真机搜索报 BLOCKED | 未授权运动（`--enable-autonomous-motion` / 勾选"自主运动"） |
 | 事件里有 ERROR | 查看 message（PERCEPTION_ERROR/LLM_ERROR/BACKEND_ERROR…） |
+
+WebUI 的错误卡片同时显示稳定错误代码、直接原因、原因分类、发生阶段、处理建议和日志
+路径。启动失败或 worker 意外退出也会先归档最后快照，再允许开始新任务。
 
 ## 13. 未来后端（RobotBackend）
 

@@ -135,9 +135,25 @@ if [[ "$ENABLE_MOTION" == 1 && "$MOCK" == 0 ]]; then
     done < <(timeout 5 ros2 node list 2>/dev/null || true)
     return 1
   }
-  if ! ros2 action info /go2w/motion 2>/dev/null \
-    | grep -Eq 'Action servers:[[:space:]]*[1-9][0-9]*'; then
-    printf 'ERROR: /go2w/motion Action server is not available; autonomous motion cannot start.\n' >&2
+  odom_topic="${GO2W_ODOM_TOPIC:-/go2w/odom/fused}"
+  odom_info="$(timeout 5 ros2 topic info "$odom_topic" -v 2>&1 || true)"
+  odom_publishers="$(awk '/Publisher count:/ { print $3; exit }' <<<"$odom_info")"
+  odom_processes="$(ps -eo args= | awk '{ for (i=1; i<=NF; i++) { exe=$i; sub(/^.*\//, "", exe); if (exe == "go2w_wheel_odom") { count++; break } } } END { print count+0 }')"
+  if [[ "$odom_publishers" != 1 || "$odom_processes" != 1 ]]; then
+    printf 'ERROR: %s requires exactly one publisher (ROS graph=%s, wheel odom processes=%s).\n' \
+      "$odom_topic" "${odom_publishers:-unknown}" "$odom_processes" >&2
+    printf '%s\n' "$odom_info" >&2
+    printf 'Duplicate odometry origins make motion verification and topology unsafe.\n' >&2
+    exit 2
+  fi
+  motion_action_info="$(timeout 5 ros2 action info /go2w/motion 2>&1 || true)"
+  motion_action_servers="$(awk '/Action servers:/ { print $3; exit }' <<<"$motion_action_info")"
+  motion_action_processes="$(ps -eo args= | awk '{ exe=$1; sub(/^.*\//, "", exe); if (exe == "go2w_motion_action_server") count++ } END { print count+0 }')"
+  if [[ "$motion_action_servers" != 1 || "$motion_action_processes" != 1 ]]; then
+    printf 'ERROR: /go2w/motion requires exactly one server (ROS graph=%s, OS processes=%s).\n' \
+      "${motion_action_servers:-unknown}" "$motion_action_processes" >&2
+    printf '%s\n' "$motion_action_info" >&2
+    printf 'Stop duplicate/stale go2w motion launch processes before autonomous motion.\n' >&2
     exit 2
   fi
   for service in /go2w/arm /go2w/emergency_stop; do
@@ -162,6 +178,7 @@ fi
 conda_python=""
 for candidate in \
   "${GO2W_CONDA_PYTHON:-}" \
+  "${project_root}/.venv/bin/python" \
   "$HOME/anaconda3/envs/go2_robot_scene_demo/bin/python" \
   "$HOME/miniconda3/envs/go2_robot_scene_demo/bin/python" \
   /home/mxt/anaconda3/envs/go2_robot_scene_demo/bin/python \
@@ -183,16 +200,25 @@ if ! "$conda_python" -c 'import fastapi, uvicorn' >/dev/null 2>&1; then
   "$conda_python" -m pip install --quiet fastapi uvicorn
 fi
 
+# A fresh bootstrap creates one environment containing both project packages
+# and ROS system packages.  Prefer it for the real search worker when it can
+# satisfy both sides; older installations retain the existing auto-detection
+# fallback to /usr/bin/python3.
+if [[ "$MOCK" == 0 && -z "${GO2W_WORKER_PYTHON:-}" ]] \
+  && "$conda_python" -c \
+    'import rclpy, sys; sys.path.insert(0, "scripts/go2w"); import run_semantic_exploration' \
+    >/dev/null 2>&1; then
+  export GO2W_WORKER_PYTHON="$conda_python"
+fi
+
 # ---- 7. Launch the Web server (spawns ROS worker + search worker) -------- #
 cd "${project_root}"
 export MANUAL_DEMO_RUNTIME_DIR="${MANUAL_DEMO_RUNTIME_DIR:-outputs/manual_web_demo/runtime}"
 export MANUAL_DEMO_LOGS_DIR="${MANUAL_DEMO_LOGS_DIR:-outputs/manual_web_demo/logs}"
 export AUTONOMOUS_SEARCH_RUNTIME_DIR="${runtime_root}"
 export AUTONOMOUS_SEARCH_LOGS_DIR="${log_root}"
-# Search worker interpreter is auto-detected at start (prefers /usr/bin/python3
-# with rclpy, falls back to the Conda python).  Only force an explicit Python
-# when the operator sets GO2W_WORKER_PYTHON; do not force the Conda python here
-# because the real robot needs the ROS python (rclpy) to actually drive motion.
+# Search worker interpreter is auto-detected unless the unified bootstrap
+# environment above has already proved it can import both ROS and the project.
 if [[ "$MOCK" == 1 ]]; then
   export AUTONOMOUS_SEARCH_DEFAULT_BACKEND="mock"
   export AUTONOMOUS_SEARCH_ENABLE_AUTONOMOUS_MOTION="0"

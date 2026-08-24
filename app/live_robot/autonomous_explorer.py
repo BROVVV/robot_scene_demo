@@ -15,6 +15,7 @@ backends and a future production metric backend.
 from __future__ import annotations
 
 import json
+import math
 import time
 import traceback
 from dataclasses import asdict, dataclass, field
@@ -339,6 +340,12 @@ class AutonomousExplorer:
 
             # ---- OBSERVE ----------------------------------------------------
             self._state = ExplorerState.OBSERVE
+            self._emit(
+                "phase_progress",
+                phase="OBSERVE",
+                operation="capture_and_analyze",
+                detail_zh="正在获取最新画面并分析目标与场景；机器狗会原地等待分析完成",
+            )
             perception_retries = 0
             observation: LiveObservation | None = None
             while observation is None:
@@ -855,6 +862,35 @@ class AutonomousExplorer:
             target_frontier_id=goal.provenance.get("frontier_id") if isinstance(goal.provenance, dict) else None,
             safety_limited=True,
         )
+        command_values = command.to_dict()
+        if command.forward_m > 0.0:
+            backend_config = getattr(self._backend, "config", None)
+            segment_limit = float(
+                getattr(backend_config, "forward_step_m", command.forward_m)
+            )
+            maximum = float(
+                getattr(backend_config, "max_forward_step_m", command.forward_m)
+            )
+            executable = min(command.forward_m, maximum)
+            segment_limit = max(0.01, min(segment_limit, executable))
+            segment_count = max(1, int(math.ceil(executable / segment_limit)))
+            command_values["forward_m"] = executable
+            command_values["instruction_zh"] = (
+                f"前进 {executable:.2f} m（分 {segment_count} 段，"
+                f"每段不超过 {segment_limit:.2f} m），每段停止并校验"
+            )
+            command_values["safety_limited"] = bool(
+                executable < command.forward_m or segment_count > 1
+            )
+            command_values["requested_motion"] = {
+                "turn_deg": command.turn_deg,
+                "planner_forward_m": command.forward_m,
+                "forward_m": executable,
+                "segment_limit_m": segment_limit,
+                "segment_count": segment_count,
+                "segmented": segment_count > 1,
+            }
+            command = type(command)(**command_values)
         # Rebuild with the stable decision id used by the record.
         command = type(command)(**{**command.to_dict(), "decision_id": decision_id})
         live_plan = self._build_live_navigation_plan(goal, observation)

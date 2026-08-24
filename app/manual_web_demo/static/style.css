@@ -221,6 +221,10 @@ button.disable {
   background: var(--panel); border: 1px solid var(--border);
   border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;
 }
+.search-active-controls { display: inline-flex; align-items: center; gap: 8px; }
+.search-advanced { color: var(--muted); font-size: 12px; }
+.search-advanced summary { cursor: pointer; user-select: none; }
+.search-advanced .debug-toggle { margin: 8px 4px 2px; }
 #search-target {
   flex: 1; min-width: 280px;
   background: var(--panel-2); color: var(--text);
@@ -244,6 +248,14 @@ button.danger { background: var(--yellow) !important; color: #1a1200 !important;
 .search-banner.found { background: var(--green); }
 .search-banner.exhausted { background: var(--yellow); color: #1a1200; }
 .search-banner.error { background: var(--red); color: #fff; }
+.search-error-detail {
+  margin: -2px 0 10px; padding: 12px 14px; border-radius: 8px;
+  border: 1px solid #7f1d1d; background: #2a1518; line-height: 1.55;
+}
+.search-error-detail h3 { margin: 0 0 6px; color: #fca5a5; font-size: 15px; }
+.search-error-detail .error-grid { display: grid; grid-template-columns: 90px 1fr; gap: 4px 10px; }
+.search-error-detail .error-key { color: var(--muted); }
+.search-error-detail code { color: #fbbf24; overflow-wrap: anywhere; }
 
 /* ---------- search layout grid ---------- */
 .search-layout {
@@ -254,6 +266,7 @@ button.danger { background: var(--yellow) !important; color: #1a1200 !important;
     "camera obs decision"
     "camera obs timeline"
     "map map timeline"
+    "history history timeline"
     "debug debug debug";
 }
 .cell {
@@ -266,7 +279,18 @@ button.danger { background: var(--yellow) !important; color: #1a1200 !important;
 .cell-decision { grid-area: decision; }
 .cell-map { grid-area: map; }
 .cell-timeline { grid-area: timeline; }
+.cell-history { grid-area: history; }
 .cell-debug { grid-area: debug; }
+
+.search-history { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.history-item {
+  border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+  border-radius: 7px; padding: 8px 10px; cursor: pointer; text-align: left;
+}
+.history-item:hover, .history-item.active { border-color: var(--accent); }
+.history-item .history-target { font-weight: 700; overflow-wrap: anywhere; }
+.history-item .history-meta { color: var(--muted); font-size: 11px; margin-top: 4px; }
+.history-item .history-result { float: right; color: var(--accent); }
 
 .cell-title { font-weight: 700; font-size: 13px; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .cell-title .sub { font-weight: 400; }
@@ -373,12 +397,14 @@ button.danger { background: var(--yellow) !important; color: #1a1200 !important;
       "camera obs"
       "decision timeline"
       "map map"
+      "history history"
       "debug debug";
   }
   .manual-layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
-  .search-layout { grid-template-columns: 1fr; grid-template-areas: "camera" "status" "obs" "decision" "timeline" "map" "debug"; }
+  .search-layout { grid-template-columns: 1fr; grid-template-areas: "camera" "status" "obs" "decision" "timeline" "map" "history" "debug"; }
+  .search-history { grid-template-columns: 1fr; }
   .status-lights { flex-wrap: wrap; gap: 6px; }
 }
 

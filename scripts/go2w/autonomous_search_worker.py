@@ -46,13 +46,20 @@ _STATE: dict[str, Any] = {
     "worker_generation": None,
     "finish_reason": "",
     "shutdown": False,
+    "current_phase": "IDLE",
+    "current_detail": "",
+    "phase_started_at": None,
+    "last_progress_at": None,
 }
+
+_EMIT_LOCK = threading.Lock()
 
 
 def emit(message: dict[str, Any]) -> None:
     try:
-        sys.stdout.write(json.dumps(message, ensure_ascii=False) + "\n")
-        sys.stdout.flush()
+        with _EMIT_LOCK:
+            sys.stdout.write(json.dumps(message, ensure_ascii=False) + "\n")
+            sys.stdout.flush()
     except (BrokenPipeError, OSError):
         pass
 
@@ -65,6 +72,15 @@ def make_event_hook() -> Any:
             _STATE["session_id"] = explorer.session_id
         if event.get("event") == "session_finish":
             _STATE["finish_reason"] = str(event.get("result") or "")
+        now = time.time()
+        phase = str(event.get("phase") or event.get("state") or "RUNNING")
+        if phase != _STATE.get("current_phase"):
+            _STATE["current_phase"] = phase
+            _STATE["phase_started_at"] = now
+            _STATE["current_detail"] = ""
+        if event.get("detail_zh") is not None:
+            _STATE["current_detail"] = str(event.get("detail_zh") or "")
+        _STATE["last_progress_at"] = now
         emit({
             "type": "event",
             "event": event,
@@ -354,9 +370,40 @@ def _running() -> bool:
     return thread is not None and thread.is_alive()
 
 
+def _emit_heartbeat() -> None:
+    while not _STATE.get("shutdown"):
+        if _running():
+            now = time.time()
+            emit({
+                "type": "worker_status",
+                "session_id": _STATE.get("session_id"),
+                "task_id": _STATE.get("task_id"),
+                "executor_id": _STATE.get("executor_id"),
+                "worker_generation": _STATE.get("worker_generation"),
+                "status": {
+                    "state": "running",
+                    "stage": "RUNNING",
+                    "phase": _STATE.get("current_phase") or "RUNNING",
+                    "phase_detail": _STATE.get("current_detail") or "",
+                    "phase_started_at": _STATE.get("phase_started_at"),
+                    "phase_elapsed_seconds": max(
+                        0.0, now - float(_STATE.get("phase_started_at") or now)
+                    ),
+                    "last_progress_at": _STATE.get("last_progress_at"),
+                    "worker_alive": True,
+                },
+            })
+        time.sleep(2.0)
+
+
 def main() -> int:
     emit({"type": "ready", "pid": str(Path("/proc/self/stat").read_text().split()[0])
           if Path("/proc/self/stat").is_file() else "unknown"})
+    threading.Thread(
+        target=_emit_heartbeat,
+        daemon=True,
+        name="search-worker-heartbeat",
+    ).start()
     for line in sys.stdin:
         line = line.strip()
         if not line:

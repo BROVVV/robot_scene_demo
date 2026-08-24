@@ -131,7 +131,26 @@ class Go2WExperimentalBackend(RobotBackend):
     def execute_goal(self, goal: ExplorationGoal) -> NavigationHandle:
         handle = NavigationHandle(goal_id=goal.goal_id)
         try:
-            result = self._dispatch(goal)
+            if (
+                goal.goal_type not in {"STOP", "REOBSERVE"}
+                and not self.config.dry_run
+            ):
+                health = self.health()
+                if not health.ready:
+                    result = navigation_result(
+                        goal.goal_id,
+                        NavigationStatus.BACKEND_UNAVAILABLE,
+                        message=(
+                            "motion preflight failed: "
+                            + ", ".join(health.degraded)
+                        ),
+                        requested_motion=_requested_motion(goal),
+                        provenance={"backend_health": health.to_dict()},
+                    )
+                else:
+                    result = self._dispatch(goal)
+            else:
+                result = self._dispatch(goal)
         except Exception as exc:  # backend failure -> structured result
             result = navigation_result(
                 goal.goal_id, NavigationStatus.BACKEND_UNAVAILABLE,
@@ -178,6 +197,66 @@ class Go2WExperimentalBackend(RobotBackend):
         if details.get("motion_action_available") is False and not self.config.dry_run:
             ready = False
             degraded.append("motion_action_unavailable")
+        server_count = details.get("motion_action_server_count")
+        if (
+            "motion_action_server_count" in details
+            and server_count != 1
+            and not self.config.dry_run
+        ):
+            ready = False
+            degraded.append(
+                "motion_action_graph_probe_failed"
+                if server_count is None
+                else "motion_action_server_missing"
+                if int(server_count) < 1
+                else "duplicate_motion_action_servers"
+            )
+        process_count = details.get("motion_action_server_process_count")
+        if (
+            "motion_action_server_process_count" in details
+            and process_count != 1
+            and not self.config.dry_run
+        ):
+            ready = False
+            marker = (
+                "motion_action_process_probe_failed"
+                if process_count is None
+                else "motion_action_server_process_missing"
+                if int(process_count) < 1
+                else "duplicate_motion_action_server_processes"
+            )
+            if marker not in degraded:
+                degraded.append(marker)
+        odom_publishers = details.get("odom_publisher_count")
+        if (
+            "odom_publisher_count" in details
+            and odom_publishers != 1
+            and not self.config.dry_run
+        ):
+            ready = False
+            degraded.append(
+                "odom_graph_probe_failed"
+                if odom_publishers is None
+                else "odom_publisher_missing"
+                if int(odom_publishers) < 1
+                else "duplicate_odom_publishers"
+            )
+        odom_processes = details.get("wheel_odom_process_count")
+        if (
+            "wheel_odom_process_count" in details
+            and odom_processes != 1
+            and not self.config.dry_run
+        ):
+            ready = False
+            marker = (
+                "wheel_odom_process_probe_failed"
+                if odom_processes is None
+                else "wheel_odom_process_missing"
+                if int(odom_processes) < 1
+                else "duplicate_wheel_odom_processes"
+            )
+            if marker not in degraded:
+                degraded.append(marker)
         if details.get("robot_mode_error"):
             ready = False
             degraded.append("robot_mode_error")
@@ -273,9 +352,7 @@ class Go2WExperimentalBackend(RobotBackend):
         after = self._odometry()
         observed_dyaw = _wrap_deg(math.degrees(after[2] - before[2]))
         self._learn_correction(requested=clamped, observed=observed_dyaw, kind="rotation")
-        status = (
-            NavigationStatus.SUCCEEDED if ok else NavigationStatus.FAILED
-        )
+        status = _motion_status(ok, reason, detail)
         return navigation_result(
             goal.goal_id, status,
             message=reason or f"turn {step}",
@@ -288,30 +365,69 @@ class Go2WExperimentalBackend(RobotBackend):
         )
 
     def _execute_forward(self, goal: ExplorationGoal, dx_m: float) -> NavigationResult:
-        if dx_m > self.config.max_forward_step_m:
-            dx_m = self.config.max_forward_step_m
-        if dx_m <= 0.0:
+        requested_dx_m = max(0.0, float(dx_m))
+        executable_dx_m = min(requested_dx_m, self.config.max_forward_step_m)
+        if executable_dx_m <= 0.0:
             return navigation_result(
                 goal.goal_id, NavigationStatus.SUCCEEDED,
                 message="no forward demand", requested_motion=_requested_motion(goal),
             )
         before = self._odometry()
         started = self._now()
-        ok, reason, detail = self._execute_step("f")
+        remaining = executable_dx_m
+        segment_limit = max(
+            0.01,
+            min(self.config.forward_step_m, self.config.max_forward_step_m),
+        )
+        segments: list[dict[str, Any]] = []
+        ok = True
+        reason = ""
+        detail: dict[str, Any] = {}
+        while remaining > 0.005:
+            segment_m = min(segment_limit, remaining)
+            step = f"f{segment_m:.3f}"
+            segment_ok, segment_reason, segment_detail = self._execute_step(step)
+            segments.append({
+                "index": len(segments),
+                "requested_distance_m": round(segment_m, 3),
+                "step": step,
+                "success": bool(segment_ok),
+                "message": segment_reason,
+                "detail": segment_detail,
+            })
+            if not segment_ok:
+                ok = False
+                reason = segment_reason or (
+                    f"forward segment {len(segments)} failed"
+                )
+                detail = segment_detail
+                break
+            remaining -= segment_m
         elapsed = max(0.0, self._now() - started)
         after = self._odometry()
         observed_d = math.hypot(after[0] - before[0], after[1] - before[1])
-        self._learn_correction(requested=dx_m, observed=observed_d, kind="forward")
-        status = (
-            NavigationStatus.SUCCEEDED if ok else NavigationStatus.FAILED
+        self._learn_correction(
+            requested=executable_dx_m, observed=observed_d, kind="forward"
         )
+        status = _motion_status(ok, reason, detail)
         return navigation_result(
             goal.goal_id, status,
-            message=reason or "forward step",
-            requested_motion={"step": "f", "distance_m": round(dx_m, 3)},
+            message=reason or f"forward completed in {len(segments)} segment(s)",
+            requested_motion={
+                "step": "forward_segmented",
+                "planner_distance_m": round(requested_dx_m, 3),
+                "distance_m": round(executable_dx_m, 3),
+                "segment_limit_m": round(segment_limit, 3),
+                "segment_count": len(segments),
+                "safety_limited": executable_dx_m < requested_dx_m,
+            },
             observed_motion={"displacement_m": round(observed_d, 3)},
             elapsed_sec=round(elapsed, 3),
-            provenance={"backend": "go2w_experimental", "detail": detail},
+            provenance={
+                "backend": "go2w_experimental",
+                "detail": detail,
+                "segments": segments,
+            },
         )
 
     # ---- opportunistic request-vs-observed learning -----------------------
@@ -353,6 +469,21 @@ class Go2WExperimentalBackend(RobotBackend):
 
 def _wrap_deg(value: float) -> float:
     return (value + 180.0) % 360.0 - 180.0
+
+
+def _motion_status(
+    ok: bool, reason: str, detail: dict[str, Any] | None
+) -> NavigationStatus:
+    if ok:
+        return NavigationStatus.SUCCEEDED
+    error_type = str((detail or {}).get("error_type") or "").upper()
+    reason_upper = str(reason or "").upper()
+    if error_type in {"MOTION_ACCEPT_TIMEOUT", "MOTION_RESULT_TIMEOUT"} or (
+        reason_upper.startswith("MOTION_ACCEPT_TIMEOUT:")
+        or reason_upper.startswith("MOTION_RESULT_TIMEOUT:")
+    ):
+        return NavigationStatus.TIMEOUT
+    return NavigationStatus.FAILED
 
 
 def _requested_motion(goal: ExplorationGoal) -> dict[str, Any]:

@@ -9,6 +9,7 @@ from app.live_robot.search_event import (
     GOAL_SELECTED,
     MAP_UPDATED,
     OBSERVATION_UPDATED,
+    SEARCH_STATE_CHANGED,
     SESSION_CREATED,
     SESSION_STARTED,
     TARGET_CONFIRMED,
@@ -19,6 +20,8 @@ from app.live_robot.search_state_store import (
     STATUS_TARGET_FOUND,
     SearchStateStore,
 )
+from app.live_robot.explorer_search_adapter import ExplorerSearchAdapter
+from app.live_robot.search_event_bus import SearchEventBus
 
 
 def _event(event_type: str, session_id: str = "search_test", cycle: int | None = None,
@@ -44,6 +47,19 @@ def test_store_session_lifecycle() -> None:
     assert snapshot["target"] == "饮水机旁边的蓝色垃圾桶"
     assert snapshot["status"] == "RUNNING"
     assert snapshot["timeline"][0]["event_type"] == SESSION_CREATED
+
+
+def test_store_preserves_live_phase_detail() -> None:
+    store = SearchStateStore()
+    store.apply(_event(SESSION_CREATED, payload={"target": "x"}))
+    store.apply(_event(SEARCH_STATE_CHANGED, timestamp=123.0, payload={
+        "phase": "OBSERVE",
+        "phase_detail": "正在获取最新画面并分析目标与场景",
+    }))
+    snapshot = store.snapshot()
+    assert snapshot["phase"] == "OBSERVE"
+    assert snapshot["phase_detail"] == "正在获取最新画面并分析目标与场景"
+    assert snapshot["phase_started_at"] == 123.0
 
 
 def test_store_observation_and_objects() -> None:
@@ -90,13 +106,18 @@ def test_store_target_match_and_candidates_and_goal() -> None:
         "reasons": ["锚点"],
     }))
     store.apply(_event(ACTION_STARTED))
-    store.apply(_event(ACTION_FINISHED, payload={"status": "succeeded"}))
+    store.apply(_event(ACTION_FINISHED, payload={
+        "status": "succeeded",
+        "message": "turn l20",
+        "elapsed_sec": 2.1,
+    }))
     snapshot = store.snapshot()
     assert snapshot["target_match"]["level"] == "partial_match"
     assert snapshot["target_match"]["anchor_labels"] == ["饮水机"]
     assert snapshot["selected_goal"]["goal"]["goal_id"] == "goal_1"
     assert snapshot["candidates"][0]["selected"] is True
     assert snapshot["robot"]["motion_status"] == "SUCCEEDED"
+    assert snapshot["robot"]["last_motion_result"]["message"] == "turn l20"
     evidence = snapshot["objects"]["target_evidence"]
     assert evidence["anchor_labels"] == ["饮水机"]
 
@@ -139,6 +160,42 @@ def test_store_exhausted_and_error() -> None:
     snapshot = store.snapshot()
     assert snapshot["status"] == "FAILED"
     assert snapshot["error"]["error_type"] == "PERCEPTION_ERROR"
+
+
+def test_budget_limit_is_normal_completion_not_error() -> None:
+    store = SearchStateStore()
+    store.apply(_event(SESSION_CREATED, payload={"target": "x"}))
+    # Compatibility with an older event stream that emitted ERROR immediately
+    # before the terminal budget result.
+    store.apply(_event("ERROR", payload={
+        "error_type": "SEARCH_ERROR", "message": "MAX_STEPS_REACHED",
+    }))
+    store.apply(_event("SEARCH_FINISHED", payload={
+        "result": "MAX_STEPS_REACHED",
+        "finish_reason": "MAX_STEPS_REACHED",
+    }))
+    snapshot = store.snapshot()
+    assert snapshot["status"] == "FINISHED"
+    assert snapshot["result"] == "MAX_STEPS_REACHED"
+    assert snapshot["error"] is None
+
+
+def test_observer_retry_is_recoverable_warning_not_failed() -> None:
+    store = SearchStateStore()
+    bus = SearchEventBus()
+    adapter = ExplorerSearchAdapter(bus, store, session_id="search_test")
+    adapter.on_explorer_event({"event": "session_start", "state": "BOOTSTRAP"})
+    adapter.on_explorer_event({
+        "event": "observer_retry",
+        "state": "OBSERVE",
+        "attempt": 1,
+        "error": "vision request timed out",
+    })
+    snapshot = store.snapshot()
+    assert snapshot["status"] == "RUNNING"
+    assert snapshot["error"] is None
+    assert snapshot["last_warning"]["recoverable"] is True
+    assert "vision request timed out" in snapshot["phase_detail"]
 
 
 def test_store_snapshot_is_a_copy() -> None:

@@ -40,13 +40,19 @@ from app.live_robot.search_state_store import (
     STATUS_RUNNING,
     STATUS_TARGET_FOUND,
     SearchStateStore,
+    normalize_search_snapshot,
 )
 from app.manual_web_demo.control_ownership import ControlOwner, OwnerState
 from app.manual_web_demo.search_executor import SearchExecutor
+from app.manual_web_demo.search_errors import search_error
 from app.manual_web_demo.search_models import (
     SearchSessionInfo,
     SearchStartRequest,
     new_session_id,
+)
+from app.manual_web_demo.search_session_archive import (
+    TERMINAL_STATUSES,
+    SearchSessionArchive,
 )
 from app.task_understanding.search_task_context import SearchTaskContext
 
@@ -76,6 +82,7 @@ class SearchSessionService:
         event_buffer: int = 500,
         task_understanding_runner: Callable[[str], Any] | None = None,
         allow_mock_task_fallback: bool = True,
+        history_limit: int = 10,
     ) -> None:
         self.owner = owner
         self._executor_factory = executor_factory or _default_executor_factory
@@ -84,7 +91,8 @@ class SearchSessionService:
         )
         self._session_dir = session_dir
         self._bus = SearchEventBus(max_recent=int(event_buffer))
-        self._store = SearchStateStore()
+        self._archive = SearchSessionArchive(session_dir, max_sessions=history_limit)
+        self._store = SearchStateStore(on_change=self._on_store_change)
         self._adapter: ExplorerSearchAdapter | None = None
         self._executor: SearchExecutor | None = None
         self._lock = threading.Lock()
@@ -97,6 +105,7 @@ class SearchSessionService:
         self._worker_generation = 0
         self._task_understanding_runner = task_understanding_runner
         self._allow_mock_task_fallback = bool(allow_mock_task_fallback)
+        self._restore_latest_session()
 
     # ------------------------------------------------------------------ #
     # queries                                                            #
@@ -161,7 +170,15 @@ class SearchSessionService:
         return self._store.decisions_snapshot()
 
     def recent_events(self, limit: int | None = None) -> list[dict[str, Any]]:
-        return self._bus.recent_events(limit)
+        # The process-wide bus may have restored the previous session before a
+        # new service/test session id is installed.  Never mix two sessions in
+        # one WebSocket/event response; historical sessions have their own API.
+        events = self._bus.recent_events(None)
+        if self._session_id:
+            events = [item for item in events if item.get("session_id") == self._session_id]
+        if limit is not None:
+            events = events[-max(0, int(limit)):]
+        return events
 
     def subscribe_events(
         self, callback: Callable[[SearchEvent], None]
@@ -184,7 +201,7 @@ class SearchSessionService:
     # stale-session recovery                                           #
     # ------------------------------------------------------------------ #
     def _reset_session_locked(self) -> None:
-        """Drop an un-recoverable session back to IDLE (caller holds lock)."""
+        """Clear only the active slot when there is genuinely no session."""
         self._status = STATUS_IDLE
         self._info = None
         self._session_id = None
@@ -192,11 +209,52 @@ class SearchSessionService:
         self._started_at = None
         self._executor = None
         self._adapter = None
-        self._store = SearchStateStore()
+        self._store = SearchStateStore(on_change=self._on_store_change)
         try:
             self.owner.release(OwnerState.AUTONOMOUS)
         except Exception:  # noqa: BLE001 - release is best effort/idempotent
             pass
+
+    def _fail_interrupted_session_locked(self, message: str) -> None:
+        """Finalize a dead worker without erasing its last useful snapshot."""
+        if self._session_id is None:
+            self._reset_session_locked()
+            return
+        detail = search_error(
+            message,
+            code="WORKER_INTERRUPTED",
+            source="search_session_service",
+            stage=str(self._store.snapshot().get("phase") or "RUNNING"),
+        )
+        error_event = make_event(
+            allocator=self._bus.allocator,
+            session_id=self._session_id,
+            event_type=ERROR,
+            payload={"error_type": detail["code"], **detail},
+        )
+        self._bus.publish(error_event)
+        self._store.apply(error_event)
+        finish = make_event(
+            allocator=self._bus.allocator,
+            session_id=self._session_id,
+            event_type=SEARCH_FINISHED,
+            payload={
+                "result": "FAILED",
+                "finish_reason": "WORKER_INTERRUPTED",
+                "error": detail["message"],
+                "error_detail": detail,
+            },
+        )
+        self._bus.publish(finish)
+        self._store.apply(finish)
+        self._status = STATUS_FAILED
+        if self._info is not None:
+            self._info.status = STATUS_FAILED
+            self._info.result = "FAILED"
+            self._info.finished_at = time.time()
+        self._executor = None
+        self._adapter = None
+        self.owner.release(OwnerState.AUTONOMOUS)
 
     def _force_stop_locked(self) -> None:
         """Forcefully terminate a lingering STOPPING session.
@@ -217,7 +275,9 @@ class SearchSessionService:
                 executor.shutdown()
             except Exception:  # noqa: BLE001 - cleanup is best effort
                 pass
-        self._reset_session_locked()
+        self._fail_interrupted_session_locked(
+            "旧任务在 STOPPING 阶段未能正常结束，已强制终止 worker 并保留其完整记录。"
+        )
 
     def _reap_stale_locked(self) -> bool:
         """Return True and reset when a RUNNING/STARTING/STOPPING session's
@@ -241,7 +301,9 @@ class SearchSessionService:
         executor_alive = bool(self._executor is not None and self._executor.alive())
         if self._status == STATUS_RUNNING:
             if not executor_alive:
-                self._reset_session_locked()
+                self._fail_interrupted_session_locked(
+                    "搜索 worker 已退出，未收到正常结束事件；已保留退出前的全部搜索状态。"
+                )
                 return True
             # 正常搜索在跑：不因超时回收（搜索有自己的 max_seconds 预算）
             return False
@@ -249,7 +311,18 @@ class SearchSessionService:
         if self._started_at is not None:
             timed_out = (time.time() - self._started_at) > STARTING_TIMEOUT_SEC
         if timed_out or not executor_alive:
-            self._reset_session_locked()
+            if timed_out and executor_alive and self._executor is not None:
+                try:
+                    self._executor.stop()
+                    self._executor.shutdown()
+                except Exception:  # noqa: BLE001 - terminal cleanup is best effort
+                    pass
+            reason = (
+                "搜索启动超过等待时限，worker 未进入运行状态；已保留启动诊断。"
+                if timed_out else
+                "搜索 worker 在启动或停止阶段退出；已保留退出前的全部搜索状态。"
+            )
+            self._fail_interrupted_session_locked(reason)
             return True
         return False
 
@@ -269,7 +342,8 @@ class SearchSessionService:
     def start_search(self, request: SearchStartRequest) -> dict[str, Any]:
         error = request.validate()
         if error:
-            return {"ok": False, "error": error}
+            detail = search_error(error, code="TASK_INVALID", source="search_api", stage="VALIDATE")
+            return {"ok": False, "error": error, "error_detail": detail}
         task_text = request.task_text or request.target
         task_context = self._understand_task(task_text, backend=request.backend)
         with self._lock:
@@ -280,17 +354,21 @@ class SearchSessionService:
             self._reap_stale_locked()
             if self._status == STATUS_STOPPING:
                 self._force_stop_locked()
-            if self._status not in (STATUS_IDLE, "FINISHED", "SEARCH_EXHAUSTED",
-                                    "FAILED", "OPERATOR_STOP", "TARGET_FOUND",
-                                    "TASK_REJECTED"):
+            if self._status != STATUS_IDLE and self._status not in TERMINAL_STATUSES:
+                detail = search_error(
+                    f"search already active in state {self._status}",
+                    code="SEARCH_ALREADY_ACTIVE", source="search_service", stage="START",
+                )
                 return {
                     "ok": False,
-                    "error": f"search already active in state {self._status}",
+                    "error": detail["message"],
+                    "error_detail": detail,
                     "conflict": True,
                 }
             ok, reason = self.owner.try_autonomous(detail="autonomous_search")
             if not ok:
-                return {"ok": False, "error": reason, "conflict": True}
+                detail = search_error(reason, source="control_owner", stage="START")
+                return {"ok": False, "error": reason, "error_detail": detail, "conflict": True}
             session_id = new_session_id()
             self._worker_generation += 1
             generation = self._worker_generation
@@ -310,10 +388,19 @@ class SearchSessionService:
                 started_at=self._started_at,
             )
 
+            self._archive.begin(session_id, {
+                "target": task_context.canonical_target,
+                "task_text": task_context.raw_text,
+                "task": task_context.to_dict(),
+                "backend": request.backend,
+                "reasoner": request.reasoner,
+                "motion_enabled": request.enable_autonomous_motion,
+            })
+
             # One bus lives for the whole web process (the /ws/search hub
             # subscribes once); a new session only clears its event history.
             self._bus.clear()
-            self._store = SearchStateStore()
+            self._store = SearchStateStore(on_change=self._on_store_change)
             self._store.reset(
                 session_id=session_id,
                 target=task_context.canonical_target,
@@ -404,6 +491,11 @@ class SearchSessionService:
                     payload={
                         "task": task_context.to_dict(),
                         "reason": task_context.rejection_reason or "任务不可执行",
+                        "error_detail": search_error(
+                            task_context.rejection_reason or "任务不可执行",
+                            code="TASK_REJECTED", source="task_understanding",
+                            stage="TASK_UNDERSTANDING",
+                        ),
                     },
                 )
                 self._bus.publish(rejected)
@@ -418,13 +510,36 @@ class SearchSessionService:
                     "session_id": session_id,
                     "task": task_context.to_dict(),
                     "error": task_context.rejection_reason or "任务不可执行",
+                    "error_detail": self._store.snapshot().get("error") or
+                                    rejected.payload.get("error_detail"),
                 }
             try:
                 executor.start(params)
             except Exception as exc:  # noqa: BLE001
-                self._status = "FAILED"
+                detail = search_error(
+                    f"executor start failed: {type(exc).__name__}: {exc}",
+                    source="search_executor", stage="SPAWN_WORKER",
+                )
+                error_event = make_event(
+                    allocator=self._bus.allocator, session_id=session_id,
+                    event_type=ERROR, payload={"error_type": detail["code"], **detail},
+                )
+                self._bus.publish(error_event)
+                self._store.apply(error_event)
+                finish = make_event(
+                    allocator=self._bus.allocator, session_id=session_id,
+                    event_type=SEARCH_FINISHED,
+                    payload={"result": "FAILED", "finish_reason": detail["code"],
+                             "error": detail["message"], "error_detail": detail},
+                )
+                self._bus.publish(finish)
+                self._store.apply(finish)
+                self._status = STATUS_FAILED
+                self._info.status = STATUS_FAILED
+                self._info.result = "FAILED"
+                self._info.finished_at = time.time()
                 self.owner.release(OwnerState.AUTONOMOUS)
-                return {"ok": False, "error": f"executor start failed: {exc}"}
+                return {"ok": False, "error": detail["message"], "error_detail": detail}
             return {
                 "ok": True,
                 "session_id": session_id,
@@ -435,7 +550,11 @@ class SearchSessionService:
     def pause_search(self) -> dict[str, Any]:
         with self._lock:
             if self._active_status() != STATUS_RUNNING:
-                return {"ok": False, "error": f"not running (state={self._active_status()})"}
+                message = f"not running (state={self._active_status()})"
+                return {"ok": False, "error": message,
+                        "error_detail": search_error(
+                            message, code="SEARCH_NOT_RUNNING",
+                            source="search_service", stage="PAUSE")}
         if self._executor is not None:
             self._executor.pause()
         return {"ok": True, "status": "PAUSED"}
@@ -443,7 +562,11 @@ class SearchSessionService:
     def resume_search(self) -> dict[str, Any]:
         with self._lock:
             if self._active_status() != "PAUSED":
-                return {"ok": False, "error": f"not paused (state={self._active_status()})"}
+                message = f"not paused (state={self._active_status()})"
+                return {"ok": False, "error": message,
+                        "error_detail": search_error(
+                            message, code="SEARCH_NOT_PAUSED",
+                            source="search_service", stage="RESUME")}
         if self._executor is not None:
             self._executor.resume()
         return {"ok": True, "status": "RUNNING"}
@@ -457,8 +580,12 @@ class SearchSessionService:
             if not alive:
                 # Worker is gone / never came up (e.g. stuck STARTING after a
                 # crash): clean up immediately so the operator can start again.
-                self._reset_session_locked()
-                return {"ok": True, "status": "IDLE", "note": "stopped stale session"}
+                if self._active_status() not in TERMINAL_STATUSES:
+                    self._fail_interrupted_session_locked(
+                        "停止任务时发现搜索 worker 已退出；已保留停止前的完整记录。"
+                    )
+                return {"ok": True, "status": self._active_status(),
+                        "note": "worker already stopped; state preserved"}
             self._status = STATUS_STOPPING
             if self._info is not None:
                 self._info.status = STATUS_STOPPING
@@ -494,49 +621,11 @@ class SearchSessionService:
     # ------------------------------------------------------------------ #
     # history                                                            #
     # ------------------------------------------------------------------ #
-    def history(self, limit: int = 50) -> list[dict[str, Any]]:
-        base = Path(self._session_dir)
-        if not base.is_dir():
-            return []
-        sessions: list[dict[str, Any]] = []
-        for directory in base.iterdir():
-            if not directory.is_dir():
-                continue
-            summary_path = directory / "summary.json"
-            if not summary_path.is_file():
-                continue
-            try:
-                summary = json.loads(summary_path.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                continue
-            task: dict[str, Any] = {}
-            task_path = directory / "task.json"
-            if task_path.is_file():
-                try:
-                    task = json.loads(task_path.read_text(encoding="utf-8"))
-                except (json.JSONDecodeError, OSError):
-                    task = {}
-            sessions.append(
-                {
-                    "session_id": directory.name,
-                    "target": summary.get("target"),
-                    "task_text": task.get("raw_text") or summary.get("target"),
-                    "canonical_target": task.get("canonical_target") or summary.get("target"),
-                    "task_id": task.get("task_id"),
-                    "result": summary.get("result"),
-                    "finish_reason": summary.get("finish_reason"),
-                    "duration_s": summary.get("duration_s"),
-                    "planning_cycles": summary.get("planning_cycles"),
-                    "observations": summary.get("observations"),
-                    "unique_nodes": summary.get("unique_nodes"),
-                    "unique_places": summary.get("unique_places"),
-                    "unique_objects": summary.get("unique_objects"),
-                    "frontiers_discovered": summary.get("frontiers_discovered"),
-                    "updated_at": summary_path.stat().st_mtime,
-                }
-            )
-        sessions.sort(key=lambda item: item["updated_at"], reverse=True)
-        return sessions[: max(1, int(limit))]
+    def history(self, limit: int = 10) -> list[dict[str, Any]]:
+        return self._archive.list(min(10, max(1, int(limit))))
+
+    def history_session(self, session_id: str) -> dict[str, Any] | None:
+        return self._archive.load(session_id)
 
     # ------------------------------------------------------------------ #
     # executor message routing                                            #
@@ -548,6 +637,13 @@ class SearchSessionService:
         if msg_type == "event":
             raw = message.get("event")
             if isinstance(raw, dict) and self._adapter is not None:
+                # Release the motion lease at the raw terminal boundary before
+                # durable snapshot I/O.  This prevents persistence latency
+                # from extending autonomous control ownership after STOP or a
+                # confirmed target.
+                raw_name = str(raw.get("event") or "")
+                if raw_name in {"session_finish", "target_found", "search_exhausted"}:
+                    self.owner.release(OwnerState.AUTONOMOUS)
                 self._adapter.on_explorer_event(raw)
                 # The adapter can expose a terminal explorer event before the
                 # worker emits its final session_result.  Release ownership at
@@ -581,17 +677,34 @@ class SearchSessionService:
             startup_payload["worker_alive"] = True
             startup_payload["last_worker_message_at"] = time.time()
             startup_payload["last_error"] = startup_payload.get("last_error")
+            current_snapshot = self._store.snapshot()
+            worker_phase = status.get("phase") or current_snapshot.get("phase")
+            if worker_phase in {None, "", "IDLE"}:
+                worker_phase = (
+                    "STARTING"
+                    if current_snapshot.get("status") == STATUS_STARTING
+                    else "RUNNING"
+                )
+            state_payload = {
+                "startup": startup_payload,
+                "worker": startup_payload,
+                "phase": worker_phase,
+            }
+            if "phase_detail" in status:
+                state_payload["phase_detail"] = status.get("phase_detail") or ""
+            if status.get("phase_started_at") is not None:
+                state_payload["phase_started_at"] = status.get("phase_started_at")
             self._store.apply(
                 make_event(
                     allocator=self._bus.allocator,
                     session_id=self._session_id or "",
                     event_type=SEARCH_STATE_CHANGED,
-                    payload={"startup": startup_payload, "phase": "STARTING"},
+                    payload=state_payload,
                 )
             )
             if self._adapter is not None:
                 self._adapter.on_explorer_event(
-                    {"event": "search_state_changed", "phase": "STARTING", "startup": startup_payload}
+                    {"event": "search_state_changed", **state_payload}
                 )
         elif msg_type == "error":
             self._publish_error(message.get("message") or "search worker error")
@@ -730,16 +843,86 @@ class SearchSessionService:
 
     def _publish_error(self, message: str) -> None:
         session_id = self._session_id or ""
+        snapshot = self._store.snapshot()
+        detail = search_error(
+            message,
+            source="autonomous_search_worker",
+            stage=str(snapshot.get("phase") or
+                      (snapshot.get("startup") or {}).get("stage") or "RUNNING"),
+        )
         error_event = make_event(
             allocator=self._bus.allocator,
             session_id=session_id,
             event_type=ERROR,
-            payload={"error_type": "SEARCH_ERROR", "message": message},
+            payload={"error_type": detail["code"], **detail},
         )
         self._bus.publish(error_event)
         self._store.apply(error_event)
-        self._mark_status("FAILED")
-        self.owner.release(OwnerState.AUTONOMOUS)
+        self._mark_status(STATUS_FAILED)
+
+    # ------------------------------------------------------------------ #
+    # durable state                                                      #
+    # ------------------------------------------------------------------ #
+    def _on_store_change(
+        self, snapshot: dict[str, Any], event: SearchEvent | None,
+    ) -> None:
+        """Persist every materialized state transition atomically.
+
+        This callback runs after SearchStateStore releases its lock, so slow
+        storage can never expose a half-mutated in-memory snapshot.
+        """
+        try:
+            self._archive.record(snapshot, event)
+        except (OSError, ValueError):
+            # Search safety must not depend on storage health.  A later state
+            # transition will retry the atomic snapshot write.
+            pass
+
+    def _restore_latest_session(self) -> None:
+        """Restore the newest WebUI session when the web process starts."""
+        try:
+            record = self._archive.latest()
+        except (OSError, ValueError):
+            return
+        if not record:
+            return
+        marker = dict(record.get("session") or {})
+        state = normalize_search_snapshot(dict(record.get("state") or {}))
+        session_id = str(marker.get("session_id") or state.get("session_id") or "")
+        if not session_id:
+            return
+        self._session_id = session_id
+        self._status = str(state.get("status") or marker.get("status") or STATUS_IDLE)
+        self._started_at = state.get("started_at")
+        task = dict(state.get("task") or marker.get("task") or {})
+        self._task_context = None
+        self._info = SearchSessionInfo(
+            session_id=session_id,
+            target=str(state.get("target") or marker.get("target") or ""),
+            task_text=str(marker.get("task_text") or task.get("raw_text") or ""),
+            task_context=task,
+            status=self._status,
+            result=str(state.get("result") or marker.get("result") or ""),
+            started_at=state.get("started_at"),
+            finished_at=state.get("finished_at"),
+            backend=str(state.get("backend") or marker.get("backend") or ""),
+            reasoner=str(state.get("reasoner") or marker.get("reasoner") or "semantic"),
+        )
+        self._store.restore(state)
+        # Persist the compatibility migration so subsequent page loads and
+        # history metadata no longer resurrect the obsolete FAILED label.
+        try:
+            self._archive.record(state)
+        except (OSError, ValueError):
+            pass
+        self._bus.restore_recent(list(record.get("events") or []))
+        if self._status not in TERMINAL_STATUSES and self._status != STATUS_IDLE:
+            # A new web process cannot safely reclaim the old worker's stdin,
+            # control lease or ROS handles.  Preserve the snapshot and make
+            # that interruption explicit rather than pretending it is live.
+            self._fail_interrupted_session_locked(
+                "WebUI 服务重启后无法安全接管原搜索 worker；原任务已标记为中断，重启前状态已完整保留。"
+            )
 
     def _mark_status(self, status: str) -> None:
         with self._lock:

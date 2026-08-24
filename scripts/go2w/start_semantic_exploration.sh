@@ -213,9 +213,28 @@ if ! topic_alive /go2w/odom/fused; then
   printf '%s\n' 'Wheel odometry ready.'
 fi
 
+# A topic being alive is insufficient: ROS collapses duplicate node names,
+# while both publishers can still interleave poses from different origins.
+odom_topic="${GO2W_ODOM_TOPIC:-/go2w/odom/fused}"
+odom_info="$(timeout 5 ros2 topic info "$odom_topic" -v 2>&1 || true)"
+odom_publishers="$(awk '/Publisher count:/ { print $3; exit }' <<<"$odom_info")"
+odom_processes="$(ps -eo args= | awk '{ for (i=1; i<=NF; i++) { exe=$i; sub(/^.*\//, "", exe); if (exe == "go2w_wheel_odom") { count++; break } } } END { print count+0 }')"
+if [[ "$odom_publishers" != 1 || "$odom_processes" != 1 ]]; then
+  printf 'ODOM_BACKEND_UNAVAILABLE: %s requires exactly one publisher (ROS graph=%s, processes=%s).\n' \
+    "$odom_topic" "${odom_publishers:-unknown}" "$odom_processes" >&2
+  printf '%s\n' "$odom_info" >&2
+  printf '%s\n' 'Stop duplicate wheel_odom launch processes before autonomous motion.' >&2
+  exit 2
+fi
+
 # --- motion action server ---------------------------------------------------------
-if ! timeout 5 ros2 action info /go2w/motion >/dev/null 2>&1; then
-  printf '%s\n' 'MOTION_BACKEND_UNAVAILABLE: /go2w/motion action server is not running.' >&2
+motion_action_info="$(timeout 5 ros2 action info /go2w/motion 2>&1 || true)"
+motion_action_servers="$(awk '/Action servers:/ { print $3; exit }' <<<"$motion_action_info")"
+motion_action_processes="$(ps -eo args= | awk '{ exe=$1; sub(/^.*\//, "", exe); if (exe == "go2w_motion_action_server") count++ } END { print count+0 }')"
+if [[ "$motion_action_servers" != 1 || "$motion_action_processes" != 1 ]]; then
+  printf 'MOTION_BACKEND_UNAVAILABLE: /go2w/motion requires exactly one server (ROS graph=%s, OS processes=%s).\n' \
+    "${motion_action_servers:-unknown}" "$motion_action_processes" >&2
+  printf '%s\n' "$motion_action_info" >&2
   printf '%s\n' 'Start it in another terminal:' >&2
   printf '  cd %s\n' "${control_root}" >&2
   printf '%s\n' '  source scripts/setup_go2w_ros2.sh' >&2

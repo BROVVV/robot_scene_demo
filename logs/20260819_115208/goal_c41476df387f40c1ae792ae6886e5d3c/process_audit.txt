@@ -1,1 +1,0 @@
-controller_pid=57443 goal_thread_completed=true

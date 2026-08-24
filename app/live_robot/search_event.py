@@ -156,6 +156,10 @@ class EventIdAllocator:
         self._next += 1
         return current
 
+    def ensure_after(self, event_id: int) -> None:
+        """Keep ids monotonic after restoring persisted events."""
+        self._next = max(self._next, int(event_id) + 1)
+
 
 def make_event(
     *,

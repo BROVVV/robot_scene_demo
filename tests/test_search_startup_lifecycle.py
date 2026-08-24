@@ -11,6 +11,8 @@ import threading
 import time
 from typing import Any, Callable
 
+import pytest
+
 from app.live_robot.search_state_store import (
     STATUS_FAILED,
     STATUS_RUNNING,
@@ -73,6 +75,15 @@ class _FailingStartExecutor:
     def shutdown(self): pass
 
 
+_TEST_SESSION_DIR = "outputs/live_runs_test_startup"
+
+
+@pytest.fixture(autouse=True)
+def _isolate_archives(tmp_path):
+    global _TEST_SESSION_DIR
+    _TEST_SESSION_DIR = str(tmp_path / "sessions")
+
+
 def _make_service(executor_factory):
     # Mark the factory as a mock factory so start_search uses it for
     # backend="mock" instead of substituting a default InProcessMockExecutor.
@@ -81,6 +92,7 @@ def _make_service(executor_factory):
         owner=ControlOwner(),
         executor_factory=executor_factory,
         allow_mock_task_fallback=True,
+        session_dir=_TEST_SESSION_DIR,
     )
 
 

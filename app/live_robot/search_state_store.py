@@ -13,7 +13,7 @@ import copy
 import threading
 import time
 from collections import Counter, deque
-from typing import Any
+from typing import Any, Callable
 
 from app.live_robot.search_event import (
     ACTION_FINISHED,
@@ -33,6 +33,7 @@ from app.live_robot.search_event import (
     PLACE_CREATED,
     PLACE_UPDATED,
     PSG_PRIOR_UPDATED,
+    REPLAN,
     RESUMED,
     RGBD_FRAME_UPDATED,
     SEARCH_EXHAUSTED,
@@ -70,6 +71,41 @@ STATUS_FAILED = "FAILED"
 STATUS_OPERATOR_STOP = "OPERATOR_STOP"
 STATUS_FINISHED = "FINISHED"
 
+# Reaching an operator-configured exploration budget is a normal terminal
+# condition, not a runtime fault.  Keep the precise result for history while
+# rendering the session as completed and without an error card.
+BUDGET_COMPLETION_RESULTS = frozenset({
+    "MAX_STEPS_REACHED",
+    "MAX_PLANNING_CYCLES_REACHED",
+})
+
+
+def normalize_search_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Migrate historical budget-limited snapshots away from FAILED."""
+    value = copy.deepcopy(snapshot or {})
+    result = str(value.get("result") or value.get("finish_reason") or "")
+    if result in BUDGET_COMPLETION_RESULTS:
+        value["status"] = STATUS_FINISHED
+        value["phase"] = STATUS_FINISHED
+        value["error"] = None
+        value["last_error"] = ""
+    error = value.get("error") if isinstance(value.get("error"), dict) else {}
+    if (
+        str(value.get("status") or "") == STATUS_FAILED
+        and not str(value.get("finish_reason") or "")
+        and str(error.get("source") or "") in {"observer_retry", "perception_retry"}
+    ):
+        # Older builds incorrectly persisted a retry notification as a
+        # terminal failure.  If no terminal finish reason ever arrived, keep
+        # the diagnostic as a warning and mark the interrupted attempt closed.
+        value["status"] = STATUS_FINISHED
+        value["phase"] = STATUS_FINISHED
+        value["result"] = "INTERRUPTED_DURING_RETRY"
+        value["finish_reason"] = "WEBUI_RESTART_DURING_RETRY"
+        value["last_warning"] = copy.deepcopy(error)
+        value["error"] = None
+    return value
+
 
 def _empty_snapshot() -> dict[str, Any]:
     return {
@@ -81,7 +117,11 @@ def _empty_snapshot() -> dict[str, Any]:
         "task": {},
         "backend": "",
         "phase": "",
+        "phase_detail": "",
+        "phase_started_at": None,
         "cycle": 0,
+        "replans": 0,
+        "navigation_failures": 0,
         "elapsed_seconds": 0.0,
         "started_at": None,
         "finished_at": None,
@@ -127,6 +167,7 @@ def _empty_snapshot() -> dict[str, Any]:
             "motion_status": "IDLE",
             "pose_quality": "unavailable",
             "pose": None,
+            "last_motion_result": None,
         },
         "map": {
             "schema_version": MAP_SCHEMA_VERSION,
@@ -164,6 +205,7 @@ def _empty_snapshot() -> dict[str, Any]:
             "last_error": None,
         },
         "health": {},
+        "last_warning": None,
         "timeline": [],
         "error": None,
     }
@@ -172,7 +214,8 @@ def _empty_snapshot() -> dict[str, Any]:
 class SearchStateStore:
     """Thread-safe latest-snapshot store for one search session."""
 
-    def __init__(self, *, max_timeline: int = TIMELINE_LIMIT) -> None:
+    def __init__(self, *, max_timeline: int = TIMELINE_LIMIT,
+                 on_change: Callable[[dict[str, Any], SearchEvent | None], None] | None = None) -> None:
         self._lock = threading.Lock()
         self._snapshot: dict[str, Any] = _empty_snapshot()
         self._map_revision = 0
@@ -180,6 +223,7 @@ class SearchStateStore:
         self._current_objects: list[dict[str, Any]] = []
         self._timeline: deque[dict[str, Any]] = deque(maxlen=max(1, int(max_timeline)))
         self._last_goal: dict[str, Any] | None = None
+        self._on_change = on_change
 
     # ------------------------------------------------------------------ #
     # lifecycle                                                          #
@@ -227,6 +271,7 @@ class SearchStateStore:
             GOAL_SELECTED: self._on_goal_selected,
             ACTION_STARTED: self._on_action_started,
             ACTION_FINISHED: self._on_action_finished,
+            REPLAN: self._on_replan,
             MAP_UPDATED: self._on_map_updated,
             RGBD_FRAME_UPDATED: self._on_rgbd_frame,
             SPATIAL_POSE_UPDATED: self._on_spatial_pose,
@@ -249,9 +294,30 @@ class SearchStateStore:
         }.get(event.event_type)
         if handler is None:
             return
+        changed: dict[str, Any] | None = None
         with self._lock:
             handler(event)
             self._append_timeline_locked(event)
+            changed = copy.deepcopy(self._snapshot)
+        if self._on_change is not None and changed is not None:
+            self._on_change(changed, event)
+
+    def restore(self, snapshot: dict[str, Any]) -> None:
+        """Restore an already materialized snapshot without replaying events."""
+        with self._lock:
+            base = _empty_snapshot()
+            base.update(normalize_search_snapshot(snapshot))
+            self._snapshot = base
+            self._map_revision = int((base.get("map") or {}).get("revision") or 0)
+            self._timeline = deque(list(base.get("timeline") or [])[-self._timeline.maxlen:],
+                                   maxlen=self._timeline.maxlen)
+            self._current_objects = list((base.get("objects") or {}).get("current") or [])
+            self._session_seen = Counter({
+                str(item.get("label") or ""): int(item.get("observations") or 0)
+                for item in (base.get("objects") or {}).get("session_seen") or []
+                if item.get("label")
+            })
+            self._last_goal = copy.deepcopy(base.get("selected_goal"))
 
     # ------------------------------------------------------------------ #
     # snapshots                                                          #
@@ -299,10 +365,14 @@ class SearchStateStore:
     def _on_task_rejected(self, event: SearchEvent) -> None:
         self._snapshot["status"] = "TASK_REJECTED"
         self._snapshot["phase"] = "TASK_REJECTED"
-        self._snapshot["error"] = {
-            "error_type": "TASK_REJECTED",
-            "message": event.payload.get("reason") or "任务不可执行",
-        }
+        detail = copy.deepcopy(event.payload.get("error_detail") or {})
+        detail.setdefault("error_type", "TASK_REJECTED")
+        detail.setdefault("code", "TASK_REJECTED")
+        detail.setdefault("message", event.payload.get("reason") or "任务不可执行")
+        self._snapshot["error"] = detail
+        self._snapshot["result"] = "TASK_REJECTED"
+        self._snapshot["finish_reason"] = "TASK_REJECTED"
+        self._snapshot["finished_at"] = event.timestamp
 
     def _on_session_started(self, event: SearchEvent) -> None:
         self._snapshot["status"] = STATUS_RUNNING
@@ -312,7 +382,14 @@ class SearchStateStore:
 
     def _on_search_state_changed(self, event: SearchEvent) -> None:
         payload = event.payload
-        self._snapshot["phase"] = payload.get("phase") or self._snapshot["phase"]
+        next_phase = payload.get("phase") or self._snapshot["phase"]
+        if next_phase != self._snapshot["phase"]:
+            self._snapshot["phase_started_at"] = (
+                payload.get("phase_started_at") or event.timestamp
+            )
+        self._snapshot["phase"] = next_phase
+        if "phase_detail" in payload:
+            self._snapshot["phase_detail"] = payload.get("phase_detail") or ""
         if payload.get("health"):
             health = dict(self._snapshot["health"])
             health.update(payload["health"])
@@ -327,6 +404,8 @@ class SearchStateStore:
             worker["last_worker_message_at"] = event.timestamp
             worker["worker_alive"] = True
             self._snapshot["startup"] = worker
+        if payload.get("warning"):
+            self._snapshot["last_warning"] = copy.deepcopy(payload["warning"])
 
     def _on_observation(self, event: SearchEvent) -> None:
         payload = event.payload
@@ -417,6 +496,18 @@ class SearchStateStore:
         self._snapshot["target_match"]["target_confirmed"] = True
         self._snapshot["target_match"]["level"] = "confirmed"
         self._snapshot["objects"]["target_evidence"]["target_confirmed"] = True
+        # TARGET_CONFIRMED is already an observable terminal boundary.  Keep a
+        # minimal summary immediately so refresh/history views never depend on
+        # the worker's following SESSION_FINISH IPC message winning a race.
+        self._snapshot.setdefault("summary", {
+            "result": "TARGET_FOUND",
+            "finish_reason": "TARGET_FOUND",
+            "planning_cycles": max(0, int(self._snapshot.get("cycle") or 0) - 1),
+            "replans": int(self._snapshot.get("replans") or 0),
+            "navigation_failures": int(
+                self._snapshot.get("navigation_failures") or 0
+            ),
+        })
 
     def _on_candidates(self, event: SearchEvent) -> None:
         candidates = list(event.payload.get("candidates") or [])
@@ -463,6 +554,10 @@ class SearchStateStore:
     def _on_action_started(self, event: SearchEvent) -> None:
         self._snapshot["robot"]["motion_status"] = "EXECUTING"
         self._snapshot["phase"] = "EXECUTE"
+        self._snapshot["phase_detail"] = (
+            event.payload.get("phase_detail")
+            or "正在等待动作服务器执行并回传结果"
+        )
         command = event.payload.get("next_motion_command")
         if command:
             self._snapshot["next_motion_command"] = command
@@ -473,7 +568,26 @@ class SearchStateStore:
         self._snapshot["robot"]["motion_status"] = (
             "SUCCEEDED" if status == "succeeded" else "FAILED"
         )
+        self._snapshot["robot"]["last_motion_result"] = {
+            "status": status,
+            "message": payload.get("message") or "",
+            "elapsed_sec": payload.get("elapsed_sec"),
+            "requested_motion": copy.deepcopy(payload.get("requested_motion") or {}),
+            "observed_motion": copy.deepcopy(payload.get("observed_motion") or {}),
+        }
         self._snapshot["phase"] = "WAIT_RESULT"
+        self._snapshot["phase_detail"] = payload.get("phase_detail") or (
+            payload.get("message") or "动作已结束"
+        )
+
+    def _on_replan(self, event: SearchEvent) -> None:
+        self._snapshot["phase"] = "RECOVER"
+        self._snapshot["replans"] = int(self._snapshot.get("replans") or 0) + 1
+        value = event.payload.get("navigation_failures")
+        if value is not None:
+            self._snapshot["navigation_failures"] = max(
+                int(self._snapshot.get("navigation_failures") or 0), int(value)
+            )
 
     def _on_rgbd_frame(self, event: SearchEvent) -> None:
         payload = event.payload
@@ -614,10 +728,27 @@ class SearchStateStore:
         payload = event.payload
         self._snapshot["status"] = STATUS_FAILED
         self._snapshot["result"] = "FAILED"
-        self._snapshot["error"] = {
-            "error_type": payload.get("error_type") or "SEARCH_ERROR",
-            "message": payload.get("message") or "",
-        }
+        if payload.get("schema_version") == "search_error_v1":
+            self._snapshot["error"] = copy.deepcopy(payload)
+        else:
+            try:
+                from app.manual_web_demo.search_errors import search_error
+
+                detail = search_error(
+                    payload.get("message") or payload.get("reason") or
+                    payload.get("error_type") or "搜索异常",
+                    code=payload.get("error_type"),
+                    source=str(payload.get("source") or "autonomous_explorer"),
+                    stage=str(payload.get("phase") or self._snapshot.get("phase") or "RUNNING"),
+                    detail=payload.get("detail"),
+                )
+                self._snapshot["error"] = {**copy.deepcopy(payload), **detail}
+            except Exception:  # noqa: BLE001 - error rendering must never fail
+                self._snapshot["error"] = copy.deepcopy(payload)
+        self._snapshot["error"].setdefault(
+            "error_type", payload.get("code") or "SEARCH_ERROR"
+        )
+        self._snapshot["error"].setdefault("message", "")
 
     def _on_search_finished(self, event: SearchEvent) -> None:
         payload = event.payload
@@ -632,7 +763,14 @@ class SearchStateStore:
             self._snapshot["status"] = STATUS_OPERATOR_STOP
         elif result == "SEARCH_EXHAUSTED":
             self._snapshot["status"] = STATUS_SEARCH_EXHAUSTED
-        elif result == "FAILED":
+        elif result in BUDGET_COMPLETION_RESULTS:
+            self._snapshot["status"] = STATUS_FINISHED
+            self._snapshot["phase"] = STATUS_FINISHED
+            self._snapshot["error"] = None
+        elif result in {
+            "FAILED", "TIMEOUT", "BACKEND_FAILURE",
+            "PERCEPTION_FAILURE",
+        }:
             self._snapshot["status"] = STATUS_FAILED
         else:
             self._snapshot["status"] = STATUS_FINISHED

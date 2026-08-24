@@ -42,6 +42,8 @@
   var wsTimer = null;
   var lastDetectionFrame = null;
   var timelineCount = 0;
+  var viewingHistoryId = null;
+  var currentLiveState = null;
 
   var els = {
     // taskbar
@@ -55,6 +57,10 @@
     chkMotion: document.getElementById("chk-motion"),
     sessionInfo: document.getElementById("search-session-info"),
     banner: document.getElementById("search-banner"),
+    errorDetail: document.getElementById("search-error-detail"),
+    activeControls: document.getElementById("search-active-controls"),
+    btnHistoryCurrent: document.getElementById("btn-history-current"),
+    history: document.getElementById("search-history"),
     // camera
     cam: document.getElementById("search-camera"),
     overlay: document.getElementById("search-overlay"),
@@ -166,11 +172,23 @@
   function handleWsMessage(message) {
     var type = message.type;
     if (type === "snapshot") {
-      if (message.state) applyStateSnapshot(message.state);
+      if (message.state) {
+        currentLiveState = message.state;
+        if (!viewingHistoryId) applyStateSnapshot(message.state);
+      }
     } else if (type === "events") {
-      (message.events || []).forEach(applySearchEvent);
+      if (!viewingHistoryId) {
+        // The snapshot is authoritative.  Replaying SESSION_CREATED and old
+        // deltas after it would clear accumulated decisions/topology on every
+        // F5.  Historical events only seed the timeline; new live events are
+        // still applied normally through the singular "event" message.
+        appState.events = (message.events || []).map(function (event) {
+          return { event_type: event.event_type, timestamp: event.timestamp, cycle: event.cycle };
+        });
+        renderTimeline();
+      }
     } else if (type === "event") {
-      applySearchEvent(message.event);
+      if (!viewingHistoryId) applySearchEvent(message.event);
     } else if (type === "heartbeat") {
       /* keepalive only */
     }
@@ -209,6 +227,8 @@
         .then(function (r) { return r.json(); })
         .then(function (state) {
           if (!state || !state.session_id) return;
+          currentLiveState = state;
+          if (viewingHistoryId) return;
           var sessionChanged = !!(appState.search.session_id &&
             state.session_id !== appState.search.session_id);
           if (!appState.search.session_id) appState.search.session_id = state.session_id;
@@ -222,6 +242,18 @@
 
   function applyStateSnapshot(state) {
     if (!state || !state.session_id) return;
+    if (["MAX_STEPS_REACHED", "MAX_PLANNING_CYCLES_REACHED"].indexOf(
+        state.result || state.finish_reason || "") >= 0) {
+      state.status = "FINISHED";
+      state.phase = "FINISHED";
+      state.error = null;
+      state.last_error = "";
+    }
+    if (state.status === "FINISHED" && !state.error &&
+        els.banner && els.banner.classList.contains("error")) {
+      els.banner.textContent = "";
+      els.banner.className = "search-banner hidden";
+    }
     var sessionChanged = !!(appState.search.session_id && state.session_id !== appState.search.session_id);
     appState.search = state;
     appState.observation = state.observation || {};
@@ -252,6 +284,7 @@
 
     switch (type) {
       case "SESSION_CREATED":
+        viewingHistoryId = null;
         appState.search = {};
         appState.search.target = payload.target;
         appState.search.session_id = event.session_id;
@@ -278,6 +311,17 @@
       case "SESSION_STARTED":
         appState.search.status = "RUNNING";
         appState.search.phase = payload.phase || "BOOTSTRAP";
+        break;
+      case "SEARCH_STATE_CHANGED":
+        appState.search.phase = payload.phase || appState.search.phase || "RUNNING";
+        if (payload.phase_detail !== undefined) {
+          appState.search.phase_detail = payload.phase_detail || "";
+        }
+        if (payload.phase_started_at !== undefined) {
+          appState.search.phase_started_at = payload.phase_started_at;
+        }
+        if (payload.startup) appState.search.startup = payload.startup;
+        if (payload.warning) appState.search.last_warning = payload.warning;
         break;
       case "OBSERVATION_UPDATED":
         appState.observation = {
@@ -337,6 +381,7 @@
         break;
       case "ACTION_STARTED":
         appState.search.phase = "EXECUTE";
+        appState.search.phase_detail = payload.phase_detail || "正在等待动作服务器执行并回传结果";
         appState.robotAction = "EXECUTING";
         if (payload.next_motion_command) appState.nextMotionCommand = payload.next_motion_command;
         break;
@@ -352,6 +397,11 @@
         break;
       case "ACTION_FINISHED":
         appState.robotAction = payload.status === "succeeded" ? "SUCCEEDED" : "FAILED";
+        appState.search.phase = "WAIT_RESULT";
+        appState.search.phase_detail = payload.phase_detail || payload.message || "动作已结束";
+        if (payload.status !== "succeeded" && /MOTION_(ACCEPT|RESULT)_TIMEOUT/.test(payload.message || "")) {
+          showBanner("动作响应超时，已取消并安全停止；搜索将重新规划。原因：" + payload.message, "error");
+        }
         break;
       case "REPLAN":
         appState.search.phase = "RECOVER";
@@ -374,6 +424,7 @@
         break;
       case "ERROR":
         appState.search.status = "FAILED";
+        appState.search.error = payload;
         showBanner("错误: " + (payload.message || payload.error_type || "unknown"), "error");
         break;
       case "MAP_UPDATED":
@@ -493,45 +544,35 @@
     }).then(function (r) { return r.json(); });
   }
 
-  var startRetried = false;
-
   function startSearch() {
-    doStartSearch(false);
+    viewingHistoryId = null;
+    doStartSearch();
   }
 
-  function doStartSearch(forceRestart) {
+  function doStartSearch() {
     var target = els.target.value.trim();
     if (!target) { showBanner("请输入搜索目标", "error"); return; }
     api("/api/search/start", {
       task_text: target,
       // One-release compatibility alias for an already-running old worker.
-      target: target,
-      enable_autonomous_motion: els.chkMotion.checked,
-      operator_supervised_experiment: els.chkMotion.checked,
-      dry_run_motion: !els.chkMotion.checked,
-      allow_degraded: !els.chkMotion.checked,
+      target: target
     }).then(function (data) {
       if (!data.ok) {
-        // A session stuck in STARTING/STOPPING (worker crashed, LLM/RGB-D
-        // preflight stalled) blocks every new start.  Auto-recover once:
-        // request a stop and retry after the service has reset the slot.
-        if (!forceRestart && /already active/.test(data.error || "")) {
-          if (startRetried) { startRetried = false; showErrorRetry(data.error); return; }
-          startRetried = true;
-          api("/api/search/stop").catch(function () {}).then(function () {
-            setTimeout(function () { doStartSearch(true); }, 600);
-          });
+        // The server automatically finalizes dead/stalled workers.  A healthy
+        // active task must never be stopped just because a refreshed browser
+        // briefly showed an enabled Start button.
+        if (/already active/.test(data.error || "")) {
+          showErrorRetry(data.error, data.error_detail);
+          pollSearchState();
           return;
         }
-        startRetried = false;
         if (data.error === "emergency_stop_latched") {
           showBanner("无法开始：请先点击顶部“解除急停”，确认状态正常后再搜索", "error");
         } else {
-          showErrorRetry(data.error);
+          showErrorRetry(data.error, data.error_detail);
         }
         return;
       }
-      startRetried = false;
       // Refresh the status bar immediately instead of waiting for the WS
       // snapshot/event round-trip (the worker can be slow to reach STARTING).
       appState.search = appState.search || {};
@@ -541,11 +582,22 @@
       showBanner("已开始搜索（等待后端就绪）…", "");
       renderStatus();
       renderButtons();
-    }).catch(function () { showBanner("无法开始搜索（网络错误）", "error"); });
+    }).catch(function (err) {
+      showErrorRetry(String(err || "network error"), {
+        code: "WEBUI_NETWORK_ERROR", title: "WebUI 无法连接搜索服务",
+        message: String(err || "network error"),
+        cause: "浏览器到 WebUI 后端的请求失败。",
+        suggestion: "确认 Web 服务仍在运行并检查浏览器网络连接。",
+        source: "browser", stage: "START", recoverable: true
+      });
+    });
   }
 
-  function showErrorRetry(error) {
+  function showErrorRetry(error, detail) {
+    appState.search = appState.search || {};
+    appState.search.error = detail || { message: error };
     showBanner("无法开始: " + (error || "unknown") + "（已自动尝试释放占用，可再点一次开始）", "error");
+    renderErrorDetail();
   }
 
   els.btnStart.addEventListener("click", startSearch);
@@ -643,6 +695,7 @@
     renderTimeline();
     renderButtons();
     renderDebug();
+    renderErrorDetail();
     var spatial = appState.spatial || null;
     var hasOldMap = appState.map && Array.isArray(appState.map.nodes) && appState.map.nodes.length;
     var hasPlaces = spatial && spatial.place_graph &&
@@ -676,7 +729,9 @@
   function renderStatus() {
     var s = appState.search || {};
     els.stTarget.textContent = s.target || "--";
-    els.stPhase.textContent = s.phase || (s.status || "IDLE");
+    var phaseText = s.phase || (s.status || "IDLE");
+    if (s.phase_detail) phaseText += " · " + s.phase_detail;
+    els.stPhase.textContent = phaseText;
     els.stCycle.textContent = String(s.cycle || 0);
     els.stElapsed.textContent = fmtDuration(s.elapsed_seconds);
 
@@ -952,7 +1007,42 @@
     els.btnResume.disabled = !paused;
     els.btnStop.disabled = !(running || paused);
     els.btnEstop.disabled = false;
-    els.sessionInfo.textContent = (appState.search && appState.search.session_id) ? appState.search.session_id : "";
+    if (els.activeControls) {
+      els.activeControls.classList.toggle(
+        "hidden", !(running || paused || status === "STOPPING")
+      );
+    }
+    if (els.btnHistoryCurrent) {
+      els.btnHistoryCurrent.classList.toggle("hidden", !viewingHistoryId);
+    }
+    els.sessionInfo.textContent = viewingHistoryId
+      ? "正在回看 " + viewingHistoryId
+      : ((appState.search && appState.search.session_id)
+        ? appState.search.session_id : "输入自然语言目标即可开始");
+  }
+
+  function renderErrorDetail() {
+    if (!els.errorDetail) return;
+    var error = (appState.search || {}).error || null;
+    if (!error || !(error.message || error.code || error.error_type)) {
+      els.errorDetail.classList.add("hidden");
+      els.errorDetail.innerHTML = "";
+      return;
+    }
+    var rows = [
+      ["错误代码", error.code || error.error_type || "SEARCH_ERROR", true],
+      ["直接原因", error.message || "--"],
+      ["原因分类", error.cause || error.category || "--"],
+      ["发生位置", [error.source, error.stage].filter(Boolean).join(" / ") || "--"],
+      ["处理建议", error.suggestion || "查看本次会话事件和 worker 日志后重试。"],
+      ["相关日志", error.log_ref || "outputs/autonomous_search/logs/search_worker.log", true]
+    ];
+    els.errorDetail.innerHTML = "<h3>" + esc(error.title || "搜索错误详情") +
+      "</h3><div class='error-grid'>" + rows.map(function (row) {
+        var value = row[2] ? "<code>" + esc(row[1]) + "</code>" : esc(row[1]);
+        return "<div class='error-key'>" + esc(row[0]) + "</div><div>" + value + "</div>";
+      }).join("") + "</div>";
+    els.errorDetail.classList.remove("hidden");
   }
 
   function renderDebug() {
@@ -1105,6 +1195,8 @@
   function pollSearchState() {
     fetch("/api/search/state").then(function (response) { return response.json(); })
       .then(function (state) {
+        if (state && state.session_id) currentLiveState = state;
+        if (viewingHistoryId) return;
         if (state.session_id) {
           if (!appState.search.session_id || appState.search.session_id === state.session_id) {
             var fresh = appState.search.session_id !== state.session_id;
@@ -1119,6 +1211,75 @@
         }
       })
       .catch(function () {});
+  }
+
+  function pollHistory() {
+    fetch("/api/search/history?limit=10").then(function (response) { return response.json(); })
+      .then(function (data) { renderHistory(data.sessions || []); })
+      .catch(function () {
+        if (els.history) els.history.innerHTML = '<div class="muted">历史记录暂时不可用</div>';
+      });
+  }
+
+  function renderHistory(sessions) {
+    if (!els.history) return;
+    if (!sessions.length) {
+      els.history.innerHTML = '<div class="muted">完成首次搜索后会在这里保留完整记录</div>';
+      return;
+    }
+    els.history.innerHTML = sessions.map(function (item) {
+      var when = item.created_at || item.updated_at;
+      var timeText = when ? new Date(when * 1000).toLocaleString() : "";
+      var active = viewingHistoryId === item.session_id ? " active" : "";
+      return '<button type="button" class="history-item' + active + '" data-session-id="' +
+        esc(item.session_id) + '"><span class="history-result">' +
+        esc(item.result || item.status || "--") + '</span><div class="history-target">' +
+        esc(item.task_text || item.target || "未命名任务") + '</div><div class="history-meta">' +
+        esc(timeText) + ' · ' + esc(item.session_id) + '</div></button>';
+    }).join("");
+  }
+
+  function loadHistorySession(sessionId) {
+    fetch("/api/search/history/" + encodeURIComponent(sessionId))
+      .then(function (response) { return response.json(); })
+      .then(function (record) {
+        if (!record.ok || !record.state) {
+          showErrorRetry(record.error || "历史记录读取失败", record.error_detail);
+          return;
+        }
+        viewingHistoryId = sessionId;
+        applyStateSnapshot(record.state);
+        appState.events = (record.events || []).map(function (event) {
+          return { event_type: event.event_type, timestamp: event.timestamp, cycle: event.cycle };
+        });
+        if (els.target) {
+          els.target.value = ((record.session || {}).task_text) || record.state.target || "";
+        }
+        showBanner("正在回看完整搜索记录；实时任务仍在后端保持运行。", "exhausted");
+        renderAll();
+        pollHistory();
+      }).catch(function (err) {
+        showErrorRetry(String(err || "history request failed"));
+      });
+  }
+
+  if (els.history) {
+    els.history.addEventListener("click", function (event) {
+      var button = event.target.closest ? event.target.closest("[data-session-id]") : null;
+      if (button) loadHistorySession(button.getAttribute("data-session-id"));
+    });
+  }
+  if (els.btnHistoryCurrent) {
+    els.btnHistoryCurrent.addEventListener("click", function () {
+      viewingHistoryId = null;
+      if (currentLiveState && currentLiveState.session_id) {
+        applyStateSnapshot(currentLiveState);
+      } else {
+        pollSearchState();
+      }
+      showBanner("已返回当前搜索状态", "");
+      pollHistory();
+    });
   }
 
   function renderOwner(owner) {
@@ -1155,7 +1316,9 @@
   // ------------------------------------------------------------------ //
   pollStatus();
   pollSearchState();
+  pollHistory();
   setInterval(pollStatus, 1000);
   setInterval(pollSearchState, 3000);
+  setInterval(pollHistory, 5000);
   connect();
 })();

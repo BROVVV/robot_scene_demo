@@ -16,6 +16,13 @@ __pycache__/
 .ruff_cache/
 .cache/
 
+# Third-party repositories, downloaded model weights and generated package
+# trees are provisioned by scripts/bootstrap_fresh_machine.sh.  Keeping them
+# out of Git avoids nested repositories, licensing ambiguity and GitHub's
+# 100 MiB object limit.
+external/
+node_modules/
+
 ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
@@ -25,6 +32,8 @@ point_lio_ws/
 
 outputs/*
 !outputs/.gitkeep
+logs/
+scripts/go2w/outputs/
 
 runtime/go2w/spool/*
 !runtime/go2w/spool/.gitkeep
@@ -37,6 +46,10 @@ runtime/go2w/locks/*
 runtime/go2w/pids/*
 runtime/go2w/CANCEL_*
 runtime/go2w/EXECUTION_DISABLED
+runtime/go2w/*.pid
+runtime/go2w/*.log
+runtime/go2w/*.xml
+runtime/go2w/forward_*_validation*.jsonl
 runtime/go2w/detection_result.json
 runtime/go2w/llm_detection_result.json
 runtime/go2w/llm_verify_result.json

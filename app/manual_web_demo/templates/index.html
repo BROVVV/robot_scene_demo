@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Go2-W 自主语义搜索控制台</title>
-  <link rel="stylesheet" href="/static/style.css?v=viewport-20260821" />
+  <link rel="stylesheet" href="/static/style.css?v=persistent-history-20260821" />
 </head>
 <body>
   <header class="topbar">
@@ -32,19 +32,25 @@
     <section id="tab-search" class="tab-pane active">
       <div class="search-taskbar">
         <input id="search-target" type="text" maxlength="500"
-               placeholder="输入搜索目标，如：饮水机旁边的蓝色垃圾桶" />
+               autofocus placeholder="直接说出要找的目标，如：找到饮水机旁边的蓝色垃圾桶" />
         <button id="btn-search-start" class="primary">开始搜索</button>
-        <button id="btn-search-pause" disabled>暂停</button>
-        <button id="btn-search-resume" disabled>继续</button>
-        <button id="btn-search-stop" class="danger" disabled>停止</button>
-        <button id="btn-search-estop" class="estop" disabled>急停</button>
-        <label class="debug-toggle" title="operator_supervised_experiment：操作者持遥控器监督，转向≤30°、前进≤0.30m">
-          <input type="checkbox" id="chk-motion" /> 操作者监督自主运动
-        </label>
-        <label class="debug-toggle"><input type="checkbox" id="chk-debug" /> 调试</label>
-        <span id="search-session-info" class="session-info"></span>
+        <div id="search-active-controls" class="search-active-controls hidden">
+          <button id="btn-search-pause" disabled>暂停</button>
+          <button id="btn-search-resume" disabled>继续</button>
+          <button id="btn-search-stop" class="danger" disabled>停止</button>
+          <button id="btn-search-estop" class="estop" disabled>急停</button>
+        </div>
+        <button id="btn-history-current" class="hidden" type="button">返回当前任务</button>
+        <details class="search-advanced">
+          <summary>高级显示</summary>
+          <label class="debug-toggle"><input type="checkbox" id="chk-debug" /> 调试信息</label>
+        </details>
+        <!-- 运动权限由服务器启动配置决定；普通搜索不再要求用户理解或勾选参数。 -->
+        <input type="checkbox" id="chk-motion" class="hidden" tabindex="-1" />
+        <span id="search-session-info" class="session-info">输入自然语言目标即可开始</span>
       </div>
       <div class="search-banner hidden" id="search-banner"></div>
+      <div id="search-error-detail" class="search-error-detail hidden"></div>
 
       <div class="search-layout">
         <div class="cell cell-camera">
@@ -131,6 +137,11 @@
         <div class="cell cell-timeline">
           <div class="cell-title">事件时间线 <span id="tl-ws-state" class="sub">OFFLINE</span></div>
           <div id="search-timeline" class="timeline"></div>
+        </div>
+
+        <div class="cell cell-history">
+          <div class="cell-title">最近搜索记录 <span class="sub">完整保留最近 10 次</span></div>
+          <div id="search-history" class="search-history"><div class="muted">正在读取记录…</div></div>
         </div>
 
         <div class="cell cell-debug hidden" id="debug-panel">
@@ -226,8 +237,8 @@
     </section>
   </main>
 
-  <script src="/static/search_map.js?v=viewport-20260821"></script>
-  <script src="/static/search_ui.js?v=viewport-20260821"></script>
-  <script src="/static/app.js?v=viewport-20260821"></script>
+  <script src="/static/search_map.js?v=persistent-history-20260821"></script>
+  <script src="/static/search_ui.js?v=persistent-history-20260821"></script>
+  <script src="/static/app.js?v=persistent-history-20260821"></script>
 </body>
 </html>

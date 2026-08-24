@@ -45,6 +45,7 @@ from app.memory.observation_memory_store import ObservationMemoryStore
 from app.live_robot.motion_bounds import (
     evaluate_dual_lidar_rotation_gate,
     evaluate_lidar_motion_readiness,
+    evaluate_motion_observation,
     evaluate_rotation_clearance,
     evaluate_step_boundary,
     position_within_boundary,
@@ -93,6 +94,15 @@ from unitree_go.msg import LowState, SportModeState
 DEFAULT_PATTERN = ["f", "l20", "f", "r20", "f", "l20", "f", "r20", "f"]
 GO2W_ROTATION_ENVELOPE_RADIUS_M = 0.511
 
+
+class MotionGoalTimeout(RuntimeError):
+    """The action transport did not settle within the goal's safety window.
+
+    This is intentionally distinct from an ordinary rejected/failed goal: a
+    late action response makes an automatic retry unsafe because the first
+    command may still have reached the robot.
+    """
+
 PROMPT_MAP = {
     "手机": "phone. cellphone. mobile phone. smartphone",
     "箱子": "cardboard box. carton box",
@@ -115,6 +125,22 @@ def strict_json_value(value):
     if isinstance(value, (list, tuple)):
         return [strict_json_value(item) for item in value]
     return value
+
+
+def forward_step_distance(step: str, default_distance_m: float) -> float:
+    """Decode ``f`` or a distance-qualified primitive such as ``f0.300``."""
+
+    if step == "f":
+        return float(default_distance_m)
+    if not step.startswith("f"):
+        raise ValueError(f"not a forward step: {step}")
+    try:
+        distance = float(step[1:])
+    except ValueError as exc:
+        raise ValueError(f"invalid forward step distance: {step}") from exc
+    if not math.isfinite(distance) or distance <= 0.0:
+        raise ValueError(f"forward step distance must be positive: {step}")
+    return distance
 
 
 class BundleVideoRecorder:
@@ -383,6 +409,7 @@ class AutonomousLoop(Node):
         self._pattern = pattern
         self._forward_vx = forward_vx
         self._forward_seconds = forward_seconds
+        self._forward_duration_scale = 1.0
         self._max_yaw_rate = max_yaw_rate
         self._min_clearance = min_clearance_m
         self._mode = mode
@@ -415,6 +442,9 @@ class AutonomousLoop(Node):
         self._sport: SportModeState | None = None
         self._low: LowState | None = None
         self._odom: Odometry | None = None
+        self._odom_receive_monotonic: float | None = None
+        self._odom_discontinuity_monotonic: float | None = None
+        self._odom_discontinuity_reason = ""
         self._clearance: float | None = None
         self._left_clearance: float | None = None
         self._right_clearance: float | None = None
@@ -516,7 +546,26 @@ class AutonomousLoop(Node):
         self._low = msg
 
     def _on_odom(self, msg: Odometry) -> None:
+        now = time.monotonic()
+        if self._odom is not None and self._odom_receive_monotonic is not None:
+            old = self._odom.pose.pose.position
+            new = msg.pose.pose.position
+            elapsed = now - self._odom_receive_monotonic
+            jump = math.hypot(float(new.x) - float(old.x), float(new.y) - float(old.y))
+            # A Go2-W cannot translate 0.75 m between adjacent odometry
+            # samples.  This most commonly means two publishers with different
+            # origins are interleaving on the same topic.  Keep the last good
+            # sample and fail motion closed until the stream stabilizes.
+            if elapsed < 1.0 and jump > 0.75:
+                self._odom_discontinuity_monotonic = now
+                self._odom_discontinuity_reason = (
+                    "ODOM_DISCONTINUITY: adjacent odometry samples jumped "
+                    f"{jump:.3f}m in {elapsed:.3f}s; duplicate publishers or "
+                    "an odometry reset are likely"
+                )
+                return
         self._odom = msg
+        self._odom_receive_monotonic = now
 
     def _on_clearance(self, msg: Float32) -> None:
         self._clearance = float(msg.data)
@@ -558,6 +607,11 @@ class AutonomousLoop(Node):
         return False
 
     def _safety_ok(self) -> tuple[bool, str]:
+        if (
+            self._odom_discontinuity_monotonic is not None
+            and time.monotonic() - self._odom_discontinuity_monotonic < 5.0
+        ):
+            return False, self._odom_discontinuity_reason
         if self._sport is None:
             return False, "no sport state"
         if int(self._sport.mode) != 1 or int(self._sport.error_code) != 0:
@@ -601,18 +655,66 @@ class AutonomousLoop(Node):
             raise RuntimeError("motion action server unavailable")
         future = self._client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self, future, timeout_sec=10.0)
+        if not future.done():
+            try:
+                self._emergency_stop()
+            except Exception as exc:  # noqa: BLE001
+                self.get_logger().error(
+                    f"emergency stop after goal-accept timeout failed: {exc}"
+                )
+            raise MotionGoalTimeout(
+                "MOTION_ACCEPT_TIMEOUT: /go2w/motion did not acknowledge the "
+                "goal within 10s; possible duplicate action server or DDS "
+                "response loss; emergency stop requested"
+            )
         goal_handle = future.result()
         if goal_handle is None or not goal_handle.accepted:
             raise RuntimeError("motion goal rejected")
         result_future = goal_handle.get_result_async()
-        rclpy.spin_until_future_complete(self, result_future, timeout_sec=90.0)
+        # The server already has a bounded goal.timeout_sec.  Waiting a fixed
+        # 90 seconds here hid dropped/mismatched action responses from the UI
+        # and, together with _execute_step's retry, could duplicate a command.
+        result_timeout = min(
+            45.0,
+            max(10.0, float(getattr(goal, "timeout_sec", 0.0) or 0.0) + 5.0),
+        )
+        rclpy.spin_until_future_complete(
+            self, result_future, timeout_sec=result_timeout
+        )
         if not result_future.done():
-            raise RuntimeError("motion goal timeout")
+            # Best-effort action cancellation followed by the independent
+            # emergency-stop service.  Do not wait indefinitely for either
+            # response; the caller treats this exception as non-retryable.
+            try:
+                cancel_future = goal_handle.cancel_goal_async()
+                rclpy.spin_until_future_complete(
+                    self, cancel_future, timeout_sec=2.0
+                )
+            except Exception as exc:  # noqa: BLE001 - safety fallback below
+                self.get_logger().error(f"motion cancel failed: {exc}")
+            try:
+                self._emergency_stop()
+            except Exception as exc:  # noqa: BLE001
+                self.get_logger().error(f"emergency stop after timeout failed: {exc}")
+            raise MotionGoalTimeout(
+                "MOTION_RESULT_TIMEOUT: /go2w/motion returned no result within "
+                f"{result_timeout:.1f}s (server goal timeout="
+                f"{float(getattr(goal, 'timeout_sec', 0.0) or 0.0):.1f}s); "
+                "goal cancelled and emergency stop requested"
+            )
+        wrapped_result = result_future.result()
+        if wrapped_result is None or wrapped_result.result is None:
+            raise RuntimeError(
+                "MOTION_EMPTY_RESULT: /go2w/motion completed without a result payload"
+            )
         return {
-            "success": bool(result_future.result().result.success),
-            "message": str(result_future.result().result.message),
-            "yaw_deg": float(result_future.result().result.actual_relative_yaw_deg),
-            "elapsed": float(result_future.result().result.elapsed_sec),
+            "success": bool(wrapped_result.result.success),
+            "message": str(wrapped_result.result.message),
+            "yaw_deg": float(wrapped_result.result.actual_relative_yaw_deg),
+            "elapsed": float(wrapped_result.result.elapsed_sec),
+            "estimated_distance_m": float(
+                wrapped_result.result.estimated_distance_m
+            ),
         }
 
     def _odom_snapshot(self) -> tuple[float, float, float]:
@@ -624,9 +726,11 @@ class AutonomousLoop(Node):
         return (float(pose.position.x), float(pose.position.y), yaw)
 
     def _describe_step(self, step: str) -> str:
-        if step == "f":
-            return (f"前进 {self._forward_vx:.2f} m/s × "
-                    f"{self._forward_seconds:.0f}s")
+        if step.startswith("f"):
+            distance = forward_step_distance(
+                step, self._forward_vx * self._forward_seconds
+            )
+            return f"前进 {distance:.2f} m"
         if step.startswith("l"):
             return f"左转 {step[1:]}°"
         if step.startswith("r"):
@@ -672,6 +776,11 @@ class AutonomousLoop(Node):
                     f"operator-authorized turn clamped: {lease_step.reason}"
                 )
                 return False, lease_step.reason
+        expected_forward_m = (
+            forward_step_distance(step, self._forward_vx * self._forward_seconds)
+            if step.startswith("f")
+            else self._forward_vx * self._forward_seconds
+        )
         boundary = evaluate_step_boundary(
             step,
             origin=origin,
@@ -679,7 +788,7 @@ class AutonomousLoop(Node):
             max_radius_m=self._max_radius,
             front_half_plane_only=self._front_half_plane_only,
             turn_only=self._turn_only,
-            forward_distance_m=self._forward_vx * self._forward_seconds,
+            forward_distance_m=expected_forward_m,
             tolerance_m=self._boundary_tolerance_m,
         )
         if not boundary.allowed:
@@ -802,11 +911,15 @@ class AutonomousLoop(Node):
                 return False, f"arm failed: {exc}"
             before = self._odom_snapshot()
             goal = MotionCommand.Goal()
-            if step == "f":
+            if step.startswith("f"):
                 goal.mode = MotionCommand.Goal.MODE_TIMED_VELOCITY
                 goal.vx = self._forward_vx
-                goal.duration_sec = self._forward_seconds
-                goal.timeout_sec = self._forward_seconds + 8.0
+                goal.duration_sec = (
+                    expected_forward_m
+                    / self._forward_vx
+                    * self._forward_duration_scale
+                )
+                goal.timeout_sec = goal.duration_sec + 8.0
             elif step.startswith("l") or step.startswith("r"):
                 degrees = float(step[1:])
                 if step.startswith("r"):
@@ -822,6 +935,24 @@ class AutonomousLoop(Node):
                 return False, f"unknown step {step}"
             try:
                 result = self._send_goal(goal)
+            except MotionGoalTimeout as exc:
+                # Never retry an indeterminate action: the request might have
+                # executed even though DDS lost its response.  Retrying could
+                # unexpectedly rotate/advance the robot a second time.
+                reason = str(exc)
+                self._write({
+                    "event": "motion_timeout",
+                    "index": index,
+                    "step": step,
+                    "attempt": attempt,
+                    "reason": reason,
+                    "non_retryable": True,
+                    "host_s": self._host_s(),
+                })
+                self.get_logger().error(
+                    f"step {step} timed out and was not retried: {reason}"
+                )
+                return False, reason
             except (RuntimeError, OSError, ValueError) as exc:
                 if attempt < attempts:
                     self.get_logger().warn(
@@ -872,23 +1003,40 @@ class AutonomousLoop(Node):
                 })
                 self._emergency_stop()
                 return False, actual_boundary.reason
-            distance = math.hypot(after[0] - before[0], after[1] - before[1])
-            yaw_delta = abs(after[2] - before[2])
-            verified = (distance > 0.03) if step == "f" else (
-                yaw_delta > 3.0 * math.pi / 180.0
+            verification = evaluate_motion_observation(
+                step,
+                before=before,
+                after=after,
+                expected_forward_m=expected_forward_m,
             )
             self._write({"event": "step_verified", "index": index, "step": step,
                          "attempt": attempt, "host_s": self._host_s(),
-                         "distance_m": distance,
-                         "yaw_delta_rad": yaw_delta,
+                         "distance_m": verification.distance_m,
+                         "yaw_delta_rad": math.radians(
+                             verification.yaw_delta_deg
+                         ),
                          "expected_turn_deg": abs(float(step[1:]))
-                         if len(step) > 1 else 0.0,
-                         "verified": bool(verified)})
-            if verified:
+                         if len(step) > 1 and not step.startswith("f") else 0.0,
+                         "expected_forward_m": expected_forward_m,
+                         "action_estimated_distance_m": result.get(
+                             "estimated_distance_m"
+                         ),
+                         "verification_code": verification.code,
+                         "verification_reason": verification.reason,
+                         "verified": bool(verification.allowed)})
+            if verification.allowed:
                 return True, ""
-            self.get_logger().warn(
-                f"step {step} attempt {attempt} not confirmed by wheel odometry"
-            )
+            # An RPC-success/observation-failure is indeterminate.  Retrying
+            # could double an action that physically happened, so stop and
+            # surface the exact reason instead of silently retrying.
+            try:
+                self._emergency_stop()
+            except Exception as exc:  # noqa: BLE001
+                self.get_logger().error(
+                    f"emergency stop after verification failure failed: {exc}"
+                )
+            self.get_logger().error(verification.reason)
+            return False, verification.reason
         self._write({"event": "abort", "index": index, "step": step,
                      "reason": "wheel odometry did not confirm motion after retries",
                      "host_s": self._host_s()})
@@ -2294,6 +2442,12 @@ def main() -> None:
     )
     parser.add_argument("--forward-vx", type=float, default=0.12)
     parser.add_argument("--forward-seconds", type=float, default=2.0)
+    parser.add_argument(
+        "--forward-duration-scale",
+        type=float,
+        default=1.0,
+        help="calibrated duration multiplier for distance-qualified forward steps",
+    )
     parser.add_argument("--max-yaw-rate", type=float, default=0.15)
     parser.add_argument("--min-clearance", type=float, default=0.30)
     parser.add_argument(
@@ -2444,6 +2598,9 @@ def main() -> None:
                           args.scan360_steps, args.scan360_turn_deg,
                           args.odom_topic)
     node._target = args.target
+    node._forward_duration_scale = max(
+        0.5, min(2.0, float(args.forward_duration_scale))
+    )
     node._detector = args.detector
     node._llm_model = args.llm_model or get_settings().vision_model
     node._spool_root = args.spool_root

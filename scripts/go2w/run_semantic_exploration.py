@@ -22,6 +22,7 @@ import argparse
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 import time
@@ -70,6 +71,89 @@ from app.reasoning.semantic_navigation.models import SearchReasoningContext
 from app.reasoning.semantic_navigation.router import SemanticSearchController
 from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
 from app.video.target_profile import TargetProfileResolver
+
+
+def _motion_action_server_count() -> tuple[int | None, str]:
+    """Count /go2w/motion servers so duplicate action owners fail closed."""
+    try:
+        completed = subprocess.run(
+            ["ros2", "action", "info", "/go2w/motion"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5.0,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, f"action graph probe failed: {type(exc).__name__}: {exc}"
+    output = (completed.stdout or "") + (completed.stderr or "")
+    match = re.search(r"Action servers:\s*(\d+)", output)
+    if completed.returncode != 0 or match is None:
+        return None, output.strip()[-500:] or "action graph count unavailable"
+    return int(match.group(1)), output.strip()[-500:]
+
+
+def _motion_action_server_process_count() -> tuple[int | None, list[int]]:
+    """Count real server executables; duplicate ROS node names can collapse."""
+    pids: list[int] = []
+    try:
+        proc_root = Path("/proc")
+        for entry in proc_root.iterdir():
+            if not entry.name.isdigit():
+                continue
+            try:
+                argv0 = (entry / "cmdline").read_bytes().split(b"\0", 1)[0]
+            except (OSError, PermissionError):
+                continue
+            if Path(os.fsdecode(argv0)).name == "go2w_motion_action_server":
+                pids.append(int(entry.name))
+    except OSError:
+        return None, []
+    return len(pids), sorted(pids)
+
+
+def _topic_publisher_count(topic: str) -> tuple[int | None, str]:
+    """Return the ROS publisher count for a safety-critical topic."""
+
+    try:
+        completed = subprocess.run(
+            ["ros2", "topic", "info", topic, "-v"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5.0,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, f"topic graph probe failed: {type(exc).__name__}: {exc}"
+    output = (completed.stdout or "") + (completed.stderr or "")
+    match = re.search(r"Publisher count:\s*(\d+)", output)
+    if completed.returncode != 0 or match is None:
+        return None, output.strip()[-500:] or "publisher count unavailable"
+    return int(match.group(1)), output.strip()[-500:]
+
+
+def _wheel_odom_process_count() -> tuple[int | None, list[int]]:
+    """Count wheel-odometry nodes even when duplicate ROS names collapse."""
+
+    pids: list[int] = []
+    try:
+        for entry in Path("/proc").iterdir():
+            if not entry.name.isdigit():
+                continue
+            try:
+                argv = [
+                    os.fsdecode(item)
+                    for item in (entry / "cmdline").read_bytes().split(b"\0")
+                    if item
+                ]
+            except (OSError, PermissionError):
+                continue
+            if any(Path(item).name == "go2w_wheel_odom" for item in argv):
+                pids.append(int(entry.name))
+    except OSError:
+        return None, []
+    return len(pids), sorted(pids)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -456,6 +540,7 @@ def run_go2w(args, event_hook=None) -> int:
     )
     profile_limits = experiment_profile.get("limits") or {}
     profile_motion = experiment_profile.get("motion_primitives") or {}
+    profile_execution = experiment_profile.get("execution") or {}
     max_turn_deg = min(
         abs(float(args.max_turn_deg)),
         abs(float(profile_limits.get("max_turn_deg", args.max_turn_deg))),
@@ -518,6 +603,16 @@ def run_go2w(args, event_hook=None) -> int:
     }
     node._experiment_max_turn_deg = max_turn_deg
     node._experiment_forward_step_m = forward_step_m
+    # A long semantic move is executed as independently stopped and verified
+    # chunks.  Each chunk re-enters the LiDAR/mode/arm safety gates.
+    node._experiment_forward_segment_m = min(0.30, forward_step_m)
+    node._forward_duration_scale = max(
+        0.5,
+        min(
+            2.0,
+            float(profile_execution.get("forward_command_duration_scale", 1.0)),
+        ),
+    )
 
     try:
         return _run_go2w_explorer(args, node, policy, PROMPT_MAP, event_hook)
@@ -648,16 +743,33 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             "--model", vision_model,
         ]
         last_err = ""
+        completed = None
+        semantic_timeout = max(
+            35.0,
+            min(90.0, float(settings.siliconflow_timeout_seconds) + 15.0),
+        )
         for attempt in range(2):
-            completed = subprocess.run(
-                command, cwd=str(PROJECT_ROOT), env=env, text=True,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                timeout=180.0, check=False,
-            )
+            try:
+                completed = subprocess.run(
+                    command, cwd=str(PROJECT_ROOT), env=env, text=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    timeout=semantic_timeout, check=False,
+                )
+            except subprocess.TimeoutExpired:
+                last_err = (
+                    "SILICONFLOW_SCENE_TIMEOUT: full-scene analysis exceeded "
+                    f"{semantic_timeout:.0f}s; using a degraded empty scene "
+                    "and continuing the search"
+                )
+                # A second long network call would freeze this observation for
+                # another full timeout.  Degrade this frame and let the next
+                # exploration cycle acquire a fresh image instead.
+                completed = None
+                break
             if completed.returncode == 0:
                 break
             last_err = completed.stderr[-600:]
-        if completed.returncode != 0:
+        if completed is None or completed.returncode != 0:
             # 单帧视觉解析失败绝不中断整场搜索：降级为“含摘要、无新物体”的
             # 观察，下一帧继续识别/建图（避免一次 JSON 截断 -> PERCEPTION_FAILURE）。
             node.get_logger().warn(
@@ -1421,7 +1533,12 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         index = step_index[0]
         step_index[0] += 1
         ok, reason = node._execute_step(index, step)
-        return ok, reason, {"step": step, "index": index}
+        detail = {"step": step, "index": index}
+        reason_code = str(reason or "").split(":", 1)[0].strip().upper()
+        if reason_code in {"MOTION_ACCEPT_TIMEOUT", "MOTION_RESULT_TIMEOUT"}:
+            detail["error_type"] = reason_code
+            detail["non_retryable"] = True
+        return ok, reason, detail
 
     def stop() -> None:
         node._emergency_stop()
@@ -1444,8 +1561,25 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             and int(node._sport.mode) == 1
             and int(node._sport.error_code) == 0
         )
+        action_server_count, action_graph_detail = _motion_action_server_count()
+        action_process_count, action_process_pids = (
+            _motion_action_server_process_count()
+        )
+        odom_publisher_count, odom_graph_detail = _topic_publisher_count(
+            args.odom_topic
+        )
+        odom_process_count, odom_process_pids = _wheel_odom_process_count()
         return {
             "motion_action_available": motion_ready,
+            "motion_action_server_count": action_server_count,
+            "motion_action_graph_detail": action_graph_detail,
+            "motion_action_server_process_count": action_process_count,
+            "motion_action_server_pids": action_process_pids,
+            "odom_topic": args.odom_topic,
+            "odom_publisher_count": odom_publisher_count,
+            "odom_graph_detail": odom_graph_detail,
+            "wheel_odom_process_count": odom_process_count,
+            "wheel_odom_process_pids": odom_process_pids,
             "arm_service_available": arm_ready,
             "emergency_stop_service_available": stop_ready,
             "robot_mode_error": not mode_ok,
@@ -1473,16 +1607,13 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 node, "_experiment_max_turn_deg", args.max_turn_deg
             ),
             forward_step_m=getattr(
-                node, "_experiment_forward_step_m", args.forward_step_m
+                node, "_experiment_forward_segment_m", 0.30
             ),
-            max_forward_step_m=min(
-                0.30,
-                max(
-                    0.01,
-                    float(getattr(
-                        node, "_experiment_forward_step_m", args.forward_step_m
-                    )),
-                ) * 1.5,
+            max_forward_step_m=max(
+                0.01,
+                float(getattr(
+                    node, "_experiment_forward_step_m", args.forward_step_m
+                )),
             ),
         ),
     )

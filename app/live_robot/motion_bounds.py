@@ -13,6 +13,117 @@ class MotionBoundaryDecision:
     predicted_position: tuple[float, float] | None = None
 
 
+@dataclass(frozen=True)
+class MotionObservationDecision:
+    """Consistency result for one observed relative-motion primitive."""
+
+    allowed: bool
+    reason: str = ""
+    code: str = ""
+    distance_m: float = 0.0
+    yaw_delta_deg: float = 0.0
+
+
+def evaluate_motion_observation(
+    step: str,
+    *,
+    before: tuple[float, float, float],
+    after: tuple[float, float, float],
+    expected_forward_m: float,
+    minimum_translation_m: float = 0.03,
+    maximum_translation_factor: float = 2.0,
+    maximum_forward_yaw_drift_deg: float = 20.0,
+) -> MotionObservationDecision:
+    """Reject missing motion and odometry jumps instead of accepting them."""
+
+    values = (*before, *after, expected_forward_m)
+    if not all(math.isfinite(float(value)) for value in values):
+        return MotionObservationDecision(
+            False,
+            "ODOM_INVALID: odometry contains a non-finite value",
+            "ODOM_INVALID",
+        )
+    distance = math.hypot(after[0] - before[0], after[1] - before[1])
+    yaw_delta = abs((after[2] - before[2] + math.pi) % (2.0 * math.pi) - math.pi)
+    yaw_delta_deg = math.degrees(yaw_delta)
+    if step.startswith("f"):
+        expected = max(minimum_translation_m, float(expected_forward_m))
+        minimum_required = max(minimum_translation_m, expected * 0.5)
+        maximum = max(
+            minimum_translation_m * 2.0,
+            expected * maximum_translation_factor,
+        )
+        if distance > maximum:
+            return MotionObservationDecision(
+                False,
+                (
+                    "ODOM_DISCONTINUITY: observed forward displacement "
+                    f"{distance:.3f}m exceeds plausible limit {maximum:.3f}m "
+                    f"for requested {expected_forward_m:.3f}m"
+                ),
+                "ODOM_DISCONTINUITY",
+                distance,
+                yaw_delta_deg,
+            )
+        if distance < minimum_required:
+            return MotionObservationDecision(
+                False,
+                (
+                    "FORWARD_NOT_CONFIRMED: motion RPC completed but odometry "
+                    f"reported only {distance:.3f}m (minimum "
+                    f"{minimum_required:.3f}m for requested "
+                    f"{expected_forward_m:.3f}m)"
+                ),
+                "FORWARD_NOT_CONFIRMED",
+                distance,
+                yaw_delta_deg,
+            )
+        if yaw_delta_deg > maximum_forward_yaw_drift_deg:
+            return MotionObservationDecision(
+                False,
+                (
+                    "FORWARD_HEADING_DRIFT: forward step changed heading by "
+                    f"{yaw_delta_deg:.1f}deg (limit "
+                    f"{maximum_forward_yaw_drift_deg:.1f}deg)"
+                ),
+                "FORWARD_HEADING_DRIFT",
+                distance,
+                yaw_delta_deg,
+            )
+        return MotionObservationDecision(
+            True, distance_m=distance, yaw_delta_deg=yaw_delta_deg
+        )
+
+    expected_turn_deg = abs(float(step[1:])) if len(step) > 1 else 0.0
+    maximum_turn_deg = max(10.0, expected_turn_deg * 2.0 + 5.0)
+    if yaw_delta_deg > maximum_turn_deg:
+        return MotionObservationDecision(
+            False,
+            (
+                "ODOM_DISCONTINUITY: observed yaw change "
+                f"{yaw_delta_deg:.1f}deg exceeds plausible limit "
+                f"{maximum_turn_deg:.1f}deg"
+            ),
+            "ODOM_DISCONTINUITY",
+            distance,
+            yaw_delta_deg,
+        )
+    if yaw_delta_deg <= 3.0:
+        return MotionObservationDecision(
+            False,
+            (
+                "TURN_NOT_CONFIRMED: motion RPC completed but odometry "
+                f"reported only {yaw_delta_deg:.1f}deg"
+            ),
+            "TURN_NOT_CONFIRMED",
+            distance,
+            yaw_delta_deg,
+        )
+    return MotionObservationDecision(
+        True, distance_m=distance, yaw_delta_deg=yaw_delta_deg
+    )
+
+
 def evaluate_lidar_motion_readiness(
     *,
     lidar_fresh: bool | None,
@@ -59,7 +170,7 @@ def evaluate_step_boundary(
     )
     if not current_check.allowed:
         return current_check
-    if step != "f":
+    if not step.startswith("f"):
         return MotionBoundaryDecision(True, predicted_position=current[:2])
     if turn_only:
         return MotionBoundaryDecision(

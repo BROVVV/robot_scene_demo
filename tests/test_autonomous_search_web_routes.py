@@ -145,6 +145,15 @@ def test_search_end_to_end_state_and_summary(tmp_path) -> None:
         types = [item["event_type"] for item in events]
         assert "TARGET_CONFIRMED" in types
         assert "SEARCH_FINISHED" in types
+        history = client.get("/api/search/history?limit=50").json()
+        assert history["max_sessions"] == 10
+        assert len(history["sessions"]) == 1
+        session_id = history["sessions"][0]["session_id"]
+        archived = client.get(f"/api/search/history/{session_id}").json()
+        assert archived["ok"] is True
+        assert archived["state"]["status"] == "TARGET_FOUND"
+        assert archived["state"]["map"]["revision"] >= 1
+        assert archived["events"]
 
 
 def test_pause_resume_stop_via_api(tmp_path) -> None:
@@ -212,6 +221,8 @@ def test_invalid_target_400(tmp_path) -> None:
         response = client.post("/api/search/start", json={"target": ""})
         assert response.status_code == 400
         assert response.json()["ok"] is False
+        assert response.json()["error_detail"]["code"] == "TASK_INVALID"
+        assert response.json()["error_detail"]["suggestion"]
 
 
 def test_search_estop_endpoint(tmp_path) -> None:

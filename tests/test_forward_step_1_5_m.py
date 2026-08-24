@@ -25,6 +25,8 @@ def test_profile_allows_1_5_step():
     profile = load_go2w_experiment_profile("configs/go2w/high_level_experiment.yaml")
     limits = profile.get("limits") or {}
     assert float(limits.get("max_forward_step_m")) >= 1.5
+    execution = profile.get("execution") or {}
+    assert 1.0 < float(execution.get("forward_command_duration_scale")) <= 2.0
 
 
 def test_local_executor_default_goal_is_1_5_m():

@@ -1,5 +1,9 @@
 # robot_scene_demo 从零部署与运行手册
 
+> **Codex/全新电脑入口：** 先阅读 [`CODEX_DEPLOY.md`](CODEX_DEPLOY.md)，然后运行
+> `bash scripts/bootstrap_fresh_machine.sh --profile=full`。该脚本安装并编译全部软件能力，
+> 但不会启动或移动机器狗。
+
 本文档目标：把本文件交给 AI 或运维人员后，可以在一台“什么都没配置”的 Ubuntu 机器上，从零部署并跑通完整流程：
 
 - mock 场景理解
@@ -327,13 +331,14 @@ bash scripts/go2w/start_autonomous_search_web.sh --mock              # 离线前
 bash scripts/go2w/stop_autonomous_search_web.sh                      # 停止（只停项目自有 web.pid）
 ```
 
-然后浏览器打开 `http://127.0.0.1:8765`，在"自主搜索"Tab 输入目标并点击"开始搜索"。
-页面左上角"自主运动"勾选框按次授权机器狗运动（对应服务端 `enable_autonomous_motion`）。
+然后浏览器打开 `http://127.0.0.1:8765`，在"自主搜索"Tab 只需输入自然语言目标并点击
+"开始搜索"。运动权限由启动命令决定：使用 `--enable-autonomous-motion` 启动即授权
+本服务内的搜索任务，未授权则自动 dry-run，页面不会再用复选框覆盖服务配置。
 
 > 如果再次点击出现 **"无法开始: search already active in state STARTING"**：这是上一次
 > 会话的 worker 子进程在启动阶段退出/卡死但状态没被回收导致的。已内置自动修复——
-> 再次点「开始」会自动先释放被占用的僵尸会话再重试；也可以直接点「停止」立即解锁，
-> 之后即可重新开始。服务端还会对超过 120s 仍卡在启动中的会话做超时回收。
+> 服务端会在新请求到达时自动识别已经退出或超过 120s 的僵尸 worker，把退出前状态和
+> 具体中断原因归档，再允许新会话；仍健康运行的旧任务不会被刷新后的浏览器误停止。
 
 > 如果输入目标后立刻 **"搜索结束: FAILED"**：现在界面上会直接显示具体失败原因
 > （例如缺依赖 / rclpy 缺失）。常见情况与解决：
@@ -343,7 +348,7 @@ bash scripts/go2w/stop_autonomous_search_web.sh                      # 停止（
 >   bash scripts/go2w/start_autonomous_search_web.sh --mock   # 无需 ROS/真机
 >   ```
 >   然后在浏览器输入「绿色垃圾桶」即可看到：搜索→建图→语义拓扑→找到目标的全流程。
-> - **真机**：用 `--enable-autonomous-motion` 启动，并在页面勾选「操作者监督自主运动」；
+> - **真机**：用 `--enable-autonomous-motion` 启动；
 >   后端会自动挑选带 rclpy 的 ROS Python 来跑搜索 worker（优先 `/usr/bin/python3`，
 >   可用 `GO2W_WORKER_PYTHON` 显式覆盖）。若仍失败，`outputs/autonomous_search/logs/
 >   search_worker.log` 里有完整错误。
@@ -357,9 +362,10 @@ D435 RGB-D 镜头默认 **1280×720** 满宽度模式（约 69° 彩色 / 87° �
 关键接口（详见 `docs/GO2W_AUTONOMOUS_SEARCH_WEBUI.md`）：
 
 ```text
-POST /api/search/start   {target, reasoner, backend, enable_autonomous_motion, rgbd_source, ...}  → 立即返回 session_id
+POST /api/search/start   {task_text}（高级字段默认继承服务启动配置） → 立即返回 session_id
 POST /api/search/pause | resume | stop | estop
 GET  /api/search/state | map | spatial-map | place-graph | frontiers | semantic-map | objects | events | history | readiness | executor
+GET  /api/search/history/{session_id}  → 完整状态、决策、拓扑、事件和产物索引
 WS   /ws/search         连接即发 snapshot → 随后增量 SearchEvent（心跳 15s，自动重连）
 ```
 
@@ -370,7 +376,10 @@ WS   /ws/search         连接即发 snapshot → 随后增量 SearchEvent（心
 中运行，FastAPI 进程保持 Conda 环境（计划书 §12/§86）。Manual / Autonomous 运动
 控制权互斥由 `ControlOwner` 保证，急停同时停止搜索与会话。
 
-输出：`outputs/live_runs/<session_id>/{events.jsonl, summary.json, exploration_graph.json}`。
+输出：每次任务在 `outputs/live_runs/<session_id>/` 保存 worker 原始产物，并额外原子保存
+`webui_state.json`、`webui_events.jsonl`、`webui_session.json`。页面刷新、停止任务、
+搜索失败或 Web 服务重启后仍可回看；WebUI 完整记录滚动保留最近 10 次（不删除旧的
+非 WebUI CLI/实验运行目录）。
 
 ## RGB-D Spatial Semantic Exploration（2026-08-18 新增）
 

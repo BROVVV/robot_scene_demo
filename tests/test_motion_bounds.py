@@ -5,6 +5,7 @@ import unittest
 
 from app.live_robot.motion_bounds import (
     evaluate_lidar_motion_readiness,
+    evaluate_motion_observation,
     evaluate_rotation_clearance,
     evaluate_step_boundary,
     position_within_boundary,
@@ -12,6 +13,35 @@ from app.live_robot.motion_bounds import (
 
 
 class MotionBoundsTests(unittest.TestCase):
+    def test_forward_observation_accepts_plausible_motion(self) -> None:
+        result = evaluate_motion_observation(
+            "f0.300",
+            before=(0.0, 0.0, 0.0),
+            after=(0.27, 0.01, 0.02),
+            expected_forward_m=0.30,
+        )
+        self.assertTrue(result.allowed)
+
+    def test_forward_observation_rejects_no_motion(self) -> None:
+        result = evaluate_motion_observation(
+            "f0.300",
+            before=(0.0, 0.0, 0.0),
+            after=(0.01, 0.0, 0.0),
+            expected_forward_m=0.30,
+        )
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.code, "FORWARD_NOT_CONFIRMED")
+
+    def test_forward_observation_rejects_duplicate_odom_jump(self) -> None:
+        result = evaluate_motion_observation(
+            "f0.300",
+            before=(4.50, 2.55, 0.9),
+            after=(0.40, 1.07, 1.1),
+            expected_forward_m=0.30,
+        )
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.code, "ODOM_DISCONTINUITY")
+
     def test_lidar_readiness_rejects_stale_missing_and_nan(self) -> None:
         self.assertFalse(evaluate_lidar_motion_readiness(
             lidar_fresh=False, front_clearance_m=1.0,

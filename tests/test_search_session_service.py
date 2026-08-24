@@ -16,12 +16,21 @@ from app.manual_web_demo.search_session_service import (
 )
 
 
+_TEST_SESSION_DIR = "outputs/live_runs_test"
+
+
+@pytest.fixture(autouse=True)
+def _isolate_archives(tmp_path):
+    global _TEST_SESSION_DIR
+    _TEST_SESSION_DIR = str(tmp_path / "sessions")
+
+
 def _service(**factory_kwargs) -> SearchSessionService:
     owner = ControlOwner()
     return SearchSessionService(
         owner=owner,
         executor_factory=make_mock_executor_factory(**factory_kwargs),
-        session_dir="outputs/live_runs_test",
+        session_dir=_TEST_SESSION_DIR,
     )
 
 

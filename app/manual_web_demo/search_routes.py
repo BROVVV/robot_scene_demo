@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 
 from app.live_robot.search_event import SearchEvent
 from app.manual_web_demo.search_models import SearchStartRequest
+from app.manual_web_demo.search_errors import search_error
 from app.manual_web_demo.search_session_service import SearchSessionService
 
 HEARTBEAT_INTERVAL_SEC = 15.0
@@ -116,8 +117,12 @@ def create_search_router(
         try:
             result = await asyncio.to_thread(service.start_search, req)
         except Exception as exc:  # noqa: BLE001 - return a usable API error
+            detail = search_error(
+                f"search start failed: {type(exc).__name__}: {exc}",
+                source="search_api", stage="START",
+            )
             return JSONResponse(
-                {"ok": False, "error": f"search start failed: {type(exc).__name__}: {exc}"},
+                {"ok": False, "error": detail["message"], "error_detail": detail},
                 status_code=500,
             )
         if result.get("ok"):
@@ -129,7 +134,11 @@ def create_search_router(
                 }
             )
         status_code = 409 if result.get("conflict") else 400
-        return JSONResponse({"ok": False, "error": result["error"]}, status_code=status_code)
+        return JSONResponse(
+            {"ok": False, "error": result["error"],
+             "error_detail": result.get("error_detail")},
+            status_code=status_code,
+        )
 
     @router.post("/pause")
     async def search_pause() -> JSONResponse:
@@ -204,8 +213,25 @@ def create_search_router(
         return {"events": service.recent_events(max(1, min(limit, 2000)))}
 
     @router.get("/history")
-    async def search_history(limit: int = 50) -> dict[str, Any]:
-        return {"sessions": service.history(limit)}
+    async def search_history(limit: int = 10) -> dict[str, Any]:
+        return {"sessions": service.history(min(10, limit)), "max_sessions": 10}
+
+    @router.get("/history/{session_id}")
+    async def search_history_session(session_id: str) -> JSONResponse:
+        try:
+            record = service.history_session(session_id)
+        except ValueError:
+            record = None
+        if record is None:
+            detail = search_error(
+                "未找到指定的搜索记录，记录可能已超过最近 10 次的滚动保留范围。",
+                code="SESSION_NOT_FOUND", source="search_archive", stage="HISTORY",
+            )
+            return JSONResponse(
+                {"ok": False, "error": detail["message"], "error_detail": detail},
+                status_code=404,
+            )
+        return JSONResponse({"ok": True, **record})
 
     @router.get("/readiness")
     async def search_readiness() -> dict[str, Any]:

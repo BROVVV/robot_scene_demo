@@ -59,6 +59,10 @@ motion_primitives:
 execution:
   stop_after_each_step: true
   reobserve_after_motion: true
+  # 2026-08-21 controlled forward calibration: a 0.30 m command produced
+  # 0.198 m wheel odometry at scale 1.0 (ratio 0.66).  Keep this bounded and
+  # re-verify every <=0.30 m segment; it never bypasses the distance gates.
+  forward_command_duration_scale: 1.5
 
 # Merge with the exploration policy defaults.
 exploration:
