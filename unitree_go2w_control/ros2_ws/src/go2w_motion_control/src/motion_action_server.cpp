@@ -29,6 +29,8 @@ MotionActionServer::MotionActionServer(const rclcpp::NodeOptions &options)
   const auto lease_id_topic = get_parameter("lease_id_topic").as_string();
   const auto lease_alive_topic = get_parameter("lease_alive_topic").as_string();
   const auto motion_name_topic = get_parameter("motion_name_topic").as_string();
+  const auto sdk_command_socket =
+      get_parameter("sdk_command_socket").as_string();
   const auto lease_status_timeout =
       get_parameter("lease_status_timeout_sec").as_double();
 
@@ -39,7 +41,8 @@ MotionActionServer::MotionActionServer(const rclcpp::NodeOptions &options)
       this, sport_state_topic, low_state_topic);
   sport_client_ = std::make_unique<LeasedSportClient>(
       this, sport_request_topic, sport_response_topic, lease_id_topic,
-      lease_alive_topic, lease_status_timeout, parameters_.dry_run);
+      lease_alive_topic, sdk_command_socket, lease_status_timeout,
+      parameters_.dry_run);
   sport_client_->SetEventCallback(
       [this](const std::string &kind, const RequestResult &result,
              const std::string &parameter) {
@@ -127,6 +130,8 @@ MotionActionServer::Parameters MotionActionServer::LoadParameters() {
                                  "/go2w/sport_lease/alive");
   declare_parameter<std::string>("motion_name_topic",
                                  "/go2w/motion_mode/name");
+  declare_parameter<std::string>("sdk_command_socket",
+                                 "/tmp/go2w_sdk_motion.sock");
   p.action_name = declare_parameter<std::string>("action_name", "/go2w/motion");
   p.arm_service = declare_parameter<std::string>("arm_service", "/go2w/arm");
   p.emergency_stop_service = declare_parameter<std::string>(

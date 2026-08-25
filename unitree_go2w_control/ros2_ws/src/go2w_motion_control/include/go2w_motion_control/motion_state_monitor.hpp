@@ -4,8 +4,10 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "go2w_motion_control/angle_utils.hpp"
@@ -45,6 +47,7 @@ class MotionStateMonitor {
  public:
   MotionStateMonitor(rclcpp::Node *node, const std::string &sport_topic,
                      const std::string &low_topic);
+  ~MotionStateMonitor();
 
   MotionStateSnapshot Snapshot() const;
   bool StateFresh(double timeout_sec) const;
@@ -75,6 +78,9 @@ class MotionStateMonitor {
   bool evidence_active_{false};
   std::vector<std::array<double, 4>> evidence_q_;
   std::vector<std::array<double, 4>> evidence_dq_;
+  rclcpp::Node::SharedPtr state_node_;
+  std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> state_executor_;
+  std::thread state_thread_;
   rclcpp::Subscription<unitree_go::msg::SportModeState>::SharedPtr sport_sub_;
   rclcpp::Subscription<unitree_go::msg::LowState>::SharedPtr low_sub_;
 };

@@ -4,7 +4,7 @@ import math
 
 import numpy as np
 import rclpy
-from rclpy._rclpy_pybind11 import RCLError
+from rclpy._rclpy import RCLError
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from nav_msgs.msg import Odometry, Path
 from rclpy.executors import ExternalShutdownException
@@ -61,12 +61,14 @@ def transform_lidar_points_to_odom(
 
 
 def _cloud_xyz(message: PointCloud2) -> np.ndarray:
-    records = point_cloud2.read_points(
-        message, field_names=("x", "y", "z"), skip_nans=True
+    records = list(
+        point_cloud2.read_points(
+            message, field_names=("x", "y", "z"), skip_nans=True
+        )
     )
-    return np.column_stack(
-        tuple(np.asarray(records[name], dtype=np.float64) for name in ("x", "y", "z"))
-    )
+    if not records:
+        return np.zeros((0, 3), dtype=np.float64)
+    return np.asarray(records, dtype=np.float64).reshape(-1, 3)
 
 
 def _stamp_key(message) -> int:

@@ -12,20 +12,46 @@ namespace go2w_motion_control {
 MotionStateMonitor::MotionStateMonitor(rclcpp::Node *node,
                                        const std::string &sport_topic,
                                        const std::string &low_topic) {
+  // Keep high-rate state subscriptions off the Action/Service executor.  The
+  // latter is deliberately single-threaded to avoid a Foxy rclcpp_action
+  // readiness race.  A dedicated state-only executor lets a blocking safety
+  // service continue collecting the fresh samples required by
+  // WaitForStationary without reintroducing concurrent Action dispatch.
+  rclcpp::NodeOptions state_options;
+  // The launch file remaps __node for the public Action node.  Do not apply
+  // that process-wide remap to this private state node or the graph will
+  // contain two nodes with the same name.
+  state_options.use_global_arguments(false);
+  state_node_ = std::make_shared<rclcpp::Node>(
+      "go2w_motion_state_monitor", node->get_namespace(), state_options);
   // The Go2-W bare DDS publishers expose RELIABLE state streams on this
   // deployment.  BEST_EFFORT readers discover the topics but can remain
   // silent, which would make the motion gate incorrectly report stale state.
   const auto state_qos = rclcpp::QoS(rclcpp::KeepLast(20)).reliable();
-  sport_sub_ = node->create_subscription<unitree_go::msg::SportModeState>(
+  sport_sub_ = state_node_->create_subscription<unitree_go::msg::SportModeState>(
       sport_topic, state_qos,
       [this](const unitree_go::msg::SportModeState::SharedPtr msg) {
         OnSportState(msg);
       });
-  low_sub_ = node->create_subscription<unitree_go::msg::LowState>(
+  low_sub_ = state_node_->create_subscription<unitree_go::msg::LowState>(
       low_topic, state_qos,
       [this](const unitree_go::msg::LowState::SharedPtr msg) {
         OnLowState(msg);
       });
+  state_executor_ =
+      std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
+  state_executor_->add_node(state_node_);
+  state_thread_ = std::thread([this]() { state_executor_->spin(); });
+}
+
+MotionStateMonitor::~MotionStateMonitor() {
+  if (state_executor_) state_executor_->cancel();
+  if (state_thread_.joinable()) state_thread_.join();
+  if (state_executor_ && state_node_) state_executor_->remove_node(state_node_);
+  sport_sub_.reset();
+  low_sub_.reset();
+  state_executor_.reset();
+  state_node_.reset();
 }
 
 void MotionStateMonitor::OnSportState(

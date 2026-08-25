@@ -206,7 +206,7 @@ def run(request_path):
     request_path = Path(request_path).resolve(); job = request_path.parent
     request = json.loads(request_path.read_text(encoding="utf-8"))
     status(job, request, "validating", "正在校验 ROS2/Nav2 运行环境")
-    if os.getenv("ROS_DISTRO") not in (None, "", "humble"):
+    if os.getenv("ROS_DISTRO") not in (None, "", "humble", "foxy"):
         raise RuntimeError("NAV2_ROS_DISTRO_UNSUPPORTED: 仅支持 ROS2 Humble")
     safety_check(request)
     try:

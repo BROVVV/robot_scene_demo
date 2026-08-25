@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+UTC = timezone.utc
 from pathlib import Path
 
 from .nav2_models import Nav2JobState, Nav2Request, Nav2Status

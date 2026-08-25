@@ -109,6 +109,10 @@ pip_install() {
       "${venv}/bin/python" -m pip "$@"
   fi
 }
+# On Jetson/robot images the Python cyclonedds wheel needs the prebuilt
+# CycloneDDS 0.10.x cmake package to build.
+export CYCLONEDDS_HOME="${CYCLONEDDS_HOME:-$HOME/cyclonedds_ws/install/cyclonedds}"
+export CMAKE_PREFIX_PATH="${CYCLONEDDS_HOME}${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
 pip_install install wheel
 pip_install install --no-build-isolation -e \
   "${control_root}/vendor/unitree_sdk2_python"

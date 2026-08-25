@@ -115,7 +115,8 @@ def create_search_router(
         # event-loop thread: a synchronous call here makes every fetch,
         # websocket heartbeat, and status poll look like a network failure.
         try:
-            result = await asyncio.to_thread(service.start_search, req)
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(None, service.start_search, req)
         except Exception as exc:  # noqa: BLE001 - return a usable API error
             detail = search_error(
                 f"search start failed: {type(exc).__name__}: {exc}",

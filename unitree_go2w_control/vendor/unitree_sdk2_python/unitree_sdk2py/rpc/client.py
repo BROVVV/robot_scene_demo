@@ -45,7 +45,14 @@ class Client(ClientBase):
     def _Call(self, apiId: int, parameter: str):
         ret, proirity, leaseId = self.__CheckApi(apiId)
         if ret == 0:
-            return self._CallBase(apiId, parameter, proirity, leaseId)
+            code, data = self._CallBase(apiId, parameter, proirity, leaseId)
+            if (self.__enableLease and
+                    code == RPC_ERR_SERVER_LEASE_DENIED):
+                # Do not keep advertising a lease that the service has
+                # definitively rejected.  The lease thread will apply for a
+                # new session before a later command is accepted.
+                self.__leaseClient.Invalidate()
+            return code, data
         else:
             return RPC_ERR_CLIENT_API_NOT_REG, None
             

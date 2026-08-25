@@ -44,7 +44,7 @@ def main() -> int:
 
     add(
         "ros_distro",
-        os.getenv("ROS_DISTRO") == "humble",
+        os.getenv("ROS_DISTRO") in ("humble", "foxy"),
         os.getenv("ROS_DISTRO", "未设置"),
         plan=True,
         execute=True,

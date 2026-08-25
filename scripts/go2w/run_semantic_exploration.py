@@ -649,21 +649,15 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     # is a local variable of the caller ``run_go2w`` and is never passed into
     # this function, so re-derive it here (fixes NameError in the worker).
     vision_model = str(args.llm_model or settings.vision_model or "Qwen/Qwen3-VL-8B-Instruct")
-    # The detector subprocess (SiliconFlow vision worker) must reach the API
-    # directly.  The host shell exports http(s)/socks proxies (HTTP_PROXY etc.)
-    # which otherwise route the OpenAI SDK through a proxy and stall the
-    # vision call far past its timeout.  Strip them for child processes.
-    for _proxy_key in (
-        "http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
-        "ALL_PROXY", "all_proxy", "socks_proxy", "SOCKS_PROXY", "ws_proxy",
-    ):
-        env.pop(_proxy_key, None)
+    # On this robot, external API access is only available through the local
+    # forward proxy (127.0.0.1:17891).  Keep proxy variables in the child env
+    # so SiliconFlow vision calls can reach the API.
     # Ensure the detector subprocess uses a real interpreter on this machine
     # instead of the author's hard-coded path.
     if not env.get("SILICONFLOW_PYTHON") and not env.get("GROUNDED_SAM_PYTHON"):
         env["SILICONFLOW_PYTHON"] = os.environ.get(
             "GO2W_CONDA_PYTHON",
-            "/home/mxt/anaconda3/envs/go2_robot_scene_demo/bin/python",
+            sys.executable,
         )
     spool_root = args.spool_root
     state: dict[str, Any] = {"image_path": None, "semantic": None}
@@ -726,13 +720,9 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         # 始终走全场景分析（objects + relations 一起拿）。快速“无目标”捷径只返回
         # objects、不返回 relations，会导致拓扑只有孤立节点；全场景更长但能
         # 既建节点又连边（用 max_tokens=2048，不截断）。
-        python = env.get(
-            "SILICONFLOW_PYTHON",
-            env.get(
-                "GROUNDED_SAM_PYTHON",
-                "/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python",
-            ),
-        )
+        python = env.get("SILICONFLOW_PYTHON") or env.get("GROUNDED_SAM_PYTHON") or sys.executable
+        if not os.path.isfile(python):
+            python = sys.executable
         worker = PROJECT_ROOT / "app/detectors/siliconflow_vision_worker.py"
         output_path = PROJECT_ROOT / "runtime/go2w/llm_semantic_observation.json"
         command = [

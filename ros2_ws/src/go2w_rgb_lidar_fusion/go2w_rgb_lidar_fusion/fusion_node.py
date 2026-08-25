@@ -83,10 +83,13 @@ def cloud_xyz(message: PointCloud2) -> np.ndarray:
     raw = point_cloud2.read_points(
         message, field_names=("x", "y", "z"), skip_nans=True
     )
-    if getattr(raw.dtype, "names", None):
+    if hasattr(raw, "dtype") and getattr(raw.dtype, "names", None):
         points = np.column_stack([raw[name] for name in ("x", "y", "z")])
     else:
-        points = np.asarray(raw).reshape(-1, 3)
+        points = list(raw)
+        if not points:
+            return np.zeros((0, 3), dtype=np.float64)
+        points = np.asarray(points, dtype=np.float64).reshape(-1, 3)
     return np.asarray(points, dtype=np.float64)
 
 

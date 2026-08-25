@@ -28,7 +28,7 @@ port="${MANUAL_DEMO_PORT:-8765}"
 # ---- 1. Network preflight ------------------------------------------- #
 go2w_interface="${GO2W_INTERFACE:-}"
 if [[ -z "$go2w_interface" ]]; then
-  for candidate in enp6s0 enp3s0 enp4s0 enp5s0; do
+  for candidate in eth0 enp6s0 enp3s0 enp4s0 enp5s0; do
     if [[ -r "/sys/class/net/${candidate}/carrier" ]] \
       && [[ "$(< "/sys/class/net/${candidate}/carrier")" == "1" ]] \
       && ip -4 -o address show dev "$candidate" 2>/dev/null \
@@ -109,6 +109,7 @@ fi
 conda_python=""
 for candidate in \
   "${GO2W_CONDA_PYTHON:-}" \
+  "${project_root}/.venv/bin/python" \
   "$HOME/anaconda3/envs/go2_robot_scene_demo/bin/python" \
   "$HOME/miniconda3/envs/go2_robot_scene_demo/bin/python" \
   /home/mxt/anaconda3/envs/go2_robot_scene_demo/bin/python \

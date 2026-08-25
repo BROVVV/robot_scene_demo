@@ -51,6 +51,16 @@ if [[ "$profile" == go2w || "$profile" == full ]]; then
     || fail 'Go2-W motion action server is not built'
   [[ -d "${project_root}/ros2_ws/src/hesai_ros_driver/.git" ]] \
     || fail 'Hesai driver source is missing'
+  set +u
+  # shellcheck disable=SC1091
+  source /opt/ros/humble/setup.bash
+  # shellcheck disable=SC1091
+  source "${project_root}/external/unitree_ros2/cyclonedds_ws/install/setup.bash" 2>/dev/null || true
+  # shellcheck disable=SC1091
+  source "${project_root}/ros2_ws/install/setup.bash" 2>/dev/null || true
+  # shellcheck disable=SC1091
+  source "${project_root}/unitree_go2w_control/ros2_ws/install/setup.bash" 2>/dev/null || true
+  set -u
   "$python" - <<'PY'
 import rclpy
 from app.manual_web_demo.search_executor import _resolve_worker_python

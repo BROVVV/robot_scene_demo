@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 """Response-checked Go2/Go2-W high-level posture cycle; never publishes LowCmd."""
 
 import signal

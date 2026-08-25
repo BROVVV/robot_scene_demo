@@ -48,6 +48,12 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH
 set +u
 # shellcheck source=/dev/null
 source /opt/ros/humble/setup.bash
+# The robot's custom CycloneDDS 0.10.x workspace provides the interface
+# configuration elements used by the project's XML. Prefer it on Foxy.
+if [[ -f "$HOME/cyclonedds_ws/install/setup.bash" && "${GO2W_USE_SYSTEM_CYCLONEDDS:-0}" != "1" ]]; then
+  # shellcheck disable=SC1090
+  source "$HOME/cyclonedds_ws/install/setup.bash"
+fi
 # shellcheck source=/dev/null
 source "$GO2W_UNITREE_ROOT/cyclonedds_ws/install/setup.bash"
 # shellcheck source=/dev/null

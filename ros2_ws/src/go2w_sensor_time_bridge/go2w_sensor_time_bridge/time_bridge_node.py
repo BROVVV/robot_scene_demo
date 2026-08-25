@@ -6,7 +6,7 @@ import copy
 from pathlib import Path
 
 import rclpy
-from rclpy._rclpy_pybind11 import RCLError
+from rclpy._rclpy import RCLError
 from builtin_interfaces.msg import Time
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from rclpy.node import Node

@@ -10,6 +10,9 @@ go2w_motion_action_server:
     lease_id_topic: "/go2w/sport_lease/id"
     lease_alive_topic: "/go2w/sport_lease/alive"
     motion_name_topic: "/go2w/motion_mode/name"
+    # Local IPC to the Python SDK client that owns and renews the Sport lease.
+    # Robot motion is never republished to /api/sport/request.
+    sdk_command_socket: "/tmp/go2w_sdk_motion.sock"
 
     action_name: "/go2w/motion"
     arm_service: "/go2w/arm"

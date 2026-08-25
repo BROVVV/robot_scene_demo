@@ -33,9 +33,13 @@ mkdir -p "${runtime_root}" "${log_root}"
 
 host="${AUTONOMOUS_SEARCH_HOST:-127.0.0.1}"
 port="${AUTONOMOUS_SEARCH_PORT:-8765}"
+probe_host="$host"
+if [[ "$probe_host" == "0.0.0.0" || "$probe_host" == "::" ]]; then
+  probe_host="127.0.0.1"
+fi
 
 # ---- 0. Port conflict: only stop project-owned Go2-W web servers ---------- #
-if curl -fsS "http://${host}:${port}/api/status" >/dev/null 2>&1; then
+if curl -fsS "http://${probe_host}:${port}/api/status" >/dev/null 2>&1; then
   printf 'Port %s already serves a Go2-W web demo.\n' "${port}" >&2
   for pidfile in \
     "${project_root}/outputs/manual_web_demo/runtime/web.pid" \
@@ -79,7 +83,7 @@ fi
 # ---- 1. Network preflight ------------------------------------------------ #
 go2w_interface="${GO2W_INTERFACE:-}"
 if [[ -z "$go2w_interface" ]]; then
-  for candidate in enp6s0 enp3s0 enp4s0 enp5s0; do
+  for candidate in eth0 enp6s0 enp3s0 enp4s0 enp5s0; do
     if [[ -r "/sys/class/net/${candidate}/carrier" ]] \
       && [[ "$(< "/sys/class/net/${candidate}/carrier")" == "1" ]] \
       && ip -4 -o address show dev "$candidate" 2>/dev/null \
@@ -194,10 +198,10 @@ if [[ -z "$conda_python" ]]; then
   exit 2
 fi
 
-# ---- 6. Idempotently add FastAPI/uvicorn --------------------------------- #
-if ! "$conda_python" -c 'import fastapi, uvicorn' >/dev/null 2>&1; then
-  printf 'Installing fastapi + uvicorn into go2_robot_scene_demo...\n' >&2
-  "$conda_python" -m pip install --quiet fastapi uvicorn
+# ---- 6. Idempotently add FastAPI/Uvicorn/WebSocket support --------------- #
+if ! "$conda_python" -c 'import fastapi, uvicorn, websockets' >/dev/null 2>&1; then
+  printf 'Installing fastapi + uvicorn + websockets into go2_robot_scene_demo...\n' >&2
+  "$conda_python" -m pip install --quiet fastapi uvicorn websockets
 fi
 
 # A fresh bootstrap creates one environment containing both project packages
@@ -238,7 +242,7 @@ printf '%s\n' "$!" > "${runtime_root}/web.pid"
 # ---- 8. Wait for the API to become ready --------------------------------- #
 ready=0
 for _ in $(seq 1 60); do
-  if curl -fsS "http://${host}:${port}/api/status" >/dev/null 2>&1; then
+  if curl -fsS "http://${probe_host}:${port}/api/status" >/dev/null 2>&1; then
     ready=1
     break
   fi

@@ -109,14 +109,14 @@ class LidarPreprocessor(Node):
             self.get_logger().warning(f"base_link TF unavailable: {exc}")
             self._fresh_pub.publish(Bool(data=False))
             return
-        records = point_cloud2.read_points(
-            message, field_names=("x", "y", "z"), skip_nans=False
-        )
-        source_xyz = np.column_stack(
-            tuple(
-                np.asarray(records[name], dtype=np.float64)
-                for name in ("x", "y", "z")
+        records = list(
+            point_cloud2.read_points(
+                message, field_names=("x", "y", "z"), skip_nans=False
             )
+        )
+        source_xyz = (
+            np.asarray(records, dtype=np.float64).reshape(-1, 3)
+            if records else np.zeros((0, 3), dtype=np.float64)
         )
         translation = transform.transform.translation
         rotation = transform.transform.rotation

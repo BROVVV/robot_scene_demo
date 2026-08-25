@@ -1761,13 +1761,7 @@ class AutonomousLoop(Node):
                 )
                 if quick_reuse is not None:
                     return quick_reuse
-                python = env.get(
-                    "SILICONFLOW_PYTHON",
-                    env.get(
-                        "GROUNDED_SAM_PYTHON",
-                        "/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python",
-                    ),
-                )
+                python = AutonomousLoop._resolve_detector_python(env)
                 worker = PROJECT_ROOT / "app/detectors/siliconflow_vision_worker.py"
                 output_path = PROJECT_ROOT / "runtime/go2w/llm_semantic_observation.json"
                 command = [
@@ -1976,13 +1970,24 @@ class AutonomousLoop(Node):
         env = os.environ.copy()
         env["PYTHONPATH"] = values.get(
             "GROUNDED_SAM_PYTHONPATH",
-            "/home/brov/robot/Grounded-SAM-2:"
-            "/home/brov/robot/Grounded-SAM-2/grounding_dino",
+            str(PROJECT_ROOT / "external/Grounded-SAM-2") + ":"
+            + str(PROJECT_ROOT / "external/Grounded-SAM-2/grounding_dino"),
         )
         env["GROUNDED_SAM_ROOT"] = values.get(
-            "GROUNDED_SAM_ROOT", "/home/brov/robot/Grounded-SAM-2"
+            "GROUNDED_SAM_ROOT", str(PROJECT_ROOT / "external/Grounded-SAM-2")
         )
         return env
+
+    @staticmethod
+    def _resolve_detector_python(env: dict[str, str]) -> str:
+        python = (
+            env.get("SILICONFLOW_PYTHON")
+            or env.get("GROUNDED_SAM_PYTHON")
+            or sys.executable
+        )
+        if not os.path.isfile(python):
+            return sys.executable
+        return python
 
     def _latest_bundle_image(self, spool_root: str,
                              retries: int = 6,
@@ -2039,10 +2044,7 @@ class AutonomousLoop(Node):
         if getattr(self, "_detector", "grounded_sam") == "llm":
             return self._detect_llm(image_path, env)
         root = env["GROUNDED_SAM_ROOT"]
-        python = env.get(
-            "GROUNDED_SAM_PYTHON",
-            "/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python",
-        )
+        python = self._resolve_detector_python(env)
         worker = PROJECT_ROOT / "app/detectors/grounded_sam_worker.py"
         command = [
             python,
@@ -2091,13 +2093,7 @@ class AutonomousLoop(Node):
         return list(payload.get("objects", []))
 
     def _detect_llm(self, image_path: str, env: dict[str, str]) -> list[dict]:
-        python = env.get(
-            "SILICONFLOW_PYTHON",
-            env.get(
-                "GROUNDED_SAM_PYTHON",
-                "/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python",
-            ),
-        )
+        python = self._resolve_detector_python(env)
         worker = PROJECT_ROOT / "app/detectors/siliconflow_vision_worker.py"
         output_path = PROJECT_ROOT / "runtime/go2w/llm_detection_result.json"
         command = [
@@ -2141,13 +2137,7 @@ class AutonomousLoop(Node):
     def _verify_target(self, image_path: str, bbox: list[float],
                        env: dict[str, str]) -> dict:
         """Ask the vision LLM whether the object inside bbox is the target."""
-        python = env.get(
-            "SILICONFLOW_PYTHON",
-            env.get(
-                "GROUNDED_SAM_PYTHON",
-                "/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python",
-            ),
-        )
+        python = self._resolve_detector_python(env)
         worker = PROJECT_ROOT / "app/detectors/siliconflow_vision_worker.py"
         output_path = PROJECT_ROOT / "runtime/go2w/llm_verify_result.json"
         bbox_text = ",".join(f"{float(value):.4f}" for value in bbox)
