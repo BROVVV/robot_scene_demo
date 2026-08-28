@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from .nav2_config import Nav2Settings

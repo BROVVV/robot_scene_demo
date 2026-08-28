@@ -32,7 +32,7 @@ from app.video.object_tracker import VideoObjectTracker, track_objects
 from app.video.observed_scene_graph_builder import ObservedSceneGraphBuilder
 from app.video.pipeline import evaluate_video_search_evidence
 from app.video.semantic_verifier import verify_video_candidates
-from app.video.target_profile import TargetProfileResolver
+from app.reasoning.target_profile import TargetProfileResolver
 from app.video.target_search import search_target_in_video
 from app.video.video_graph_io import write_json, write_scene_graph_graphml, write_scene_graph_json
 from app.video.video_navigation_topology_builder import VideoNavigationTopologyBuilder

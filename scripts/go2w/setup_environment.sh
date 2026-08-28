@@ -17,7 +17,7 @@ GO2W_CONTROL_SETUP="${GO2W_CONTROL_SETUP:-$GO2W_CONTROL_ROOT/ros2_ws/install/set
 GO2W_UNITREE_SETUP="${GO2W_UNITREE_SETUP:-}"
 
 if [[ -z "${GO2W_INTERFACE:-}" ]]; then
-  for candidate in eth0 enp6s0 enp3s0 enp4s0 enp5s0; do
+  for candidate in enp6s0 enp3s0 enp4s0 enp5s0; do
     if [[ -r "/sys/class/net/${candidate}/carrier" ]] \
       && [[ "$(< "/sys/class/net/${candidate}/carrier")" == "1" ]] \
       && ip -4 -o address show dev "$candidate" 2>/dev/null \
@@ -90,13 +90,6 @@ unset CMAKE_PREFIX_PATH PYTHONPATH
 set +u
 # shellcheck disable=SC1090
 source "$GO2W_ROS_SETUP"
-# The Go2-W project XML uses CycloneDDS features from 0.10.x.  On the robot
-# there is a prebuilt custom workspace that provides a compatible rmw; prefer
-# it over the older Foxy system CycloneDDS unless explicitly disabled.
-if [[ -f "$HOME/cyclonedds_ws/install/setup.bash" && "${GO2W_USE_SYSTEM_CYCLONEDDS:-0}" != "1" ]]; then
-  # shellcheck disable=SC1090
-  source "$HOME/cyclonedds_ws/install/setup.bash"
-fi
 set -u
 if [[ -n "${GO2W_UNITREE_SETUP:-}" && -f "$GO2W_UNITREE_SETUP" ]]; then
   set +u

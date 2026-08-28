@@ -169,10 +169,6 @@ def create_search_router(
     async def search_map() -> dict[str, Any]:
         return service.map_snapshot()
 
-    @router.get("/spatial-map")
-    async def search_spatial_map() -> dict[str, Any]:
-        return service.spatial_snapshot()
-
     @router.get("/place-graph")
     async def search_place_graph() -> dict[str, Any]:
         return (service.spatial_snapshot() or {}).get("place_graph") or {}
@@ -184,7 +180,7 @@ def create_search_router(
     @router.get("/semantic-map")
     async def search_semantic_map() -> dict[str, Any]:
         spatial = service.spatial_snapshot() or {}
-        graph = spatial.get("spatial_map") or {}
+        graph = spatial.get("semantic_graph") or spatial.get("spatial_map") or {}
         return {
             "schema_version": graph.get("schema_version", "semantic_navigation_graph_v1"),
             "graph": graph,

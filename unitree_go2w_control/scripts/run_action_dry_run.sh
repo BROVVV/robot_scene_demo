@@ -12,22 +12,24 @@ SERVER_PID=""
 cleanup() {
   local rc=$?
   trap - EXIT INT TERM
-  if [[ -n "$SERVER_PID" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
-    kill -TERM "$SERVER_PID" 2>/dev/null || true
+  if [[ -n "$SERVER_PID" ]] && kill -0 -- "-$SERVER_PID" 2>/dev/null; then
+    # ros2 run is a Python wrapper around the C++ server. Terminate its whole
+    # isolated process group so a failed test cannot leave an orphaned motion
+    # Action Server in the graph.
+    kill -TERM -- "-$SERVER_PID" 2>/dev/null || true
     for _ in {1..50}; do
-      kill -0 "$SERVER_PID" 2>/dev/null || break
+      kill -0 -- "-$SERVER_PID" 2>/dev/null || break
       sleep 0.1
     done
-    if kill -0 "$SERVER_PID" 2>/dev/null; then
-      kill -KILL "$SERVER_PID" 2>/dev/null || true
+    if kill -0 -- "-$SERVER_PID" 2>/dev/null; then
+      kill -KILL -- "-$SERVER_PID" 2>/dev/null || true
     fi
     wait "$SERVER_PID" 2>/dev/null || true
   fi
   exit "$rc"
 }
 trap cleanup EXIT INT TERM
-ros2 run go2w_motion_control go2w_motion_action_server --ros-args \
-  --params-file "$ROOT/ros2_ws/src/go2w_motion_control/config/motion_control.yaml" \
+setsid ros2 run go2w_motion_control go2w_motion_action_server --ros-args \
   -p dry_run:=true -p yaw_command_sign:=1 \
   -p sport_state_topic:=/dry_run/sportmodestate \
   -p low_state_topic:=/dry_run/lowstate \

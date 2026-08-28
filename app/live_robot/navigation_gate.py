@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
 from typing import Any
 
 

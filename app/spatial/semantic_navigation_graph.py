@@ -242,8 +242,14 @@ class SemanticNavigationGraph:
                 "to": edge.to_place,
                 "relation": "CONNECTED_TO",
                 "provenance": "geometry_derived",
-                "traversable": edge.navigation_result not in {"failed", "unreachable"},
+                "traversable": edge.status not in {"BLOCKED", "STALE"},
                 "distance": edge.observed_displacement_m or 1.0,
+                "status": edge.status,
+                "success_count": edge.success_count,
+                "failure_count": edge.failure_count,
+                "blocked_count": edge.blocked_count,
+                "last_failure_reason": edge.last_failure_reason,
+                "cost": edge.cost,
             }
             self._upsert_edge(item)
         for object_id, obj in self.object_map.objects.items():
@@ -297,9 +303,16 @@ class SemanticNavigationGraph:
                     "information_gain": round(1.0 - len(covered) / self.heading_sectors, 3),
                     "semantic_relevance": 0.0,
                     "traversability": "unknown",
-                    "state": "UNVISITED",
+                    "state": "OPEN",
+                    "status": "OPEN",
+                    "visit_count": 0,
+                    "failure_count": 0,
+                    "created_at": time.time(),
+                    "last_seen_at": time.time(),
                     "provenance": "topological_heading_gap",
                 }
+                if frontier_id not in place.frontier_ids:
+                    place.frontier_ids.append(frontier_id)
                 self._upsert_edge({
                     "edge_id": f"{place_id}__frontier__{frontier_id}",
                     "from": place_id,

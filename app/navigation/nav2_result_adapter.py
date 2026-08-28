@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import csv
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 

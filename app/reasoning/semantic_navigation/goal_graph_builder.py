@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from app.reasoning.semantic_navigation.models import GoalGraph, GoalGraphEdge, GoalGraphNode
 
 if TYPE_CHECKING:
-    from app.video.target_profile import TargetProfile
+    from app.reasoning.target_profile import TargetProfile
 
 
 _RELATION_ALIASES = {

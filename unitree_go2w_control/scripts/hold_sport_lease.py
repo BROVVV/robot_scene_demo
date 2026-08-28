@@ -39,12 +39,12 @@ class SdkMotionExecutor:
     def __init__(
         self,
         client: SportClient,
-        client_lock: threading.Lock,
+        command_lock: threading.Lock,
         socket_path: Path,
         stop_event: threading.Event,
     ) -> None:
         self._client = client
-        self._client_lock = client_lock
+        self._command_lock = command_lock
         self._socket_path = socket_path
         self._stop_event = stop_event
         self._server: socket.socket | None = None
@@ -76,7 +76,11 @@ class SdkMotionExecutor:
             request = decode_request(raw)
             request_id = request.get("request_id", 0)
             api_id = request.get("api_id", 0)
-            with self._client_lock:
+            # Serialize motion commands, but never share this lock with the
+            # lease/status heartbeat. A synchronous SDK call can legitimately
+            # wait for its RPC timeout; blocking GetLeaseId/status publication
+            # behind that wait made a healthy lease look stale after motion.
+            with self._command_lock:
                 lease_id = int(self._client.GetLeaseId())
                 response = execute_request(request, self._client, lease_id)
         except ProtocolError as exc:
@@ -189,6 +193,12 @@ def main() -> int:
         "--status-dir",
         default=os.environ.get("GO2W_LEASE_STATUS_DIR", "/tmp/go2w_lease_status"),
     )
+    parser.add_argument(
+        "--rpc-timeout",
+        type=float,
+        default=float(os.environ.get("GO2W_SDK_RPC_TIMEOUT_SEC", "1.0")),
+        help="timeout for acknowledged SDK calls; must be shorter than IPC timeout",
+    )
     # Accepted for compatibility with old launch files; ROS runs in the bridge.
     parser.add_argument("--ros-status", action="store_true")
     args = parser.parse_args()
@@ -204,7 +214,9 @@ def main() -> int:
     sdk_network = os.environ.get("GO2W_ROBOT_HOST_IP", args.interface)
     ChannelFactoryInitialize(0, sdk_network)
     client = SportClient(enableLease=True)
-    client.SetTimeout(5.0)
+    if not 0.1 <= args.rpc_timeout <= 1.5:
+        parser.error("--rpc-timeout must be between 0.1 and 1.5 seconds")
+    client.SetTimeout(args.rpc_timeout)
     client.Init()
     deadline = time.monotonic() + 5.0
     while client.GetLeaseId() == 0 and time.monotonic() < deadline:
@@ -243,9 +255,9 @@ def main() -> int:
         flush=True,
     )
 
-    client_lock = threading.Lock()
+    command_lock = threading.Lock()
     executor = SdkMotionExecutor(
-        client, client_lock, Path(args.socket_path), stop_event
+        client, command_lock, Path(args.socket_path), stop_event
     )
     executor_thread = threading.Thread(
         target=executor.serve, name="sdk-motion-executor", daemon=True
@@ -253,13 +265,17 @@ def main() -> int:
     executor_thread.start()
 
     switcher = MotionSwitcherClient()
-    switcher.SetTimeout(1.0)
+    # Mode telemetry is advisory for the ROS safety gate. Never let a slow
+    # MotionSwitcher response pause the authoritative lease heartbeat.
+    switcher.SetTimeout(min(0.3, args.rpc_timeout))
     switcher.Init()
     next_mode_check = 0.0
     try:
         while not stop_event.wait(0.2):
-            with client_lock:
-                current_id = int(client.GetLeaseId())
+            # GetLeaseId has its own LeaseClient lock and does not touch the
+            # Sport RPC transport. Keep status publication independent from a
+            # slow StopMove response so the bridge reports actual lease health.
+            current_id = int(client.GetLeaseId())
             _write_status(id_file, f"{max(0, current_id)}\n")
             _write_status(alive_file, "1\n" if current_id else "0\n")
             _write_status(heartbeat_file, f"{time.time():.6f}\n")
@@ -291,7 +307,7 @@ def main() -> int:
         stop_event.set()
         executor.close()
         executor_thread.join(timeout=2.0)
-        with client_lock:
+        with command_lock:
             for attempt in range(1, 4):
                 try:
                     raw = client.StopMove()

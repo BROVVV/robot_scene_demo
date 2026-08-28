@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 import hashlib
 from dataclasses import replace
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 from uuid import uuid4

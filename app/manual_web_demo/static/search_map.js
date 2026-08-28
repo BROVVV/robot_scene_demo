@@ -274,8 +274,9 @@
   // Mode switching                                                     //
   // ------------------------------------------------------------------ //
   SearchMapRenderer.prototype.setMode = function (mode) {
-    if (mode !== "spatial_map") mode = "semantic_topology";
-    this.mode = mode;
+    // The 2026-08-26 plan removes the metric spatial-map mode entirely.
+    this.mode = "semantic_topology";
+    void mode;
     this.render(this.data, this.spatial);
   };
 
@@ -290,13 +291,16 @@
     this.data = mapData || this.data || {};
     this.spatial = spatialData || this.spatial || {};
 
-    if (this.mode === "semantic_topology") {
-      var graph = this.spatial.semantic_graph || null;
-      var topology = (graph && graph.object_topology) || null;
-      this.renderObjectTopology(topology, this.spatial.semantic_objects || []);
-      return;
+    // The WebUI is topology-only after the 2026-08-26 plan.  It must show the
+    // robot's actual navigation topology: PLACE, OBJECT, FRONTIER, NAV_EDGE,
+    // route, recovery and memory contributions.  Metric occupancy/spatial map
+    // rendering has been removed.
+    var graph = this.spatial.semantic_graph || null;
+    var topology = graph || null;
+    if (!topology || !Array.isArray(topology.nodes) || topology.nodes.length === 0) {
+      topology = (graph && graph.object_topology) || null;
     }
-    this.renderSpatialMap(this.data, this.spatial);
+    this.renderObjectTopology(topology, this.spatial.semantic_objects || []);
   };
 
   // ================================================================== //
@@ -403,17 +407,18 @@
     var status = String(edge.status || "TENTATIVE").toUpperCase();
     var scope = String(edge.relation_scope || "STRUCTURAL").toUpperCase();
     var structural = scope !== "VIEW_RELATIVE";
-    var confirmed = status === "CONFIRMED";
+    var confirmed = status === "CONFIRMED" || status === "OPEN";
+    var blocked = status === "BLOCKED" || status === "FAILED" || status === "DEGRADED";
     var line = document.createElementNS(ns, "line");
     line.setAttribute("x1", ax);
     line.setAttribute("y1", ay);
     line.setAttribute("x2", bx);
     line.setAttribute("y2", by);
-    var color = structural ? "#34d399" : "#c084fc";
+    var color = blocked ? "#f87171" : (structural ? "#34d399" : "#c084fc");
     line.setAttribute("stroke", color);
     line.setAttribute("stroke-width", confirmed ? 1.6 : 1.1);
-    line.setAttribute("stroke-opacity", confirmed ? 0.9 : 0.45);
-    line.setAttribute("stroke-dasharray", structural ? "none" : "5 4");
+    line.setAttribute("stroke-opacity", confirmed ? 0.9 : (blocked ? 0.75 : 0.45));
+    line.setAttribute("stroke-dasharray", blocked ? "4 3" : (structural ? "none" : "5 4"));
     if (edge.directed && RELATION_DIRECTED[edge.relation]) {
       line.setAttribute("marker-end", "url(#topo-arrow)");
     }
@@ -456,11 +461,18 @@
     var svg = this.svg;
     var g = document.createElementNS(ns, "g");
     g.setAttribute("transform", "translate(" + pos.x + "," + pos.y + ")");
-    var status = String(node.status || "TENTATIVE").toUpperCase();
-    var color = TOPO_STATUS_COLOR[status] || "#8b95a3";
-    var confirmed = status === "CONFIRMED";
-    var tentative = status === "TENTATIVE";
-    var stale = status === "STALE";
+    var nodeType = String(node.node_type || (node.is_object ? "OBJECT" : "OBJECT")).toUpperCase();
+    var status = String(node.status || node.state || "TENTATIVE").toUpperCase();
+    if (nodeType === "PLACE") {
+      status = node.current ? "CURRENT" : (node.visit_count > 0 ? "VISITED" : "UNSEEN");
+    } else if (nodeType === "FRONTIER") {
+      status = node.status || node.state || "OPEN";
+    }
+    status = String(status).toUpperCase();
+    var color = TOPO_STATUS_COLOR[status] || (nodeType === "PLACE" ? "#38bdf8" : "#8b95a3");
+    var confirmed = status === "CONFIRMED" || status === "CURRENT";
+    var tentative = status === "TENTATIVE" || status === "OPEN" || status === "UNSEEN";
+    var stale = status === "STALE" || status === "BLOCKED";
 
     var rect = document.createElementNS(ns, "rect");
     rect.setAttribute("width", NODE_WIDTH);

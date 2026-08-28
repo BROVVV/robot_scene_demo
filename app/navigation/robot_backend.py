@@ -61,8 +61,9 @@ class RobotCapabilities:
     supports_platform_obstacle_avoidance: bool = False
     # High-level motion vocabulary exposed to planners.  This is deliberately
     # more specific than supports_relative_translation/rotation: the current
-    # Go2-W experiment can move forward and rotate, but does not expose
-    # reverse or lateral primitives.
+    # Go2-W experiment can move forward, rotate, and execute short operator-
+    # supervised backward recovery (BACKWARD_RECOVERY only).  Lateral motion
+    # is still not exposed by default.
     allowed_motion_primitives: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:

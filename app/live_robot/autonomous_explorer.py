@@ -856,7 +856,7 @@ class AutonomousExplorer:
             plan_id=f"live_plan_{self.session_id}_{cycle}",
             decision_id=decision_id,
             turn_deg=float(goal.relative_dyaw or 0.0),
-            forward_m=abs(float(goal.relative_dx or 0.0)),
+            forward_m=float(goal.relative_dx or 0.0),
             reason_zh="；".join(scored.reasons) or goal.semantic_reason or "选择当前可达候选",
             target_place_id=self._current_place_id,
             target_frontier_id=goal.provenance.get("frontier_id") if isinstance(goal.provenance, dict) else None,

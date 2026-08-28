@@ -6,8 +6,7 @@ import os
 import shlex
 import subprocess
 from dataclasses import dataclass
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .nav2_config import Nav2Settings

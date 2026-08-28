@@ -169,7 +169,11 @@ def main() -> int:
         fixture.lease_alive = True
         time.sleep(0.7)
 
-        handle = send(fixture, timed_goal(2.0))
+        # RELIABLE state QoS can leave a short receive backlog after the
+        # publisher stops. Keep the goal comfortably longer than the queue
+        # drain plus state_timeout so this deterministically exercises the
+        # runtime stale-state abort instead of racing normal completion.
+        handle = send(fixture, timed_goal(4.0))
         time.sleep(0.7)
         fixture.publish_state = False
         stale_result = wait(handle.get_result_async(), 12.0)
@@ -227,6 +231,7 @@ def main() -> int:
         arm(fixture, False)
     finally:
         executor.shutdown(timeout_sec=2.0)
+        fixture.action.destroy()
         fixture.node.destroy_node()
         rclpy.shutdown()
         spin.join(timeout=2.0)

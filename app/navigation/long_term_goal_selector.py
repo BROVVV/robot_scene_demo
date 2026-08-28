@@ -64,6 +64,10 @@ class LongTermGoalSelector:
         continuity_weight: float = 0.05,
         route_cost_weight: float = 0.20,
         negative_evidence_weight: float = 0.20,
+        experience_memory_weight: float = 0.10,
+        observation_memory_weight: float = 0.10,
+        commonsense_weight: float = 0.10,
+        traversal_failure_penalty: float = 0.15,
     ) -> None:
         self.psg_weights = {
             MATCH_ZERO: psg_zero_weight,
@@ -82,6 +86,10 @@ class LongTermGoalSelector:
             "route_cost": float(route_cost_weight),
             "visited_penalty": float(visited_penalty),
             "negative_evidence": float(negative_evidence_weight),
+            "experience_memory": float(experience_memory_weight),
+            "observation_memory": float(observation_memory_weight),
+            "commonsense": float(commonsense_weight),
+            "traversal_failure": float(traversal_failure_penalty),
         }
 
     def select(
@@ -96,6 +104,8 @@ class LongTermGoalSelector:
         route_costs: dict[str, dict[str, Any]] | None = None,
         semantic_relevance: dict[str, float] | None = None,
         current_yaw_deg: float = 0.0,
+        memory_context: dict[str, Any] | None = None,
+        common_sense: dict[str, Any] | None = None,
     ) -> ScoredIntent | None:
         match_state = match_state.upper()
         if match_state in {MATCH_STRONG, MATCH_VERIFY}:
@@ -111,6 +121,8 @@ class LongTermGoalSelector:
             route_costs=route_costs or {},
             semantic_relevance=semantic_relevance or {},
             current_yaw_deg=current_yaw_deg,
+            memory_context=memory_context or {},
+            common_sense=common_sense or {},
         )
 
     def _select_frontier(
@@ -124,6 +136,8 @@ class LongTermGoalSelector:
         route_costs: dict[str, dict[str, Any]],
         semantic_relevance: dict[str, float],
         current_yaw_deg: float,
+        memory_context: dict[str, Any],
+        common_sense: dict[str, Any],
     ) -> ScoredIntent | None:
         if not frontiers:
             return None
@@ -181,15 +195,63 @@ class LongTermGoalSelector:
                 negative = min(1.0, float(memory.get("negative_evidence", 0) or 0) * 0.35)
             components["negative_evidence_penalty"] = negative
 
+            # Long-term memory / experience priors (frontier-level).
+            frontier_priors = memory_context.get("frontier_priors", {}) or {}
+            observation_priors = memory_context.get("observation_priors", {}) or {}
+            exp_memory = max(
+                0.0, min(1.0, float(frontier_priors.get(frontier.frontier_id, 0.0)))
+            )
+            obs_memory = max(
+                0.0, min(1.0, float(observation_priors.get(frontier.frontier_id, 0.0)))
+            )
+            components["experience_memory_prior"] = exp_memory
+            components["observation_memory_prior"] = obs_memory
+
+            # Structured common-sense prior from LLM/PSG (never safety).
+            cs_prior = 0.0
+            for hint in (common_sense.get("frontier_hints") or []):
+                if not isinstance(hint, dict):
+                    continue
+                hint_bearing = hint.get("bearing_deg")
+                if hint_bearing is None or frontier.bearing_deg is None:
+                    continue
+                delta = abs(
+                    (float(hint_bearing) - float(frontier.bearing_deg) + 180.0)
+                    % 360.0 - 180.0
+                )
+                if delta <= 30.0:
+                    cs_prior = max(
+                        cs_prior,
+                        float(hint.get("score", 0.0) or 0.0) * (1.0 - delta / 30.0),
+                    )
+            if cs_prior == 0.0:
+                cs_prior = max(
+                    0.0,
+                    min(1.0, float(common_sense.get("place_prior", 0.0) or 0.0)),
+                )
+            components["commonsense_prior"] = cs_prior
+
+            # Traversal failures along the route should lower the score.
+            failure_penalty = min(
+                1.0,
+                float(route_info.get("failure_count", 0) or 0) * 0.3
+                + float(memory.get("failure_count", 0) or 0) * 0.3,
+            )
+            components["traversal_failure_penalty"] = failure_penalty
+
             score = (
                 self.weights["semantic_relevance"] * components["semantic_relevance"]
                 + self.weights["spatial_gain"] * components["spatial_gain"]
                 + self.weights["psg_prior"] * components["psg_prior"]
                 + self.weights["novelty"] * components["novelty"]
                 + self.weights["continuity"] * components["continuity"]
+                + self.weights["experience_memory"] * components["experience_memory_prior"]
+                + self.weights["observation_memory"] * components["observation_memory_prior"]
+                + self.weights["commonsense"] * components["commonsense_prior"]
                 - self.weights["route_cost"] * components["route_cost_penalty"]
                 - self.weights["visited_penalty"] * components["visited_penalty"]
                 - self.weights["negative_evidence"] * components["negative_evidence_penalty"]
+                - self.weights["traversal_failure"] * components["traversal_failure_penalty"]
             )
             reasons = []
             if semantic > 0:
@@ -204,6 +266,14 @@ class LongTermGoalSelector:
                 reasons.append(f"visited penalty {visited:.2f}")
             if negative > 0:
                 reasons.append(f"negative evidence {negative:.2f}")
+            if exp_memory > 0:
+                reasons.append(f"experience memory {exp_memory:.2f}")
+            if obs_memory > 0:
+                reasons.append(f"observation memory {obs_memory:.2f}")
+            if cs_prior > 0:
+                reasons.append(f"common sense {cs_prior:.2f}")
+            if failure_penalty > 0:
+                reasons.append(f"traversal failure {failure_penalty:.2f}")
             intent = ExplorationIntent(
                 intent_id=f"intent_{len(scored) + 1:03d}",
                 intent_type=INTENT_EXPLORE_FRONTIER,

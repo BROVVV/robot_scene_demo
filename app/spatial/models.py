@@ -122,6 +122,9 @@ class PlaceNode:
     pose_observation_count: int = 0
     pose_mean: SpatialPose | None = None
     last_pose_update: float | None = None
+    scene_type: str = ""
+    memory_summary: str = ""
+    frontier_ids: list[str] = field(default_factory=list)
     provenance: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -141,6 +144,16 @@ class MovementEdge:
     observed_displacement_m: float | None = None
     observed_yaw_delta_deg: float | None = None
     navigation_result: str = "succeeded"
+    success_count: int = 0
+    failure_count: int = 0
+    blocked_count: int = 0
+    recovery_count: int = 0
+    last_success_at: float | None = None
+    last_failure_at: float | None = None
+    status: str = "OPEN"
+    last_failure_reason: str = ""
+    traversability_score: float = 1.0
+    cost: float = 1.0
     provenance: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

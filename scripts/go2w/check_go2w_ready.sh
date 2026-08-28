@@ -25,7 +25,7 @@ unitree_root="${GO2W_UNITREE_ROOT:-${HOME}/unitree_ros2}"
 control_root="${GO2W_CONTROL_ROOT:-${project_root}/unitree_go2w_control}"
 go2w_interface="${GO2W_INTERFACE:-}"
 if [[ -z "$go2w_interface" ]]; then
-  for candidate in eth0 enp6s0 enp3s0 enp4s0 enp5s0; do
+  for candidate in enp6s0 enp3s0 enp4s0 enp5s0; do
     if [[ -r "/sys/class/net/${candidate}/carrier" ]] \
       && [[ "$(< "/sys/class/net/${candidate}/carrier")" == "1" ]] \
       && ip -4 -o address show dev "$candidate" 2>/dev/null \

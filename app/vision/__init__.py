@@ -5,4 +5,5 @@ module consumes the vocabulary package during initialization.
 """
 
 from __future__ import annotations
+
 __all__: list[str] = []

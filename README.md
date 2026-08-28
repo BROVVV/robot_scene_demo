@@ -1,5 +1,23 @@
 # robot_scene_demo 从零部署与运行手册
 
+## 当前真机主入口（2026-08-26 统一规划后）
+
+```text
+Primary real-robot entry:
+  scripts/go2w/run_semantic_exploration.py
+
+世界模型：
+  Semantic Topological World Model（PLACE / NAV_EDGE / FRONTIER / OBJECT）
+  WebUI 只显示 navigation-aware semantic topology，不再显示 metric spatial map
+
+运动安全：
+  forward + rotate + breadcrumb-safe BACKWARD_RECOVERY（b0.05~b0.12m）
+  没有已确认 forward breadcrumb 时，自主后退一律 REJECTED
+
+代码状态：
+  旧离线视频 demo / Nav2 legacy / spatial map 已退役或移入 docs/archive
+```
+
 > **Codex/全新电脑入口：** 先阅读 [`CODEX_DEPLOY.md`](CODEX_DEPLOY.md)，然后运行
 > `bash scripts/bootstrap_fresh_machine.sh --profile=full`。该脚本安装并编译全部软件能力，
 > 但不会启动或移动机器狗。

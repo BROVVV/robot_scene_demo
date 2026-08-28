@@ -203,10 +203,78 @@ class PlaceGraph:
                 from_place=from_place,
                 to_place=to_place,
                 observed_displacement_m=observed_displacement_m,
+                success_count=0,
+                failure_count=0,
+                blocked_count=0,
+                recovery_count=0,
+                status="OPEN",
+                traversability_score=1.0,
+                cost=max(0.1, float(observed_displacement_m or 1.0)),
                 provenance={"source": "place_graph_relocation_or_revisit"},
             )
         )
         self._last_edge_signature = signature
+
+    def _find_edge(self, from_place: str, to_place: str) -> MovementEdge | None:
+        for edge in self.edges:
+            if (
+                (edge.from_place == from_place and edge.to_place == to_place)
+                or (
+                    not edge.provenance.get("directed")
+                    and edge.from_place == to_place
+                    and edge.to_place == from_place
+                )
+            ):
+                return edge
+        return None
+
+    def record_edge_success(
+        self,
+        from_place: str,
+        to_place: str,
+        *,
+        displacement_m: float | None = None,
+        now: float | None = None,
+    ) -> None:
+        edge = self._find_edge(from_place, to_place)
+        if edge is None:
+            return
+        edge.success_count += 1
+        edge.navigation_result = "succeeded"
+        edge.last_success_at = now if now is not None else time.time()
+        edge.status = "OPEN"
+        edge.traversability_score = min(
+            1.0, edge.traversability_score + 0.1
+        )
+        if displacement_m is not None:
+            edge.observed_displacement_m = displacement_m
+            edge.cost = max(0.1, displacement_m)
+        edge.failure_count = max(0, edge.failure_count - 0)
+        edge.last_failure_reason = ""
+
+    def record_edge_failure(
+        self,
+        from_place: str,
+        to_place: str,
+        *,
+        reason: str = "",
+        now: float | None = None,
+        max_failures: int = 2,
+    ) -> None:
+        edge = self._find_edge(from_place, to_place)
+        if edge is None:
+            return
+        edge.failure_count += 1
+        edge.navigation_result = "failed"
+        edge.last_failure_at = now if now is not None else time.time()
+        edge.last_failure_reason = reason
+        edge.traversability_score = max(
+            0.0, edge.traversability_score - 0.35
+        )
+        edge.cost += 2.0
+        if edge.failure_count >= max_failures:
+            edge.status = "BLOCKED"
+            edge.blocked_count += 1
 
     def _update_pose_fusion(self, place: PlaceNode, pose: SpatialPose | None, now: float) -> None:
         if pose is None:

@@ -9,7 +9,7 @@ from typing import Any
 from app.config import Settings
 from app.detectors.crop_verifier import CropVerifier
 from app.schemas import SceneAnalysisResult
-from app.video.target_profile import TargetProfile
+from app.reasoning.target_profile import TargetProfile
 from app.vision.crop_utils import save_candidate_crop
 from app.vision.schema import CandidateObject
 from app.vision.score_fusion import apply_score_fusion

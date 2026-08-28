@@ -57,6 +57,11 @@ from app.live_robot.semantic_observer import (
 )
 from app.memory.observation_memory_store import ObservationMemoryStore
 from app.navigation.backend_factory import create_backend
+from app.navigation.topology_route_executor import (
+    TopologyRouteExecutor,
+    TopologyRoutePlanner,
+)
+from app.reasoning.llm_prior_generator import LLMPriorGenerator, LLMPriorInput
 from app.navigation.exploration_config import (
     load_exploration_policy,
     load_go2w_experiment_profile,
@@ -70,7 +75,7 @@ from app.navigation.models import (
 from app.reasoning.semantic_navigation.models import SearchReasoningContext
 from app.reasoning.semantic_navigation.router import SemanticSearchController
 from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
-from app.video.target_profile import TargetProfileResolver
+from app.reasoning.target_profile import TargetProfileResolver
 
 
 def _motion_action_server_count() -> tuple[int | None, str]:
@@ -649,9 +654,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     # is a local variable of the caller ``run_go2w`` and is never passed into
     # this function, so re-derive it here (fixes NameError in the worker).
     vision_model = str(args.llm_model or settings.vision_model or "Qwen/Qwen3-VL-8B-Instruct")
-    # On this robot, external API access is only available through the local
-    # forward proxy (127.0.0.1:17891).  Keep proxy variables in the child env
-    # so SiliconFlow vision calls can reach the API.
+    # Keep proxy variables in the child env; the robot/developer host may
+    # require the local forward proxy for external SiliconFlow API access.
     # Ensure the detector subprocess uses a real interpreter on this machine
     # instead of the author's hard-coded path.
     if not env.get("SILICONFLOW_PYTHON") and not env.get("GROUNDED_SAM_PYTHON"):
@@ -704,6 +708,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             if settings.live_search_reasoner_use_observation_memory else None
         ),
     )
+    llm_prior_generator = LLMPriorGenerator(settings=settings)
     profile = TargetProfileResolver().resolve(args.target, use_llm=False)
     controller = SemanticSearchController(
         profile,
@@ -720,9 +725,13 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         # 始终走全场景分析（objects + relations 一起拿）。快速“无目标”捷径只返回
         # objects、不返回 relations，会导致拓扑只有孤立节点；全场景更长但能
         # 既建节点又连边（用 max_tokens=2048，不截断）。
-        python = env.get("SILICONFLOW_PYTHON") or env.get("GROUNDED_SAM_PYTHON") or sys.executable
-        if not os.path.isfile(python):
-            python = sys.executable
+        python = env.get(
+            "SILICONFLOW_PYTHON",
+            env.get(
+                "GROUNDED_SAM_PYTHON",
+                sys.executable,
+            ),
+        )
         worker = PROJECT_ROOT / "app/detectors/siliconflow_vision_worker.py"
         output_path = PROJECT_ROOT / "runtime/go2w/llm_semantic_observation.json"
         command = [
@@ -1359,6 +1368,49 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                     route_costs[f.frontier_id] = route_plan_dict
                     if entity_graph is not None:
                         entity_graph.set_route_plan(route_plan_dict)
+
+        # Memory context: observation memory + in-session frontier memory.
+        memory_context: dict[str, Any] = {"frontier_priors": {}, "observation_priors": {}}
+        for fid, fm in frontier_memory.items():
+            memory_context["frontier_priors"][fid] = float(
+                fm.get("semantic_prior", fm.get("semantic_score", 0.0)) or 0.0
+            )
+        if semantic_memory is not None:
+            long_term = semantic_memory.retrieve_long_term(args.target, top_k=5)
+            for item in long_term:
+                # Observation memory does not know frontier ids; expose a
+                # conservative place-level prior for the current Place.
+                memory_context["observation_priors"] = {
+                    fid: min(1.0, float(item.get("target_related", False) or 0.0) * 0.5)
+                    for fid in (f.frontier_id for f in frontiers)
+                }
+
+        # Structured common-sense prior; never allowed to confirm targets or
+        # command motion.  Refresh occasionally to avoid LLM every cycle.
+        common_sense: dict[str, Any] = state.get("common_sense") or {}
+        if (
+            settings.llm_commonsense_prior_enabled
+            and (
+                not common_sense
+                or int(state.get("cycle", 0) or 0) % 5 == 0
+            )
+        ):
+            prior_input = LLMPriorInput(
+                target=args.target,
+                scene_summary=str((semantic or {}).get("scene_summary", "")),
+                observed_objects=(
+                    observation.scene_objects if observation is not None else []
+                ),
+                observed_relations=(
+                    observation.scene_relations if observation is not None else []
+                ),
+                robot_capabilities={
+                    "motion_primitives": list(getattr(capabilities, "allowed_motion_primitives", []))
+                },
+            )
+            common_sense = llm_prior_generator.generate(prior_input)
+            state["common_sense"] = common_sense
+
         scored = spatial_reasoner.propose(
             graph_match=graph_match,
             frontiers=frontiers,
@@ -1369,25 +1421,69 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             route_costs=route_costs,
             semantic_relevance={f.frontier_id: 0.0 for f in frontiers},
             current_yaw_deg=current_yaw_deg,
+            memory_context=memory_context,
+            common_sense=common_sense,
         )
         if scored is None:
             return []
         intent = scored.intent
         if intent.target_frontier_id and spatial_memory is not None:
             spatial_memory.mark_frontier_selected(intent.target_frontier_id)
-        local_executor.begin(intent)
-        goal = local_executor.next_goal(
-            current_yaw_deg=current_yaw_deg, capabilities=capabilities
-        )
+        goal = None
+        route = None
+        current_place = place_graph.current_place()
+        if intent.target_frontier_id and current_place is not None:
+            from app.spatial.topological_frontier import TopologicalFrontier
+
+            current_place_id = current_place.place_id
+            tf = next(
+                (
+                    TopologicalFrontier(
+                        frontier_id=f.frontier_id,
+                        parent_place_id=current_place_id,
+                        bearing_deg=float(f.bearing_deg or 0.0),
+                        local_distance_hint_m=f.distance_m,
+                        information_gain=float(f.spatial_information_gain or 0.0),
+                    )
+                    for f in frontiers
+                    if f.frontier_id == intent.target_frontier_id
+                ),
+                None,
+            )
+            if tf is not None:
+                route = TopologyRoutePlanner().plan(
+                    place_graph=place_graph,
+                    current_place_id=current_place_id,
+                    frontier=tf,
+                )
+            if route is not None:
+                goal = TopologyRouteExecutor(
+                    forward_step_m=float(
+                        getattr(node, "_experiment_forward_segment_m", 0.30)
+                    )
+                ).next_goal(
+                    route=route,
+                    current_place_id=current_place_id,
+                    place_graph=place_graph,
+                    current_yaw_deg=current_yaw_deg,
+                    capabilities=capabilities,
+                    frontier=tf,
+                )
         if goal is None:
-            local_executor.finish()
-            return []
+            local_executor.begin(intent)
+            goal = local_executor.next_goal(
+                current_yaw_deg=current_yaw_deg, capabilities=capabilities
+            )
+            if goal is None:
+                local_executor.finish()
+                return []
         goal.semantic_relevance = max(0.0, min(1.0, scored.score))
         goal.expected_information_gain = intent.spatial_gain
         goal.provenance = {
             **goal.provenance,
             "intent": intent.to_dict(),
             "scored_intent": scored.to_dict(),
+            "route": route.to_dict() if route is not None else None,
             "route_plan": route_costs.get(intent.target_frontier_id)
             if intent.target_frontier_id else None,
         }

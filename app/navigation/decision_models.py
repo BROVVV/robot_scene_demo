@@ -126,14 +126,20 @@ class DecisionRecord:
 
 
 def signed_yaw_instruction(turn_deg: float, forward_m: float = 0.0) -> str:
-    """Render the single global convention: positive yaw means left."""
+    """Render the single global convention: positive yaw means left.
+
+    A negative ``forward_m`` means breadcrumb-safe backward recovery; it is
+    never masked into a forward instruction.
+    """
     turn = float(turn_deg)
     parts: list[str] = []
     if abs(turn) >= 0.05:
         side = "左转" if turn > 0 else "右转"
         parts.append(f"{side} {abs(turn):.0f}°")
-    if abs(float(forward_m)) >= 0.005:
-        parts.append(f"前进 {abs(float(forward_m)):.2f} m")
+    forward = float(forward_m)
+    if abs(forward) >= 0.005:
+        direction = "前进" if forward > 0.0 else "后退"
+        parts.append(f"{direction} {abs(forward):.2f} m")
     if not parts:
         parts.append("原地停止")
     return "，然后".join(parts) + "，停止并重新观察"

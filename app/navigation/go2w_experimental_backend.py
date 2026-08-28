@@ -49,10 +49,18 @@ class Go2WBackendConfig:
     # motion; missing Action/arm services therefore do not make the
     # perception loop look like a backend crash.
     dry_run: bool = False
+    # Backward recovery is formal but recovery-only and breadcrumb-safe.
+    allow_backward_recovery: bool = True
+    backward_step_m: float = 0.10
+    max_backward_step_m: float = 0.12
+    min_backward_step_m: float = 0.05
+    backward_heading_tolerance_deg: float = 8.0
+    backward_max_age_sec: float = 8.0
 
 
 GO2W_OPERATOR_SUPERVISED_PRIMITIVES = (
     "FORWARD",
+    "BACKWARD_RECOVERY",
     "ROTATE_LEFT",
     "ROTATE_RIGHT",
 )
@@ -301,19 +309,37 @@ class Go2WExperimentalBackend(RobotBackend):
             dx = float(goal.relative_dx if goal.relative_dx is not None else 0.0)
             dy = float(goal.relative_dy or 0.0)
             if dx < -0.01:
-                # The Go2-W experiment has no reverse primitive.  Return a
-                # structured rejection so AutonomousExplorer performs its
-                # normal failure->replan path without sending motion.
-                return navigation_result(
-                    goal.goal_id, NavigationStatus.REJECTED,
-                    message="reverse motion disabled; replan with rotate+forward",
-                    requested_motion=_requested_motion(goal),
-                    provenance={
-                        "backend": "go2w_experimental",
-                        "replan_required": True,
-                        "unsupported_primitive": "REVERSE",
-                    },
-                )
+                if not self.config.allow_backward_recovery:
+                    return navigation_result(
+                        goal.goal_id, NavigationStatus.REJECTED,
+                        message=(
+                            "backward recovery disabled by backend config; "
+                            "replan with rotate+forward"
+                        ),
+                        requested_motion=_requested_motion(goal),
+                        provenance={
+                            "backend": "go2w_experimental",
+                            "replan_required": True,
+                            "unsupported_primitive": "BACKWARD_RECOVERY_DISABLED",
+                        },
+                    )
+                requested = abs(float(dx))
+                if requested < self.config.min_backward_step_m - 1e-9:
+                    return navigation_result(
+                        goal.goal_id, NavigationStatus.REJECTED,
+                        message=(
+                            f"backward recovery step {requested:.3f}m below "
+                            f"minimum {self.config.min_backward_step_m:.2f}m"
+                        ),
+                        requested_motion=_requested_motion(goal),
+                        provenance={
+                            "backend": "go2w_experimental",
+                            "replan_required": True,
+                            "unsupported_primitive": "BACKWARD_TOO_SHORT",
+                        },
+                    )
+                allowed = min(requested, self.config.max_backward_step_m)
+                return self._execute_backward(goal, allowed)
             if dx < 0.01 and abs(dy) <= 0.01:
                 # A pure re-position with no forward demand.
                 return navigation_result(
@@ -362,6 +388,65 @@ class Go2WExperimentalBackend(RobotBackend):
             observed_motion={"yaw_delta_deg": round(observed_dyaw, 3)},
             elapsed_sec=round(elapsed, 3),
             provenance={"backend": "go2w_experimental", "detail": detail},
+        )
+
+    def _execute_backward(
+        self, goal: ExplorationGoal, distance_m: float
+    ) -> NavigationResult:
+        """Execute one breadcrumb-safe recovery backward primitive.
+
+        The safety evidence itself (valid breadcrumb / heading / age) is
+        enforced by the injected ``execute_step`` gate in the real ROS runner;
+        this backend only clamps distance and records structured provenance.
+        """
+        allowed = max(
+            self.config.min_backward_step_m,
+            min(distance_m, self.config.max_backward_step_m),
+        )
+        step = f"b{allowed:.3f}"
+        before = self._odometry()
+        started = self._now()
+        ok, reason, detail = self._execute_step(step)
+        elapsed = max(0.0, self._now() - started)
+        after = self._odometry()
+        dx = after[0] - before[0]
+        dy = after[1] - before[1]
+        signed_progress = (
+            dx * math.cos(before[2]) + dy * math.sin(before[2])
+        )
+        lateral_progress = (
+            -dx * math.sin(before[2]) + dy * math.cos(before[2])
+        )
+        observed_d = math.hypot(dx, dy)
+        status = _motion_status(ok, reason, detail)
+        recovery_reason = str(
+            (goal.provenance or {}).get("recovery_reason")
+            or (goal.provenance or {}).get("reason")
+            or "front_blocked_recovery"
+        )
+        return navigation_result(
+            goal.goal_id, status,
+            message=reason or f"backward recovery {step}",
+            requested_motion={
+                "primitive": "BACKWARD_RECOVERY",
+                "step": step,
+                "distance_m": round(allowed, 3),
+                "requested_distance_m": round(distance_m, 3),
+                "safety_limited": distance_m > allowed,
+            },
+            observed_motion={
+                "displacement_m": round(observed_d, 3),
+                "signed_progress_m": round(signed_progress, 3),
+                "lateral_progress_m": round(lateral_progress, 3),
+            },
+            elapsed_sec=round(elapsed, 3),
+            provenance={
+                "backend": "go2w_experimental",
+                "primitive": "BACKWARD_RECOVERY",
+                "safety_source": "breadcrumb",
+                "recovery_reason": recovery_reason,
+                "detail": detail,
+            },
         )
 
     def _execute_forward(self, goal: ExplorationGoal, dx_m: float) -> NavigationResult:

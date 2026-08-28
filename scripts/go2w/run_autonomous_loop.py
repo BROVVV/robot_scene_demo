@@ -43,12 +43,18 @@ from app.live_robot.semantic_observer import (
 from app.config import get_settings
 from app.memory.observation_memory_store import ObservationMemoryStore
 from app.live_robot.motion_bounds import (
+    MotionBoundaryDecision,
     evaluate_dual_lidar_rotation_gate,
     evaluate_lidar_motion_readiness,
     evaluate_motion_observation,
     evaluate_rotation_clearance,
     evaluate_step_boundary,
     position_within_boundary,
+)
+from app.live_robot.step_parser import (
+    backward_step_distance,
+    forward_step_distance,
+    translation_step_distance,
 )
 from app.live_robot.rotation_lease import (
     build_rotation_lease_binding,
@@ -77,7 +83,7 @@ from app.reasoning.semantic_navigation.auxiliary_hints import (
     build_precomputed_situated_prior_hints,
     build_psg_auxiliary_hints,
 )
-from app.video.target_profile import TargetProfileResolver
+from app.reasoning.target_profile import TargetProfileResolver
 
 import rclpy
 from go2w_motion_interfaces.action import MotionCommand
@@ -125,22 +131,6 @@ def strict_json_value(value):
     if isinstance(value, (list, tuple)):
         return [strict_json_value(item) for item in value]
     return value
-
-
-def forward_step_distance(step: str, default_distance_m: float) -> float:
-    """Decode ``f`` or a distance-qualified primitive such as ``f0.300``."""
-
-    if step == "f":
-        return float(default_distance_m)
-    if not step.startswith("f"):
-        raise ValueError(f"not a forward step: {step}")
-    try:
-        distance = float(step[1:])
-    except ValueError as exc:
-        raise ValueError(f"invalid forward step distance: {step}") from exc
-    if not math.isfinite(distance) or distance <= 0.0:
-        raise ValueError(f"forward step distance must be positive: {step}")
-    return distance
 
 
 class BundleVideoRecorder:
@@ -410,6 +400,18 @@ class AutonomousLoop(Node):
         self._forward_vx = forward_vx
         self._forward_seconds = forward_seconds
         self._forward_duration_scale = 1.0
+        # Real-robot logs show that ai-w reverse at 0.08 m/s only produces a
+        # short breakaway twitch; 0.12 m/s is the calibrated reverse floor.
+        self._backward_vx = 0.16
+        self._backward_seconds = max(0.5, forward_seconds * 0.8)
+        # Real Go2-W backward response is significantly slower than forward.
+        # Keep the commanded distance bounded, but extend the timed-velocity
+        # window so the odometry can actually confirm a short reverse move.
+        self._backward_duration_scale = 1.40
+        self._backward_min_step_m = 0.05
+        self._backward_max_step_m = 0.12
+        self._backward_max_age_sec = 8.0
+        self._backward_heading_tolerance_deg = 8.0
         self._max_yaw_rate = max_yaw_rate
         self._min_clearance = min_clearance_m
         self._mode = mode
@@ -470,6 +472,15 @@ class AutonomousLoop(Node):
         self._rotation_lease_path = ""
         self._rotation_lease_error = ""
         self._armed_by_runner = False
+        # Breadcrumb-safe backward recovery: the most recently confirmed
+        # forward corridor is the only autonomous reverse evidence available.
+        self._breadcrumb: dict[str, Any] | None = None
+        self._recovery_budget = {
+            "consecutive": 0,
+            "max_consecutive": 2,
+            "total_m": 0.0,
+            "max_total_m": 0.36,
+        }
         qos = QoSProfile(depth=20, reliability=2)  # BEST_EFFORT
         self.create_subscription(SportModeState, "/lf/sportmodestate",
                                  self._on_sport, qos)
@@ -606,7 +617,7 @@ class AutonomousLoop(Node):
         self.get_logger().error(f"timeout waiting for {label}")
         return False
 
-    def _safety_ok(self) -> tuple[bool, str]:
+    def _safety_ok(self, step: str | None = None) -> tuple[bool, str]:
         if (
             self._odom_discontinuity_monotonic is not None
             and time.monotonic() - self._odom_discontinuity_monotonic < 5.0
@@ -617,6 +628,11 @@ class AutonomousLoop(Node):
         if int(self._sport.mode) != 1 or int(self._sport.error_code) != 0:
             return False, (f"robot mode={self._sport.mode} "
                            f"error={self._sport.error_code}")
+        if step is not None and step.startswith("b"):
+            backward = self._backward_safety_ok()
+            if not backward.allowed:
+                return False, backward.reason
+            return True, ""
         lidar = evaluate_lidar_motion_readiness(
             lidar_fresh=self._lidar_fresh,
             front_clearance_m=self._clearance,
@@ -625,6 +641,135 @@ class AutonomousLoop(Node):
         if not lidar.allowed:
             return False, lidar.reason
         return True, ""
+
+    def _backward_safety_ok(self):
+        """Breadcrumb-only reverse safety gate (fail closed)."""
+        breadcrumb = self._breadcrumb
+        if breadcrumb is None or breadcrumb.get("invalidated"):
+            return MotionBoundaryDecision(
+                False, "NO_VALID_REVERSE_CORRIDOR: no confirmed forward breadcrumb"
+            )
+        age = time.monotonic() - float(breadcrumb.get("created_monotonic", 0.0))
+        if age > self._backward_max_age_sec:
+            return MotionBoundaryDecision(
+                False,
+                "NO_VALID_REVERSE_CORRIDOR: breadcrumb expired "
+                f"({age:.1f}s > {self._backward_max_age_sec:.1f}s)",
+            )
+        _, _, yaw = self._odom_snapshot()
+        heading_error = abs(
+            (yaw - float(breadcrumb.get("heading_rad", yaw)) + math.pi)
+            % (2.0 * math.pi) - math.pi
+        )
+        heading_error_deg = math.degrees(heading_error)
+        if heading_error_deg > self._backward_heading_tolerance_deg:
+            return MotionBoundaryDecision(
+                False,
+                "NO_VALID_REVERSE_CORRIDOR: heading drift "
+                f"{heading_error_deg:.1f}deg > "
+                f"{self._backward_heading_tolerance_deg:.1f}deg",
+            )
+        if self._recovery_budget["consecutive"] >= self._recovery_budget["max_consecutive"]:
+            return MotionBoundaryDecision(
+                False,
+                "RECOVERY_BUDGET_EXCEEDED: too many consecutive backward recoveries",
+            )
+        if self._recovery_budget["total_m"] >= self._recovery_budget["max_total_m"]:
+            return MotionBoundaryDecision(
+                False,
+                "RECOVERY_BUDGET_EXCEEDED: cumulative backward recovery distance exceeded",
+            )
+        return MotionBoundaryDecision(True, reason="breadcrumb_safe")
+
+    def _record_breadcrumb(
+        self,
+        before: tuple[float, float, float],
+        after: tuple[float, float, float],
+        distance_m: float,
+        source_step: str,
+    ) -> None:
+        """Record a confirmed forward corridor as the reverse safety evidence."""
+        self._breadcrumb = {
+            "start_pose": list(before),
+            "end_pose": list(after),
+            "signed_distance_m": round(distance_m, 4),
+            "heading_rad": before[2],
+            "confirmed": True,
+            "created_monotonic": time.monotonic(),
+            "source_step": source_step,
+            "invalidated": False,
+        }
+        self._write({
+            "event": "breadcrumb_created",
+            "host_s": self._host_s(),
+            "start_pose": list(before),
+            "end_pose": list(after),
+            "distance_m": round(distance_m, 3),
+            "heading_rad": before[2],
+        })
+
+    def _consume_breadcrumb(self, distance_m: float) -> None:
+        """Mark the breadcrumb consumed after a successful backward recovery."""
+        if self._breadcrumb is not None:
+            self._breadcrumb["invalidated"] = True
+        self._recovery_budget["consecutive"] += 1
+        self._recovery_budget["total_m"] = round(
+            self._recovery_budget["total_m"] + float(distance_m), 4
+        )
+        self._write({
+            "event": "breadcrumb_consumed",
+            "host_s": self._host_s(),
+            "distance_m": round(distance_m, 3),
+            "recovery_budget": dict(self._recovery_budget),
+        })
+
+    def _maybe_autonomous_reverse(
+        self, index: int, step: str, failure_reason: str
+    ) -> None:
+        """Best-effort breadcrumb reverse after a forward failure.
+
+        This is a low-level safety fallback for the most common recovery
+        trigger (front too close / forward not confirmed).  It never retries
+        the failed forward step and never executes without a valid breadcrumb.
+        """
+        if not step.startswith("f"):
+            return
+        upper = str(failure_reason or "").upper()
+        if "MOTION_TIMEOUT" in upper or "EMERGENCY" in upper:
+            return
+        safety = self._backward_safety_ok()
+        if not safety.allowed:
+            self._write({
+                "event": "autonomous_recovery_skipped",
+                "index": index,
+                "step": step,
+                "reason": safety.reason,
+                "host_s": self._host_s(),
+            })
+            return
+        recovery_step = f"b{self._backward_max_step_m:.2f}"
+        self._write({
+            "event": "autonomous_recovery_attempt",
+            "index": index,
+            "step": step,
+            "recovery_step": recovery_step,
+            "reason": failure_reason,
+            "host_s": self._host_s(),
+        })
+        try:
+            ok, reason = self._execute_step(index + 1, recovery_step, attempts=1)
+            self._write({
+                "event": "autonomous_recovery_result",
+                "index": index,
+                "recovery_step": recovery_step,
+                "ok": ok,
+                "reason": reason,
+                "host_s": self._host_s(),
+            })
+        except Exception as exc:  # noqa: BLE001 - recovery never crashes search
+            self.get_logger().error(
+                f"autonomous reverse recovery failed: {type(exc).__name__}: {exc}"
+            )
 
     def _call_service(self, client, request, label: str):
         if not client.wait_for_service(timeout_sec=3.0):
@@ -638,11 +783,34 @@ class AutonomousLoop(Node):
     def _arm(self, value: bool) -> None:
         request = SetBool.Request()
         request.data = value
-        response = self._call_service(self._arm_client, request,
-                                      "arm" if value else "disarm")
-        if not response.success:
-            raise RuntimeError(f"arm response failed: {response.message}")
-        self._armed_by_runner = bool(value)
+        last_error = ""
+        # MotionSwitcher/lease status can be transiently stale immediately
+        # after a Move/STOP cycle.  Retry briefly before failing closed; this
+        # is still safe because a failed arm never sends a motion goal.
+        for attempt in range(1, 4):
+            try:
+                response = self._call_service(
+                    self._arm_client, request,
+                    "arm" if value else "disarm",
+                )
+                if response.success:
+                    self._armed_by_runner = bool(value)
+                    if attempt > 1:
+                        self.get_logger().warning(
+                            f"arm({'on' if value else 'off'}) recovered on "
+                            f"attempt {attempt}"
+                        )
+                    return
+                last_error = f"arm response failed: {response.message}"
+            except RuntimeError as exc:
+                last_error = str(exc)
+            if attempt < 3:
+                self.get_logger().warning(
+                    f"arm({'on' if value else 'off'}) attempt {attempt} "
+                    f"failed ({last_error}); retrying after settle"
+                )
+                time.sleep(1.0)
+        raise RuntimeError(last_error or "arm failed after retries")
 
     def _emergency_stop(self) -> None:
         response = self._call_service(self._stop_srv, Trigger.Request(),
@@ -731,6 +899,11 @@ class AutonomousLoop(Node):
                 step, self._forward_vx * self._forward_seconds
             )
             return f"前进 {distance:.2f} m"
+        if step.startswith("b"):
+            distance = backward_step_distance(
+                step, self._backward_vx * self._backward_seconds
+            )
+            return f"后退 {distance:.2f} m"
         if step.startswith("l"):
             return f"左转 {step[1:]}°"
         if step.startswith("r"):
@@ -776,11 +949,18 @@ class AutonomousLoop(Node):
                     f"operator-authorized turn clamped: {lease_step.reason}"
                 )
                 return False, lease_step.reason
-        expected_forward_m = (
-            forward_step_distance(step, self._forward_vx * self._forward_seconds)
-            if step.startswith("f")
-            else self._forward_vx * self._forward_seconds
-        )
+        if step.startswith("f") or step.startswith("b"):
+            _, expected_forward_m = translation_step_distance(
+                step,
+                default_forward_m=(
+                    self._forward_vx * self._forward_seconds
+                ),
+                default_backward_m=(
+                    self._backward_vx * self._backward_seconds
+                ),
+            )
+        else:
+            expected_forward_m = self._forward_vx * self._forward_seconds
         boundary = evaluate_step_boundary(
             step,
             origin=origin,
@@ -889,11 +1069,12 @@ class AutonomousLoop(Node):
                     f"{dual_gate.reason}"
                 )
                 return False, dual_gate.reason
-        ok, reason = self._safety_ok()
+        ok, reason = self._safety_ok(step)
         if not ok:
             self._write({"event": "abort", "index": index, "step": step,
                          "reason": reason, "host_s": self._host_s()})
             self.get_logger().error(f"abort before step {step}: {reason}")
+            self._maybe_autonomous_reverse(index, step, reason)
             return False, reason
         for attempt in range(1, attempts + 1):
             if attempt > 1:
@@ -911,13 +1092,22 @@ class AutonomousLoop(Node):
                 return False, f"arm failed: {exc}"
             before = self._odom_snapshot()
             goal = MotionCommand.Goal()
-            if step.startswith("f"):
+            if step.startswith("f") or step.startswith("b"):
                 goal.mode = MotionCommand.Goal.MODE_TIMED_VELOCITY
-                goal.vx = self._forward_vx
+                goal.vx = (
+                    self._forward_vx
+                    if step.startswith("f")
+                    else -abs(self._backward_vx)
+                )
+                duration_scale = (
+                    self._backward_duration_scale
+                    if step.startswith("b")
+                    else self._forward_duration_scale
+                )
                 goal.duration_sec = (
                     expected_forward_m
-                    / self._forward_vx
-                    * self._forward_duration_scale
+                    / abs(goal.vx)
+                    * duration_scale
                 )
                 goal.timeout_sec = goal.duration_sec + 8.0
             elif step.startswith("l") or step.startswith("r"):
@@ -971,16 +1161,16 @@ class AutonomousLoop(Node):
                          "attempt": attempt, "host_s": self._host_s(),
                          "result": result})
             if not result["success"]:
-                if attempt < attempts:
-                    self.get_logger().warn(
-                        f"step {step} attempt {attempt} failed "
-                        f"({result['message']}); retrying after settle"
-                    )
-                    continue
+                # An accepted Action may have moved partially before its
+                # encoder/stop verification failed.  Retrying could accumulate
+                # an unknown displacement, so every returned motion failure is
+                # terminal for this step.
                 self._write({"event": "abort", "index": index, "step": step,
                              "reason": result["message"],
+                             "non_retryable": True,
                              "host_s": self._host_s()})
                 self.get_logger().error(f"step failed: {result['message']}")
+                self._maybe_autonomous_reverse(index, step, result["message"])
                 return False, result["message"]
             time.sleep(1.0)
             rclpy.spin_once(self, timeout_sec=0.2)
@@ -1016,7 +1206,9 @@ class AutonomousLoop(Node):
                              verification.yaw_delta_deg
                          ),
                          "expected_turn_deg": abs(float(step[1:]))
-                         if len(step) > 1 and not step.startswith("f") else 0.0,
+                         if len(step) > 1
+                         and not (step.startswith("f") or step.startswith("b"))
+                         else 0.0,
                          "expected_forward_m": expected_forward_m,
                          "action_estimated_distance_m": result.get(
                              "estimated_distance_m"
@@ -1025,6 +1217,15 @@ class AutonomousLoop(Node):
                          "verification_reason": verification.reason,
                          "verified": bool(verification.allowed)})
             if verification.allowed:
+                if step.startswith("f"):
+                    self._record_breadcrumb(before, after, expected_forward_m, step)
+                    # A successful forward step creates a fresh corridor; any
+                    # old recovery budget from a different corridor should not
+                    # count against this new one.
+                    self._recovery_budget["consecutive"] = 0
+                    self._recovery_budget["total_m"] = 0.0
+                elif step.startswith("b"):
+                    self._consume_breadcrumb(expected_forward_m)
                 return True, ""
             # An RPC-success/observation-failure is indeterminate.  Retrying
             # could double an action that physically happened, so stop and
@@ -1036,11 +1237,15 @@ class AutonomousLoop(Node):
                     f"emergency stop after verification failure failed: {exc}"
                 )
             self.get_logger().error(verification.reason)
+            self._maybe_autonomous_reverse(index, step, verification.reason)
             return False, verification.reason
         self._write({"event": "abort", "index": index, "step": step,
                      "reason": "wheel odometry did not confirm motion after retries",
                      "host_s": self._host_s()})
         self.get_logger().error("wheel odometry did not confirm motion")
+        self._maybe_autonomous_reverse(
+            index, step, "wheel odometry did not confirm motion after retries"
+        )
         return False, "wheel odometry did not confirm motion after retries"
 
     def _next_wander_step(self) -> str:
@@ -1761,7 +1966,13 @@ class AutonomousLoop(Node):
                 )
                 if quick_reuse is not None:
                     return quick_reuse
-                python = AutonomousLoop._resolve_detector_python(env)
+                python = env.get(
+                    "SILICONFLOW_PYTHON",
+                    env.get(
+                        "GROUNDED_SAM_PYTHON",
+                        sys.executable,
+                    ),
+                )
                 worker = PROJECT_ROOT / "app/detectors/siliconflow_vision_worker.py"
                 output_path = PROJECT_ROOT / "runtime/go2w/llm_semantic_observation.json"
                 command = [
@@ -1978,17 +2189,6 @@ class AutonomousLoop(Node):
         )
         return env
 
-    @staticmethod
-    def _resolve_detector_python(env: dict[str, str]) -> str:
-        python = (
-            env.get("SILICONFLOW_PYTHON")
-            or env.get("GROUNDED_SAM_PYTHON")
-            or sys.executable
-        )
-        if not os.path.isfile(python):
-            return sys.executable
-        return python
-
     def _latest_bundle_image(self, spool_root: str,
                              retries: int = 6,
                              retry_delay_seconds: float = 3.0
@@ -2044,7 +2244,10 @@ class AutonomousLoop(Node):
         if getattr(self, "_detector", "grounded_sam") == "llm":
             return self._detect_llm(image_path, env)
         root = env["GROUNDED_SAM_ROOT"]
-        python = self._resolve_detector_python(env)
+        python = env.get(
+            "GROUNDED_SAM_PYTHON",
+            sys.executable,
+        )
         worker = PROJECT_ROOT / "app/detectors/grounded_sam_worker.py"
         command = [
             python,
@@ -2093,7 +2296,13 @@ class AutonomousLoop(Node):
         return list(payload.get("objects", []))
 
     def _detect_llm(self, image_path: str, env: dict[str, str]) -> list[dict]:
-        python = self._resolve_detector_python(env)
+        python = env.get(
+            "SILICONFLOW_PYTHON",
+            env.get(
+                "GROUNDED_SAM_PYTHON",
+                sys.executable,
+            ),
+        )
         worker = PROJECT_ROOT / "app/detectors/siliconflow_vision_worker.py"
         output_path = PROJECT_ROOT / "runtime/go2w/llm_detection_result.json"
         command = [
@@ -2137,7 +2346,13 @@ class AutonomousLoop(Node):
     def _verify_target(self, image_path: str, bbox: list[float],
                        env: dict[str, str]) -> dict:
         """Ask the vision LLM whether the object inside bbox is the target."""
-        python = self._resolve_detector_python(env)
+        python = env.get(
+            "SILICONFLOW_PYTHON",
+            env.get(
+                "GROUNDED_SAM_PYTHON",
+                sys.executable,
+            ),
+        )
         worker = PROJECT_ROOT / "app/detectors/siliconflow_vision_worker.py"
         output_path = PROJECT_ROOT / "runtime/go2w/llm_verify_result.json"
         bbox_text = ",".join(f"{float(value):.4f}" for value in bbox)
@@ -2283,6 +2498,10 @@ class AutonomousLoop(Node):
             "min_rotation_clearance_m": self._min_rotation_clearance_m,
             "rotation_lease_path": self._rotation_lease_path or None,
             "rotation_lease_active": self._rotation_lease is not None,
+            "forward_vx": self._forward_vx,
+            "forward_duration_scale": self._forward_duration_scale,
+            "backward_vx": self._backward_vx,
+            "backward_duration_scale": self._backward_duration_scale,
         })
         ready, reason = self._safety_ok()
         if not ready:
@@ -2438,6 +2657,19 @@ def main() -> None:
         default=1.0,
         help="calibrated duration multiplier for distance-qualified forward steps",
     )
+    parser.add_argument(
+        "--backward-vx",
+        type=float,
+        default=0.16,
+        help="reverse primitive speed; values below 0.12 m/s are clamped to "
+             "the measured ai-w reverse breakaway floor",
+    )
+    parser.add_argument(
+        "--backward-duration-scale",
+        type=float,
+        default=1.40,
+        help="calibrated duration multiplier for distance-qualified reverse steps",
+    )
     parser.add_argument("--max-yaw-rate", type=float, default=0.15)
     parser.add_argument("--min-clearance", type=float, default=0.30)
     parser.add_argument(
@@ -2590,6 +2822,10 @@ def main() -> None:
     node._target = args.target
     node._forward_duration_scale = max(
         0.5, min(2.0, float(args.forward_duration_scale))
+    )
+    node._backward_vx = max(0.12, min(0.16, abs(float(args.backward_vx))))
+    node._backward_duration_scale = max(
+        0.5, min(2.0, float(args.backward_duration_scale))
     )
     node._detector = args.detector
     node._llm_model = args.llm_model or get_settings().vision_model
@@ -2782,6 +3018,13 @@ def main() -> None:
             pass
         code = 4
     finally:
+        # Foxy ActionClient is not owned by Node.destroy_node(); explicitly
+        # destroy it before the node handle to avoid a late InvalidHandle
+        # destructor and to release all Action graph entities deterministically.
+        try:
+            node._client.destroy()
+        except Exception:
+            pass
         node.destroy_node()
         rclpy.shutdown()
     raise SystemExit(code)

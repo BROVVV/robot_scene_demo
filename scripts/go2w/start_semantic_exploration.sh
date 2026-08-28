@@ -16,8 +16,8 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "${script_dir}/../.." && pwd)"
 unitree_root="${GO2W_UNITREE_ROOT:-${HOME}/unitree_ros2}"
 control_root="${GO2W_CONTROL_ROOT:-${project_root}/unitree_go2w_control}"
-conda_python="${project_root}/.venv/bin/python"
-system_python="${project_root}/.venv/bin/python"
+conda_python="/home/brov/miniconda3/envs/go2_robot_scene_demo/bin/python"
+system_python="/usr/bin/python3"
 log_root="${project_root}/runtime/go2w/sessions"
 pid_root="${project_root}/runtime/go2w/pids"
 mkdir -p "${log_root}" "${pid_root}"
@@ -130,10 +130,21 @@ if ! ping -c 1 -W 1 192.168.123.18 >/dev/null 2>&1; then
 fi
 
 # --- ROS environment ---------------------------------------------------------
-# setup_environment.sh resolves the robot interface, custom CycloneDDS 0.10.x,
-# ROS Foxy, Unitree messages, project workspace and the Go2-W control stack.
-# shellcheck disable=SC1090
-source "${script_dir}/setup_environment.sh"
+set +u
+# shellcheck disable=SC1091
+source /opt/ros/humble/setup.bash
+# shellcheck disable=SC1091
+source "${unitree_root}/cyclonedds_ws/install/setup.bash"
+# shellcheck disable=SC1091
+source "${project_root}/ros2_ws/install/setup.bash"
+if [[ -f "${control_root}/ros2_ws/install/setup.bash" ]]; then
+  # shellcheck disable=SC1091
+  source "${control_root}/ros2_ws/install/setup.bash"
+fi
+set -u
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export ROS_DOMAIN_ID=0
+export CYCLONEDDS_URI="file://${project_root}/configs/go2w/cyclonedds_go2w.xml"
 
 # --- helper: is a topic alive? -------------------------------------------------
 topic_alive() {

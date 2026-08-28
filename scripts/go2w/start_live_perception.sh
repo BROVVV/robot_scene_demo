@@ -7,7 +7,7 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "${script_dir}/../.." && pwd)"
 go2w_interface="${GO2W_INTERFACE:-}"
 if [[ -z "$go2w_interface" ]]; then
-  for candidate in eth0 enp6s0 enp3s0 enp4s0 enp5s0; do
+  for candidate in enp6s0 enp3s0 enp4s0 enp5s0; do
     if [[ -r "/sys/class/net/${candidate}/carrier" ]] \
       && [[ "$(< "/sys/class/net/${candidate}/carrier")" == "1" ]] \
       && ip -4 -o address show dev "$candidate" 2>/dev/null \
@@ -110,7 +110,7 @@ start_read_only_node description ros2 launch go2w_description official_sensor_fr
 if [[ "$camera_source" == d435 ]]; then
   start_read_only_node camera env -u http_proxy -u https_proxy \
     -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u all_proxy \
-    "${project_root}/.venv/bin/python" \
+    /usr/bin/python3 \
     "${project_root}/scripts/go2w/realsense_rgbd_bridge.py" \
     --base-url "$d435_base_url" --rate "${GO2W_D435_RATE:-10}"
 else

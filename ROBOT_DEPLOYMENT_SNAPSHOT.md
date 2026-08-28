@@ -1,20 +1,21 @@
-# Go2-W onboard deployment snapshot
+# Go2-W onboard deployment snapshot — 2026-08-28
 
-- Snapshot date: 2026-08-25
-- Source host: Unitree Go2-W onboard Ubuntu
-- Source directory: `/home/unitree/robotscene`
-- Git branch: `robot-go2w-deployment-20260825`
+This branch is a snapshot of the code deployed under
+`/home/unitree/robotscene` on the Unitree Go2-W Ubuntu computer.
 
-This branch records the source code and configuration actually present on the
-robot. It was prepared in a temporary clone and does not contain changes from
-the developer workstation's active branch.
+- Branch: `robot-go2w-deployment-20260828`
+- Parent snapshot: `robot-go2w-deployment-20260825`
+- Robot address used by deployment: `192.168.123.18`
+- ROS motion workspace: `unitree_go2w_control/ros2_ws`
+- Motion transport: lease-owning Python SDK executor with ROS 2 Action facade
 
-The snapshot intentionally excludes credentials and generated/runtime data:
+The snapshot includes project source, robot configuration, launch scripts,
+tests, deployment documentation, the motion-control source tree, and compact
+acceptance evidence. It intentionally excludes credentials, virtual
+environments, generated build/install trees, runtime sessions, sensor output,
+logs, backups, model weights, and nested Git metadata.
 
-- `.env` and other secret-bearing environment files
-- Python virtual environments and caches
-- ROS/catkin `build`, `install`, `log`, and `devel` directories
-- runtime frames, session output, logs, backups, rosbags, and model weights
-
-`.env.go2w` and `.env.example` are included because they contain deployment
-settings but no API secret values.
+Notable changes since the 2026-08-25 snapshot include signed wheel-encoder
+translation verification, fail-closed backward breadcrumb recovery, active
+zero-velocity braking, STOP timeout/stationary reconciliation, topology route
+execution, recovery management, and associated tests.

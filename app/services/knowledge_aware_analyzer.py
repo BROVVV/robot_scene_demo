@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timezone, datetime
-UTC = timezone.utc
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Callable
 from uuid import uuid4
