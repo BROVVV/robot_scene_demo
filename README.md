@@ -3305,3 +3305,55 @@ bash scripts/go2w/stop_all.sh
 Sport lease。标定文件位于 `configs/go2w/`，会话
 输出位于 `outputs/live_sessions/`，ROS 日志位于 `runtime/go2w/sessions/`。详细分级
 状态和物理待办见 `reports/go2w_robot_scene_demo_deployment_report.md`。
+
+## VLM-only 低延迟具身语义导航（2026-08-28 改造）
+
+本仓库已按 `robot_scene_demo_VLM_only低延迟语义导航_一次性AI改造计划书_20260828.md` 完成 VLM-only 低延迟改造。
+
+### 核心变化
+
+- Quick VLM 只负责目标候选，`objects` 兼容字段只包含 `target_objects`；普通场景物体由后台 Full Semantic 负责。
+- 主循环使用 `target_decision.is_present + target_objects + score` 作为目标 gate，不再把普通物体误判为目标候选。
+- 同一 frame 的 Verify VLM 最多调用一次；跨 fresh frame 可再次验证。
+- Full Semantic VLM 移出常规运动 critical path：首次 warm-up 可同步，之后由 `AsyncSemanticObservationManager` 后台异步更新世界模型。
+- 新增 `latency_profile` JSONL 事件，记录 quick/semantic/verify/blocking/cycle 等延迟。
+- 新增长驻 VLM daemon（Unix socket + JSON line），realtime lane 与 background lane 分离；daemon 不可用时自动回退 subprocess。
+- 保留 GroundingDINO/SAM2 代码仅作 baseline，不进入生产 VLM-only runtime。
+
+### 关键新增/修改文件
+
+- `app/detectors/siliconflow_vision_worker.py`：Quick 数据契约、Verify context+crop、token 配置化。
+- `app/llm_clients/siliconflow_client.py`：Full Semantic 只做 scene graph，不再要求 route_plan/task_understanding。
+- `app/live_robot/async_semantic_observer.py`：异步语义管理器（coalescing、stale 保护、capture pose）。
+- `app/live_robot/latency_profiler.py`：延迟采集。
+- `app/live_robot/verify_cache.py`：同帧 Verify 去重。
+- `app/detectors/siliconflow_vision_daemon.py` / `siliconflow_vision_protocol.py`：VLM 长驻 daemon。
+- `scripts/go2w/run_semantic_exploration.py`：目标 gate、force 修正、异步语义接入、latency 事件、异步 common-sense prior。
+- `scripts/go2w/run_autonomous_loop.py`：daemon 优先、subprocess fallback。
+- `configs/exploration/default.yaml`：`verify_attempts: 1`。
+
+### 真机启动
+
+```bash
+bash scripts/go2w/start_semantic_exploration.sh \
+  --target "饮水机旁边的蓝色垃圾桶" \
+  --max-planning-cycles 5 \
+  --max-motion-steps 5
+```
+
+如需禁用 VLM daemon：
+
+```bash
+NO_VLM_DAEMON=1 bash scripts/go2w/start_semantic_exploration.sh --target "..."
+```
+
+### 相关测试
+
+```bash
+.venv/bin/python -m pytest tests/test_vlm_quick_contract.py \
+  tests/test_verify_fresh_frame_policy.py \
+  tests/test_async_semantic_observer.py \
+  tests/test_vlm_daemon_protocol.py \
+  tests/test_vlm_latency_events.py \
+  tests/test_vlm_only_runtime.py -q
+```

@@ -25,6 +25,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -37,6 +38,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from app.config import get_settings
+from app.detectors.siliconflow_vision_worker import quick_target_present
 from app.live_robot.autonomous_explorer import (
     AutonomousExplorer,
     PerceptionFailure,
@@ -50,6 +52,9 @@ from app.live_robot.mock_observation_scene import (
     scenario_no_target,
     scenario_target_appears_after,
 )
+from app.live_robot.async_semantic_observer import AsyncSemanticObservationManager, compute_scene_signature
+from app.live_robot.latency_profiler import LatencyProfiler
+from app.live_robot.verify_cache import VerificationCache, VerificationCacheEntry
 from app.live_robot.semantic_observer import (
     LiveSemanticObserver,
     semantic_observation_to_live,
@@ -659,12 +664,18 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     # Ensure the detector subprocess uses a real interpreter on this machine
     # instead of the author's hard-coded path.
     if not env.get("SILICONFLOW_PYTHON") and not env.get("GROUNDED_SAM_PYTHON"):
-        env["SILICONFLOW_PYTHON"] = os.environ.get(
-            "GO2W_CONDA_PYTHON",
-            sys.executable,
+        env["SILICONFLOW_PYTHON"] = (
+            os.environ.get("GO2W_CONDA_PYTHON")
+            or str(PROJECT_ROOT / ".venv/bin/python")
+            or sys.executable
         )
     spool_root = args.spool_root
-    state: dict[str, Any] = {"image_path": None, "semantic": None}
+    state: dict[str, Any] = {
+        "image_path": None,
+        "semantic": None,
+        "common_sense_pending": False,
+        "common_sense_updated_ts": 0.0,
+    }
     operator_authorized = bool(
         args.operator_supervised_experiment or args.operator_authorized_rotation
     )
@@ -719,9 +730,59 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     prompt = prompt_map.get(args.target.strip(),
                             f"{args.target.strip()}. {args.target.strip()} object")
 
-    def analyze_semantic(image_path: object, _profile: object) -> dict:
+    def analyze_semantic(
+        image_path: object,
+        _profile: object,
+        *,
+        request_id: str | None = None,
+        frame_id: str | None = None,
+        robot_pose: dict[str, Any] | None = None,
+    ) -> dict:
         if not isinstance(image_path, str):
             raise RuntimeError("semantic observation has no stable image")
+        # 每次请求使用独立 output 文件，避免并发 Full Semantic 互相覆盖。
+        request_id = request_id or f"{time.time_ns()}_{os.getpid()}"
+        request_dir = PROJECT_ROOT / "runtime/go2w/vlm_requests"
+        request_dir.mkdir(parents=True, exist_ok=True)
+        output_path = request_dir / f"semantic_{request_id}.json"
+        # 优先走长驻 VLM daemon；不可用时再回退到 subprocess（legacy fallback）。
+        try:
+            from app.detectors.siliconflow_vision_protocol import (
+                SiliconFlowDaemonClient,
+                VLMRequest,
+            )
+
+            daemon_client = SiliconFlowDaemonClient(
+                str(PROJECT_ROOT / "runtime/go2w/siliconflow_vlm.sock"),
+                timeout=max(45.0, float(settings.siliconflow_timeout_seconds) + 15.0),
+            )
+            if daemon_client.available():
+                daemon_request = VLMRequest(
+                    request_id=f"semantic_{request_id}",
+                    mode="semantic",
+                    image_path=image_path,
+                    frame_id=str(frame_id or state.get("frame_id", "semantic_live")),
+                    target=args.target,
+                    priority="background",
+                    extra_instructions=(
+                        "完整列出当前画面的可见物体与关系，供下一视角选择；不要确认目标。"
+                    ),
+                    model=vision_model,
+                    robot_pose=robot_pose,
+                )
+                daemon_response = daemon_client.request(daemon_request)
+                if daemon_response.ok and isinstance(daemon_response.payload, dict):
+                    daemon_payload = dict(daemon_response.payload)
+                    daemon_payload.update({
+                        "image_path": image_path,
+                        "frame_id": str(frame_id or state.get("frame_id", "semantic_live")),
+                        "robot_pose": robot_pose,
+                        "source": "siliconflow_full_scene_vlm_daemon",
+                    })
+                    return daemon_payload
+        except Exception:
+            # 任何 daemon IPC 问题都走 subprocess fallback，不中断搜索。
+            pass
         # 始终走全场景分析（objects + relations 一起拿）。快速“无目标”捷径只返回
         # objects、不返回 relations，会导致拓扑只有孤立节点；全场景更长但能
         # 既建节点又连边（用 max_tokens=2048，不截断）。
@@ -733,7 +794,6 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             ),
         )
         worker = PROJECT_ROOT / "app/detectors/siliconflow_vision_worker.py"
-        output_path = PROJECT_ROOT / "runtime/go2w/llm_semantic_observation.json"
         command = [
             python, str(worker), "--image", image_path,
             "--output", str(output_path), "--target", args.target,
@@ -782,13 +842,17 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             }
             payload.update({
                 "image_path": image_path,
-                "frame_id": str(state.get("frame_id", "semantic_live")),
+                "frame_id": str(frame_id or state.get("frame_id", "semantic_live")),
+                "robot_pose": robot_pose,
             })
             return payload
+        if not output_path.is_file():
+            raise RuntimeError(f"semantic output missing: {output_path}")
         payload = json.loads(output_path.read_text(encoding="utf-8"))
         payload.update({
             "image_path": image_path,
-            "frame_id": str(state.get("frame_id", "semantic_live")),
+            "frame_id": str(frame_id or state.get("frame_id", "semantic_live")),
+            "robot_pose": robot_pose,
             "source": "siliconflow_full_scene_existing_pipeline",
         })
         return payload
@@ -796,6 +860,18 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     semantic_observer = LiveSemanticObserver(
         analyze_semantic,
         ttl_seconds=settings.live_search_reasoner_scene_ttl_seconds,
+    )
+    # 后台 Full Semantic 管理器：普通帧不再同步等待全场景分析。
+    semantic_manager = AsyncSemanticObservationManager(
+        analyze_semantic,
+        enabled=settings.vlm_runtime_semantic_background_enabled,
+        max_inflight=settings.vlm_runtime_semantic_max_inflight,
+        ttl_seconds=max(5.0, settings.vlm_runtime_semantic_ttl_seconds),
+        translation_refresh_m=settings.vlm_runtime_semantic_translation_refresh_m,
+        heading_sector_deg=settings.vlm_runtime_semantic_heading_sector_deg,
+        initial_warmup_blocking=settings.vlm_runtime_semantic_initial_warmup_blocking,
+        visual_change_enabled=settings.vlm_runtime_semantic_visual_change_enabled,
+        visual_change_threshold=None,
     )
     observed_sectors: set[int] = set()
 
@@ -920,6 +996,12 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         return str(target)
 
     def observe() -> LiveObservation:
+        state["planning_cycle"] = int(state.get("planning_cycle", 0)) + 1
+        profiler = LatencyProfiler(
+            planning_cycle=int(state.get("planning_cycle", 0)),
+            frame_id=str(state.get("frame_id", "")),
+        )
+        profiler.mark("capture_start")
         for _ in range(4):
             rclpy.spin_once(node, timeout_sec=0.05)
         rgbd_frame = None
@@ -929,6 +1011,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             stable_image = _cached_image(rgbd_frame.color_ref, frame_id)
             state["image_path"] = stable_image
             state["frame_id"] = frame_id
+            profiler.profile.frame_id = str(frame_id)
             node._write({"event": "camera_bundle", "frame_id": frame_id,
                          "source": "d435", "host_s": node._host_s()})
         else:
@@ -936,31 +1019,98 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             stable_image = _cached_image(image_path, frame_id)
             state["image_path"] = stable_image
             state["frame_id"] = frame_id
+            profiler.profile.frame_id = str(frame_id)
             node._write({"event": "camera_bundle", "frame_id": frame_id,
                          "host_s": node._host_s()})
-        objects = node._detect(stable_image, prompt, env)
-        detections = []
-        for item in objects:
-            bbox = [float(v) for v in item.get("bbox_2d", [0.0, 0.0, 1.0, 1.0])]
-            detections.append({
-                "label": str(item.get("label", "object")),
-                "score": float(item.get("score", 0.0)),
-                "bbox_2d": bbox,
-            })
-        if detections:
-            best = max(detections, key=lambda item: item["score"])
-            node._feed_detection(best["label"], best["score"], best["bbox_2d"])
-        target_present = bool(detections)
+        profiler.record("capture_ms", "capture_start")
         x, y, yaw = node._odom_snapshot()
         pose = {"x": x, "y": y, "yaw_rad": yaw,
                 "yaw_deg": math.degrees(yaw)}
-        semantic = semantic_observer.observe(
-            target_profile=controller.target_profile,
-            frame_or_bundle=stable_image,
+        capture_ts = time.time()
+        # 后台 Full Semantic 先提交，与 Quick VLM 并行执行；运动关键路径只等 Quick。
+        semantic_manager.submit_if_needed(
+            image_path=stable_image,
+            frame_id=str(frame_id),
+            capture_timestamp=capture_ts,
             robot_pose=pose,
-            force=not target_present,
+            target_profile=controller.target_profile,
+            scene_signature=compute_scene_signature(stable_image),
         )
+        profiler.mark("quick_start")
+        objects = node._detect(stable_image, prompt, env)
+        profiler.record("quick_vlm_ms", "quick_start")
+        profiler.incr("quick_api_calls")
+        # Quick VLM 新契约：objects 只含真正目标候选；target_decision 是目标 gate。
+        quick_payload = None
+        if getattr(node, "_detector", "llm") == "llm":
+            quick_payload = getattr(node, "_last_llm_detection_payload", None)
+        if quick_payload is not None:
+            decision = quick_payload.get("target_decision") or {}
+            target_objects = list(
+                quick_payload.get("target_objects")
+                or quick_payload.get("objects")
+                or []
+            )
+            detections = []
+            for item in target_objects:
+                bbox = [float(v) for v in item.get("bbox_2d", [0.0, 0.0, 1.0, 1.0])]
+                detections.append({
+                    "label": str(item.get("label", "object")),
+                    "score": float(item.get("score", 0.0)),
+                    "bbox_2d": bbox,
+                })
+            target_present = quick_target_present(quick_payload, args.target_score_min)
+        else:
+            detections = []
+            for item in objects:
+                bbox = [float(v) for v in item.get("bbox_2d", [0.0, 0.0, 1.0, 1.0])]
+                detections.append({
+                    "label": str(item.get("label", "object")),
+                    "score": float(item.get("score", 0.0)),
+                    "bbox_2d": bbox,
+                })
+            target_present = bool(detections)
+        if detections:
+            best = max(detections, key=lambda item: item["score"])
+            node._feed_detection(best["label"], best["score"], best["bbox_2d"])
+        # 普通搜索帧不再因为“没看到目标”就强制重跑 Full Semantic。
+        # 首次/新 profile/位置变化等由 LiveSemanticObserver 自己的 TTL/pose
+        # 条件决定；后续背景异步语义会补充世界模型。
+        profiler.mark("semantic_start")
+        # 先收割后台已完成结果；未完成时继续用 latest completed。
+        for completed_semantic in semantic_manager.poll_completed():
+            node._write({
+                "event": "semantic_background_applied",
+                "frame_id": str(getattr(completed_semantic, "frame_id", "")),
+                "result_age_ms": round(
+                    max(0.0, (time.time() - float(completed_semantic.timestamp_sec)) * 1000.0),
+                    3,
+                ),
+                "objects": len(completed_semantic.objects or []),
+                "relations": len(completed_semantic.relations or []),
+                "host_s": node._host_s(),
+            })
+        latest_semantic = semantic_manager.get_latest_completed()
+        if latest_semantic is not None:
+            semantic = latest_semantic
+            profiler.record("semantic_vlm_ms", "semantic_start")
+            profiler.set_counter("semantic_background_inflight", semantic_manager.has_inflight())
+            profiler.set_counter("semantic_cache_hit", True)
+        else:
+            # 首次 warm-up：同步跑一次 Full Semantic，建立初始世界模型。
+            semantic = semantic_observer.observe(
+                target_profile=controller.target_profile,
+                frame_or_bundle=stable_image,
+                robot_pose=pose,
+                force=False,
+            )
+            semantic_manager.seed(semantic)
+            profiler.record("semantic_vlm_ms", "semantic_start")
+            profiler.incr("semantic_api_calls")
+            profiler.set_counter("semantic_cache_hit", semantic.cache_hit)
         state["semantic"] = semantic
+        profiler.set_counter("semantic_source_frame_id", str(getattr(semantic, "frame_id", "")))
+        profiler.set_counter("semantic_result_age_ms", max(0.0, (time.time() - float(semantic.timestamp_sec)) * 1000.0))
         if semantic.heading_sector is not None:
             observed_sectors.add(semantic.heading_sector)
 
@@ -1185,6 +1335,17 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                     relations=list(getattr(semantic, "relations", None) or []),
                 )
 
+        profiler.record("blocking_decision_ms", "quick_start")
+        profiler.record("cycle_total_ms", "capture_start")
+        node._write({
+            "event": "latency_profile",
+            "planning_cycle": profiler.profile.planning_cycle,
+            "frame_id": profiler.profile.frame_id,
+            "timings_ms": profiler.profile.timings_ms,
+            "api_calls": profiler.profile.api_calls,
+            "counters": profiler.profile.counters,
+            "host_s": node._host_s(),
+        })
         return observation
 
     # ---- matcher -------------------------------------------------------------
@@ -1229,6 +1390,9 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         return match
 
     # ---- verifier -------------------------------------------------------------
+    # 同一 frame_id + bbox + target 最多调一次 Verify API；跨 fresh frame 可重试。
+    verify_cache = VerificationCache()
+
     def verifier(observation: LiveObservation,
                  match: SemanticMatch) -> VerificationOutcome:
         image_path = observation.image_ref
@@ -1240,16 +1404,37 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         if best is None:
             return VerificationOutcome(confirmed=False, attempts=1,
                                        reason_zh="no detection to verify")
+        key = verify_cache.make_key(
+            observation.bundle_id, args.target, list(best["bbox_2d"])
+        )
+        cached = verify_cache.get(key)
+        if cached is not None:
+            return VerificationOutcome(
+                confirmed=cached.confirmed,
+                attempts=1,
+                reason_zh=(cached.reason or "cached same-frame verification"),
+                details=dict(cached.details or {}),
+            )
         result = node._verify_target(image_path, list(best["bbox_2d"]), env)
         confirmed = bool(result.get("is_target", False)) and float(
             result.get("confidence", 0.0)
         ) >= args.verify_min_confidence
-        return VerificationOutcome(
+        outcome = VerificationOutcome(
             confirmed=confirmed,
             attempts=1,
             reason_zh=str(result.get("reason_zh", "")),
             details=result,
         )
+        verify_cache.put(
+            key,
+            VerificationCacheEntry(
+                confirmed=confirmed,
+                confidence=float(result.get("confidence", 0.0)),
+                reason=str(result.get("reason_zh", "")),
+                details=result,
+            ),
+        )
+        return outcome
 
     # ---- SemanticNavigation V2 spatial candidate generator / planner ------------------
     def spatial_candidate_generator(**kwargs: Any) -> list[Any]:
@@ -1386,18 +1571,28 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 }
 
         # Structured common-sense prior; never allowed to confirm targets or
-        # command motion.  Refresh occasionally to avoid LLM every cycle.
+        # command motion.  Refresh in background (non-blocking) with a TTL so
+        # it does not sit on the motion critical path.
         common_sense: dict[str, Any] = state.get("common_sense") or {}
+        prior_ttl = 30.0
+        now_ts = time.time()
         if (
             settings.llm_commonsense_prior_enabled
             and (
                 not common_sense
-                or int(state.get("cycle", 0) or 0) % 5 == 0
+                or (now_ts - float(state.get("common_sense_updated_ts", 0.0))) >= prior_ttl
             )
+            and not bool(state.get("common_sense_pending"))
         ):
+            state["common_sense_pending"] = True
+            _semantic_summary = (
+                semantic.get("scene_summary", "")
+                if isinstance(semantic, dict)
+                else str(getattr(semantic, "scene_summary", "") or "")
+            )
             prior_input = LLMPriorInput(
                 target=args.target,
-                scene_summary=str((semantic or {}).get("scene_summary", "")),
+                scene_summary=str(_semantic_summary),
                 observed_objects=(
                     observation.scene_objects if observation is not None else []
                 ),
@@ -1408,8 +1603,18 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                     "motion_primitives": list(getattr(capabilities, "allowed_motion_primitives", []))
                 },
             )
-            common_sense = llm_prior_generator.generate(prior_input)
-            state["common_sense"] = common_sense
+
+            def _refresh_prior() -> None:
+                try:
+                    new_prior = llm_prior_generator.generate(prior_input)
+                    state["common_sense"] = new_prior
+                    state["common_sense_updated_ts"] = time.time()
+                except Exception as exc:  # noqa: BLE001 - prior failure is non-fatal
+                    state["common_sense_error"] = f"{type(exc).__name__}: {exc}"
+                finally:
+                    state["common_sense_pending"] = False
+
+            threading.Thread(target=_refresh_prior, daemon=True).start()
 
         scored = spatial_reasoner.propose(
             graph_match=graph_match,

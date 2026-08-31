@@ -36,6 +36,10 @@ from app.live_robot.step_search_runner import (
     StepSearchRunner,
     VerificationResult,
 )
+from app.detectors.siliconflow_vision_protocol import (
+    SiliconFlowDaemonClient,
+    VLMRequest,
+)
 from app.live_robot.semantic_observer import (
     LiveSemanticObserver,
     semantic_payload_from_quick_target_absence,
@@ -2187,6 +2191,12 @@ class AutonomousLoop(Node):
         env["GROUNDED_SAM_ROOT"] = values.get(
             "GROUNDED_SAM_ROOT", str(PROJECT_ROOT / "external/Grounded-SAM-2")
         )
+        env.setdefault(
+            "SILICONFLOW_PYTHON",
+            os.environ.get("GO2W_CONDA_PYTHON")
+            or str(PROJECT_ROOT / ".venv/bin/python")
+            or sys.executable,
+        )
         return env
 
     def _latest_bundle_image(self, spool_root: str,
@@ -2295,7 +2305,61 @@ class AutonomousLoop(Node):
         payload = json.loads(output_path.read_text(encoding="utf-8"))
         return list(payload.get("objects", []))
 
+    @staticmethod
+    def _daemon_vlm_request(
+        mode: str,
+        image_path: str,
+        target: str,
+        *,
+        bbox: list[float] | None = None,
+        extra_instructions: str = "",
+        model: str = "",
+        frame_id: str = "",
+        timeout: float = 120.0,
+    ) -> dict | None:
+        """Try the long-running VLM daemon; return None if unavailable/failed."""
+        try:
+            from app.detectors.siliconflow_vision_protocol import (
+                SiliconFlowDaemonClient,
+                VLMRequest,
+            )
+
+            socket_path = PROJECT_ROOT / "runtime/go2w/siliconflow_vlm.sock"
+            client = SiliconFlowDaemonClient(str(socket_path), timeout=timeout)
+            if not client.available():
+                return None
+            request = VLMRequest(
+                request_id=f"{time.time_ns()}_{os.getpid()}",
+                mode=mode,
+                image_path=image_path,
+                frame_id=frame_id,
+                target=target,
+                bbox=bbox,
+                priority=(
+                    "background" if mode == "semantic" else "realtime"
+                ),
+                extra_instructions=extra_instructions,
+                model=model,
+            )
+            response = client.request(request)
+            if not response.ok:
+                return None
+            return response.payload
+        except Exception:
+            return None
+
     def _detect_llm(self, image_path: str, env: dict[str, str]) -> list[dict]:
+        daemon_payload = self._daemon_vlm_request(
+            "quick",
+            image_path,
+            self._target,
+            model=getattr(self, "_llm_model", ""),
+            frame_id=str(getattr(self, "_latest_frame_id", "")),
+            timeout=20.0,
+        )
+        if daemon_payload is not None:
+            self._last_llm_detection_payload = daemon_payload
+            return list(daemon_payload.get("objects", []))
         python = env.get(
             "SILICONFLOW_PYTHON",
             env.get(
@@ -2322,7 +2386,7 @@ class AutonomousLoop(Node):
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                timeout=120.0,
+                timeout=float(get_settings().vlm_runtime_quick_timeout_seconds),
                 check=False,
             )
         except subprocess.TimeoutExpired as exc:
@@ -2346,6 +2410,22 @@ class AutonomousLoop(Node):
     def _verify_target(self, image_path: str, bbox: list[float],
                        env: dict[str, str]) -> dict:
         """Ask the vision LLM whether the object inside bbox is the target."""
+        daemon_payload = self._daemon_vlm_request(
+            "verify",
+            image_path,
+            self._target,
+            bbox=list(bbox),
+            model=getattr(self, "_llm_model", ""),
+            frame_id=str(getattr(self, "_latest_frame_id", "")),
+            timeout=20.0,
+        )
+        if daemon_payload is not None:
+            return {
+                "object_name_zh": str(daemon_payload.get("object_name_zh") or ""),
+                "is_target": bool(daemon_payload.get("is_target", False)),
+                "confidence": float(daemon_payload.get("confidence", 0.0)),
+                "reason_zh": str(daemon_payload.get("reason_zh") or ""),
+            }
         python = env.get(
             "SILICONFLOW_PYTHON",
             env.get(
@@ -2374,7 +2454,7 @@ class AutonomousLoop(Node):
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                timeout=120.0,
+                timeout=float(get_settings().vlm_runtime_verify_timeout_seconds),
                 check=False,
             )
         except subprocess.TimeoutExpired as exc:

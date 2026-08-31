@@ -118,8 +118,9 @@ def semantic_payload_from_quick_target_absence(
     objects = list(
         value.get("scene_objects") or value.get("objects") or []
     )
-    if not objects:
-        # 没有物体列表 -> 不打断 full-scene 分析（它会列出所有可见物体以建图/拓扑）
+    has_objects_key = "scene_objects" in value or "objects" in value
+    if not objects and not has_objects_key:
+        # 完全没有物体列表 -> 不打断 full-scene 分析（它会列出所有可见物体以建图/拓扑）
         return None
     return {
         "scene_objects": objects,
@@ -129,7 +130,10 @@ def semantic_payload_from_quick_target_absence(
         "scene_summary_zh": summary,
         "image_path": image_path,
         "frame_id": frame_id,
-        "source": "siliconflow_quick_target_absence_with_objects",
+        "source": (
+            "siliconflow_quick_target_absence_with_objects"
+            if objects else "siliconflow_quick_explicit_target_absence"
+        ),
         "semantic_reuse_reason": "quick_target_decision_explicitly_absent_keep_objects",
         "target_decision": decision,
     }

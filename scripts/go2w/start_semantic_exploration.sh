@@ -86,6 +86,20 @@ fi
 # ---------------------------------------------------------------------------
 # Real Go2-W path.
 # ---------------------------------------------------------------------------
+# Route only external HTTP(S) calls through the persistent reverse SOCKS
+# tunnel supplied by the operator PC.  Local ROS/DDS traffic remains direct.
+vlm_proxy_host="${GO2W_VLM_PROXY_HOST:-127.0.0.1}"
+vlm_proxy_port="${GO2W_VLM_PROXY_PORT:-17892}"
+vlm_proxy_url="${GO2W_VLM_PROXY_URL:-socks5://${vlm_proxy_host}:${vlm_proxy_port}}"
+export HTTP_PROXY="${vlm_proxy_url}"
+export HTTPS_PROXY="${vlm_proxy_url}"
+export ALL_PROXY="${vlm_proxy_url}"
+export http_proxy="${vlm_proxy_url}"
+export https_proxy="${vlm_proxy_url}"
+export all_proxy="${vlm_proxy_url}"
+export NO_PROXY="${NO_PROXY:-localhost,127.0.0.1,::1,192.168.123.0/24,172.17.0.0/16}"
+export no_proxy="${NO_PROXY}"
+
 if [[ ! -x "${system_python}" ]]; then
   printf '%s\n' 'ERROR: system python3 not found (required for rclpy).' >&2
   exit 2
@@ -93,6 +107,16 @@ fi
 if ! command -v timeout >/dev/null 2>&1; then
   printf '%s\n' 'ERROR: coreutils timeout missing.' >&2
   exit 2
+fi
+if [[ ! "${vlm_proxy_host}" =~ ^[A-Za-z0-9.:-]+$ || ! "${vlm_proxy_port}" =~ ^[0-9]+$ ]]; then
+  printf '%s\n' 'ERROR: invalid GO2W VLM proxy host or port.' >&2
+  exit 2
+fi
+if ! timeout 2 bash -c "exec 3<>/dev/tcp/${vlm_proxy_host}/${vlm_proxy_port}" 2>/dev/null; then
+  printf 'VLM_BACKEND_UNAVAILABLE: persistent proxy %s:%s is not reachable.\n' \
+    "${vlm_proxy_host}" "${vlm_proxy_port}" >&2
+  printf '%s\n' 'Start robotscene-vlm-tunnel.service on the operator PC.' >&2
+  exit 4
 fi
 if ! command -v ros2 >/dev/null 2>&1; then
   printf '%s\n' 'ros2 not on PATH; sourcing the ROS 2 environment...'
@@ -149,7 +173,14 @@ export CYCLONEDDS_URI="file://${project_root}/configs/go2w/cyclonedds_go2w.xml"
 # --- helper: is a topic alive? -------------------------------------------------
 topic_alive() {
   local topic="$1"
-  # ros2 topic hz never exits; treat any captured rate output as alive.
+  # Prefer topic-info publisher count; it is more reliable in this mixed
+  # Foxy/Humble environment than `ros2 topic hz` (which can see the graph but
+  # not receive data in some shells).  Also accept hz output as a fallback.
+  local info
+  info="$(timeout 5 ros2 topic info "${topic}" -v 2>/dev/null || true)"
+  if grep -q "Publisher count: [1-9]" <<<"${info}"; then
+    return 0
+  fi
   local out
   out="$(timeout 5 ros2 topic hz "${topic}" --window 2 2>/dev/null)"
   [[ -n "${out}" ]]
@@ -242,6 +273,15 @@ if [[ "$motion_action_servers" != 1 || "$motion_action_processes" != 1 ]]; then
   exit 3
 fi
 printf '%s\n' '/go2w/motion action server ready.'
+
+# --- VLM daemon (optional; subprocess fallback if unavailable) ------------------------
+if [[ "${NO_VLM_DAEMON:-0}" != "1" ]]; then
+  bash "${script_dir}/start_vlm_daemon.sh" >/dev/null 2>&1 || true
+  if [[ -S "${project_root}/runtime/go2w/siliconflow_vlm.sock" ]]; then
+    started_stacks+=(siliconflow_vlm)
+    printf '%s\n' 'VLM daemon ready.'
+  fi
+fi
 
 # --- run the exploration CLI ---------------------------------------------------------
 args=(scripts/go2w/run_semantic_exploration.py --target "${target}" --backend go2w_experimental)

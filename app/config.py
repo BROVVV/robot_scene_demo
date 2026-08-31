@@ -130,6 +130,25 @@ DEFAULT_LIVE_SEARCH_REASONER_ALLOW_FORWARD = False
 DEFAULT_LIVE_SEARCH_REASONER_MAX_TURN_DEG = 30.0
 DEFAULT_LIVE_SEARCH_REASONER_MIN_REPLAN_SECONDS = 5.0
 DEFAULT_LIVE_SEARCH_REASONER_SCENE_TTL_SECONDS = 10.0
+DEFAULT_VLM_RUNTIME_TRANSPORT = "daemon"
+DEFAULT_VLM_RUNTIME_FALLBACK_TO_SUBPROCESS = True
+DEFAULT_VLM_RUNTIME_ALLOW_API_CONCURRENCY = True
+DEFAULT_VLM_RUNTIME_QUICK_MAX_TOKENS = 256
+DEFAULT_VLM_RUNTIME_VERIFY_MAX_TOKENS = 256
+DEFAULT_VLM_RUNTIME_SEMANTIC_MAX_TOKENS = 1536
+DEFAULT_VLM_RUNTIME_QUICK_TIMEOUT_SECONDS = 20.0
+DEFAULT_VLM_RUNTIME_VERIFY_TIMEOUT_SECONDS = 20.0
+DEFAULT_VLM_RUNTIME_SEMANTIC_TIMEOUT_SECONDS = 45.0
+DEFAULT_VLM_RUNTIME_SEMANTIC_BACKGROUND_ENABLED = True
+DEFAULT_VLM_RUNTIME_SEMANTIC_INITIAL_WARMUP_BLOCKING = True
+DEFAULT_VLM_RUNTIME_SEMANTIC_MAX_INFLIGHT = 1
+DEFAULT_VLM_RUNTIME_SEMANTIC_TTL_SECONDS = 12.0
+DEFAULT_VLM_RUNTIME_SEMANTIC_TRANSLATION_REFRESH_M = 0.30
+DEFAULT_VLM_RUNTIME_SEMANTIC_HEADING_SECTOR_DEG = 30.0
+DEFAULT_VLM_RUNTIME_SEMANTIC_VISUAL_CHANGE_ENABLED = True
+DEFAULT_VLM_RUNTIME_PLANNER_SEMANTIC_SOFT_STALE_SECONDS = 15.0
+DEFAULT_VLM_RUNTIME_PLANNER_SEMANTIC_HARD_STALE_SECONDS = 45.0
+DEFAULT_VLM_RUNTIME_VERIFY_SAME_FRAME_MAX_CALLS = 1
 DEFAULT_LIVE_SEARCH_GRAPH_MATCH_PARTIAL_THRESHOLD = 0.30
 DEFAULT_LIVE_SEARCH_GRAPH_MATCH_STRONG_THRESHOLD = 0.72
 DEFAULT_LIVE_SEARCH_NEGATIVE_MEMORY_ENABLED = True
@@ -536,6 +555,25 @@ class Settings:
     live_search_reasoner_scene_ttl_seconds: float = (
         DEFAULT_LIVE_SEARCH_REASONER_SCENE_TTL_SECONDS
     )
+    vlm_runtime_transport: str = DEFAULT_VLM_RUNTIME_TRANSPORT
+    vlm_runtime_fallback_to_subprocess: bool = DEFAULT_VLM_RUNTIME_FALLBACK_TO_SUBPROCESS
+    vlm_runtime_allow_api_concurrency: bool = DEFAULT_VLM_RUNTIME_ALLOW_API_CONCURRENCY
+    vlm_runtime_quick_max_tokens: int = DEFAULT_VLM_RUNTIME_QUICK_MAX_TOKENS
+    vlm_runtime_verify_max_tokens: int = DEFAULT_VLM_RUNTIME_VERIFY_MAX_TOKENS
+    vlm_runtime_semantic_max_tokens: int = DEFAULT_VLM_RUNTIME_SEMANTIC_MAX_TOKENS
+    vlm_runtime_quick_timeout_seconds: float = DEFAULT_VLM_RUNTIME_QUICK_TIMEOUT_SECONDS
+    vlm_runtime_verify_timeout_seconds: float = DEFAULT_VLM_RUNTIME_VERIFY_TIMEOUT_SECONDS
+    vlm_runtime_semantic_timeout_seconds: float = DEFAULT_VLM_RUNTIME_SEMANTIC_TIMEOUT_SECONDS
+    vlm_runtime_semantic_background_enabled: bool = DEFAULT_VLM_RUNTIME_SEMANTIC_BACKGROUND_ENABLED
+    vlm_runtime_semantic_initial_warmup_blocking: bool = DEFAULT_VLM_RUNTIME_SEMANTIC_INITIAL_WARMUP_BLOCKING
+    vlm_runtime_semantic_max_inflight: int = DEFAULT_VLM_RUNTIME_SEMANTIC_MAX_INFLIGHT
+    vlm_runtime_semantic_ttl_seconds: float = DEFAULT_VLM_RUNTIME_SEMANTIC_TTL_SECONDS
+    vlm_runtime_semantic_translation_refresh_m: float = DEFAULT_VLM_RUNTIME_SEMANTIC_TRANSLATION_REFRESH_M
+    vlm_runtime_semantic_heading_sector_deg: float = DEFAULT_VLM_RUNTIME_SEMANTIC_HEADING_SECTOR_DEG
+    vlm_runtime_semantic_visual_change_enabled: bool = DEFAULT_VLM_RUNTIME_SEMANTIC_VISUAL_CHANGE_ENABLED
+    vlm_runtime_planner_semantic_soft_stale_seconds: float = DEFAULT_VLM_RUNTIME_PLANNER_SEMANTIC_SOFT_STALE_SECONDS
+    vlm_runtime_planner_semantic_hard_stale_seconds: float = DEFAULT_VLM_RUNTIME_PLANNER_SEMANTIC_HARD_STALE_SECONDS
+    vlm_runtime_verify_same_frame_max_calls: int = DEFAULT_VLM_RUNTIME_VERIFY_SAME_FRAME_MAX_CALLS
     live_search_graph_match_partial_threshold: float = (
         DEFAULT_LIVE_SEARCH_GRAPH_MATCH_PARTIAL_THRESHOLD
     )
@@ -1332,6 +1370,74 @@ def get_settings() -> Settings:
         live_search_reasoner_scene_ttl_seconds=_env_float(
             "LIVE_SEARCH_REASONER_SCENE_TTL_SECONDS",
             DEFAULT_LIVE_SEARCH_REASONER_SCENE_TTL_SECONDS,
+        ),
+        vlm_runtime_transport=_env_value("VLM_RUNTIME_TRANSPORT", DEFAULT_VLM_RUNTIME_TRANSPORT),
+        vlm_runtime_fallback_to_subprocess=_env_bool(
+            "VLM_RUNTIME_FALLBACK_TO_SUBPROCESS",
+            DEFAULT_VLM_RUNTIME_FALLBACK_TO_SUBPROCESS,
+        ),
+        vlm_runtime_allow_api_concurrency=_env_bool(
+            "VLM_RUNTIME_ALLOW_API_CONCURRENCY",
+            DEFAULT_VLM_RUNTIME_ALLOW_API_CONCURRENCY,
+        ),
+        vlm_runtime_quick_max_tokens=_env_int(
+            "VLM_RUNTIME_QUICK_MAX_TOKENS", DEFAULT_VLM_RUNTIME_QUICK_MAX_TOKENS
+        ),
+        vlm_runtime_verify_max_tokens=_env_int(
+            "VLM_RUNTIME_VERIFY_MAX_TOKENS", DEFAULT_VLM_RUNTIME_VERIFY_MAX_TOKENS
+        ),
+        vlm_runtime_semantic_max_tokens=_env_int(
+            "VLM_RUNTIME_SEMANTIC_MAX_TOKENS", DEFAULT_VLM_RUNTIME_SEMANTIC_MAX_TOKENS
+        ),
+        vlm_runtime_quick_timeout_seconds=_env_float(
+            "VLM_RUNTIME_QUICK_TIMEOUT_SECONDS",
+            DEFAULT_VLM_RUNTIME_QUICK_TIMEOUT_SECONDS,
+        ),
+        vlm_runtime_verify_timeout_seconds=_env_float(
+            "VLM_RUNTIME_VERIFY_TIMEOUT_SECONDS",
+            DEFAULT_VLM_RUNTIME_VERIFY_TIMEOUT_SECONDS,
+        ),
+        vlm_runtime_semantic_timeout_seconds=_env_float(
+            "VLM_RUNTIME_SEMANTIC_TIMEOUT_SECONDS",
+            DEFAULT_VLM_RUNTIME_SEMANTIC_TIMEOUT_SECONDS,
+        ),
+        vlm_runtime_semantic_background_enabled=_env_bool(
+            "VLM_RUNTIME_SEMANTIC_BACKGROUND_ENABLED",
+            DEFAULT_VLM_RUNTIME_SEMANTIC_BACKGROUND_ENABLED,
+        ),
+        vlm_runtime_semantic_initial_warmup_blocking=_env_bool(
+            "VLM_RUNTIME_SEMANTIC_INITIAL_WARMUP_BLOCKING",
+            DEFAULT_VLM_RUNTIME_SEMANTIC_INITIAL_WARMUP_BLOCKING,
+        ),
+        vlm_runtime_semantic_max_inflight=_env_int(
+            "VLM_RUNTIME_SEMANTIC_MAX_INFLIGHT", DEFAULT_VLM_RUNTIME_SEMANTIC_MAX_INFLIGHT
+        ),
+        vlm_runtime_semantic_ttl_seconds=_env_float(
+            "VLM_RUNTIME_SEMANTIC_TTL_SECONDS", DEFAULT_VLM_RUNTIME_SEMANTIC_TTL_SECONDS
+        ),
+        vlm_runtime_semantic_translation_refresh_m=_env_float(
+            "VLM_RUNTIME_SEMANTIC_TRANSLATION_REFRESH_M",
+            DEFAULT_VLM_RUNTIME_SEMANTIC_TRANSLATION_REFRESH_M,
+        ),
+        vlm_runtime_semantic_heading_sector_deg=_env_float(
+            "VLM_RUNTIME_SEMANTIC_HEADING_SECTOR_DEG",
+            DEFAULT_VLM_RUNTIME_SEMANTIC_HEADING_SECTOR_DEG,
+        ),
+        vlm_runtime_semantic_visual_change_enabled=_env_bool(
+            "VLM_RUNTIME_SEMANTIC_VISUAL_CHANGE_ENABLED",
+            DEFAULT_VLM_RUNTIME_SEMANTIC_VISUAL_CHANGE_ENABLED,
+        ),
+        vlm_runtime_planner_semantic_soft_stale_seconds=_env_float(
+            "VLM_RUNTIME_PLANNER_SEMANTIC_SOFT_STALE_SECONDS",
+            DEFAULT_VLM_RUNTIME_PLANNER_SEMANTIC_SOFT_STALE_SECONDS,
+        ),
+        vlm_runtime_planner_semantic_hard_stale_seconds=_env_float(
+            "VLM_RUNTIME_PLANNER_SEMANTIC_HARD_STALE_SECONDS",
+            DEFAULT_VLM_RUNTIME_PLANNER_SEMANTIC_HARD_STALE_SECONDS,
+        ),
+        vlm_runtime_verify_same_frame_max_calls=_env_int(
+            "VLM_RUNTIME_VERIFY_SAME_FRAME_MAX_CALLS",
+            DEFAULT_VLM_RUNTIME_VERIFY_SAME_FRAME_MAX_CALLS,
         ),
         live_search_graph_match_partial_threshold=_env_float(
             "LIVE_SEARCH_GRAPH_MATCH_PARTIAL_THRESHOLD",

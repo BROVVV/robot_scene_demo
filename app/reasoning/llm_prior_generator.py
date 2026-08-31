@@ -6,8 +6,6 @@ import json
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from openai import OpenAI
-
 from app.config import Settings, get_settings
 from app.utils.json_utils import extract_json_from_text
 
@@ -42,11 +40,19 @@ class LLMPriorGenerator:
             and auto_create_client
             and self.settings.siliconflow_api_key
         ):
-            self.client = OpenAI(
-                api_key=self.settings.siliconflow_api_key,
-                base_url=self.settings.siliconflow_base_url,
-                timeout=self.settings.siliconflow_reasoning_timeout_seconds,
-            )
+            try:
+                from openai import OpenAI
+            except ImportError:
+                # System Python may not have openai; the VLM daemon / Conda
+                # worker is responsible for real API calls.  Keep the prior
+                # generator fail-soft in the ROS process.
+                self.client = None
+            else:
+                self.client = OpenAI(
+                    api_key=self.settings.siliconflow_api_key,
+                    base_url=self.settings.siliconflow_base_url,
+                    timeout=self.settings.siliconflow_reasoning_timeout_seconds,
+                )
 
     def generate(self, prior_input: LLMPriorInput) -> dict[str, Any]:
         if not self.settings.llm_commonsense_prior_enabled:
