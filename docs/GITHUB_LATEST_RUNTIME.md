@@ -10,6 +10,11 @@
 - WebUI：`http://127.0.0.1:8765`（运行在主机，不是机器狗系统服务）。
 - 机器狗端 D435 HTTP `/health`：最近检查 HTTP 200。
 - 机器狗端 SiliconFlow VLM daemon：在线。
+- 为避免主机工作树与机器狗现场工作树混淆，机器狗源码另存于
+  `github_artifacts/robot_project_snapshot_20260901/`：来源是机器狗的
+  `/home/unitree/robotscene`，同步时现场 HEAD 为 `4eec3b7`，当时工作树有 459 个修改项。
+  该快照包含 1,870 个源码/配置/文档文件，未包含机器狗 `.git` 元数据、`.env`、虚拟环境、
+  第三方依赖、ROS 编译产物和运行日志。
 
 ## 当前运行状态
 
@@ -56,6 +61,9 @@
    `summary.json`。
 4. mapping 运行日志读取 `github_artifacts/robot_runtime_logs/` 及
    `outputs/autonomous_search/logs/`。
+5. 如果需要判断机器狗现场代码，以
+   `github_artifacts/robot_project_snapshot_20260901/` 为准；仓库根目录代码是主机项目工作树
+   的提交快照，两者不要按同一个 Git HEAD 推断。
 
 ## 上传边界
 
