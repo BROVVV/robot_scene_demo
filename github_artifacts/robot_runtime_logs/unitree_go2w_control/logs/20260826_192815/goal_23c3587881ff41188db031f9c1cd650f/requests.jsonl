@@ -1,0 +1,12 @@
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787743786798370144,"timestamp":"1787743786798372"}
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787743786903217376,"timestamp":"1787743786903222"}
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787743787013214048,"timestamp":"1787743787013220"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":0.11999999731779099,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787743787455535584,"timestamp":"1787743787455537"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":0.11999999731779099,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787743787967150048,"timestamp":"1787743787967152"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787743788326092640,"timestamp":"1787743788326095"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787743788530035040,"timestamp":"1787743788530038"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787743788735438432,"timestamp":"1787743788735441"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787743788943228192,"timestamp":"1787743788943230"}
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787743789147479648,"timestamp":"1787743789147482"}
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787743789330193952,"timestamp":"1787743789330200"}
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787743789433044640,"timestamp":"1787743789433050"}

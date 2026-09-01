@@ -53,6 +53,9 @@ class SearchExecutor(Protocol):
 class SubprocessSearchExecutor:
     """Owns the autonomous search worker subprocess (JSONL IPC)."""
 
+    _ESTOP_GRACE_SEC = 1.0
+    _TERM_GRACE_SEC = 1.0
+
     # Worker interpreter resolution.  The search worker must import
     # ``run_semantic_exploration`` AND talk to ROS (rclpy) on real hardware.
     # Neither dependency lives in a single interpreter on every machine:
@@ -125,6 +128,19 @@ class SubprocessSearchExecutor:
 
     def estop(self) -> None:
         self._send({"cmd": "estop"})
+        proc = self._proc
+        if proc is not None and proc.poll() is None:
+            # The worker can be blocked inside a third-party vision/LLM call
+            # and therefore unable to consume stdin.  ESTOP must remain
+            # bounded even in that state: allow a brief cooperative window,
+            # then terminate this exact process without blocking the API
+            # event loop or touching a subsequently-created worker.
+            threading.Thread(
+                target=self._terminate_estopped_process,
+                args=(proc,),
+                daemon=True,
+                name="search-worker-estop",
+            ).start()
 
     def status(self) -> dict[str, Any]:
         with self._lock:
@@ -154,6 +170,25 @@ class SubprocessSearchExecutor:
         self._proc = None
         with self._lock:
             self._status["state"] = "stopped"
+
+    def _terminate_estopped_process(
+        self, proc: subprocess.Popen[str]
+    ) -> None:
+        try:
+            proc.wait(timeout=self._ESTOP_GRACE_SEC)
+        except subprocess.TimeoutExpired:
+            proc.terminate()
+            try:
+                proc.wait(timeout=self._TERM_GRACE_SEC)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                try:
+                    proc.wait(timeout=self._TERM_GRACE_SEC)
+                except subprocess.TimeoutExpired:
+                    pass
+        with self._lock:
+            if self._proc is proc:
+                self._status["state"] = "stopped"
 
     # -- internals ------------------------------------------------------ #
     def _send(self, command: dict[str, Any]) -> None:

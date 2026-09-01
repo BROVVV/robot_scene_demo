@@ -1,0 +1,28 @@
+[5.611s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge': PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge/build --no-deps install_data
+[6.331s] running develop
+[7.607s] running egg_info
+[7.607s] creating go2w_sensor_time_bridge.egg-info
+[7.608s] writing go2w_sensor_time_bridge.egg-info/PKG-INFO
+[7.608s] writing dependency_links to go2w_sensor_time_bridge.egg-info/dependency_links.txt
+[7.608s] writing entry points to go2w_sensor_time_bridge.egg-info/entry_points.txt
+[7.608s] writing requirements to go2w_sensor_time_bridge.egg-info/requires.txt
+[7.608s] writing top-level names to go2w_sensor_time_bridge.egg-info/top_level.txt
+[7.608s] writing manifest file 'go2w_sensor_time_bridge.egg-info/SOURCES.txt'
+[7.608s] reading manifest file 'go2w_sensor_time_bridge.egg-info/SOURCES.txt'
+[7.608s] writing manifest file 'go2w_sensor_time_bridge.egg-info/SOURCES.txt'
+[7.609s] running build_ext
+[7.609s] Creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/python3.8/site-packages/site.py
+[7.609s] Creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/python3.8/site-packages/go2w-sensor-time-bridge.egg-link (link to .)
+[7.609s] Installing measure_time_sync script to /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/go2w_sensor_time_bridge
+[7.609s] Installing time_bridge script to /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/go2w_sensor_time_bridge
+[7.609s] 
+[7.609s] Installed /home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge
+[7.609s] running install_data
+[7.610s] creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/ament_index
+[7.610s] creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/ament_index/resource_index
+[7.610s] creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/ament_index/resource_index/packages
+[7.610s] copying resource/go2w_sensor_time_bridge -> /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/ament_index/resource_index/packages
+[7.610s] copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/go2w_sensor_time_bridge
+[7.610s] creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/go2w_sensor_time_bridge/launch
+[7.610s] copying launch/time_bridge.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/go2w_sensor_time_bridge/launch
+[7.976s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge' returned '0': PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge/build --no-deps install_data

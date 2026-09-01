@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "/home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/lib/go2w_lidar_preprocessor/lidar_preprocessor", line 11, in <module>
+    load_entry_point('go2w-lidar-preprocessor', 'console_scripts', 'lidar_preprocessor')()
+  File "/home/unitree/robotscene/ros2_ws/build/go2w_lidar_preprocessor/go2w_lidar_preprocessor/preprocessor_node.py", line 212, in main
+    rclpy.spin(node)
+  File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/__init__.py", line 191, in spin
+    executor.spin_once()
+  File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 719, in spin_once
+    raise handler.exception()
+  File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/task.py", line 239, in __call__
+    self._handler.send(None)
+  File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 429, in handler
+    await call_coroutine(entity, arg)
+  File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 354, in _execute_subscription
+    await await_or_execute(sub.callback, msg)
+  File "/opt/ros/foxy/lib/python3.8/site-packages/rclpy/executors.py", line 118, in await_or_execute
+    return callback(*args)
+  File "/home/unitree/robotscene/ros2_ws/build/go2w_lidar_preprocessor/go2w_lidar_preprocessor/preprocessor_node.py", line 116, in _cloud
+    tuple(
+  File "/home/unitree/robotscene/ros2_ws/build/go2w_lidar_preprocessor/go2w_lidar_preprocessor/preprocessor_node.py", line 117, in <genexpr>
+    np.asarray(records[name], dtype=np.float64)
+TypeError: 'generator' object is not subscriptable

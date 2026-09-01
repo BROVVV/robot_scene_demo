@@ -1,0 +1,58 @@
+[2.202s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake /home/unitree/robotscene/ros2_ws/src/robot_scene_nav_bringup -DPython3_EXECUTABLE=/usr/bin/python3 -DPYTHON_EXECUTABLE=/usr/bin/python3 -DWITH_PTCS_USE=OFF -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup
+[4.116s] -- The C compiler identification is GNU 9.4.0
+[4.116s] -- The CXX compiler identification is GNU 9.4.0
+[4.116s] -- Check for working C compiler: /usr/bin/cc
+[4.116s] -- Check for working C compiler: /usr/bin/cc -- works
+[4.116s] -- Detecting C compiler ABI info
+[4.117s] -- Detecting C compiler ABI info - done
+[4.117s] -- Detecting C compile features
+[4.117s] -- Detecting C compile features - done
+[4.117s] -- Check for working CXX compiler: /usr/bin/c++
+[4.117s] -- Check for working CXX compiler: /usr/bin/c++ -- works
+[4.117s] -- Detecting CXX compiler ABI info
+[4.120s] -- Detecting CXX compiler ABI info - done
+[4.120s] -- Detecting CXX compile features
+[4.120s] -- Detecting CXX compile features - done
+[4.121s] -- Found ament_cmake: 0.9.12 (/opt/ros/humble/share/ament_cmake/cmake)
+[4.121s] -- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") 
+[4.121s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[4.121s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[4.151s] -- Configuring done
+[4.152s] -- Generating done
+[4.152s] -- Build files have been written to: /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup
+[4.152s] CMake Warning:
+[4.152s]   Manually-specified variables were not used by the project:
+[4.152s] 
+[4.152s]     Python3_EXECUTABLE
+[4.152s]     WITH_PTCS_USE
+[4.153s] 
+[4.153s] 
+[4.194s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake /home/unitree/robotscene/ros2_ws/src/robot_scene_nav_bringup -DPython3_EXECUTABLE=/usr/bin/python3 -DPYTHON_EXECUTABLE=/usr/bin/python3 -DWITH_PTCS_USE=OFF -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup
+[4.196s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup -- -j4 -l4
+[4.391s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup -- -j4 -l4
+[4.699s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup
+[4.787s] -- Install configuration: ""
+[4.789s] -- Execute custom install script
+[4.797s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/launch/collision_monitor.launch.py
+[4.843s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/launch/robot_scene_nav2.launch.py
+[4.866s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/launch/robot_scene_nav2_plan_only.launch.py
+[4.889s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/config/collision_monitor.yaml
+[4.913s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/config/nav2_params_humble.yaml
+[4.946s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/config/velocity_smoother.yaml
+[4.993s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/behavior_trees/navigate_to_pose_robot_scene.xml
+[5.067s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/ament_index/resource_index/package_run_dependencies/robot_scene_nav_bringup
+[5.152s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/ament_index/resource_index/parent_prefix_path/robot_scene_nav_bringup
+[5.253s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/ament_prefix_path.sh
+[5.312s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/ament_prefix_path.dsv
+[5.340s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/path.sh
+[5.370s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/path.dsv
+[5.401s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.bash
+[5.432s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.sh
+[5.466s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.zsh
+[5.493s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.dsv
+[5.524s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/package.dsv
+[5.547s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/ament_index/resource_index/packages/robot_scene_nav_bringup
+[5.578s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/cmake/robot_scene_nav_bringupConfig.cmake
+[5.618s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/cmake/robot_scene_nav_bringupConfig-version.cmake
+[5.650s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/package.xml
+[5.701s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup

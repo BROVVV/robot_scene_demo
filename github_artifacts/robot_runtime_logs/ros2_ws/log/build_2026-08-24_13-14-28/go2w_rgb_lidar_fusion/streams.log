@@ -1,0 +1,27 @@
+[6.893s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion': PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion/build --no-deps install_data
+[7.604s] running develop
+[8.018s] running egg_info
+[8.019s] creating go2w_rgb_lidar_fusion.egg-info
+[8.020s] writing go2w_rgb_lidar_fusion.egg-info/PKG-INFO
+[8.021s] writing dependency_links to go2w_rgb_lidar_fusion.egg-info/dependency_links.txt
+[8.022s] writing entry points to go2w_rgb_lidar_fusion.egg-info/entry_points.txt
+[8.022s] writing requirements to go2w_rgb_lidar_fusion.egg-info/requires.txt
+[8.023s] writing top-level names to go2w_rgb_lidar_fusion.egg-info/top_level.txt
+[8.027s] writing manifest file 'go2w_rgb_lidar_fusion.egg-info/SOURCES.txt'
+[8.117s] reading manifest file 'go2w_rgb_lidar_fusion.egg-info/SOURCES.txt'
+[8.119s] writing manifest file 'go2w_rgb_lidar_fusion.egg-info/SOURCES.txt'
+[9.089s] running build_ext
+[9.092s] Creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/lib/python3.8/site-packages/site.py
+[9.092s] Creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/lib/python3.8/site-packages/go2w-rgb-lidar-fusion.egg-link (link to .)
+[9.092s] Installing fusion_node script to /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/lib/go2w_rgb_lidar_fusion
+[9.093s] 
+[9.093s] Installed /home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion
+[9.093s] running install_data
+[9.093s] creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/ament_index
+[9.093s] creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/ament_index/resource_index
+[9.094s] creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/ament_index/resource_index/packages
+[9.094s] copying resource/go2w_rgb_lidar_fusion -> /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/ament_index/resource_index/packages
+[9.094s] copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/go2w_rgb_lidar_fusion
+[9.094s] creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/go2w_rgb_lidar_fusion/launch
+[9.094s] copying launch/fusion.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/go2w_rgb_lidar_fusion/launch
+[9.099s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion' returned '0': PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion/build --no-deps install_data

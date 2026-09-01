@@ -1,0 +1,34 @@
+[0.401s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2': /usr/bin/cmake /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2 -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/plain_slam_ros2
+[0.806s] -- The C compiler identification is GNU 9.4.0
+[1.195s] -- The CXX compiler identification is GNU 9.4.0
+[1.221s] -- Check for working C compiler: /usr/bin/cc
+[1.682s] -- Check for working C compiler: /usr/bin/cc -- works
+[1.685s] -- Detecting C compiler ABI info
+[2.032s] -- Detecting C compiler ABI info - done
+[2.097s] -- Detecting C compile features
+[2.097s] -- Detecting C compile features - done
+[2.102s] -- Check for working CXX compiler: /usr/bin/c++
+[3.007s] -- Check for working CXX compiler: /usr/bin/c++ -- works
+[3.012s] -- Detecting CXX compiler ABI info
+[3.012s] -- Detecting CXX compiler ABI info - done
+[3.012s] -- Detecting CXX compile features
+[3.012s] -- Detecting CXX compile features - done
+[3.012s] -- Configuring incomplete, errors occurred!
+[3.012s] See also "/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2/CMakeFiles/CMakeOutput.log".
+[3.013s] CMake Error at CMakeLists.txt:9 (find_package):
+[3.013s]   By not providing "Findament_cmake.cmake" in CMAKE_MODULE_PATH this project
+[3.013s]   has asked CMake to find a package configuration file provided by
+[3.013s]   "ament_cmake", but CMake did not find one.
+[3.013s] 
+[3.013s]   Could not find a package configuration file provided by "ament_cmake" with
+[3.014s]   any of the following names:
+[3.014s] 
+[3.014s]     ament_cmakeConfig.cmake
+[3.014s]     ament_cmake-config.cmake
+[3.014s] 
+[3.014s]   Add the installation prefix of "ament_cmake" to CMAKE_PREFIX_PATH or set
+[3.014s]   "ament_cmake_DIR" to a directory containing one of the above files.  If
+[3.014s]   "ament_cmake" provides a separate development package or SDK, be sure it
+[3.014s]   has been installed.
+[3.014s] 
+[3.015s] 

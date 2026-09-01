@@ -1,0 +1,329 @@
+[0.424s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/plain_slam_ros2 -- -j4 -l4
+[0.737s] Scanning dependencies of target lidar_lidar_calibration_node
+[0.850s] [  2%] Building CXX object CMakeFiles/lidar_lidar_calibration_node.dir/src/lidar_lidar_calibration_node.cpp.o
+[6.579s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp: In function ‘int main()’:
+[6.580s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:43: error: no match for ‘operator<<’ (operand types are ‘std::basic_ostream<char>::__ostream_type’ {aka ‘std::basic_ostream<char>’} and ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’})
+[6.580s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.580s]       |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^~ ~
+[6.580s]       |                              |               |
+[6.580s]       |                              |               const Quaternionf {aka const Eigen::Quaternion<float>}
+[6.580s]       |                              std::basic_ostream<char>::__ostream_type {aka std::basic_ostream<char>}
+[6.580s] In file included from /usr/include/c++/9/iostream:39,
+[6.580s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.581s] /usr/include/c++/9/ostream:108:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::basic_ostream<_CharT, _Traits>::__ostream_type& (*)(std::basic_ostream<_CharT, _Traits>::__ostream_type&)) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.581s]   108 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))
+[6.581s]       |       ^~~~~~~~
+[6.581s] /usr/include/c++/9/ostream:108:36: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘std::basic_ostream<char>::__ostream_type& (*)(std::basic_ostream<char>::__ostream_type&)’ {aka ‘std::basic_ostream<char>& (*)(std::basic_ostream<char>&)’}
+[6.581s]   108 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))
+[6.581s]       |                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+[6.581s] /usr/include/c++/9/ostream:117:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::basic_ostream<_CharT, _Traits>::__ios_type& (*)(std::basic_ostream<_CharT, _Traits>::__ios_type&)) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>; std::basic_ostream<_CharT, _Traits>::__ios_type = std::basic_ios<char>]’
+[6.581s]   117 |       operator<<(__ios_type& (*__pf)(__ios_type&))
+[6.581s]       |       ^~~~~~~~
+[6.582s] /usr/include/c++/9/ostream:117:32: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘std::basic_ostream<char>::__ios_type& (*)(std::basic_ostream<char>::__ios_type&)’ {aka ‘std::basic_ios<char>& (*)(std::basic_ios<char>&)’}
+[6.582s]   117 |       operator<<(__ios_type& (*__pf)(__ios_type&))
+[6.582s]       |                  ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+[6.582s] /usr/include/c++/9/ostream:127:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::ios_base& (*)(std::ios_base&)) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.582s]   127 |       operator<<(ios_base& (*__pf) (ios_base&))
+[6.582s]       |       ^~~~~~~~
+[6.582s] /usr/include/c++/9/ostream:127:30: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘std::ios_base& (*)(std::ios_base&)’
+[6.582s]   127 |       operator<<(ios_base& (*__pf) (ios_base&))
+[6.582s]       |                  ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+[6.582s] /usr/include/c++/9/ostream:166:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.583s]   166 |       operator<<(long __n)
+[6.583s]       |       ^~~~~~~~
+[6.583s] /usr/include/c++/9/ostream:166:23: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘long int’
+[6.583s]   166 |       operator<<(long __n)
+[6.583s]       |                  ~~~~~^~~
+[6.583s] /usr/include/c++/9/ostream:170:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.583s]   170 |       operator<<(unsigned long __n)
+[6.583s]       |       ^~~~~~~~
+[6.584s] /usr/include/c++/9/ostream:170:32: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘long unsigned int’
+[6.584s]   170 |       operator<<(unsigned long __n)
+[6.584s]       |                  ~~~~~~~~~~~~~~^~~
+[6.584s] /usr/include/c++/9/ostream:174:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(bool) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.584s]   174 |       operator<<(bool __n)
+[6.584s]       |       ^~~~~~~~
+[6.584s] /usr/include/c++/9/ostream:174:23: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘bool’
+[6.584s]   174 |       operator<<(bool __n)
+[6.584s]       |                  ~~~~~^~~
+[6.584s] In file included from /usr/include/c++/9/ostream:702,
+[6.585s]                  from /usr/include/c++/9/iostream:39,
+[6.585s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.585s] /usr/include/c++/9/bits/ostream.tcc:91:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(short int) [with _CharT = char; _Traits = std::char_traits<char>]’
+[6.585s]    91 |     basic_ostream<_CharT, _Traits>::
+[6.585s]       |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[6.585s] /usr/include/c++/9/bits/ostream.tcc:92:22: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘short int’
+[6.585s]    92 |     operator<<(short __n)
+[6.585s]       |                ~~~~~~^~~
+[6.585s] In file included from /usr/include/c++/9/iostream:39,
+[6.585s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.586s] /usr/include/c++/9/ostream:181:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(short unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.586s]   181 |       operator<<(unsigned short __n)
+[6.586s]       |       ^~~~~~~~
+[6.586s] /usr/include/c++/9/ostream:181:33: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘short unsigned int’
+[6.586s]   181 |       operator<<(unsigned short __n)
+[6.586s]       |                  ~~~~~~~~~~~~~~~^~~
+[6.586s] In file included from /usr/include/c++/9/ostream:702,
+[6.586s]                  from /usr/include/c++/9/iostream:39,
+[6.586s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.587s] /usr/include/c++/9/bits/ostream.tcc:105:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(int) [with _CharT = char; _Traits = std::char_traits<char>]’
+[6.587s]   105 |     basic_ostream<_CharT, _Traits>::
+[6.587s]       |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[6.587s] /usr/include/c++/9/bits/ostream.tcc:106:20: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘int’
+[6.587s]   106 |     operator<<(int __n)
+[6.587s]       |                ~~~~^~~
+[6.587s] In file included from /usr/include/c++/9/iostream:39,
+[6.587s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.587s] /usr/include/c++/9/ostream:192:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.588s]   192 |       operator<<(unsigned int __n)
+[6.588s]       |       ^~~~~~~~
+[6.588s] /usr/include/c++/9/ostream:192:31: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘unsigned int’
+[6.588s]   192 |       operator<<(unsigned int __n)
+[6.588s]       |                  ~~~~~~~~~~~~~^~~
+[6.588s] /usr/include/c++/9/ostream:201:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.588s]   201 |       operator<<(long long __n)
+[6.588s]       |       ^~~~~~~~
+[6.588s] /usr/include/c++/9/ostream:201:28: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘long long int’
+[6.588s]   201 |       operator<<(long long __n)
+[6.589s]       |                  ~~~~~~~~~~^~~
+[6.589s] /usr/include/c++/9/ostream:205:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.589s]   205 |       operator<<(unsigned long long __n)
+[6.589s]       |       ^~~~~~~~
+[6.589s] /usr/include/c++/9/ostream:205:37: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘long long unsigned int’
+[6.589s]   205 |       operator<<(unsigned long long __n)
+[6.589s]       |                  ~~~~~~~~~~~~~~~~~~~^~~
+[6.589s] /usr/include/c++/9/ostream:220:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(double) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.589s]   220 |       operator<<(double __f)
+[6.590s]       |       ^~~~~~~~
+[6.590s] /usr/include/c++/9/ostream:220:25: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘double’
+[6.590s]   220 |       operator<<(double __f)
+[6.590s]       |                  ~~~~~~~^~~
+[6.590s] /usr/include/c++/9/ostream:224:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(float) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.590s]   224 |       operator<<(float __f)
+[6.590s]       |       ^~~~~~~~
+[6.590s] /usr/include/c++/9/ostream:224:24: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘float’
+[6.590s]   224 |       operator<<(float __f)
+[6.590s]       |                  ~~~~~~^~~
+[6.591s] /usr/include/c++/9/ostream:232:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long double) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.591s]   232 |       operator<<(long double __f)
+[6.591s]       |       ^~~~~~~~
+[6.591s] /usr/include/c++/9/ostream:232:30: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘long double’
+[6.591s]   232 |       operator<<(long double __f)
+[6.592s]       |                  ~~~~~~~~~~~~^~~
+[6.592s] /usr/include/c++/9/ostream:245:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(const void*) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+[6.592s]   245 |       operator<<(const void* __p)
+[6.592s]       |       ^~~~~~~~
+[6.592s] /usr/include/c++/9/ostream:245:30: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘const void*’
+[6.592s]   245 |       operator<<(const void* __p)
+[6.593s]       |                  ~~~~~~~~~~~~^~~
+[6.593s] /usr/include/c++/9/ostream:250:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::nullptr_t) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>; std::nullptr_t = std::nullptr_t]’
+[6.593s]   250 |       operator<<(nullptr_t)
+[6.593s]       |       ^~~~~~~~
+[6.593s] /usr/include/c++/9/ostream:250:18: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘std::nullptr_t’
+[6.593s]   250 |       operator<<(nullptr_t)
+[6.593s]       |                  ^~~~~~~~~
+[6.593s] In file included from /usr/include/c++/9/ostream:702,
+[6.593s]                  from /usr/include/c++/9/iostream:39,
+[6.593s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.594s] /usr/include/c++/9/bits/ostream.tcc:119:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(std::basic_ostream<_CharT, _Traits>::__streambuf_type*) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__streambuf_type = std::basic_streambuf<char>]’
+[6.594s]   119 |     basic_ostream<_CharT, _Traits>::
+[6.594s]       |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[6.594s] /usr/include/c++/9/bits/ostream.tcc:120:34: note:   no known conversion for argument 1 from ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} to ‘std::basic_ostream<char>::__streambuf_type*’ {aka ‘std::basic_streambuf<char>*’}
+[6.594s]   120 |     operator<<(__streambuf_type* __sbin)
+[6.594s]       |                ~~~~~~~~~~~~~~~~~~^~~~~~
+[6.594s] In file included from /usr/include/eigen3/Eigen/Core:433,
+[6.594s]                  from /usr/include/eigen3/Eigen/Geometry:11,
+[6.594s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:28:
+[6.595s] /usr/include/eigen3/Eigen/src/Core/IO.h:216:16: note: candidate: ‘template<class Derived> std::ostream& Eigen::operator<<(std::ostream&, const Eigen::DenseBase<Derived>&)’
+[6.595s]   216 | std::ostream & operator <<
+[6.595s]       |                ^~~~~~~~
+[6.595s] /usr/include/eigen3/Eigen/src/Core/IO.h:216:16: note:   template argument deduction/substitution failed:
+[6.595s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} is not derived from ‘const Eigen::DenseBase<Derived>’
+[6.595s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.598s]       |                                              ^
+[6.604s] In file included from /usr/include/c++/9/bits/basic_string.h:48,
+[6.604s]                  from /usr/include/c++/9/string:55,
+[6.604s]                  from /usr/include/c++/9/bits/locale_classes.h:40,
+[6.605s]                  from /usr/include/c++/9/bits/ios_base.h:41,
+[6.605s]                  from /usr/include/c++/9/ios:42,
+[6.605s]                  from /usr/include/c++/9/ostream:38,
+[6.606s]                  from /usr/include/c++/9/iostream:39,
+[6.606s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.606s] /usr/include/c++/9/string_view:580:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, std::basic_string_view<_CharT, _Traits>)’
+[6.606s]   580 |     operator<<(basic_ostream<_CharT, _Traits>& __os,
+[6.607s]       |     ^~~~~~~~
+[6.607s] /usr/include/c++/9/string_view:580:5: note:   template argument deduction/substitution failed:
+[6.607s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   ‘Eigen::Quaternion<float>’ is not derived from ‘std::basic_string_view<_CharT, _Traits>’
+[6.607s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.607s]       |                                              ^
+[6.607s] In file included from /usr/include/c++/9/string:55,
+[6.607s]                  from /usr/include/c++/9/bits/locale_classes.h:40,
+[6.607s]                  from /usr/include/c++/9/bits/ios_base.h:41,
+[6.608s]                  from /usr/include/c++/9/ios:42,
+[6.608s]                  from /usr/include/c++/9/ostream:38,
+[6.608s]                  from /usr/include/c++/9/iostream:39,
+[6.608s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.608s] /usr/include/c++/9/bits/basic_string.h:6419:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+[6.608s]  6419 |     operator<<(basic_ostream<_CharT, _Traits>& __os,
+[6.608s]       |     ^~~~~~~~
+[6.608s] /usr/include/c++/9/bits/basic_string.h:6419:5: note:   template argument deduction/substitution failed:
+[6.608s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+[6.612s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.614s]       |                                              ^
+[6.614s] In file included from /usr/include/c++/9/bits/ios_base.h:46,
+[6.614s]                  from /usr/include/c++/9/ios:42,
+[6.615s]                  from /usr/include/c++/9/ostream:38,
+[6.615s]                  from /usr/include/c++/9/iostream:39,
+[6.627s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.627s] /usr/include/c++/9/system_error:217:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const std::error_code&)’
+[6.627s]   217 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const error_code& __e)
+[6.627s]       |     ^~~~~~~~
+[6.630s] /usr/include/c++/9/system_error:217:5: note:   template argument deduction/substitution failed:
+[6.631s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert ‘q’ (type ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’}) to type ‘const std::error_code&’
+[6.631s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.631s]       |                                              ^
+[6.633s] In file included from /usr/include/c++/9/iostream:39,
+[6.633s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.636s] /usr/include/c++/9/ostream:506:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, _CharT)’
+[6.636s]   506 |     operator<<(basic_ostream<_CharT, _Traits>& __out, _CharT __c)
+[6.637s]       |     ^~~~~~~~
+[6.637s] /usr/include/c++/9/ostream:506:5: note:   template argument deduction/substitution failed:
+[6.637s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   deduced conflicting types for parameter ‘_CharT’ (‘char’ and ‘Eigen::Quaternion<float>’)
+[6.637s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.637s]       |                                              ^
+[6.637s] In file included from /usr/include/c++/9/iostream:39,
+[6.637s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.637s] /usr/include/c++/9/ostream:511:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, char)’
+[6.638s]   511 |     operator<<(basic_ostream<_CharT, _Traits>& __out, char __c)
+[6.638s]       |     ^~~~~~~~
+[6.638s] /usr/include/c++/9/ostream:511:5: note:   template argument deduction/substitution failed:
+[6.638s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert ‘q’ (type ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’}) to type ‘char’
+[6.638s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.638s]       |                                              ^
+[6.638s] In file included from /usr/include/c++/9/iostream:39,
+[6.638s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.638s] /usr/include/c++/9/ostream:517:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, char)’
+[6.639s]   517 |     operator<<(basic_ostream<char, _Traits>& __out, char __c)
+[6.639s]       |     ^~~~~~~~
+[6.639s] /usr/include/c++/9/ostream:517:5: note:   template argument deduction/substitution failed:
+[6.639s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert ‘q’ (type ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’}) to type ‘char’
+[6.639s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.639s]       |                                              ^
+[6.639s] In file included from /usr/include/c++/9/iostream:39,
+[6.639s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.639s] /usr/include/c++/9/ostream:523:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, signed char)’
+[6.639s]   523 |     operator<<(basic_ostream<char, _Traits>& __out, signed char __c)
+[6.640s]       |     ^~~~~~~~
+[6.640s] /usr/include/c++/9/ostream:523:5: note:   template argument deduction/substitution failed:
+[6.640s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert ‘q’ (type ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’}) to type ‘signed char’
+[6.640s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.640s]       |                                              ^
+[6.640s] In file included from /usr/include/c++/9/iostream:39,
+[6.640s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.640s] /usr/include/c++/9/ostream:528:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, unsigned char)’
+[6.640s]   528 |     operator<<(basic_ostream<char, _Traits>& __out, unsigned char __c)
+[6.641s]       |     ^~~~~~~~
+[6.641s] /usr/include/c++/9/ostream:528:5: note:   template argument deduction/substitution failed:
+[6.641s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert ‘q’ (type ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’}) to type ‘unsigned char’
+[6.641s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.641s]       |                                              ^
+[6.641s] In file included from /usr/include/c++/9/iostream:39,
+[6.641s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.641s] /usr/include/c++/9/ostream:548:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const _CharT*)’
+[6.641s]   548 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const _CharT* __s)
+[6.641s]       |     ^~~~~~~~
+[6.642s] /usr/include/c++/9/ostream:548:5: note:   template argument deduction/substitution failed:
+[6.642s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   mismatched types ‘const _CharT*’ and ‘Eigen::Quaternion<float>’
+[6.642s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.642s]       |                                              ^
+[6.642s] In file included from /usr/include/c++/9/ostream:702,
+[6.642s]                  from /usr/include/c++/9/iostream:39,
+[6.642s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.642s] /usr/include/c++/9/bits/ostream.tcc:321:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const char*)’
+[6.642s]   321 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const char* __s)
+[6.642s]       |     ^~~~~~~~
+[6.643s] /usr/include/c++/9/bits/ostream.tcc:321:5: note:   template argument deduction/substitution failed:
+[6.643s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert ‘q’ (type ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’}) to type ‘const char*’
+[6.643s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.643s]       |                                              ^
+[6.643s] In file included from /usr/include/c++/9/iostream:39,
+[6.643s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.647s] /usr/include/c++/9/ostream:565:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const char*)’
+[6.647s]   565 |     operator<<(basic_ostream<char, _Traits>& __out, const char* __s)
+[6.647s]       |     ^~~~~~~~
+[6.647s] /usr/include/c++/9/ostream:565:5: note:   template argument deduction/substitution failed:
+[6.648s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert ‘q’ (type ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’}) to type ‘const char*’
+[6.648s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.648s]       |                                              ^
+[6.648s] In file included from /usr/include/c++/9/iostream:39,
+[6.648s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.648s] /usr/include/c++/9/ostream:578:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const signed char*)’
+[6.648s]   578 |     operator<<(basic_ostream<char, _Traits>& __out, const signed char* __s)
+[6.648s]       |     ^~~~~~~~
+[6.648s] /usr/include/c++/9/ostream:578:5: note:   template argument deduction/substitution failed:
+[6.649s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert ‘q’ (type ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’}) to type ‘const signed char*’
+[6.649s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.649s]       |                                              ^
+[6.649s] In file included from /usr/include/c++/9/iostream:39,
+[6.649s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.649s] /usr/include/c++/9/ostream:583:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const unsigned char*)’
+[6.649s]   583 |     operator<<(basic_ostream<char, _Traits>& __out, const unsigned char* __s)
+[6.649s]       |     ^~~~~~~~
+[6.649s] /usr/include/c++/9/ostream:583:5: note:   template argument deduction/substitution failed:
+[6.649s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert ‘q’ (type ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’}) to type ‘const unsigned char*’
+[6.650s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.650s]       |                                              ^
+[6.650s] In file included from /usr/include/c++/9/iostream:39,
+[6.650s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:
+[6.650s] /usr/include/c++/9/ostream:691:5: note: candidate: ‘template<class _Ostream, class _Tp> typename std::enable_if<std::__and_<std::__not_<std::is_lvalue_reference<_Tp> >, std::__is_convertible_to_basic_ostream<_Ostream>, std::__is_insertable<typename std::__is_convertible_to_basic_ostream<_Tp>::__ostream_type, const _Tp&, void> >::value, typename std::__is_convertible_to_basic_ostream<_Tp>::__ostream_type>::type std::operator<<(_Ostream&&, const _Tp&)’
+[6.650s]   691 |     operator<<(_Ostream&& __os, const _Tp& __x)
+[6.650s]       |     ^~~~~~~~
+[6.650s] /usr/include/c++/9/ostream:691:5: note:   template argument deduction/substitution failed:
+[6.650s] /usr/include/c++/9/ostream: In substitution of ‘template<class _Ostream, class _Tp> typename std::enable_if<std::__and_<std::__not_<std::is_lvalue_reference<_Tp> >, std::__is_convertible_to_basic_ostream<_Ostream>, std::__is_insertable<typename std::__is_convertible_to_basic_ostream<_Tp>::__ostream_type, const _Tp&, void> >::value, typename std::__is_convertible_to_basic_ostream<_Tp>::__ostream_type>::type std::operator<<(_Ostream&&, const _Tp&) [with _Ostream = std::basic_ostream<char>&; _Tp = Eigen::Quaternion<float>]’:
+[6.651s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46:   required from here
+[6.651s] /usr/include/c++/9/ostream:691:5: error: no type named ‘type’ in ‘struct std::enable_if<false, std::basic_ostream<char>&>’
+[6.651s] In file included from /usr/include/eigen3/Eigen/Core:96,
+[6.651s]                  from /usr/include/eigen3/Eigen/Geometry:11,
+[6.651s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:28:
+[6.651s] /usr/include/c++/9/complex:552:5: note: candidate: ‘template<class _Tp, class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const std::complex<_Tp>&)’
+[6.651s]   552 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const complex<_Tp>& __x)
+[6.651s]       |     ^~~~~~~~
+[6.651s] /usr/include/c++/9/complex:552:5: note:   template argument deduction/substitution failed:
+[6.651s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} is not derived from ‘const std::complex<_Tp>’
+[6.652s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.652s]       |                                              ^
+[6.652s] In file included from /usr/include/eigen3/Eigen/Core:277,
+[6.652s]                  from /usr/include/eigen3/Eigen/Geometry:11,
+[6.652s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:28:
+[6.652s] /usr/include/c++/9/cstddef:130:5: note: candidate: ‘template<class _IntegerType> constexpr std::__byte_op_t<_IntegerType> std::operator<<(std::byte, _IntegerType)’
+[6.652s]   130 |     operator<<(byte __b, _IntegerType __shift) noexcept
+[6.652s]       |     ^~~~~~~~
+[6.652s] /usr/include/c++/9/cstddef:130:5: note:   template argument deduction/substitution failed:
+[6.652s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:30: note:   cannot convert ‘(& std::operator<< <std::char_traits<char> >(std::cout, ((const char*)"quaternion:")))->std::basic_ostream<char>::operator<<(std::endl<char, std::char_traits<char> >)’ (type ‘std::basic_ostream<char>::__ostream_type’ {aka ‘std::basic_ostream<char>’}) to type ‘std::byte’
+[6.653s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.653s]       |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~
+[6.653s] In file included from /usr/include/c++/9/memory:81,
+[6.653s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/include/plain_slam/types.hpp:29,
+[6.653s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:30:
+[6.653s] /usr/include/c++/9/bits/shared_ptr.h:66:5: note: candidate: ‘template<class _Ch, class _Tr, class _Tp, __gnu_cxx::_Lock_policy _Lp> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const std::__shared_ptr<_Tp, _Lp>&)’
+[6.653s]    66 |     operator<<(std::basic_ostream<_Ch, _Tr>& __os,
+[6.653s]       |     ^~~~~~~~
+[6.653s] /usr/include/c++/9/bits/shared_ptr.h:66:5: note:   template argument deduction/substitution failed:
+[6.654s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’} is not derived from ‘const std::__shared_ptr<_Tp, _Lp>’
+[6.654s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.654s]       |                                              ^
+[6.654s] In file included from /usr/include/c++/9/future:39,
+[6.654s]                  from /usr/local/include/nanoflann.hpp:55,
+[6.654s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/include/plain_slam/types.hpp:35,
+[6.654s]                  from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:30:
+[6.654s] /usr/include/c++/9/thread:322:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, std::thread::id)’
+[6.655s]   322 |     operator<<(basic_ostream<_CharT, _Traits>& __out, thread::id __id)
+[6.655s]       |     ^~~~~~~~
+[6.655s] /usr/include/c++/9/thread:322:5: note:   template argument deduction/substitution failed:
+[6.655s] /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert ‘q’ (type ‘const Quaternionf’ {aka ‘const Eigen::Quaternion<float>’}) to type ‘std::thread::id’
+[6.655s]    76 |   std::cout << "quaternion:" << std::endl << q << std::endl;
+[6.655s]       |                                              ^
+[8.196s] make[2]: *** [CMakeFiles/lidar_lidar_calibration_node.dir/build.make:63: CMakeFiles/lidar_lidar_calibration_node.dir/src/lidar_lidar_calibration_node.cpp.o] Error 1
+[8.197s] make[1]: *** [CMakeFiles/Makefile2:84: CMakeFiles/lidar_lidar_calibration_node.dir/all] Error 2
+[8.197s] make: *** [Makefile:141: all] Error 2
+[8.215s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2' returned '2': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/plain_slam_ros2 -- -j4 -l4

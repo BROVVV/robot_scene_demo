@@ -67,7 +67,7 @@ class SiliconFlowVisionClient(BaseVisionLLMClient):
                 },
             ],
             temperature=0.1,
-            max_tokens=self.settings.siliconflow_max_tokens,
+            max_tokens=getattr(self.settings, "vlm_runtime_semantic_max_tokens", self.settings.siliconflow_max_tokens),
         )
 
         raw_content = self._extract_response_text(response)
@@ -129,7 +129,7 @@ _FAST_SYSTEM_PROMPT = """你是机器狗快速视觉识别模块。只输出紧�
 优先识别目标相关物体、障碍物、人物、桌椅、显示器、主机、箱子、鞋、篮子、线缆等导航相关物体。
 必须列出当前画面中的所有可见物体：objects 数组至少包含 5 个不重复的物体；
 即使目标不在画面中，也必须把办公椅、办公桌、背包、显示器、垃圾桶、纸箱、人、墙壁、隔断等可见的非目标物体全部列出，禁止返回空数组。
-可以输出结构化任务和候选位置线索，但不要输出长篇自由文本推理；本地知识库、假设评分和任务规划模块会负责最终推理。"""
+只输出场景物体与空间关系，禁止输出 route_plan、task_understanding、scene_reasoning_hints；本地知识库、假设评分和任务规划模块会负责最终推理。"""
 
 
 def _build_fast_user_prompt(
@@ -170,36 +170,16 @@ def _build_fast_user_prompt(
     "matched_indices": [1, 2],
     "match_reason_zh": "中文原因",
     "confidence": 0.8
-  }},
-  "route_plan": {{
-    "route_type": "approach_visible_target",
-    "summary_zh": "中文路线摘要",
-    "steps": [
-      {{"action": "move_forward", "distance_m": 1.0, "turn_angle_deg": null, "description_zh": "向前走 1 米"}}
-    ]
-  }},
-  "task_understanding": {{
-    "task_type": "find_object",
-    "entities": ["phone"],
-    "constraints": ["on desk"],
-    "uncertainty": "中文不确定性说明"
-  }},
-  "scene_reasoning_hints": {{
-    "scene_type": "office",
-    "candidate_locations": ["desk surface", "beside keyboard"],
-    "supporting_evidence": ["visible desk", "visible keyboard"],
-    "recommended_next_observation": "靠近桌面右侧重新观察"
   }}
 }}
 
 约束：
-- route_plan.steps 最多 3 步；task_understanding 和 scene_reasoning_hints 若无关键信息就省略，保持输出紧凑，确保 JSON 完整闭合、不被截断。
+- 本阶段只做场景物体与空间关系提取，禁止输出 route_plan、task_understanding、scene_reasoning_hints 字段。
+- 不要写完整思维链，不要生成路线规划；本地规划器会负责导航。
 - relation_type 只能用 left_of/right_of/in_front_of/behind/on/under/above/below/in/near/far/contains/occluding。
 - 每个可见物体必须输出 bbox_2d，坐标是相对图像宽高归一化到 0~1 的 x1/y1/x2/y2。
 - bbox_2d 必须尽量紧贴物体，不要用整张图 [0,0,1,1] 代替局部物体。
-- action 只能用 move_forward/move_backward/turn_left/turn_right/stop。
 - 目标是“挂着黄衣服的椅子”时，椅子和黄色衣服都要列入 objects。
-- task_understanding 和 scene_reasoning_hints 是可选辅助字段；如果输出，必须是结构化 JSON，不要写完整思维链。
 - 只输出 JSON。"""
     if extra_instructions:
         prompt += f"\n额外要求：{extra_instructions}"

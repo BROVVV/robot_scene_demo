@@ -1,0 +1,425 @@
+[0.707s] Invoking command in '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/build/unitree_api': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/src/unitree/unitree_api -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api
+[0.831s] -- The C compiler identification is GNU 9.4.0
+[0.951s] -- The CXX compiler identification is GNU 9.4.0
+[0.965s] -- Check for working C compiler: /usr/bin/cc
+[1.136s] -- Check for working C compiler: /usr/bin/cc -- works
+[1.137s] -- Detecting C compiler ABI info
+[1.278s] -- Detecting C compiler ABI info - done
+[1.296s] -- Detecting C compile features
+[1.297s] -- Detecting C compile features - done
+[1.303s] -- Check for working CXX compiler: /usr/bin/c++
+[1.471s] -- Check for working CXX compiler: /usr/bin/c++ -- works
+[1.472s] -- Detecting CXX compiler ABI info
+[1.643s] -- Detecting CXX compiler ABI info - done
+[1.664s] -- Detecting CXX compile features
+[1.665s] -- Detecting CXX compile features - done
+[1.670s] -- Found ament_cmake: 0.9.12 (/opt/ros/foxy/share/ament_cmake/cmake)
+[1.725s] -- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") 
+[1.725s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[2.266s] -- Found geometry_msgs: 2.0.5 (/opt/ros/foxy/share/geometry_msgs/cmake)
+[2.331s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[2.348s] -- Found rosidl_adapter: 1.3.1 (/opt/ros/foxy/share/rosidl_adapter/cmake)
+[2.558s] -- Found OpenSSL: /usr/lib/aarch64-linux-gnu/libcrypto.so (found version "1.1.1f")  
+[2.624s] -- Found FastRTPS: /opt/ros/foxy/include  
+[2.778s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[2.932s] -- Found rosidl_default_generators: 1.0.1 (/opt/ros/foxy/share/rosidl_default_generators/cmake)
+[2.953s] -- Found rosidl_generator_dds_idl: 0.7.1 (/opt/ros/foxy/share/rosidl_generator_dds_idl/cmake)
+[3.022s] -- Found PythonInterp: /usr/bin/python3 (found version "3.8.10") 
+[3.525s] -- Found ament_cmake_ros: 0.9.2 (/opt/ros/foxy/share/ament_cmake_ros/cmake)
+[4.001s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[4.195s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[4.254s] -- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3.5") 
+[4.257s] -- Found python_cmake_module: 0.8.1 (/opt/ros/foxy/share/python_cmake_module/cmake)
+[4.328s] -- Found PythonLibs: /usr/lib/aarch64-linux-gnu/libpython3.8.so (found suitable version "3.8.10", minimum required is "3.5") 
+[4.328s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[4.328s] -- Using PYTHON_INCLUDE_DIRS: /usr/include/python3.8
+[4.328s] -- Using PYTHON_LIBRARIES: /usr/lib/aarch64-linux-gnu/libpython3.8.so
+[4.384s] -- Found PythonExtra: .so  
+[4.621s] -- Found ament_lint_auto: 0.9.8 (/opt/ros/foxy/share/ament_lint_auto/cmake)
+[4.662s] -- Added test 'copyright' to check source files copyright and LICENSE
+[4.667s] -- Added test 'lint_cmake' to check CMake code style
+[4.674s] -- Added test 'xmllint' to check XML markup files
+[4.687s] -- Configuring done
+[4.846s] -- Generating done
+[4.854s] -- Build files have been written to: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/build/unitree_api
+[4.921s] Invoked command in '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/build/unitree_api' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/src/unitree/unitree_api -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api
+[4.922s] Invoking command in '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/build/unitree_api': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/build/unitree_api -- -j4 -l4
+[5.135s] Scanning dependencies of target unitree_api__cpp
+[5.142s] [  1%] Generating C code for ROS interfaces
+[5.199s] Scanning dependencies of target unitree_api__dds_connext_idl
+[5.226s] [  2%] Generating C++ code for ROS interfaces
+[5.351s] [  3%] Generating DDS interfaces
+[7.126s] [  3%] Built target unitree_api__dds_connext_idl
+[7.972s] Scanning dependencies of target unitree_api__rosidl_generator_c
+[8.030s] [  4%] Building C object CMakeFiles/unitree_api__rosidl_generator_c.dir/rosidl_generator_c/unitree_api/msg/detail/request__functions.c.o
+[8.080s] [  5%] Building C object CMakeFiles/unitree_api__rosidl_generator_c.dir/rosidl_generator_c/unitree_api/msg/detail/request_header__functions.c.o
+[8.103s] [  6%] Building C object CMakeFiles/unitree_api__rosidl_generator_c.dir/rosidl_generator_c/unitree_api/msg/detail/request_identity__functions.c.o
+[8.443s] [  7%] Building C object CMakeFiles/unitree_api__rosidl_generator_c.dir/rosidl_generator_c/unitree_api/msg/detail/request_lease__functions.c.o
+[8.481s] [  9%] Building C object CMakeFiles/unitree_api__rosidl_generator_c.dir/rosidl_generator_c/unitree_api/msg/detail/request_policy__functions.c.o
+[8.560s] [ 10%] Building C object CMakeFiles/unitree_api__rosidl_generator_c.dir/rosidl_generator_c/unitree_api/msg/detail/response__functions.c.o
+[8.623s] [ 11%] Building C object CMakeFiles/unitree_api__rosidl_generator_c.dir/rosidl_generator_c/unitree_api/msg/detail/response_header__functions.c.o
+[8.845s] [ 12%] Building C object CMakeFiles/unitree_api__rosidl_generator_c.dir/rosidl_generator_c/unitree_api/msg/detail/response_status__functions.c.o
+[9.332s] [ 13%] Linking C shared library libunitree_api__rosidl_generator_c.so
+[9.413s] [ 13%] Built target unitree_api__rosidl_generator_c
+[9.442s] [ 14%] Generating C type support dispatch for ROS interfaces
+[9.500s] [ 15%] Generating C introspection for ROS interfaces
+[9.504s] [ 15%] Built target unitree_api__cpp
+[9.607s] [ 17%] Generating C++ type support dispatch for ROS interfaces
+[9.636s] [ 18%] Generating C++ introspection for ROS interfaces
+[11.741s] Scanning dependencies of target unitree_api__rosidl_typesupport_c
+[11.801s] [ 19%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_c.dir/rosidl_typesupport_c/unitree_api/msg/request__type_support.cpp.o
+[11.917s] [ 20%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_c.dir/rosidl_typesupport_c/unitree_api/msg/request_header__type_support.cpp.o
+[12.068s] [ 21%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_c.dir/rosidl_typesupport_c/unitree_api/msg/request_identity__type_support.cpp.o
+[12.297s] [ 22%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_c.dir/rosidl_typesupport_c/unitree_api/msg/request_lease__type_support.cpp.o
+[12.375s] Scanning dependencies of target unitree_api__rosidl_typesupport_cpp
+[12.434s] [ 23%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/unitree_api/msg/request__type_support.cpp.o
+[12.486s] [ 25%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_c.dir/rosidl_typesupport_c/unitree_api/msg/request_policy__type_support.cpp.o
+[12.603s] [ 26%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_c.dir/rosidl_typesupport_c/unitree_api/msg/response__type_support.cpp.o
+[12.723s] [ 27%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_c.dir/rosidl_typesupport_c/unitree_api/msg/response_header__type_support.cpp.o
+[12.852s] [ 28%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_c.dir/rosidl_typesupport_c/unitree_api/msg/response_status__type_support.cpp.o
+[13.078s] [ 29%] Linking CXX shared library libunitree_api__rosidl_typesupport_c.so
+[13.392s] [ 29%] Built target unitree_api__rosidl_typesupport_c
+[13.472s] Scanning dependencies of target unitree_api__rosidl_typesupport_introspection_c
+[13.535s] [ 31%] Building C object CMakeFiles/unitree_api__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/unitree_api/msg/detail/request__type_support.c.o
+[13.535s] [ 31%] Generating C++ type support for eProsima Fast-RTPS
+[13.832s] [ 32%] Building C object CMakeFiles/unitree_api__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/unitree_api/msg/detail/request_header__type_support.c.o
+[14.011s] [ 34%] Building C object CMakeFiles/unitree_api__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/unitree_api/msg/detail/request_identity__type_support.c.o
+[14.183s] [ 35%] Building C object CMakeFiles/unitree_api__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/unitree_api/msg/detail/request_lease__type_support.c.o
+[14.393s] [ 36%] Building C object CMakeFiles/unitree_api__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/unitree_api/msg/detail/request_policy__type_support.c.o
+[14.408s] [ 37%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/unitree_api/msg/request_header__type_support.cpp.o
+[14.487s] Scanning dependencies of target unitree_api__rosidl_typesupport_introspection_cpp
+[14.606s] [ 38%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/unitree_api/msg/detail/request__type_support.cpp.o
+[14.677s] [ 39%] Building C object CMakeFiles/unitree_api__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/unitree_api/msg/detail/response__type_support.c.o
+[14.987s] [ 40%] Building C object CMakeFiles/unitree_api__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/unitree_api/msg/detail/response_header__type_support.c.o
+[15.303s] [ 42%] Building C object CMakeFiles/unitree_api__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/unitree_api/msg/detail/response_status__type_support.c.o
+[15.506s] [ 43%] Linking C shared library libunitree_api__rosidl_typesupport_introspection_c.so
+[15.654s] [ 43%] Built target unitree_api__rosidl_typesupport_introspection_c
+[15.769s] [ 44%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/unitree_api/msg/detail/request_header__type_support.cpp.o
+[17.337s] [ 45%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/unitree_api/msg/request_identity__type_support.cpp.o
+[18.168s] Scanning dependencies of target unitree_api__rosidl_typesupport_fastrtps_cpp
+[18.271s] [ 46%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/unitree_api/msg/detail/dds_fastrtps/request__type_support.cpp.o
+[18.712s] [ 47%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/unitree_api/msg/detail/request_identity__type_support.cpp.o
+[19.043s] [ 48%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/unitree_api/msg/detail/request_lease__type_support.cpp.o
+[20.539s] [ 50%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/unitree_api/msg/request_lease__type_support.cpp.o
+[21.243s] [ 51%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/unitree_api/msg/detail/request_policy__type_support.cpp.o
+[21.929s] [ 52%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/unitree_api/msg/detail/dds_fastrtps/request_header__type_support.cpp.o
+[22.140s] [ 53%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/unitree_api/msg/request_policy__type_support.cpp.o
+[23.243s] [ 54%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/unitree_api/msg/detail/response__type_support.cpp.o
+[23.825s] [ 55%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/unitree_api/msg/response__type_support.cpp.o
+[24.165s] [ 56%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/unitree_api/msg/detail/dds_fastrtps/request_identity__type_support.cpp.o
+[24.939s] [ 57%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/unitree_api/msg/detail/response_header__type_support.cpp.o
+[25.119s] [ 59%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/unitree_api/msg/response_header__type_support.cpp.o
+[25.904s] [ 60%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/unitree_api/msg/detail/response_status__type_support.cpp.o
+[26.132s] [ 61%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/unitree_api/msg/detail/dds_fastrtps/request_lease__type_support.cpp.o
+[27.147s] [ 62%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/unitree_api/msg/response_status__type_support.cpp.o
+[27.447s] [ 63%] Linking CXX shared library libunitree_api__rosidl_typesupport_introspection_cpp.so
+[27.994s] [ 63%] Built target unitree_api__rosidl_typesupport_introspection_cpp
+[28.271s] [ 64%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/unitree_api/msg/detail/dds_fastrtps/response__type_support.cpp.o
+[28.764s] [ 65%] Linking CXX shared library libunitree_api__rosidl_typesupport_cpp.so
+[29.073s] [ 65%] Built target unitree_api__rosidl_typesupport_cpp
+[30.441s] [ 67%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/unitree_api/msg/detail/dds_fastrtps/response_status__type_support.cpp.o
+[31.594s] [ 68%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/unitree_api/msg/detail/dds_fastrtps/response_header__type_support.cpp.o
+[33.041s] [ 69%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/unitree_api/msg/detail/dds_fastrtps/request_policy__type_support.cpp.o
+[34.509s] [ 70%] Linking CXX shared library libunitree_api__rosidl_typesupport_fastrtps_cpp.so
+[34.770s] [ 70%] Built target unitree_api__rosidl_typesupport_fastrtps_cpp
+[34.795s] [ 71%] Generating C type support for eProsima Fast-RTPS
+[35.918s] Scanning dependencies of target unitree_api__rosidl_typesupport_fastrtps_c
+[35.944s] [ 72%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/unitree_api/msg/detail/request__type_support_c.cpp.o
+[36.722s] [ 73%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/unitree_api/msg/detail/request_lease__type_support_c.cpp.o
+[37.545s] [ 75%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/unitree_api/msg/detail/request_policy__type_support_c.cpp.o
+[38.334s] [ 76%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/unitree_api/msg/detail/response__type_support_c.cpp.o
+[39.168s] [ 77%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/unitree_api/msg/detail/response_header__type_support_c.cpp.o
+[39.967s] [ 78%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/unitree_api/msg/detail/response_status__type_support_c.cpp.o
+[40.729s] [ 79%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/unitree_api/msg/detail/request_identity__type_support_c.cpp.o
+[41.505s] [ 80%] Building CXX object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/unitree_api/msg/detail/request_header__type_support_c.cpp.o
+[42.293s] [ 81%] Linking CXX shared library libunitree_api__rosidl_typesupport_fastrtps_c.so
+[42.521s] [ 81%] Built target unitree_api__rosidl_typesupport_fastrtps_c
+[42.544s] Scanning dependencies of target unitree_api
+[42.568s] [ 81%] Built target unitree_api
+[42.592s] Scanning dependencies of target unitree_api__py
+[42.616s] [ 82%] Generating Python code for ROS interfaces
+[46.813s] [ 82%] Built target unitree_api__py
+[46.885s] Scanning dependencies of target unitree_api__python
+[46.922s] [ 84%] Building C object CMakeFiles/unitree_api__python.dir/rosidl_generator_py/unitree_api/msg/_request_s.c.o
+[47.187s] [ 85%] Building C object CMakeFiles/unitree_api__python.dir/rosidl_generator_py/unitree_api/msg/_request_lease_s.c.o
+[47.425s] [ 86%] Building C object CMakeFiles/unitree_api__python.dir/rosidl_generator_py/unitree_api/msg/_request_policy_s.c.o
+[47.657s] [ 87%] Building C object CMakeFiles/unitree_api__python.dir/rosidl_generator_py/unitree_api/msg/_response_s.c.o
+[47.913s] [ 88%] Building C object CMakeFiles/unitree_api__python.dir/rosidl_generator_py/unitree_api/msg/_response_header_s.c.o
+[48.128s] [ 89%] Building C object CMakeFiles/unitree_api__python.dir/rosidl_generator_py/unitree_api/msg/_response_status_s.c.o
+[48.338s] [ 90%] Building C object CMakeFiles/unitree_api__python.dir/rosidl_generator_py/unitree_api/msg/_request_identity_s.c.o
+[48.519s] [ 92%] Building C object CMakeFiles/unitree_api__python.dir/rosidl_generator_py/unitree_api/msg/_request_header_s.c.o
+[48.713s] [ 93%] Linking C shared library rosidl_generator_py/unitree_api/libunitree_api__python.so
+[48.802s] [ 93%] Built target unitree_api__python
+[48.845s] Scanning dependencies of target unitree_api__rosidl_typesupport_introspection_c__pyext
+[48.883s] [ 94%] Building C object CMakeFiles/unitree_api__rosidl_typesupport_introspection_c__pyext.dir/rosidl_generator_py/unitree_api/_unitree_api_s.ep.rosidl_typesupport_introspection_c.c.o
+[49.096s] [ 95%] Linking C shared library rosidl_generator_py/unitree_api/unitree_api_s__rosidl_typesupport_introspection_c.cpython-38-aarch64-linux-gnu.so
+[49.181s] [ 95%] Built target unitree_api__rosidl_typesupport_introspection_c__pyext
+[49.221s] Scanning dependencies of target unitree_api__rosidl_typesupport_fastrtps_c__pyext
+[49.254s] [ 96%] Building C object CMakeFiles/unitree_api__rosidl_typesupport_fastrtps_c__pyext.dir/rosidl_generator_py/unitree_api/_unitree_api_s.ep.rosidl_typesupport_fastrtps_c.c.o
+[49.482s] [ 97%] Linking CXX shared library rosidl_generator_py/unitree_api/unitree_api_s__rosidl_typesupport_fastrtps_c.cpython-38-aarch64-linux-gnu.so
+[49.622s] [ 97%] Built target unitree_api__rosidl_typesupport_fastrtps_c__pyext
+[49.654s] Scanning dependencies of target unitree_api__rosidl_typesupport_c__pyext
+[49.686s] [ 98%] Building C object CMakeFiles/unitree_api__rosidl_typesupport_c__pyext.dir/rosidl_generator_py/unitree_api/_unitree_api_s.ep.rosidl_typesupport_c.c.o
+[49.889s] [100%] Linking C shared library rosidl_generator_py/unitree_api/unitree_api_s__rosidl_typesupport_c.cpython-38-aarch64-linux-gnu.so
+[49.968s] [100%] Built target unitree_api__rosidl_typesupport_c__pyext
+[50.001s] Invoked command in '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/build/unitree_api' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/build/unitree_api -- -j4 -l4
+[50.398s] Invoking command in '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/build/unitree_api': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/build/unitree_api
+[50.422s] -- Install configuration: ""
+[50.423s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/ament_index/resource_index/rosidl_interfaces/unitree_api
+[50.424s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api
+[50.425s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg
+[50.426s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/request_header.h
+[50.427s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/rosidl_generator_c__visibility_control.h
+[50.427s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/request_lease.h
+[50.427s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/response_status.h
+[50.428s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/request_identity.h
+[50.428s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/request.h
+[50.428s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/request_policy.h
+[50.429s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/response_header.h
+[50.429s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/response.h
+[50.430s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail
+[50.430s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__struct.h
+[50.431s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__functions.h
+[50.432s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__functions.c
+[50.432s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__functions.h
+[50.433s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__struct.h
+[50.433s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__type_support.h
+[50.434s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__type_support.h
+[50.435s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__functions.c
+[50.435s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__type_support.h
+[50.436s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__struct.h
+[50.437s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__functions.h
+[50.437s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__struct.h
+[50.438s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__type_support.h
+[50.439s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__functions.c
+[50.440s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__type_support.h
+[50.440s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__functions.h
+[50.441s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__type_support.h
+[50.442s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__functions.c
+[50.442s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__functions.c
+[50.443s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__functions.h
+[50.444s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__functions.c
+[50.445s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__type_support.h
+[50.445s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__struct.h
+[50.446s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__struct.h
+[50.447s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__functions.h
+[50.448s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__functions.h
+[50.449s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__functions.h
+[50.449s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__struct.h
+[50.450s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__type_support.h
+[50.451s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__functions.c
+[50.452s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__functions.c
+[50.456s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__struct.h
+[50.457s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/environment/library_path.sh
+[50.458s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/environment/library_path.dsv
+[50.459s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_generator_c.so
+[50.460s] -- Set runtime path of "/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_generator_c.so" to ""
+[50.461s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api
+[50.461s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg
+[50.462s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+[50.463s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail
+[50.463s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__rosidl_typesupport_fastrtps_c.h
+[50.464s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__rosidl_typesupport_fastrtps_c.h
+[50.465s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__rosidl_typesupport_fastrtps_c.h
+[50.465s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__rosidl_typesupport_fastrtps_c.h
+[50.466s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__rosidl_typesupport_fastrtps_c.h
+[50.467s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__rosidl_typesupport_fastrtps_c.h
+[50.468s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__rosidl_typesupport_fastrtps_c.h
+[50.468s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__rosidl_typesupport_fastrtps_c.h
+[50.469s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_fastrtps_c.so
+[50.471s] -- Set runtime path of "/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_fastrtps_c.so" to ""
+[50.472s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api
+[50.472s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg
+[50.473s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+[50.473s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail
+[50.474s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__rosidl_typesupport_fastrtps_cpp.hpp
+[50.475s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__rosidl_typesupport_fastrtps_cpp.hpp
+[50.476s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__rosidl_typesupport_fastrtps_cpp.hpp
+[50.476s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__rosidl_typesupport_fastrtps_cpp.hpp
+[50.477s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__rosidl_typesupport_fastrtps_cpp.hpp
+[50.478s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__rosidl_typesupport_fastrtps_cpp.hpp
+[50.479s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__rosidl_typesupport_fastrtps_cpp.hpp
+[50.479s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__rosidl_typesupport_fastrtps_cpp.hpp
+[50.480s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/dds_fastrtps
+[50.481s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_fastrtps_cpp.so
+[50.483s] -- Set runtime path of "/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_fastrtps_cpp.so" to ""
+[50.483s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api
+[50.484s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg
+[50.484s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/rosidl_typesupport_introspection_c__visibility_control.h
+[50.485s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail
+[50.486s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__rosidl_typesupport_introspection_c.h
+[50.486s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__rosidl_typesupport_introspection_c.h
+[50.487s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__type_support.c
+[50.488s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__type_support.c
+[50.489s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__rosidl_typesupport_introspection_c.h
+[50.489s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__type_support.c
+[50.490s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__rosidl_typesupport_introspection_c.h
+[50.491s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__type_support.c
+[50.492s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__rosidl_typesupport_introspection_c.h
+[50.492s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__type_support.c
+[50.493s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__type_support.c
+[50.494s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__type_support.c
+[50.495s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__rosidl_typesupport_introspection_c.h
+[50.495s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__rosidl_typesupport_introspection_c.h
+[50.496s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__rosidl_typesupport_introspection_c.h
+[50.497s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__type_support.c
+[50.498s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_introspection_c.so
+[50.499s] -- Set runtime path of "/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_introspection_c.so" to ""
+[50.500s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_c.so
+[50.501s] -- Set runtime path of "/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_c.so" to ""
+[50.501s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api
+[50.501s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg
+[50.502s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/request_header.hpp
+[50.502s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/response_header.hpp
+[50.503s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/request_identity.hpp
+[50.503s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/request.hpp
+[50.504s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/request_lease.hpp
+[50.504s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/response.hpp
+[50.505s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/request_policy.hpp
+[50.505s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/response_status.hpp
+[50.506s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail
+[50.506s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__builder.hpp
+[50.507s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__builder.hpp
+[50.508s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__struct.hpp
+[50.508s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__type_support.hpp
+[50.509s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__traits.hpp
+[50.510s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__traits.hpp
+[50.511s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__traits.hpp
+[50.512s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__builder.hpp
+[50.512s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__traits.hpp
+[50.513s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__type_support.hpp
+[50.514s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__builder.hpp
+[50.514s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__type_support.hpp
+[50.515s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__struct.hpp
+[50.516s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__struct.hpp
+[50.516s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__builder.hpp
+[50.517s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__struct.hpp
+[50.518s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__traits.hpp
+[50.519s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__builder.hpp
+[50.520s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__struct.hpp
+[50.520s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__struct.hpp
+[50.521s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__traits.hpp
+[50.522s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__traits.hpp
+[50.523s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__type_support.hpp
+[50.523s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__struct.hpp
+[50.527s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__type_support.hpp
+[50.528s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__builder.hpp
+[50.529s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__builder.hpp
+[50.530s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__traits.hpp
+[50.530s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__type_support.hpp
+[50.531s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__type_support.hpp
+[50.532s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__struct.hpp
+[50.532s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__type_support.hpp
+[50.533s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/rosidl_generator_cpp__visibility_control.hpp
+[50.534s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api
+[50.535s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg
+[50.535s] -- Up-to-date: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail
+[50.536s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__rosidl_typesupport_introspection_cpp.hpp
+[50.536s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__type_support.cpp
+[50.537s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__type_support.cpp
+[50.538s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_policy__type_support.cpp
+[50.540s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__rosidl_typesupport_introspection_cpp.hpp
+[50.541s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__rosidl_typesupport_introspection_cpp.hpp
+[50.541s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_status__rosidl_typesupport_introspection_cpp.hpp
+[50.542s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__rosidl_typesupport_introspection_cpp.hpp
+[50.543s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__rosidl_typesupport_introspection_cpp.hpp
+[50.544s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_identity__rosidl_typesupport_introspection_cpp.hpp
+[50.544s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_header__type_support.cpp
+[50.545s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__type_support.cpp
+[50.546s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response__rosidl_typesupport_introspection_cpp.hpp
+[50.546s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request__type_support.cpp
+[50.547s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/request_lease__type_support.cpp
+[50.548s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/include/unitree_api/msg/detail/response_header__type_support.cpp
+[50.549s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_introspection_cpp.so
+[50.550s] -- Set runtime path of "/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_introspection_cpp.so" to ""
+[50.551s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_cpp.so
+[50.552s] -- Set runtime path of "/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__rosidl_typesupport_cpp.so" to ""
+[50.553s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/environment/pythonpath.sh
+[50.554s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/environment/pythonpath.dsv
+[50.555s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/__init__.py
+[50.631s] Compiling '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/__init__.py'...
+[50.650s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg
+[50.650s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_response_header.py
+[50.650s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_response_status_s.c
+[50.650s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_request_s.c
+[50.650s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_request_identity_s.c
+[50.650s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_request.py
+[50.651s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_request_policy.py
+[50.651s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_response.py
+[50.651s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_request_policy_s.c
+[50.651s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_response_status.py
+[50.651s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_request_header.py
+[50.651s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/__init__.py
+[50.651s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_request_lease_s.c
+[50.651s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_request_identity.py
+[50.651s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_response_header_s.c
+[50.652s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_response_s.c
+[50.652s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_request_lease.py
+[50.652s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/msg/_request_header_s.c
+[50.652s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/unitree_api_s__rosidl_typesupport_fastrtps_c.cpython-38-aarch64-linux-gnu.so
+[50.654s] -- Set runtime path of "/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/unitree_api_s__rosidl_typesupport_fastrtps_c.cpython-38-aarch64-linux-gnu.so" to ""
+[50.655s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/unitree_api_s__rosidl_typesupport_introspection_c.cpython-38-aarch64-linux-gnu.so
+[50.656s] -- Set runtime path of "/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/unitree_api_s__rosidl_typesupport_introspection_c.cpython-38-aarch64-linux-gnu.so" to ""
+[50.657s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/unitree_api_s__rosidl_typesupport_c.cpython-38-aarch64-linux-gnu.so
+[50.659s] -- Set runtime path of "/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages/unitree_api/unitree_api_s__rosidl_typesupport_c.cpython-38-aarch64-linux-gnu.so" to ""
+[50.659s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__python.so
+[50.661s] -- Set runtime path of "/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/libunitree_api__python.so" to ""
+[50.661s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/Request.idl
+[50.662s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/RequestHeader.idl
+[50.663s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/RequestIdentity.idl
+[50.664s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/RequestLease.idl
+[50.665s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/RequestPolicy.idl
+[50.666s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/Response.idl
+[50.667s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/ResponseHeader.idl
+[50.668s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/ResponseStatus.idl
+[50.672s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/Request.msg
+[50.673s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/RequestHeader.msg
+[50.674s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/RequestIdentity.msg
+[50.675s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/RequestLease.msg
+[50.676s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/RequestPolicy.msg
+[50.677s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/Response.msg
+[50.678s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/ResponseHeader.msg
+[50.679s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/ResponseStatus.msg
+[50.680s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/dds_connext
+[50.680s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/dds_connext/Request_.idl
+[50.681s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/dds_connext/RequestLease_.idl
+[50.682s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/dds_connext/RequestHeader_.idl
+[50.682s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/dds_connext/Response_.idl
+[50.683s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/dds_connext/ResponseHeader_.idl
+[50.684s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/dds_connext/ResponseStatus_.idl
+[50.685s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/dds_connext/RequestIdentity_.idl
+[50.685s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/msg/dds_connext/RequestPolicy_.idl
+[50.686s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/ament_index/resource_index/package_run_dependencies/unitree_api
+[50.687s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/ament_index/resource_index/parent_prefix_path/unitree_api
+[50.688s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/environment/ament_prefix_path.sh
+[50.689s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/environment/ament_prefix_path.dsv
+[50.690s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/environment/path.sh
+[50.691s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/environment/path.dsv
+[50.692s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/local_setup.bash
+[50.693s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/local_setup.sh
+[50.694s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/local_setup.zsh
+[50.694s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/local_setup.dsv
+[50.695s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/package.dsv
+[50.696s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/ament_index/resource_index/packages/unitree_api
+[50.697s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_api__rosidl_generator_cExport.cmake
+[50.698s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_api__rosidl_generator_cExport-noconfig.cmake
+[50.699s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_api__rosidl_typesupport_introspection_cExport.cmake
+[50.700s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_api__rosidl_typesupport_introspection_cExport-noconfig.cmake
+[50.701s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_api__rosidl_typesupport_cExport.cmake
+[50.702s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_api__rosidl_typesupport_cExport-noconfig.cmake
+[50.703s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_api__rosidl_generator_cppExport.cmake
+[50.704s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_api__rosidl_typesupport_introspection_cppExport.cmake
+[50.705s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_api__rosidl_typesupport_introspection_cppExport-noconfig.cmake
+[50.706s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_api__rosidl_typesupport_cppExport.cmake
+[50.707s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_api__rosidl_typesupport_cppExport-noconfig.cmake
+[50.708s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/rosidl_cmake-extras.cmake
+[50.709s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/ament_cmake_export_dependencies-extras.cmake
+[50.710s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/ament_cmake_export_libraries-extras.cmake
+[50.711s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/ament_cmake_export_targets-extras.cmake
+[50.712s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/ament_cmake_export_include_directories-extras.cmake
+[50.713s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+[50.714s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+[50.715s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_apiConfig.cmake
+[50.715s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake/unitree_apiConfig-version.cmake
+[50.717s] -- Installing: /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/package.xml
+[50.723s] Invoked command in '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/build/unitree_api' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/build/unitree_api

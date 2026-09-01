@@ -12,5 +12,6 @@ socksio
 streamlit
 fastapi
 uvicorn
+websockets
 httpx
 pytest

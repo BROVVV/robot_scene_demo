@@ -1,0 +1,436 @@
+[0.000000] (-) TimerEvent: {}
+[0.000251] (-) JobUnselected: {'identifier': 'go2w_camera_bridge'}
+[0.000321] (-) JobUnselected: {'identifier': 'go2w_cmd_vel_bridge'}
+[0.000363] (-) JobUnselected: {'identifier': 'go2w_control_arbiter'}
+[0.000398] (-) JobUnselected: {'identifier': 'go2w_description'}
+[0.000430] (-) JobUnselected: {'identifier': 'go2w_lidar_preprocessor'}
+[0.000461] (-) JobUnselected: {'identifier': 'go2w_lio_bringup'}
+[0.000490] (-) JobUnselected: {'identifier': 'go2w_plain_slam_bridge'}
+[0.000520] (-) JobUnselected: {'identifier': 'go2w_rgb_lidar_fusion'}
+[0.000549] (-) JobUnselected: {'identifier': 'go2w_sensor_time_bridge'}
+[0.000581] (-) JobUnselected: {'identifier': 'hesai_ros_driver'}
+[0.000609] (-) JobUnselected: {'identifier': 'robot_scene_live_bridge'}
+[0.000637] (-) JobUnselected: {'identifier': 'robot_scene_nav_bringup'}
+[0.000678] (plain_slam_ros2) JobQueued: {'identifier': 'plain_slam_ros2', 'dependencies': OrderedDict()}
+[0.000720] (plain_slam_ros2) JobStarted: {'identifier': 'plain_slam_ros2'}
+[0.081546] (-) TimerEvent: {}
+[0.188390] (-) TimerEvent: {}
+[0.288812] (-) TimerEvent: {}
+[0.389552] (-) TimerEvent: {}
+[0.413553] (plain_slam_ros2) JobProgress: {'identifier': 'plain_slam_ros2', 'progress': 'cmake'}
+[0.422042] (plain_slam_ros2) JobProgress: {'identifier': 'plain_slam_ros2', 'progress': 'build'}
+[0.423745] (plain_slam_ros2) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2', '--', '-j4', '-l4'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55382 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '26'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2'), ('SSH_CONNECTION', '192.168.123.99 55382 192.168.123.18 22'), ('PYTHONPATH', '/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/opt/ros/foxy')]), 'shell': False}
+[0.490652] (-) TimerEvent: {}
+[0.594127] (-) TimerEvent: {}
+[0.694477] (-) TimerEvent: {}
+[0.737470] (plain_slam_ros2) StdoutLine: {'line': b'Scanning dependencies of target lidar_lidar_calibration_node\n'}
+[0.794649] (-) TimerEvent: {}
+[0.850782] (plain_slam_ros2) StdoutLine: {'line': b'[  2%] Building CXX object CMakeFiles/lidar_lidar_calibration_node.dir/src/lidar_lidar_calibration_node.cpp.o\n'}
+[0.894820] (-) TimerEvent: {}
+[0.995174] (-) TimerEvent: {}
+[1.096042] (-) TimerEvent: {}
+[1.196460] (-) TimerEvent: {}
+[1.296885] (-) TimerEvent: {}
+[1.397343] (-) TimerEvent: {}
+[1.497984] (-) TimerEvent: {}
+[1.598782] (-) TimerEvent: {}
+[1.700046] (-) TimerEvent: {}
+[1.803961] (-) TimerEvent: {}
+[1.905353] (-) TimerEvent: {}
+[2.012189] (-) TimerEvent: {}
+[2.112589] (-) TimerEvent: {}
+[2.212949] (-) TimerEvent: {}
+[2.313315] (-) TimerEvent: {}
+[2.413702] (-) TimerEvent: {}
+[2.514074] (-) TimerEvent: {}
+[2.614894] (-) TimerEvent: {}
+[2.716478] (-) TimerEvent: {}
+[2.817059] (-) TimerEvent: {}
+[2.919386] (-) TimerEvent: {}
+[3.021037] (-) TimerEvent: {}
+[3.121411] (-) TimerEvent: {}
+[3.222183] (-) TimerEvent: {}
+[3.322552] (-) TimerEvent: {}
+[3.423009] (-) TimerEvent: {}
+[3.523399] (-) TimerEvent: {}
+[3.623736] (-) TimerEvent: {}
+[3.728053] (-) TimerEvent: {}
+[3.828539] (-) TimerEvent: {}
+[3.934801] (-) TimerEvent: {}
+[4.038943] (-) TimerEvent: {}
+[4.147971] (-) TimerEvent: {}
+[4.251959] (-) TimerEvent: {}
+[4.352325] (-) TimerEvent: {}
+[4.460013] (-) TimerEvent: {}
+[4.560380] (-) TimerEvent: {}
+[4.660765] (-) TimerEvent: {}
+[4.761129] (-) TimerEvent: {}
+[4.861496] (-) TimerEvent: {}
+[4.961861] (-) TimerEvent: {}
+[5.062228] (-) TimerEvent: {}
+[5.162603] (-) TimerEvent: {}
+[5.262951] (-) TimerEvent: {}
+[5.364104] (-) TimerEvent: {}
+[5.465743] (-) TimerEvent: {}
+[5.566083] (-) TimerEvent: {}
+[5.666489] (-) TimerEvent: {}
+[5.766878] (-) TimerEvent: {}
+[5.867390] (-) TimerEvent: {}
+[5.967906] (-) TimerEvent: {}
+[6.068322] (-) TimerEvent: {}
+[6.169342] (-) TimerEvent: {}
+[6.269957] (-) TimerEvent: {}
+[6.373225] (-) TimerEvent: {}
+[6.473922] (-) TimerEvent: {}
+[6.574920] (-) TimerEvent: {}
+[6.579671] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp: In function \xe2\x80\x98int main()\xe2\x80\x99:\n'}
+[6.580221] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:43: error: no match for \xe2\x80\x98operator<<\xe2\x80\x99 (operand types are \xe2\x80\x98std::basic_ostream<char>::__ostream_type\xe2\x80\x99 {aka \xe2\x80\x98std::basic_ostream<char>\xe2\x80\x99} and \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99})\n'}
+[6.580385] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.580513] (plain_slam_ros2) StderrLine: {'line': b'      |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^~ ~\n'}
+[6.580632] (plain_slam_ros2) StderrLine: {'line': b'      |                              |               |\n'}
+[6.580744] (plain_slam_ros2) StderrLine: {'line': b'      |                              |               const Quaternionf {aka const Eigen::Quaternion<float>}\n'}
+[6.580855] (plain_slam_ros2) StderrLine: {'line': b'      |                              std::basic_ostream<char>::__ostream_type {aka std::basic_ostream<char>}\n'}
+[6.580960] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.581068] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.581175] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:108:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::basic_ostream<_CharT, _Traits>::__ostream_type& (*)(std::basic_ostream<_CharT, _Traits>::__ostream_type&)) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.581296] (plain_slam_ros2) StderrLine: {'line': b'  108 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))\n'}
+[6.581403] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.581507] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:108:36: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98std::basic_ostream<char>::__ostream_type& (*)(std::basic_ostream<char>::__ostream_type&)\xe2\x80\x99 {aka \xe2\x80\x98std::basic_ostream<char>& (*)(std::basic_ostream<char>&)\xe2\x80\x99}\n'}
+[6.581644] (plain_slam_ros2) StderrLine: {'line': b'  108 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))\n'}
+[6.581751] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~\n'}
+[6.581854] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:117:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::basic_ostream<_CharT, _Traits>::__ios_type& (*)(std::basic_ostream<_CharT, _Traits>::__ios_type&)) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>; std::basic_ostream<_CharT, _Traits>::__ios_type = std::basic_ios<char>]\xe2\x80\x99\n'}
+[6.581976] (plain_slam_ros2) StderrLine: {'line': b'  117 |       operator<<(__ios_type& (*__pf)(__ios_type&))\n'}
+[6.582077] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.582174] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:117:32: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98std::basic_ostream<char>::__ios_type& (*)(std::basic_ostream<char>::__ios_type&)\xe2\x80\x99 {aka \xe2\x80\x98std::basic_ios<char>& (*)(std::basic_ios<char>&)\xe2\x80\x99}\n'}
+[6.582277] (plain_slam_ros2) StderrLine: {'line': b'  117 |       operator<<(__ios_type& (*__pf)(__ios_type&))\n'}
+[6.582379] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~\n'}
+[6.582481] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:127:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::ios_base& (*)(std::ios_base&)) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.582588] (plain_slam_ros2) StderrLine: {'line': b'  127 |       operator<<(ios_base& (*__pf) (ios_base&))\n'}
+[6.582692] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.582794] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:127:30: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98std::ios_base& (*)(std::ios_base&)\xe2\x80\x99\n'}
+[6.582927] (plain_slam_ros2) StderrLine: {'line': b'  127 |       operator<<(ios_base& (*__pf) (ios_base&))\n'}
+[6.583030] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~\n'}
+[6.583134] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:166:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.583261] (plain_slam_ros2) StderrLine: {'line': b'  166 |       operator<<(long __n)\n'}
+[6.583366] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.583469] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:166:23: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98long int\xe2\x80\x99\n'}
+[6.583597] (plain_slam_ros2) StderrLine: {'line': b'  166 |       operator<<(long __n)\n'}
+[6.583700] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~^~~\n'}
+[6.583802] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:170:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.583956] (plain_slam_ros2) StderrLine: {'line': b'  170 |       operator<<(unsigned long __n)\n'}
+[6.584066] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.584170] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:170:32: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98long unsigned int\xe2\x80\x99\n'}
+[6.584276] (plain_slam_ros2) StderrLine: {'line': b'  170 |       operator<<(unsigned long __n)\n'}
+[6.584378] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~~~~~~~~~^~~\n'}
+[6.584481] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:174:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(bool) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.584599] (plain_slam_ros2) StderrLine: {'line': b'  174 |       operator<<(bool __n)\n'}
+[6.584704] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.584807] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:174:23: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98bool\xe2\x80\x99\n'}
+[6.584911] (plain_slam_ros2) StderrLine: {'line': b'  174 |       operator<<(bool __n)\n'}
+[6.585013] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~^~~\n'}
+[6.585119] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/ostream:702,\n'}
+[6.585221] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/iostream:39,\n'}
+[6.585320] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.585425] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/ostream.tcc:91:5: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(short int) [with _CharT = char; _Traits = std::char_traits<char>]\xe2\x80\x99\n'}
+[6.585532] (plain_slam_ros2) StderrLine: {'line': b'   91 |     basic_ostream<_CharT, _Traits>::\n'}
+[6.585634] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'}
+[6.585737] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/ostream.tcc:92:22: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98short int\xe2\x80\x99\n'}
+[6.585840] (plain_slam_ros2) StderrLine: {'line': b'   92 |     operator<<(short __n)\n'}
+[6.585943] (plain_slam_ros2) StderrLine: {'line': b'      |                ~~~~~~^~~\n'}
+[6.586041] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.586139] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.586238] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:181:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(short unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.586348] (plain_slam_ros2) StderrLine: {'line': b'  181 |       operator<<(unsigned short __n)\n'}
+[6.586451] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.586554] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:181:33: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98short unsigned int\xe2\x80\x99\n'}
+[6.586682] (plain_slam_ros2) StderrLine: {'line': b'  181 |       operator<<(unsigned short __n)\n'}
+[6.586783] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~~~~~~~~~~^~~\n'}
+[6.586884] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/ostream:702,\n'}
+[6.586984] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/iostream:39,\n'}
+[6.587086] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.587203] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/ostream.tcc:105:5: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(int) [with _CharT = char; _Traits = std::char_traits<char>]\xe2\x80\x99\n'}
+[6.587310] (plain_slam_ros2) StderrLine: {'line': b'  105 |     basic_ostream<_CharT, _Traits>::\n'}
+[6.587413] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'}
+[6.587514] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/ostream.tcc:106:20: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98int\xe2\x80\x99\n'}
+[6.587617] (plain_slam_ros2) StderrLine: {'line': b'  106 |     operator<<(int __n)\n'}
+[6.587719] (plain_slam_ros2) StderrLine: {'line': b'      |                ~~~~^~~\n'}
+[6.587823] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.587954] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.588066] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:192:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.588207] (plain_slam_ros2) StderrLine: {'line': b'  192 |       operator<<(unsigned int __n)\n'}
+[6.588314] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.588416] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:192:31: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98unsigned int\xe2\x80\x99\n'}
+[6.588521] (plain_slam_ros2) StderrLine: {'line': b'  192 |       operator<<(unsigned int __n)\n'}
+[6.588623] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~~~~~~~~^~~\n'}
+[6.588726] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:201:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.588843] (plain_slam_ros2) StderrLine: {'line': b'  201 |       operator<<(long long __n)\n'}
+[6.588946] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.589048] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:201:28: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98long long int\xe2\x80\x99\n'}
+[6.589153] (plain_slam_ros2) StderrLine: {'line': b'  201 |       operator<<(long long __n)\n'}
+[6.589255] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~~~~~^~~\n'}
+[6.589357] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:205:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.589481] (plain_slam_ros2) StderrLine: {'line': b'  205 |       operator<<(unsigned long long __n)\n'}
+[6.589586] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.589688] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:205:37: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98long long unsigned int\xe2\x80\x99\n'}
+[6.589795] (plain_slam_ros2) StderrLine: {'line': b'  205 |       operator<<(unsigned long long __n)\n'}
+[6.589898] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~~~~~~~~~~~~~~^~~\n'}
+[6.589998] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:220:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(double) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.590105] (plain_slam_ros2) StderrLine: {'line': b'  220 |       operator<<(double __f)\n'}
+[6.590208] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.590304] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:220:25: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98double\xe2\x80\x99\n'}
+[6.590404] (plain_slam_ros2) StderrLine: {'line': b'  220 |       operator<<(double __f)\n'}
+[6.590501] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~~^~~\n'}
+[6.590599] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:224:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(float) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.590705] (plain_slam_ros2) StderrLine: {'line': b'  224 |       operator<<(float __f)\n'}
+[6.590807] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.590907] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:224:24: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98float\xe2\x80\x99\n'}
+[6.591026] (plain_slam_ros2) StderrLine: {'line': b'  224 |       operator<<(float __f)\n'}
+[6.591129] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~^~~\n'}
+[6.591229] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:232:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long double) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.591372] (plain_slam_ros2) StderrLine: {'line': b'  232 |       operator<<(long double __f)\n'}
+[6.591481] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.591584] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:232:30: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98long double\xe2\x80\x99\n'}
+[6.591688] (plain_slam_ros2) StderrLine: {'line': b'  232 |       operator<<(long double __f)\n'}
+[6.591788] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~~~~~~~^~~\n'}
+[6.592596] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:245:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(const void*) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]\xe2\x80\x99\n'}
+[6.592770] (plain_slam_ros2) StderrLine: {'line': b'  245 |       operator<<(const void* __p)\n'}
+[6.592885] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.592994] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:245:30: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98const void*\xe2\x80\x99\n'}
+[6.593121] (plain_slam_ros2) StderrLine: {'line': b'  245 |       operator<<(const void* __p)\n'}
+[6.593242] (plain_slam_ros2) StderrLine: {'line': b'      |                  ~~~~~~~~~~~~^~~\n'}
+[6.593348] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:250:7: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::nullptr_t) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>; std::nullptr_t = std::nullptr_t]\xe2\x80\x99\n'}
+[6.593457] (plain_slam_ros2) StderrLine: {'line': b'  250 |       operator<<(nullptr_t)\n'}
+[6.593557] (plain_slam_ros2) StderrLine: {'line': b'      |       ^~~~~~~~\n'}
+[6.593656] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:250:18: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98std::nullptr_t\xe2\x80\x99\n'}
+[6.593760] (plain_slam_ros2) StderrLine: {'line': b'  250 |       operator<<(nullptr_t)\n'}
+[6.593859] (plain_slam_ros2) StderrLine: {'line': b'      |                  ^~~~~~~~~\n'}
+[6.593960] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/ostream:702,\n'}
+[6.594059] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/iostream:39,\n'}
+[6.594160] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.594261] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/ostream.tcc:119:5: note: candidate: \xe2\x80\x98std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(std::basic_ostream<_CharT, _Traits>::__streambuf_type*) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__streambuf_type = std::basic_streambuf<char>]\xe2\x80\x99\n'}
+[6.594377] (plain_slam_ros2) StderrLine: {'line': b'  119 |     basic_ostream<_CharT, _Traits>::\n'}
+[6.594476] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'}
+[6.594573] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/ostream.tcc:120:34: note:   no known conversion for argument 1 from \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} to \xe2\x80\x98std::basic_ostream<char>::__streambuf_type*\xe2\x80\x99 {aka \xe2\x80\x98std::basic_streambuf<char>*\xe2\x80\x99}\n'}
+[6.594679] (plain_slam_ros2) StderrLine: {'line': b'  120 |     operator<<(__streambuf_type* __sbin)\n'}
+[6.594779] (plain_slam_ros2) StderrLine: {'line': b'      |                ~~~~~~~~~~~~~~~~~~^~~~~~\n'}
+[6.594878] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/eigen3/Eigen/Core:433,\n'}
+[6.594977] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/eigen3/Eigen/Geometry:11,\n'}
+[6.595078] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:28:\n'}
+[6.595180] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/eigen3/Eigen/src/Core/IO.h:216:16: note: candidate: \xe2\x80\x98template<class Derived> std::ostream& Eigen::operator<<(std::ostream&, const Eigen::DenseBase<Derived>&)\xe2\x80\x99\n'}
+[6.595304] (plain_slam_ros2) StderrLine: {'line': b'  216 | std::ostream & operator <<\n'}
+[6.595406] (plain_slam_ros2) StderrLine: {'line': b'      |                ^~~~~~~~\n'}
+[6.595506] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/eigen3/Eigen/src/Core/IO.h:216:16: note:   template argument deduction/substitution failed:\n'}
+[6.595607] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} is not derived from \xe2\x80\x98const Eigen::DenseBase<Derived>\xe2\x80\x99\n'}
+[6.595723] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.595829] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.604366] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/bits/basic_string.h:48,\n'}
+[6.604842] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/string:55,\n'}
+[6.605003] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/bits/locale_classes.h:40,\n'}
+[6.605128] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/bits/ios_base.h:41,\n'}
+[6.605347] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/ios:42,\n'}
+[6.605487] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/ostream:38,\n'}
+[6.605610] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/iostream:39,\n'}
+[6.606779] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.606980] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/string_view:580:5: note: candidate: \xe2\x80\x98template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, std::basic_string_view<_CharT, _Traits>)\xe2\x80\x99\n'}
+[6.607133] (plain_slam_ros2) StderrLine: {'line': b'  580 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n'}
+[6.607252] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.607362] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/string_view:580:5: note:   template argument deduction/substitution failed:\n'}
+[6.607472] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   \xe2\x80\x98Eigen::Quaternion<float>\xe2\x80\x99 is not derived from \xe2\x80\x98std::basic_string_view<_CharT, _Traits>\xe2\x80\x99\n'}
+[6.607582] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.607687] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.607792] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/string:55,\n'}
+[6.607999] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/bits/locale_classes.h:40,\n'}
+[6.608116] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/bits/ios_base.h:41,\n'}
+[6.608221] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/ios:42,\n'}
+[6.608347] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/ostream:38,\n'}
+[6.608450] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/iostream:39,\n'}
+[6.608550] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.608669] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/basic_string.h:6419:5: note: candidate: \xe2\x80\x98template<class _CharT, class _Traits, class _Alloc> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)\xe2\x80\x99\n'}
+[6.608779] (plain_slam_ros2) StderrLine: {'line': b' 6419 |     operator<<(basic_ostream<_CharT, _Traits>& __os,\n'}
+[6.608880] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.608981] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/basic_string.h:6419:5: note:   template argument deduction/substitution failed:\n'}
+[6.609080] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} is not derived from \xe2\x80\x98const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>\xe2\x80\x99\n'}
+[6.609186] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.613350] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.614945] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/bits/ios_base.h:46,\n'}
+[6.615120] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/ios:42,\n'}
+[6.615256] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/ostream:38,\n'}
+[6.615376] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/iostream:39,\n'}
+[6.627164] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.627579] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/system_error:217:5: note: candidate: \xe2\x80\x98template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const std::error_code&)\xe2\x80\x99\n'}
+[6.627730] (plain_slam_ros2) StderrLine: {'line': b'  217 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const error_code& __e)\n'}
+[6.627941] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.630759] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/system_error:217:5: note:   template argument deduction/substitution failed:\n'}
+[6.631132] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert \xe2\x80\x98q\xe2\x80\x99 (type \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99}) to type \xe2\x80\x98const std::error_code&\xe2\x80\x99\n'}
+[6.631294] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.631749] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.632260] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.633953] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.636268] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:506:5: note: candidate: \xe2\x80\x98template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, _CharT)\xe2\x80\x99\n'}
+[6.636722] (plain_slam_ros2) StderrLine: {'line': b'  506 |     operator<<(basic_ostream<_CharT, _Traits>& __out, _CharT __c)\n'}
+[6.636901] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.637347] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:506:5: note:   template argument deduction/substitution failed:\n'}
+[6.637536] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   deduced conflicting types for parameter \xe2\x80\x98_CharT\xe2\x80\x99 (\xe2\x80\x98char\xe2\x80\x99 and \xe2\x80\x98Eigen::Quaternion<float>\xe2\x80\x99)\n'}
+[6.637667] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.637785] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.637895] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.638001] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.638108] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:511:5: note: candidate: \xe2\x80\x98template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, char)\xe2\x80\x99\n'}
+[6.638216] (plain_slam_ros2) StderrLine: {'line': b'  511 |     operator<<(basic_ostream<_CharT, _Traits>& __out, char __c)\n'}
+[6.638321] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.638422] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:511:5: note:   template argument deduction/substitution failed:\n'}
+[6.638525] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert \xe2\x80\x98q\xe2\x80\x99 (type \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99}) to type \xe2\x80\x98char\xe2\x80\x99\n'}
+[6.638631] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.638731] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.638861] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.638963] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.639082] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:517:5: note: candidate: \xe2\x80\x98template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, char)\xe2\x80\x99\n'}
+[6.639188] (plain_slam_ros2) StderrLine: {'line': b'  517 |     operator<<(basic_ostream<char, _Traits>& __out, char __c)\n'}
+[6.639291] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.639388] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:517:5: note:   template argument deduction/substitution failed:\n'}
+[6.639490] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert \xe2\x80\x98q\xe2\x80\x99 (type \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99}) to type \xe2\x80\x98char\xe2\x80\x99\n'}
+[6.639591] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.639691] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.639791] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.639918] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.640024] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:523:5: note: candidate: \xe2\x80\x98template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, signed char)\xe2\x80\x99\n'}
+[6.640132] (plain_slam_ros2) StderrLine: {'line': b'  523 |     operator<<(basic_ostream<char, _Traits>& __out, signed char __c)\n'}
+[6.640259] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.640360] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:523:5: note:   template argument deduction/substitution failed:\n'}
+[6.640463] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert \xe2\x80\x98q\xe2\x80\x99 (type \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99}) to type \xe2\x80\x98signed char\xe2\x80\x99\n'}
+[6.640567] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.640670] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.640770] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.640870] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.640990] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:528:5: note: candidate: \xe2\x80\x98template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, unsigned char)\xe2\x80\x99\n'}
+[6.641096] (plain_slam_ros2) StderrLine: {'line': b'  528 |     operator<<(basic_ostream<char, _Traits>& __out, unsigned char __c)\n'}
+[6.641197] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.641297] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:528:5: note:   template argument deduction/substitution failed:\n'}
+[6.641397] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert \xe2\x80\x98q\xe2\x80\x99 (type \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99}) to type \xe2\x80\x98unsigned char\xe2\x80\x99\n'}
+[6.641501] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.641603] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.641703] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.641802] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.641903] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:548:5: note: candidate: \xe2\x80\x98template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const _CharT*)\xe2\x80\x99\n'}
+[6.642007] (plain_slam_ros2) StderrLine: {'line': b'  548 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const _CharT* __s)\n'}
+[6.642108] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.642206] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:548:5: note:   template argument deduction/substitution failed:\n'}
+[6.642307] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   mismatched types \xe2\x80\x98const _CharT*\xe2\x80\x99 and \xe2\x80\x98Eigen::Quaternion<float>\xe2\x80\x99\n'}
+[6.642412] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.642514] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.642614] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/ostream:702,\n'}
+[6.642713] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/c++/9/iostream:39,\n'}
+[6.642812] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.642932] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/ostream.tcc:321:5: note: candidate: \xe2\x80\x98template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const char*)\xe2\x80\x99\n'}
+[6.643036] (plain_slam_ros2) StderrLine: {'line': b'  321 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const char* __s)\n'}
+[6.643137] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.643254] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/ostream.tcc:321:5: note:   template argument deduction/substitution failed:\n'}
+[6.643355] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert \xe2\x80\x98q\xe2\x80\x99 (type \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99}) to type \xe2\x80\x98const char*\xe2\x80\x99\n'}
+[6.643469] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.643567] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.643665] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.643763] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.647474] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:565:5: note: candidate: \xe2\x80\x98template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const char*)\xe2\x80\x99\n'}
+[6.647760] (plain_slam_ros2) StderrLine: {'line': b'  565 |     operator<<(basic_ostream<char, _Traits>& __out, const char* __s)\n'}
+[6.647933] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.648058] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:565:5: note:   template argument deduction/substitution failed:\n'}
+[6.648174] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert \xe2\x80\x98q\xe2\x80\x99 (type \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99}) to type \xe2\x80\x98const char*\xe2\x80\x99\n'}
+[6.648288] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.648396] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.648502] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.648602] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.648710] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:578:5: note: candidate: \xe2\x80\x98template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const signed char*)\xe2\x80\x99\n'}
+[6.648848] (plain_slam_ros2) StderrLine: {'line': b'  578 |     operator<<(basic_ostream<char, _Traits>& __out, const signed char* __s)\n'}
+[6.648957] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.649059] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:578:5: note:   template argument deduction/substitution failed:\n'}
+[6.649160] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert \xe2\x80\x98q\xe2\x80\x99 (type \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99}) to type \xe2\x80\x98const signed char*\xe2\x80\x99\n'}
+[6.649284] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.649388] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.649490] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.649590] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.649689] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:583:5: note: candidate: \xe2\x80\x98template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const unsigned char*)\xe2\x80\x99\n'}
+[6.649791] (plain_slam_ros2) StderrLine: {'line': b'  583 |     operator<<(basic_ostream<char, _Traits>& __out, const unsigned char* __s)\n'}
+[6.649891] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.649991] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:583:5: note:   template argument deduction/substitution failed:\n'}
+[6.650093] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert \xe2\x80\x98q\xe2\x80\x99 (type \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99}) to type \xe2\x80\x98const unsigned char*\xe2\x80\x99\n'}
+[6.650196] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.650296] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.650395] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/iostream:39,\n'}
+[6.650494] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:25:\n'}
+[6.650613] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:691:5: note: candidate: \xe2\x80\x98template<class _Ostream, class _Tp> typename std::enable_if<std::__and_<std::__not_<std::is_lvalue_reference<_Tp> >, std::__is_convertible_to_basic_ostream<_Ostream>, std::__is_insertable<typename std::__is_convertible_to_basic_ostream<_Tp>::__ostream_type, const _Tp&, void> >::value, typename std::__is_convertible_to_basic_ostream<_Tp>::__ostream_type>::type std::operator<<(_Ostream&&, const _Tp&)\xe2\x80\x99\n'}
+[6.650732] (plain_slam_ros2) StderrLine: {'line': b'  691 |     operator<<(_Ostream&& __os, const _Tp& __x)\n'}
+[6.650833] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.650930] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:691:5: note:   template argument deduction/substitution failed:\n'}
+[6.651027] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream: In substitution of \xe2\x80\x98template<class _Ostream, class _Tp> typename std::enable_if<std::__and_<std::__not_<std::is_lvalue_reference<_Tp> >, std::__is_convertible_to_basic_ostream<_Ostream>, std::__is_insertable<typename std::__is_convertible_to_basic_ostream<_Tp>::__ostream_type, const _Tp&, void> >::value, typename std::__is_convertible_to_basic_ostream<_Tp>::__ostream_type>::type std::operator<<(_Ostream&&, const _Tp&) [with _Ostream = std::basic_ostream<char>&; _Tp = Eigen::Quaternion<float>]\xe2\x80\x99:\n'}
+[6.651178] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46:   required from here\n'}
+[6.651284] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/ostream:691:5: error: no type named \xe2\x80\x98type\xe2\x80\x99 in \xe2\x80\x98struct std::enable_if<false, std::basic_ostream<char>&>\xe2\x80\x99\n'}
+[6.651384] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/eigen3/Eigen/Core:96,\n'}
+[6.651483] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/eigen3/Eigen/Geometry:11,\n'}
+[6.651594] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:28:\n'}
+[6.651691] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/complex:552:5: note: candidate: \xe2\x80\x98template<class _Tp, class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const std::complex<_Tp>&)\xe2\x80\x99\n'}
+[6.651792] (plain_slam_ros2) StderrLine: {'line': b'  552 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const complex<_Tp>& __x)\n'}
+[6.651932] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.652040] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/complex:552:5: note:   template argument deduction/substitution failed:\n'}
+[6.652150] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} is not derived from \xe2\x80\x98const std::complex<_Tp>\xe2\x80\x99\n'}
+[6.652256] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.652356] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.652455] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/eigen3/Eigen/Core:277,\n'}
+[6.652553] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/include/eigen3/Eigen/Geometry:11,\n'}
+[6.652651] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:28:\n'}
+[6.652748] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/cstddef:130:5: note: candidate: \xe2\x80\x98template<class _IntegerType> constexpr std::__byte_op_t<_IntegerType> std::operator<<(std::byte, _IntegerType)\xe2\x80\x99\n'}
+[6.652846] (plain_slam_ros2) StderrLine: {'line': b'  130 |     operator<<(byte __b, _IntegerType __shift) noexcept\n'}
+[6.652939] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.653035] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/cstddef:130:5: note:   template argument deduction/substitution failed:\n'}
+[6.653133] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:30: note:   cannot convert \xe2\x80\x98(& std::operator<< <std::char_traits<char> >(std::cout, ((const char*)"quaternion:")))->std::basic_ostream<char>::operator<<(std::endl<char, std::char_traits<char> >)\xe2\x80\x99 (type \xe2\x80\x98std::basic_ostream<char>::__ostream_type\xe2\x80\x99 {aka \xe2\x80\x98std::basic_ostream<char>\xe2\x80\x99}) to type \xe2\x80\x98std::byte\xe2\x80\x99\n'}
+[6.653240] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.653341] (plain_slam_ros2) StderrLine: {'line': b'      |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~\n'}
+[6.653443] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/memory:81,\n'}
+[6.653544] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/include/plain_slam/types.hpp:29,\n'}
+[6.653645] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:30:\n'}
+[6.653744] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/shared_ptr.h:66:5: note: candidate: \xe2\x80\x98template<class _Ch, class _Tr, class _Tp, __gnu_cxx::_Lock_policy _Lp> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const std::__shared_ptr<_Tp, _Lp>&)\xe2\x80\x99\n'}
+[6.653848] (plain_slam_ros2) StderrLine: {'line': b'   66 |     operator<<(std::basic_ostream<_Ch, _Tr>& __os,\n'}
+[6.653964] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.654065] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/bits/shared_ptr.h:66:5: note:   template argument deduction/substitution failed:\n'}
+[6.654176] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99} is not derived from \xe2\x80\x98const std::__shared_ptr<_Tp, _Lp>\xe2\x80\x99\n'}
+[6.654284] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.654388] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.654488] (plain_slam_ros2) StderrLine: {'line': b'In file included from /usr/include/c++/9/future:39,\n'}
+[6.654585] (plain_slam_ros2) StderrLine: {'line': b'                 from /usr/local/include/nanoflann.hpp:55,\n'}
+[6.654682] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/include/plain_slam/types.hpp:35,\n'}
+[6.654781] (plain_slam_ros2) StderrLine: {'line': b'                 from /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:30:\n'}
+[6.654897] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/thread:322:5: note: candidate: \xe2\x80\x98template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, std::thread::id)\xe2\x80\x99\n'}
+[6.655123] (plain_slam_ros2) StderrLine: {'line': b'  322 |     operator<<(basic_ostream<_CharT, _Traits>& __out, thread::id __id)\n'}
+[6.655313] (plain_slam_ros2) StderrLine: {'line': b'      |     ^~~~~~~~\n'}
+[6.655433] (plain_slam_ros2) StderrLine: {'line': b'/usr/include/c++/9/thread:322:5: note:   template argument deduction/substitution failed:\n'}
+[6.655544] (plain_slam_ros2) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2/src/lidar_lidar_calibration_node.cpp:76:46: note:   cannot convert \xe2\x80\x98q\xe2\x80\x99 (type \xe2\x80\x98const Quaternionf\xe2\x80\x99 {aka \xe2\x80\x98const Eigen::Quaternion<float>\xe2\x80\x99}) to type \xe2\x80\x98std::thread::id\xe2\x80\x99\n'}
+[6.655651] (plain_slam_ros2) StderrLine: {'line': b'   76 |   std::cout << "quaternion:" << std::endl << q << std::endl;\n'}
+[6.655753] (plain_slam_ros2) StderrLine: {'line': b'      |                                              ^\n'}
+[6.675401] (-) TimerEvent: {}
+[6.776011] (-) TimerEvent: {}
+[6.876675] (-) TimerEvent: {}
+[6.977903] (-) TimerEvent: {}
+[7.078675] (-) TimerEvent: {}
+[7.179375] (-) TimerEvent: {}
+[7.279813] (-) TimerEvent: {}
+[7.388007] (-) TimerEvent: {}
+[7.488375] (-) TimerEvent: {}
+[7.588746] (-) TimerEvent: {}
+[7.689129] (-) TimerEvent: {}
+[7.789500] (-) TimerEvent: {}
+[7.889861] (-) TimerEvent: {}
+[7.990219] (-) TimerEvent: {}
+[8.090683] (-) TimerEvent: {}
+[8.192031] (-) TimerEvent: {}
+[8.195995] (plain_slam_ros2) StderrLine: {'line': b'make[2]: *** [CMakeFiles/lidar_lidar_calibration_node.dir/build.make:63: CMakeFiles/lidar_lidar_calibration_node.dir/src/lidar_lidar_calibration_node.cpp.o] Error 1\n'}
+[8.197214] (plain_slam_ros2) StderrLine: {'line': b'make[1]: *** [CMakeFiles/Makefile2:84: CMakeFiles/lidar_lidar_calibration_node.dir/all] Error 2\n'}
+[8.197498] (plain_slam_ros2) StderrLine: {'line': b'make: *** [Makefile:141: all] Error 2\n'}
+[8.208757] (plain_slam_ros2) CommandEnded: {'returncode': 2}
+[8.292789] (-) TimerEvent: {}
+[8.393152] (-) TimerEvent: {}
+[8.493783] (-) TimerEvent: {}
+[8.594295] (-) TimerEvent: {}
+[8.696896] (-) TimerEvent: {}
+[8.798033] (-) TimerEvent: {}
+[8.898711] (-) TimerEvent: {}
+[8.978255] (plain_slam_ros2) JobEnded: {'identifier': 'plain_slam_ros2', 'rc': 2}
+[8.989438] (-) EventReactorShutdown: {}

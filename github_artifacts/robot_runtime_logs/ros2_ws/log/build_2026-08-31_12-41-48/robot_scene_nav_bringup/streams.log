@@ -1,0 +1,22 @@
+[0.219s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup': /usr/bin/cmake /home/unitree/robotscene/ros2_ws/src/robot_scene_nav_bringup -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup
+[0.390s] -- Found ament_cmake: 0.9.12 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.539s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[1.726s] Traceback (most recent call last):
+[1.726s]   File "/opt/ros/humble/share/ament_cmake_core/cmake/package_templates/templates_2_cmake.py", line 21, in <module>
+[1.726s]     from ament_package.templates import get_environment_hook_template_path
+[1.727s] ModuleNotFoundError: No module named 'ament_package'
+[1.883s] CMake Error at /opt/ros/humble/share/ament_cmake_core/cmake/ament_cmake_package_templates-extras.cmake:41 (message):
+[1.887s]   execute_process(/usr/bin/python3
+[1.888s]   /opt/ros/humble/share/ament_cmake_core/cmake/package_templates/templates_2_cmake.py
+[1.888s]   /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup/ament_cmake_package_templates/templates.cmake)
+[1.888s]   returned error code 1
+[1.888s] Call Stack (most recent call first):
+[1.889s]   /opt/ros/humble/share/ament_cmake_core/cmake/ament_cmake_coreConfig.cmake:41 (include)
+[1.889s]   /opt/ros/humble/share/ament_cmake/cmake/ament_cmake_export_dependencies-extras.cmake:15 (find_package)
+[1.889s]   /opt/ros/humble/share/ament_cmake/cmake/ament_cmakeConfig.cmake:41 (include)
+[1.889s]   CMakeLists.txt:3 (find_package)
+[1.893s] 
+[1.894s] 
+[1.894s] -- Configuring incomplete, errors occurred!
+[1.895s] See also "/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup/CMakeFiles/CMakeOutput.log".
+[1.940s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup' returned '1': /usr/bin/cmake /home/unitree/robotscene/ros2_ws/src/robot_scene_nav_bringup -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup

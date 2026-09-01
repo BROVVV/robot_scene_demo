@@ -1,0 +1,1890 @@
+[0.000000] (-) TimerEvent: {}
+[0.000486] (go2w_camera_bridge) JobQueued: {'identifier': 'go2w_camera_bridge', 'dependencies': OrderedDict()}
+[0.000714] (go2w_cmd_vel_bridge) JobQueued: {'identifier': 'go2w_cmd_vel_bridge', 'dependencies': OrderedDict()}
+[0.001309] (go2w_control_arbiter) JobQueued: {'identifier': 'go2w_control_arbiter', 'dependencies': OrderedDict()}
+[0.001705] (go2w_description) JobQueued: {'identifier': 'go2w_description', 'dependencies': OrderedDict()}
+[0.001900] (go2w_rgb_lidar_fusion) JobQueued: {'identifier': 'go2w_rgb_lidar_fusion', 'dependencies': OrderedDict()}
+[0.001951] (go2w_sensor_time_bridge) JobQueued: {'identifier': 'go2w_sensor_time_bridge', 'dependencies': OrderedDict()}
+[0.001991] (hesai_ros_driver) JobQueued: {'identifier': 'hesai_ros_driver', 'dependencies': OrderedDict()}
+[0.002026] (robot_scene_live_bridge) JobQueued: {'identifier': 'robot_scene_live_bridge', 'dependencies': OrderedDict()}
+[0.002058] (robot_scene_nav_bringup) JobQueued: {'identifier': 'robot_scene_nav_bringup', 'dependencies': OrderedDict()}
+[0.002090] (go2w_lidar_preprocessor) JobQueued: {'identifier': 'go2w_lidar_preprocessor', 'dependencies': OrderedDict([('go2w_description', '/home/unitree/robotscene/ros2_ws/install/go2w_description')])}
+[0.002133] (go2w_lio_bringup) JobQueued: {'identifier': 'go2w_lio_bringup', 'dependencies': OrderedDict([('go2w_description', '/home/unitree/robotscene/ros2_ws/install/go2w_description')])}
+[0.002170] (go2w_description) JobStarted: {'identifier': 'go2w_description'}
+[0.099096] (-) TimerEvent: {}
+[0.199982] (-) TimerEvent: {}
+[0.300580] (-) TimerEvent: {}
+[0.400910] (-) TimerEvent: {}
+[0.464578] (go2w_camera_bridge) JobStarted: {'identifier': 'go2w_camera_bridge'}
+[0.501234] (-) TimerEvent: {}
+[0.601848] (-) TimerEvent: {}
+[0.702371] (-) TimerEvent: {}
+[0.803044] (-) TimerEvent: {}
+[0.903640] (-) TimerEvent: {}
+[0.929589] (go2w_cmd_vel_bridge) JobStarted: {'identifier': 'go2w_cmd_vel_bridge'}
+[1.003949] (-) TimerEvent: {}
+[1.104526] (-) TimerEvent: {}
+[1.205238] (-) TimerEvent: {}
+[1.305699] (-) TimerEvent: {}
+[1.407184] (-) TimerEvent: {}
+[1.425867] (go2w_control_arbiter) JobStarted: {'identifier': 'go2w_control_arbiter'}
+[1.509463] (-) TimerEvent: {}
+[1.609990] (-) TimerEvent: {}
+[1.710752] (-) TimerEvent: {}
+[1.811500] (-) TimerEvent: {}
+[1.912174] (-) TimerEvent: {}
+[2.012610] (-) TimerEvent: {}
+[2.112980] (-) TimerEvent: {}
+[2.213331] (-) TimerEvent: {}
+[2.313687] (-) TimerEvent: {}
+[2.414049] (-) TimerEvent: {}
+[2.514447] (-) TimerEvent: {}
+[2.614816] (-) TimerEvent: {}
+[2.715253] (-) TimerEvent: {}
+[2.815963] (-) TimerEvent: {}
+[2.916608] (-) TimerEvent: {}
+[3.017034] (-) TimerEvent: {}
+[3.117406] (-) TimerEvent: {}
+[3.217767] (-) TimerEvent: {}
+[3.318118] (-) TimerEvent: {}
+[3.418604] (-) TimerEvent: {}
+[3.519318] (-) TimerEvent: {}
+[3.620705] (-) TimerEvent: {}
+[3.721825] (-) TimerEvent: {}
+[3.822387] (-) TimerEvent: {}
+[3.923016] (-) TimerEvent: {}
+[4.023566] (-) TimerEvent: {}
+[4.124040] (-) TimerEvent: {}
+[4.224557] (-) TimerEvent: {}
+[4.325354] (-) TimerEvent: {}
+[4.427203] (-) TimerEvent: {}
+[4.527600] (-) TimerEvent: {}
+[4.628635] (-) TimerEvent: {}
+[4.729230] (-) TimerEvent: {}
+[4.830402] (-) TimerEvent: {}
+[4.930858] (-) TimerEvent: {}
+[5.031214] (-) TimerEvent: {}
+[5.131616] (-) TimerEvent: {}
+[5.232001] (-) TimerEvent: {}
+[5.332400] (-) TimerEvent: {}
+[5.432970] (-) TimerEvent: {}
+[5.534271] (-) TimerEvent: {}
+[5.635112] (-) TimerEvent: {}
+[5.735999] (-) TimerEvent: {}
+[5.837699] (-) TimerEvent: {}
+[5.938090] (-) TimerEvent: {}
+[6.038460] (-) TimerEvent: {}
+[6.139013] (-) TimerEvent: {}
+[6.239406] (-) TimerEvent: {}
+[6.342395] (-) TimerEvent: {}
+[6.446429] (-) TimerEvent: {}
+[6.546812] (-) TimerEvent: {}
+[6.647180] (-) TimerEvent: {}
+[6.747538] (-) TimerEvent: {}
+[6.847955] (-) TimerEvent: {}
+[6.891527] (go2w_camera_bridge) Command: {'cmd': ['/usr/bin/python3', 'setup.py', 'develop', '--editable', '--build-directory', '/home/unitree/robotscene/ros2_ws/build/go2w_camera_bridge/build', '--no-deps', 'install_data'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_camera_bridge', 'env': {'HTTPS_PROXY': 'http://127.0.0.1:17891', 'USER': 'unitree', 'SSH_CLIENT': '192.168.123.99 55902 22', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'MOTD_SHOWN': 'pam', 'HOME': '/home/unitree', 'OLDPWD': '/home/unitree/robotscene', 'NO_PROXY': 'localhost,127.0.0.1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLCON_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install', 'ROS_DISTRO': 'foxy', 'LOGNAME': 'unitree', 'ALL_PROXY': 'socks5h://127.0.0.1:17891', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'XDG_SESSION_ID': '103', 'ROS_LOCALHOST_ONLY': '0', 'GO2W_UNITREE_ROOT': '/home/unitree/robotscene/external/unitree_ros2', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'en_US.UTF-8', 'GO2W_CONTROL_ROOT': '/home/unitree/robotscene/unitree_go2w_control', 'AMENT_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble', 'SHELL': '/bin/bash', 'PWD': '/home/unitree/robotscene/ros2_ws/build/go2w_camera_bridge', 'SSH_CONNECTION': '192.168.123.99 55902 192.168.123.18 22', 'PYTHONPATH': '/home/unitree/robotscene/ros2_ws/build/go2w_camera_bridge/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_camera_bridge/lib/python3.8/site-packages:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages', 'HTTP_PROXY': 'http://127.0.0.1:17891', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api'}, 'shell': False}
+[6.948248] (-) TimerEvent: {}
+[6.976911] (go2w_control_arbiter) Command: {'cmd': ['/usr/bin/python3', 'setup.py', 'develop', '--editable', '--build-directory', '/home/unitree/robotscene/ros2_ws/build/go2w_control_arbiter/build', '--no-deps', 'install_data'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_control_arbiter', 'env': {'HTTPS_PROXY': 'http://127.0.0.1:17891', 'USER': 'unitree', 'SSH_CLIENT': '192.168.123.99 55902 22', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'MOTD_SHOWN': 'pam', 'HOME': '/home/unitree', 'OLDPWD': '/home/unitree/robotscene', 'NO_PROXY': 'localhost,127.0.0.1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLCON_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install', 'ROS_DISTRO': 'foxy', 'LOGNAME': 'unitree', 'ALL_PROXY': 'socks5h://127.0.0.1:17891', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'XDG_SESSION_ID': '103', 'ROS_LOCALHOST_ONLY': '0', 'GO2W_UNITREE_ROOT': '/home/unitree/robotscene/external/unitree_ros2', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'en_US.UTF-8', 'GO2W_CONTROL_ROOT': '/home/unitree/robotscene/unitree_go2w_control', 'AMENT_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble', 'SHELL': '/bin/bash', 'PWD': '/home/unitree/robotscene/ros2_ws/build/go2w_control_arbiter', 'SSH_CONNECTION': '192.168.123.99 55902 192.168.123.18 22', 'PYTHONPATH': '/home/unitree/robotscene/ros2_ws/build/go2w_control_arbiter/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_control_arbiter/lib/python3.8/site-packages:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages', 'HTTP_PROXY': 'http://127.0.0.1:17891', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api'}, 'shell': False}
+[7.050381] (-) TimerEvent: {}
+[7.154066] (-) TimerEvent: {}
+[7.157843] (go2w_description) Command: {'cmd': ['/usr/bin/python3', 'setup.py', 'develop', '--editable', '--build-directory', '/home/unitree/robotscene/ros2_ws/build/go2w_description/build', '--no-deps', 'install_data'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_description', 'env': {'HTTPS_PROXY': 'http://127.0.0.1:17891', 'USER': 'unitree', 'SSH_CLIENT': '192.168.123.99 55902 22', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'MOTD_SHOWN': 'pam', 'HOME': '/home/unitree', 'OLDPWD': '/home/unitree/robotscene', 'NO_PROXY': 'localhost,127.0.0.1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLCON_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install', 'ROS_DISTRO': 'foxy', 'LOGNAME': 'unitree', 'ALL_PROXY': 'socks5h://127.0.0.1:17891', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'XDG_SESSION_ID': '103', 'ROS_LOCALHOST_ONLY': '0', 'GO2W_UNITREE_ROOT': '/home/unitree/robotscene/external/unitree_ros2', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'en_US.UTF-8', 'GO2W_CONTROL_ROOT': '/home/unitree/robotscene/unitree_go2w_control', 'AMENT_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble', 'SHELL': '/bin/bash', 'PWD': '/home/unitree/robotscene/ros2_ws/build/go2w_description', 'SSH_CONNECTION': '192.168.123.99 55902 192.168.123.18 22', 'PYTHONPATH': '/home/unitree/robotscene/ros2_ws/build/go2w_description/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_description/lib/python3.8/site-packages:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages', 'HTTP_PROXY': 'http://127.0.0.1:17891', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api'}, 'shell': False}
+[7.254320] (-) TimerEvent: {}
+[7.294387] (go2w_cmd_vel_bridge) Command: {'cmd': ['/usr/bin/python3', 'setup.py', 'develop', '--editable', '--build-directory', '/home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge/build', '--no-deps', 'install_data'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge', 'env': {'HTTPS_PROXY': 'http://127.0.0.1:17891', 'USER': 'unitree', 'SSH_CLIENT': '192.168.123.99 55902 22', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'MOTD_SHOWN': 'pam', 'HOME': '/home/unitree', 'OLDPWD': '/home/unitree/robotscene', 'NO_PROXY': 'localhost,127.0.0.1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLCON_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install', 'ROS_DISTRO': 'foxy', 'LOGNAME': 'unitree', 'ALL_PROXY': 'socks5h://127.0.0.1:17891', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'XDG_SESSION_ID': '103', 'ROS_LOCALHOST_ONLY': '0', 'GO2W_UNITREE_ROOT': '/home/unitree/robotscene/external/unitree_ros2', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'en_US.UTF-8', 'GO2W_CONTROL_ROOT': '/home/unitree/robotscene/unitree_go2w_control', 'AMENT_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble', 'SHELL': '/bin/bash', 'PWD': '/home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge', 'SSH_CONNECTION': '192.168.123.99 55902 192.168.123.18 22', 'PYTHONPATH': '/home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/lib/python3.8/site-packages:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages', 'HTTP_PROXY': 'http://127.0.0.1:17891', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api'}, 'shell': False}
+[7.354552] (-) TimerEvent: {}
+[7.454954] (-) TimerEvent: {}
+[7.517837] (go2w_camera_bridge) StdoutLine: {'line': b'running develop\n'}
+[7.555129] (-) TimerEvent: {}
+[7.655527] (-) TimerEvent: {}
+[7.755903] (-) TimerEvent: {}
+[7.823058] (go2w_control_arbiter) StdoutLine: {'line': b'running develop\n'}
+[7.856072] (-) TimerEvent: {}
+[7.922289] (go2w_description) StdoutLine: {'line': b'running develop\n'}
+[7.928504] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'running develop\n'}
+[7.956387] (go2w_camera_bridge) StdoutLine: {'line': b'running egg_info\n'}
+[7.956823] (-) TimerEvent: {}
+[7.956871] (go2w_camera_bridge) StdoutLine: {'line': b'creating go2w_camera_bridge.egg-info\n'}
+[7.957211] (go2w_camera_bridge) StdoutLine: {'line': b'writing go2w_camera_bridge.egg-info/PKG-INFO\n'}
+[7.957521] (go2w_camera_bridge) StdoutLine: {'line': b'writing dependency_links to go2w_camera_bridge.egg-info/dependency_links.txt\n'}
+[7.957895] (go2w_camera_bridge) StdoutLine: {'line': b'writing entry points to go2w_camera_bridge.egg-info/entry_points.txt\n'}
+[7.958055] (go2w_camera_bridge) StdoutLine: {'line': b'writing requirements to go2w_camera_bridge.egg-info/requires.txt\n'}
+[7.966551] (go2w_camera_bridge) StdoutLine: {'line': b'writing top-level names to go2w_camera_bridge.egg-info/top_level.txt\n'}
+[7.976611] (go2w_camera_bridge) StdoutLine: {'line': b"writing manifest file 'go2w_camera_bridge.egg-info/SOURCES.txt'\n"}
+[8.057106] (-) TimerEvent: {}
+[8.128300] (go2w_camera_bridge) StdoutLine: {'line': b"reading manifest file 'go2w_camera_bridge.egg-info/SOURCES.txt'\n"}
+[8.129667] (go2w_camera_bridge) StdoutLine: {'line': b"writing manifest file 'go2w_camera_bridge.egg-info/SOURCES.txt'\n"}
+[8.134092] (go2w_control_arbiter) StdoutLine: {'line': b'running egg_info\n'}
+[8.134560] (go2w_control_arbiter) StdoutLine: {'line': b'creating go2w_control_arbiter.egg-info\n'}
+[8.134930] (go2w_control_arbiter) StdoutLine: {'line': b'writing go2w_control_arbiter.egg-info/PKG-INFO\n'}
+[8.135249] (go2w_control_arbiter) StdoutLine: {'line': b'writing dependency_links to go2w_control_arbiter.egg-info/dependency_links.txt\n'}
+[8.135608] (go2w_control_arbiter) StdoutLine: {'line': b'writing entry points to go2w_control_arbiter.egg-info/entry_points.txt\n'}
+[8.135788] (go2w_control_arbiter) StdoutLine: {'line': b'writing requirements to go2w_control_arbiter.egg-info/requires.txt\n'}
+[8.136059] (go2w_control_arbiter) StdoutLine: {'line': b'writing top-level names to go2w_control_arbiter.egg-info/top_level.txt\n'}
+[8.139761] (go2w_control_arbiter) StdoutLine: {'line': b"writing manifest file 'go2w_control_arbiter.egg-info/SOURCES.txt'\n"}
+[8.157255] (-) TimerEvent: {}
+[8.206763] (go2w_control_arbiter) StdoutLine: {'line': b"reading manifest file 'go2w_control_arbiter.egg-info/SOURCES.txt'\n"}
+[8.207209] (go2w_control_arbiter) StdoutLine: {'line': b"writing manifest file 'go2w_control_arbiter.egg-info/SOURCES.txt'\n"}
+[8.257436] (-) TimerEvent: {}
+[8.270460] (go2w_camera_bridge) StdoutLine: {'line': b'running build_ext\n'}
+[8.273214] (go2w_camera_bridge) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_camera_bridge/lib/python3.8/site-packages/site.py\n'}
+[8.278762] (go2w_camera_bridge) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_camera_bridge/lib/python3.8/site-packages/go2w-camera-bridge.egg-link (link to .)\n'}
+[8.281435] (go2w_camera_bridge) StdoutLine: {'line': b'Installing camera_bridge script to /home/unitree/robotscene/ros2_ws/install/go2w_camera_bridge/lib/go2w_camera_bridge\n'}
+[8.281986] (go2w_description) StdoutLine: {'line': b'running egg_info\n'}
+[8.282837] (go2w_description) StdoutLine: {'line': b'creating go2w_description.egg-info\n'}
+[8.283067] (go2w_camera_bridge) StdoutLine: {'line': b'\n'}
+[8.283227] (go2w_camera_bridge) StdoutLine: {'line': b'Installed /home/unitree/robotscene/ros2_ws/build/go2w_camera_bridge\n'}
+[8.283414] (go2w_camera_bridge) StdoutLine: {'line': b'running install_data\n'}
+[8.283823] (go2w_camera_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_camera_bridge/share/ament_index\n'}
+[8.284030] (go2w_camera_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_camera_bridge/share/ament_index/resource_index\n'}
+[8.284160] (go2w_camera_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_camera_bridge/share/ament_index/resource_index/packages\n'}
+[8.284281] (go2w_camera_bridge) StdoutLine: {'line': b'copying resource/go2w_camera_bridge -> /home/unitree/robotscene/ros2_ws/install/go2w_camera_bridge/share/ament_index/resource_index/packages\n'}
+[8.284398] (go2w_camera_bridge) StdoutLine: {'line': b'copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_camera_bridge/share/go2w_camera_bridge\n'}
+[8.284560] (go2w_camera_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_camera_bridge/share/go2w_camera_bridge/launch\n'}
+[8.284913] (go2w_camera_bridge) StdoutLine: {'line': b'copying launch/camera_bridge.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_camera_bridge/share/go2w_camera_bridge/launch\n'}
+[8.285084] (go2w_control_arbiter) StdoutLine: {'line': b'running build_ext\n'}
+[8.285231] (go2w_control_arbiter) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_control_arbiter/lib/python3.8/site-packages/site.py\n'}
+[8.286129] (go2w_description) StdoutLine: {'line': b'writing go2w_description.egg-info/PKG-INFO\n'}
+[8.287468] (go2w_description) StdoutLine: {'line': b'writing dependency_links to go2w_description.egg-info/dependency_links.txt\n'}
+[8.288434] (go2w_description) StdoutLine: {'line': b'writing requirements to go2w_description.egg-info/requires.txt\n'}
+[8.289129] (go2w_description) StdoutLine: {'line': b'writing top-level names to go2w_description.egg-info/top_level.txt\n'}
+[8.290914] (go2w_control_arbiter) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_control_arbiter/lib/python3.8/site-packages/go2w-control-arbiter.egg-link (link to .)\n'}
+[8.293118] (go2w_description) StdoutLine: {'line': b"writing manifest file 'go2w_description.egg-info/SOURCES.txt'\n"}
+[8.294186] (go2w_control_arbiter) StdoutLine: {'line': b'Installing arbiter script to /home/unitree/robotscene/ros2_ws/install/go2w_control_arbiter/lib/go2w_control_arbiter\n'}
+[8.295556] (go2w_control_arbiter) StdoutLine: {'line': b'\n'}
+[8.295814] (go2w_control_arbiter) StdoutLine: {'line': b'Installed /home/unitree/robotscene/ros2_ws/build/go2w_control_arbiter\n'}
+[8.296397] (go2w_control_arbiter) StdoutLine: {'line': b'running install_data\n'}
+[8.297145] (go2w_control_arbiter) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_control_arbiter/share/ament_index\n'}
+[8.297757] (go2w_control_arbiter) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_control_arbiter/share/ament_index/resource_index\n'}
+[8.298373] (go2w_control_arbiter) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_control_arbiter/share/ament_index/resource_index/packages\n'}
+[8.299153] (go2w_control_arbiter) StdoutLine: {'line': b'copying resource/go2w_control_arbiter -> /home/unitree/robotscene/ros2_ws/install/go2w_control_arbiter/share/ament_index/resource_index/packages\n'}
+[8.300099] (go2w_control_arbiter) StdoutLine: {'line': b'copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_control_arbiter/share/go2w_control_arbiter\n'}
+[8.357072] (go2w_description) StdoutLine: {'line': b"reading manifest file 'go2w_description.egg-info/SOURCES.txt'\n"}
+[8.357510] (-) TimerEvent: {}
+[8.358599] (go2w_description) StdoutLine: {'line': b"writing manifest file 'go2w_description.egg-info/SOURCES.txt'\n"}
+[8.400688] (go2w_camera_bridge) CommandEnded: {'returncode': 0}
+[8.457796] (-) TimerEvent: {}
+[8.558533] (-) TimerEvent: {}
+[8.659725] (-) TimerEvent: {}
+[8.776082] (-) TimerEvent: {}
+[8.805870] (go2w_camera_bridge) JobEnded: {'identifier': 'go2w_camera_bridge', 'rc': 0}
+[8.808207] (go2w_rgb_lidar_fusion) JobStarted: {'identifier': 'go2w_rgb_lidar_fusion'}
+[8.876321] (-) TimerEvent: {}
+[8.976887] (-) TimerEvent: {}
+[9.077571] (-) TimerEvent: {}
+[9.178059] (-) TimerEvent: {}
+[9.269177] (go2w_description) StdoutLine: {'line': b'running build_ext\n'}
+[9.271270] (go2w_description) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_description/lib/python3.8/site-packages/site.py\n'}
+[9.271652] (go2w_description) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_description/lib/python3.8/site-packages/go2w-description.egg-link (link to .)\n'}
+[9.271828] (go2w_description) StdoutLine: {'line': b'\n'}
+[9.272014] (go2w_description) StdoutLine: {'line': b'Installed /home/unitree/robotscene/ros2_ws/build/go2w_description\n'}
+[9.272236] (go2w_description) StdoutLine: {'line': b'running install_data\n'}
+[9.272428] (go2w_description) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_description/share/ament_index\n'}
+[9.272645] (go2w_description) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_description/share/ament_index/resource_index\n'}
+[9.272815] (go2w_description) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_description/share/ament_index/resource_index/packages\n'}
+[9.272960] (go2w_description) StdoutLine: {'line': b'copying resource/go2w_description -> /home/unitree/robotscene/ros2_ws/install/go2w_description/share/ament_index/resource_index/packages\n'}
+[9.273131] (go2w_description) StdoutLine: {'line': b'copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_description/share/go2w_description\n'}
+[9.273282] (go2w_description) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_description/share/go2w_description/launch\n'}
+[9.273444] (go2w_description) StdoutLine: {'line': b'copying launch/description.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_description/share/go2w_description/launch\n'}
+[9.273588] (go2w_description) StdoutLine: {'line': b'copying launch/official_sensor_frames.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_description/share/go2w_description/launch\n'}
+[9.273757] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'running egg_info\n'}
+[9.273967] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'creating go2w_cmd_vel_bridge.egg-info\n'}
+[9.274110] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'writing go2w_cmd_vel_bridge.egg-info/PKG-INFO\n'}
+[9.274294] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'writing dependency_links to go2w_cmd_vel_bridge.egg-info/dependency_links.txt\n'}
+[9.274425] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'writing entry points to go2w_cmd_vel_bridge.egg-info/entry_points.txt\n'}
+[9.274568] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'writing requirements to go2w_cmd_vel_bridge.egg-info/requires.txt\n'}
+[9.274707] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'writing top-level names to go2w_cmd_vel_bridge.egg-info/top_level.txt\n'}
+[9.274849] (go2w_cmd_vel_bridge) StdoutLine: {'line': b"writing manifest file 'go2w_cmd_vel_bridge.egg-info/SOURCES.txt'\n"}
+[9.274955] (go2w_cmd_vel_bridge) StdoutLine: {'line': b"reading manifest file 'go2w_cmd_vel_bridge.egg-info/SOURCES.txt'\n"}
+[9.275059] (go2w_cmd_vel_bridge) StdoutLine: {'line': b"writing manifest file 'go2w_cmd_vel_bridge.egg-info/SOURCES.txt'\n"}
+[9.275161] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'running build_ext\n'}
+[9.275263] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/lib/python3.8/site-packages/site.py\n'}
+[9.275403] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/lib/python3.8/site-packages/go2w-cmd-vel-bridge.egg-link (link to .)\n'}
+[9.275547] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'Installing bridge script to /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/lib/go2w_cmd_vel_bridge\n'}
+[9.275683] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'\n'}
+[9.275813] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'Installed /home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge\n'}
+[9.275973] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'running install_data\n'}
+[9.276102] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/share/ament_index\n'}
+[9.276234] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/share/ament_index/resource_index\n'}
+[9.276369] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/share/ament_index/resource_index/packages\n'}
+[9.276528] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'copying resource/go2w_cmd_vel_bridge -> /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/share/ament_index/resource_index/packages\n'}
+[9.276674] (go2w_cmd_vel_bridge) StdoutLine: {'line': b'copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/share/go2w_cmd_vel_bridge\n'}
+[9.276822] (go2w_control_arbiter) CommandEnded: {'returncode': 0}
+[9.279880] (-) TimerEvent: {}
+[9.380152] (-) TimerEvent: {}
+[9.480579] (-) TimerEvent: {}
+[9.581049] (-) TimerEvent: {}
+[9.589158] (go2w_control_arbiter) JobEnded: {'identifier': 'go2w_control_arbiter', 'rc': 0}
+[9.590748] (go2w_description) CommandEnded: {'returncode': 0}
+[9.681256] (-) TimerEvent: {}
+[9.781744] (-) TimerEvent: {}
+[9.882453] (-) TimerEvent: {}
+[9.904697] (go2w_description) JobEnded: {'identifier': 'go2w_description', 'rc': 0}
+[9.905555] (go2w_cmd_vel_bridge) CommandEnded: {'returncode': 0}
+[9.982578] (-) TimerEvent: {}
+[10.083418] (-) TimerEvent: {}
+[10.183904] (-) TimerEvent: {}
+[10.284407] (-) TimerEvent: {}
+[10.292392] (go2w_cmd_vel_bridge) JobEnded: {'identifier': 'go2w_cmd_vel_bridge', 'rc': 0}
+[10.295570] (go2w_sensor_time_bridge) JobStarted: {'identifier': 'go2w_sensor_time_bridge'}
+[10.384618] (-) TimerEvent: {}
+[10.485212] (-) TimerEvent: {}
+[10.585702] (-) TimerEvent: {}
+[10.686320] (-) TimerEvent: {}
+[10.786991] (-) TimerEvent: {}
+[10.869128] (hesai_ros_driver) JobStarted: {'identifier': 'hesai_ros_driver'}
+[10.887254] (-) TimerEvent: {}
+[10.988031] (-) TimerEvent: {}
+[11.088739] (-) TimerEvent: {}
+[11.189285] (-) TimerEvent: {}
+[11.258644] (robot_scene_live_bridge) JobStarted: {'identifier': 'robot_scene_live_bridge'}
+[11.290318] (-) TimerEvent: {}
+[11.391450] (-) TimerEvent: {}
+[11.492353] (-) TimerEvent: {}
+[11.593055] (-) TimerEvent: {}
+[11.694037] (-) TimerEvent: {}
+[11.794588] (-) TimerEvent: {}
+[11.895091] (-) TimerEvent: {}
+[11.995542] (-) TimerEvent: {}
+[12.096103] (-) TimerEvent: {}
+[12.196570] (-) TimerEvent: {}
+[12.297163] (-) TimerEvent: {}
+[12.397743] (-) TimerEvent: {}
+[12.498325] (-) TimerEvent: {}
+[12.599076] (-) TimerEvent: {}
+[12.699745] (-) TimerEvent: {}
+[12.800301] (-) TimerEvent: {}
+[12.900692] (-) TimerEvent: {}
+[13.001139] (-) TimerEvent: {}
+[13.101562] (-) TimerEvent: {}
+[13.202648] (-) TimerEvent: {}
+[13.303470] (-) TimerEvent: {}
+[13.404129] (-) TimerEvent: {}
+[13.506033] (-) TimerEvent: {}
+[13.510841] (hesai_ros_driver) JobProgress: {'identifier': 'hesai_ros_driver', 'progress': 'cmake'}
+[13.511751] (hesai_ros_driver) Command: {'cmd': ['/usr/bin/cmake', '/home/unitree/robotscene/ros2_ws/src/hesai_ros_driver', '-DPython3_EXECUTABLE=/usr/bin/python3', '-DPYTHON_EXECUTABLE=/usr/bin/python3', '-DWITH_PTCS_USE=OFF', '-DAMENT_CMAKE_SYMLINK_INSTALL=1', '-DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/hesai_ros_driver'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/hesai_ros_driver', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55902 22'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene'), ('NO_PROXY', 'localhost,127.0.0.1'), ('ROS_PYTHON_VERSION', '3'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '103'), ('ROS_LOCALHOST_ONLY', '0'), ('GO2W_UNITREE_ROOT', '/home/unitree/robotscene/external/unitree_ros2'), ('PATH', '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('GO2W_CONTROL_ROOT', '/home/unitree/robotscene/unitree_go2w_control'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/hesai_ros_driver'), ('SSH_CONNECTION', '192.168.123.99 55902 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble')]), 'shell': False}
+[13.606226] (-) TimerEvent: {}
+[13.706702] (-) TimerEvent: {}
+[13.807054] (-) TimerEvent: {}
+[13.907398] (-) TimerEvent: {}
+[14.008652] (-) TimerEvent: {}
+[14.109193] (-) TimerEvent: {}
+[14.209731] (-) TimerEvent: {}
+[14.311144] (-) TimerEvent: {}
+[14.411802] (-) TimerEvent: {}
+[14.415387] (hesai_ros_driver) StdoutLine: {'line': b'-- The C compiler identification is GNU 9.4.0\n'}
+[14.416010] (hesai_ros_driver) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 9.4.0\n'}
+[14.416890] (hesai_ros_driver) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc\n'}
+[14.417442] (hesai_ros_driver) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc -- works\n'}
+[14.417607] (hesai_ros_driver) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[14.417839] (hesai_ros_driver) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[14.417970] (hesai_ros_driver) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[14.418199] (hesai_ros_driver) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[14.419085] (hesai_ros_driver) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++\n'}
+[14.419240] (hesai_ros_driver) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ -- works\n'}
+[14.419395] (hesai_ros_driver) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[14.500437] (hesai_ros_driver) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[14.511957] (-) TimerEvent: {}
+[14.512633] (hesai_ros_driver) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[14.514408] (hesai_ros_driver) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[14.518127] (hesai_ros_driver) StdoutLine: {'line': b'-- cuda not found!\n'}
+[14.519205] (hesai_ros_driver) StderrLine: {'line': b'=============================================================\n'}
+[14.519513] (hesai_ros_driver) StderrLine: {'line': b'-- ROS_VERSION is 2\n'}
+[14.519660] (hesai_ros_driver) StderrLine: {'line': b'=============================================================\n'}
+[14.582049] (hesai_ros_driver) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") \n'}
+[14.582616] (hesai_ros_driver) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[14.612122] (-) TimerEvent: {}
+[14.712481] (-) TimerEvent: {}
+[14.812835] (-) TimerEvent: {}
+[14.913187] (-) TimerEvent: {}
+[15.013552] (-) TimerEvent: {}
+[15.088110] (hesai_ros_driver) StdoutLine: {'line': b'-- Override CMake install command with custom implementation using symlinks instead of copying resources\n'}
+[15.113697] (-) TimerEvent: {}
+[15.214043] (-) TimerEvent: {}
+[15.314801] (-) TimerEvent: {}
+[15.315917] (hesai_ros_driver) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[15.334542] (hesai_ros_driver) StdoutLine: {'line': b'-- Found rosidl_adapter: 1.3.1 (/opt/ros/humble/share/rosidl_adapter/cmake)\n'}
+[15.416637] (-) TimerEvent: {}
+[15.518160] (-) TimerEvent: {}
+[15.619300] (-) TimerEvent: {}
+[15.699952] (go2w_rgb_lidar_fusion) Command: {'cmd': ['/usr/bin/python3', 'setup.py', 'develop', '--editable', '--build-directory', '/home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion/build', '--no-deps', 'install_data'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion', 'env': {'HTTPS_PROXY': 'http://127.0.0.1:17891', 'USER': 'unitree', 'SSH_CLIENT': '192.168.123.99 55902 22', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'MOTD_SHOWN': 'pam', 'HOME': '/home/unitree', 'OLDPWD': '/home/unitree/robotscene', 'NO_PROXY': 'localhost,127.0.0.1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLCON_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install', 'ROS_DISTRO': 'foxy', 'LOGNAME': 'unitree', 'ALL_PROXY': 'socks5h://127.0.0.1:17891', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'XDG_SESSION_ID': '103', 'ROS_LOCALHOST_ONLY': '0', 'GO2W_UNITREE_ROOT': '/home/unitree/robotscene/external/unitree_ros2', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'en_US.UTF-8', 'GO2W_CONTROL_ROOT': '/home/unitree/robotscene/unitree_go2w_control', 'AMENT_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble', 'SHELL': '/bin/bash', 'PWD': '/home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion', 'SSH_CONNECTION': '192.168.123.99 55902 192.168.123.18 22', 'PYTHONPATH': '/home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/lib/python3.8/site-packages:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages', 'HTTP_PROXY': 'http://127.0.0.1:17891', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api'}, 'shell': False}
+[15.722689] (-) TimerEvent: {}
+[15.823323] (-) TimerEvent: {}
+[15.824851] (hesai_ros_driver) StdoutLine: {'line': b'-- Found OpenSSL: /usr/lib/aarch64-linux-gnu/libcrypto.so (found version "1.1.1f")  \n'}
+[15.840408] (robot_scene_live_bridge) Command: {'cmd': ['/usr/bin/python3', 'setup.py', 'develop', '--editable', '--build-directory', '/home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge/build', '--no-deps', 'install_data'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge', 'env': {'HTTPS_PROXY': 'http://127.0.0.1:17891', 'USER': 'unitree', 'SSH_CLIENT': '192.168.123.99 55902 22', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'MOTD_SHOWN': 'pam', 'HOME': '/home/unitree', 'OLDPWD': '/home/unitree/robotscene', 'NO_PROXY': 'localhost,127.0.0.1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLCON_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install', 'ROS_DISTRO': 'foxy', 'LOGNAME': 'unitree', 'ALL_PROXY': 'socks5h://127.0.0.1:17891', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'XDG_SESSION_ID': '103', 'ROS_LOCALHOST_ONLY': '0', 'GO2W_UNITREE_ROOT': '/home/unitree/robotscene/external/unitree_ros2', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'en_US.UTF-8', 'GO2W_CONTROL_ROOT': '/home/unitree/robotscene/unitree_go2w_control', 'AMENT_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble', 'SHELL': '/bin/bash', 'PWD': '/home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge', 'SSH_CONNECTION': '192.168.123.99 55902 192.168.123.18 22', 'PYTHONPATH': '/home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge/prefix_override:/home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/python3.8/site-packages:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages', 'HTTP_PROXY': 'http://127.0.0.1:17891', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api'}, 'shell': False}
+[15.900534] (go2w_sensor_time_bridge) Command: {'cmd': ['/usr/bin/python3', 'setup.py', 'develop', '--editable', '--build-directory', '/home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge/build', '--no-deps', 'install_data'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge', 'env': {'HTTPS_PROXY': 'http://127.0.0.1:17891', 'USER': 'unitree', 'SSH_CLIENT': '192.168.123.99 55902 22', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'MOTD_SHOWN': 'pam', 'HOME': '/home/unitree', 'OLDPWD': '/home/unitree/robotscene', 'NO_PROXY': 'localhost,127.0.0.1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLCON_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install', 'ROS_DISTRO': 'foxy', 'LOGNAME': 'unitree', 'ALL_PROXY': 'socks5h://127.0.0.1:17891', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'XDG_SESSION_ID': '103', 'ROS_LOCALHOST_ONLY': '0', 'GO2W_UNITREE_ROOT': '/home/unitree/robotscene/external/unitree_ros2', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'en_US.UTF-8', 'GO2W_CONTROL_ROOT': '/home/unitree/robotscene/unitree_go2w_control', 'AMENT_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble', 'SHELL': '/bin/bash', 'PWD': '/home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge', 'SSH_CONNECTION': '192.168.123.99 55902 192.168.123.18 22', 'PYTHONPATH': '/home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/python3.8/site-packages:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages', 'HTTP_PROXY': 'http://127.0.0.1:17891', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api'}, 'shell': False}
+[15.923544] (-) TimerEvent: {}
+[15.929501] (hesai_ros_driver) StdoutLine: {'line': b'-- Found FastRTPS: /opt/ros/humble/include  \n'}
+[16.023683] (-) TimerEvent: {}
+[16.124033] (-) TimerEvent: {}
+[16.224376] (-) TimerEvent: {}
+[16.314382] (hesai_ros_driver) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[16.324534] (-) TimerEvent: {}
+[16.412466] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'running develop\n'}
+[16.416653] (robot_scene_live_bridge) StdoutLine: {'line': b'running develop\n'}
+[16.424662] (-) TimerEvent: {}
+[16.524976] (-) TimerEvent: {}
+[16.536207] (hesai_ros_driver) StdoutLine: {'line': b'-- Found rmw_implementation_cmake: 1.0.4 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)\n'}
+[16.540950] (hesai_ros_driver) StdoutLine: {'line': b"-- Using RMW implementation 'rmw_fastrtps_cpp' as default\n"}
+[16.547107] (hesai_ros_driver) StdoutLine: {'line': b'-- Looking for pthread.h\n'}
+[16.625129] (-) TimerEvent: {}
+[16.625876] (go2w_sensor_time_bridge) StdoutLine: {'line': b'running develop\n'}
+[16.726380] (-) TimerEvent: {}
+[16.755039] (robot_scene_live_bridge) StdoutLine: {'line': b'running egg_info\n'}
+[16.755479] (robot_scene_live_bridge) StdoutLine: {'line': b'creating robot_scene_live_bridge.egg-info\n'}
+[16.755628] (robot_scene_live_bridge) StdoutLine: {'line': b'writing robot_scene_live_bridge.egg-info/PKG-INFO\n'}
+[16.755754] (robot_scene_live_bridge) StdoutLine: {'line': b'writing dependency_links to robot_scene_live_bridge.egg-info/dependency_links.txt\n'}
+[16.755880] (robot_scene_live_bridge) StdoutLine: {'line': b'writing entry points to robot_scene_live_bridge.egg-info/entry_points.txt\n'}
+[16.755998] (robot_scene_live_bridge) StdoutLine: {'line': b'writing requirements to robot_scene_live_bridge.egg-info/requires.txt\n'}
+[16.756147] (robot_scene_live_bridge) StdoutLine: {'line': b'writing top-level names to robot_scene_live_bridge.egg-info/top_level.txt\n'}
+[16.756261] (robot_scene_live_bridge) StdoutLine: {'line': b"writing manifest file 'robot_scene_live_bridge.egg-info/SOURCES.txt'\n"}
+[16.815355] (robot_scene_live_bridge) StdoutLine: {'line': b"reading manifest file 'robot_scene_live_bridge.egg-info/SOURCES.txt'\n"}
+[16.815823] (robot_scene_live_bridge) StdoutLine: {'line': b"writing manifest file 'robot_scene_live_bridge.egg-info/SOURCES.txt'\n"}
+[16.826262] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'running egg_info\n'}
+[16.826688] (-) TimerEvent: {}
+[16.827120] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'creating go2w_rgb_lidar_fusion.egg-info\n'}
+[16.828063] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'writing go2w_rgb_lidar_fusion.egg-info/PKG-INFO\n'}
+[16.829265] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'writing dependency_links to go2w_rgb_lidar_fusion.egg-info/dependency_links.txt\n'}
+[16.830012] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'writing entry points to go2w_rgb_lidar_fusion.egg-info/entry_points.txt\n'}
+[16.830666] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'writing requirements to go2w_rgb_lidar_fusion.egg-info/requires.txt\n'}
+[16.831224] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'writing top-level names to go2w_rgb_lidar_fusion.egg-info/top_level.txt\n'}
+[16.834840] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b"writing manifest file 'go2w_rgb_lidar_fusion.egg-info/SOURCES.txt'\n"}
+[16.885851] (robot_scene_live_bridge) StdoutLine: {'line': b'running build_ext\n'}
+[16.887606] (robot_scene_live_bridge) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/python3.8/site-packages/site.py\n'}
+[16.892566] (robot_scene_live_bridge) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/python3.8/site-packages/robot-scene-live-bridge.egg-link (link to .)\n'}
+[16.895074] (robot_scene_live_bridge) StdoutLine: {'line': b'Installing live_bridge script to /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/robot_scene_live_bridge\n'}
+[16.896453] (robot_scene_live_bridge) StdoutLine: {'line': b'\n'}
+[16.896774] (robot_scene_live_bridge) StdoutLine: {'line': b'Installed /home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge\n'}
+[16.897383] (robot_scene_live_bridge) StdoutLine: {'line': b'running install_data\n'}
+[16.898163] (robot_scene_live_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index\n'}
+[16.899004] (robot_scene_live_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index/resource_index\n'}
+[16.899613] (robot_scene_live_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index/resource_index/packages\n'}
+[16.900325] (robot_scene_live_bridge) StdoutLine: {'line': b'copying resource/robot_scene_live_bridge -> /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index/resource_index/packages\n'}
+[16.901203] (robot_scene_live_bridge) StdoutLine: {'line': b'copying package.xml -> /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/robot_scene_live_bridge\n'}
+[16.902009] (robot_scene_live_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/robot_scene_live_bridge/launch\n'}
+[16.902757] (robot_scene_live_bridge) StdoutLine: {'line': b'copying launch/live_bridge.launch.py -> /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/robot_scene_live_bridge/launch\n'}
+[16.925346] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b"reading manifest file 'go2w_rgb_lidar_fusion.egg-info/SOURCES.txt'\n"}
+[16.926677] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b"writing manifest file 'go2w_rgb_lidar_fusion.egg-info/SOURCES.txt'\n"}
+[16.926982] (-) TimerEvent: {}
+[16.971188] (hesai_ros_driver) StdoutLine: {'line': b'-- Looking for pthread.h - found\n'}
+[16.975751] (hesai_ros_driver) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD\n'}
+[17.016387] (robot_scene_live_bridge) CommandEnded: {'returncode': 0}
+[17.031422] (-) TimerEvent: {}
+[17.132049] (-) TimerEvent: {}
+[17.232602] (-) TimerEvent: {}
+[17.336336] (-) TimerEvent: {}
+[17.409819] (robot_scene_live_bridge) JobEnded: {'identifier': 'robot_scene_live_bridge', 'rc': 0}
+[17.411205] (robot_scene_nav_bringup) JobStarted: {'identifier': 'robot_scene_nav_bringup'}
+[17.439364] (-) TimerEvent: {}
+[17.539758] (-) TimerEvent: {}
+[17.640573] (-) TimerEvent: {}
+[17.741967] (-) TimerEvent: {}
+[17.843108] (-) TimerEvent: {}
+[17.897106] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'running build_ext\n'}
+[17.899848] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/lib/python3.8/site-packages/site.py\n'}
+[17.900376] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/lib/python3.8/site-packages/go2w-rgb-lidar-fusion.egg-link (link to .)\n'}
+[17.900631] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'Installing fusion_node script to /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/lib/go2w_rgb_lidar_fusion\n'}
+[17.900837] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'\n'}
+[17.901058] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'Installed /home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion\n'}
+[17.901249] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'running install_data\n'}
+[17.901408] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/ament_index\n'}
+[17.901605] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/ament_index/resource_index\n'}
+[17.901781] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/ament_index/resource_index/packages\n'}
+[17.901941] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'copying resource/go2w_rgb_lidar_fusion -> /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/ament_index/resource_index/packages\n'}
+[17.902127] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/go2w_rgb_lidar_fusion\n'}
+[17.902352] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/go2w_rgb_lidar_fusion/launch\n'}
+[17.902571] (go2w_rgb_lidar_fusion) StdoutLine: {'line': b'copying launch/fusion.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/share/go2w_rgb_lidar_fusion/launch\n'}
+[17.902742] (go2w_sensor_time_bridge) StdoutLine: {'line': b'running egg_info\n'}
+[17.902901] (go2w_sensor_time_bridge) StdoutLine: {'line': b'creating go2w_sensor_time_bridge.egg-info\n'}
+[17.903044] (go2w_sensor_time_bridge) StdoutLine: {'line': b'writing go2w_sensor_time_bridge.egg-info/PKG-INFO\n'}
+[17.903152] (go2w_sensor_time_bridge) StdoutLine: {'line': b'writing dependency_links to go2w_sensor_time_bridge.egg-info/dependency_links.txt\n'}
+[17.903305] (go2w_sensor_time_bridge) StdoutLine: {'line': b'writing entry points to go2w_sensor_time_bridge.egg-info/entry_points.txt\n'}
+[17.903414] (go2w_sensor_time_bridge) StdoutLine: {'line': b'writing requirements to go2w_sensor_time_bridge.egg-info/requires.txt\n'}
+[17.903546] (go2w_sensor_time_bridge) StdoutLine: {'line': b'writing top-level names to go2w_sensor_time_bridge.egg-info/top_level.txt\n'}
+[17.903652] (go2w_sensor_time_bridge) StdoutLine: {'line': b"writing manifest file 'go2w_sensor_time_bridge.egg-info/SOURCES.txt'\n"}
+[17.903807] (go2w_sensor_time_bridge) StdoutLine: {'line': b"reading manifest file 'go2w_sensor_time_bridge.egg-info/SOURCES.txt'\n"}
+[17.903974] (go2w_sensor_time_bridge) StdoutLine: {'line': b"writing manifest file 'go2w_sensor_time_bridge.egg-info/SOURCES.txt'\n"}
+[17.904089] (go2w_sensor_time_bridge) StdoutLine: {'line': b'running build_ext\n'}
+[17.904195] (go2w_sensor_time_bridge) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/python3.8/site-packages/site.py\n'}
+[17.904332] (go2w_sensor_time_bridge) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/python3.8/site-packages/go2w-sensor-time-bridge.egg-link (link to .)\n'}
+[17.904486] (go2w_sensor_time_bridge) StdoutLine: {'line': b'Installing measure_time_sync script to /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/go2w_sensor_time_bridge\n'}
+[17.904597] (go2w_sensor_time_bridge) StdoutLine: {'line': b'Installing time_bridge script to /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/go2w_sensor_time_bridge\n'}
+[17.904726] (go2w_sensor_time_bridge) StdoutLine: {'line': b'\n'}
+[17.904834] (go2w_sensor_time_bridge) StdoutLine: {'line': b'Installed /home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge\n'}
+[17.904960] (go2w_sensor_time_bridge) StdoutLine: {'line': b'running install_data\n'}
+[17.905089] (go2w_sensor_time_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/ament_index\n'}
+[17.905195] (go2w_sensor_time_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/ament_index/resource_index\n'}
+[17.905326] (go2w_sensor_time_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/ament_index/resource_index/packages\n'}
+[17.905432] (go2w_sensor_time_bridge) StdoutLine: {'line': b'copying resource/go2w_sensor_time_bridge -> /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/ament_index/resource_index/packages\n'}
+[17.905581] (go2w_sensor_time_bridge) StdoutLine: {'line': b'copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/go2w_sensor_time_bridge\n'}
+[17.905684] (go2w_sensor_time_bridge) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/go2w_sensor_time_bridge/launch\n'}
+[17.905811] (go2w_sensor_time_bridge) StdoutLine: {'line': b'copying launch/time_bridge.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/share/go2w_sensor_time_bridge/launch\n'}
+[17.905918] (hesai_ros_driver) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed\n'}
+[17.906110] (hesai_ros_driver) StdoutLine: {'line': b'-- Looking for pthread_create in pthreads\n'}
+[17.906299] (hesai_ros_driver) StdoutLine: {'line': b'-- Looking for pthread_create in pthreads - not found\n'}
+[17.906478] (hesai_ros_driver) StdoutLine: {'line': b'-- Looking for pthread_create in pthread\n'}
+[17.906632] (hesai_ros_driver) StdoutLine: {'line': b'-- Looking for pthread_create in pthread - found\n'}
+[17.906814] (hesai_ros_driver) StdoutLine: {'line': b'-- Found Threads: TRUE  \n'}
+[17.906957] (go2w_rgb_lidar_fusion) CommandEnded: {'returncode': 0}
+[17.943614] (-) TimerEvent: {}
+[18.091687] (-) TimerEvent: {}
+[18.192571] (-) TimerEvent: {}
+[18.270190] (go2w_rgb_lidar_fusion) JobEnded: {'identifier': 'go2w_rgb_lidar_fusion', 'rc': 0}
+[18.271383] (go2w_sensor_time_bridge) CommandEnded: {'returncode': 0}
+[18.293298] (-) TimerEvent: {}
+[18.393942] (-) TimerEvent: {}
+[18.495065] (-) TimerEvent: {}
+[18.593639] (go2w_sensor_time_bridge) JobEnded: {'identifier': 'go2w_sensor_time_bridge', 'rc': 0}
+[18.594978] (go2w_lidar_preprocessor) JobStarted: {'identifier': 'go2w_lidar_preprocessor'}
+[18.595097] (-) TimerEvent: {}
+[18.695370] (-) TimerEvent: {}
+[18.795814] (-) TimerEvent: {}
+[18.896231] (-) TimerEvent: {}
+[18.997339] (-) TimerEvent: {}
+[19.062846] (hesai_ros_driver) StderrLine: {'line': b'=============================================================\n'}
+[19.063487] (hesai_ros_driver) StderrLine: {'line': b'-- ROS2 Found. ROS2 Support is turned On.\n'}
+[19.063735] (hesai_ros_driver) StderrLine: {'line': b'=============================================================\n'}
+[19.063879] (hesai_ros_driver) StdoutLine: {'line': b'-- Found sensor_msgs: 2.0.5 (/opt/ros/humble/share/sensor_msgs/cmake)\n'}
+[19.065734] (hesai_ros_driver) StdoutLine: {'line': b'-- Found rclcpp_action: 2.4.3 (/opt/ros/humble/share/rclcpp_action/cmake)\n'}
+[19.066005] (hesai_ros_driver) StdoutLine: {'line': b'-- Found rosidl_default_generators: 1.0.1 (/opt/ros/humble/share/rosidl_default_generators/cmake)\n'}
+[19.080351] (go2w_lio_bringup) JobStarted: {'identifier': 'go2w_lio_bringup'}
+[19.097616] (-) TimerEvent: {}
+[19.198069] (-) TimerEvent: {}
+[19.298675] (-) TimerEvent: {}
+[19.399739] (-) TimerEvent: {}
+[19.501627] (-) TimerEvent: {}
+[19.602326] (hesai_ros_driver) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found version "3.8.10") \n'}
+[19.603575] (-) TimerEvent: {}
+[19.603792] (hesai_ros_driver) StdoutLine: {'line': b'-- Found ament_cmake_ros: 0.9.2 (/opt/ros/humble/share/ament_cmake_ros/cmake)\n'}
+[19.605810] (hesai_ros_driver) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[19.609230] (hesai_ros_driver) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[19.609476] (hesai_ros_driver) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3.5") \n'}
+[19.609685] (hesai_ros_driver) StdoutLine: {'line': b'-- Found python_cmake_module: 0.8.1 (/opt/ros/humble/share/python_cmake_module/cmake)\n'}
+[19.609828] (hesai_ros_driver) StdoutLine: {'line': b'-- Found PythonLibs: /usr/lib/aarch64-linux-gnu/libpython3.8.so (found suitable version "3.8.10", minimum required is "3.5") \n'}
+[19.609990] (hesai_ros_driver) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[19.610135] (hesai_ros_driver) StdoutLine: {'line': b'-- Using PYTHON_INCLUDE_DIRS: /usr/include/python3.8\n'}
+[19.610353] (hesai_ros_driver) StdoutLine: {'line': b'-- Using PYTHON_LIBRARIES: /usr/lib/aarch64-linux-gnu/libpython3.8.so\n'}
+[19.610535] (hesai_ros_driver) StdoutLine: {'line': b'-- Found PythonExtra: .so  \n'}
+[19.610693] (robot_scene_nav_bringup) JobProgress: {'identifier': 'robot_scene_nav_bringup', 'progress': 'cmake'}
+[19.612288] (robot_scene_nav_bringup) Command: {'cmd': ['/usr/bin/cmake', '/home/unitree/robotscene/ros2_ws/src/robot_scene_nav_bringup', '-DPython3_EXECUTABLE=/usr/bin/python3', '-DPYTHON_EXECUTABLE=/usr/bin/python3', '-DWITH_PTCS_USE=OFF', '-DAMENT_CMAKE_SYMLINK_INSTALL=1', '-DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55902 22'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene'), ('NO_PROXY', 'localhost,127.0.0.1'), ('ROS_PYTHON_VERSION', '3'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '103'), ('ROS_LOCALHOST_ONLY', '0'), ('GO2W_UNITREE_ROOT', '/home/unitree/robotscene/external/unitree_ros2'), ('PATH', '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('GO2W_CONTROL_ROOT', '/home/unitree/robotscene/unitree_go2w_control'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup'), ('SSH_CONNECTION', '192.168.123.99 55902 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble')]), 'shell': False}
+[19.704096] (-) TimerEvent: {}
+[19.804645] (-) TimerEvent: {}
+[19.905059] (-) TimerEvent: {}
+[20.005505] (-) TimerEvent: {}
+[20.105936] (-) TimerEvent: {}
+[20.206940] (-) TimerEvent: {}
+[20.307456] (-) TimerEvent: {}
+[20.409236] (-) TimerEvent: {}
+[20.509982] (-) TimerEvent: {}
+[20.610915] (-) TimerEvent: {}
+[20.711551] (-) TimerEvent: {}
+[20.812057] (-) TimerEvent: {}
+[20.912440] (-) TimerEvent: {}
+[21.012901] (-) TimerEvent: {}
+[21.113292] (-) TimerEvent: {}
+[21.214283] (-) TimerEvent: {}
+[21.316189] (-) TimerEvent: {}
+[21.416542] (-) TimerEvent: {}
+[21.517452] (-) TimerEvent: {}
+[21.522509] (hesai_ros_driver) StdoutLine: {'line': b'-- Adding Logger module...\n'}
+[21.523328] (hesai_ros_driver) StdoutLine: {'line': b'-- Adding Common module...\n'}
+[21.523822] (hesai_ros_driver) StdoutLine: {'line': b'-- Adding UdpParser module...\n'}
+[21.523980] (hesai_ros_driver) StdoutLine: {'line': b'-- Adding PtcClient module...\n'}
+[21.524110] (hesai_ros_driver) StdoutLine: {'line': b'-- Adding Source module...\n'}
+[21.524271] (hesai_ros_driver) StdoutLine: {'line': b'-- Adding SerialClient module...\n'}
+[21.524388] (hesai_ros_driver) StdoutLine: {'line': b'-- Adding Lidar module...\n'}
+[21.524498] (hesai_ros_driver) StdoutLine: {'line': b'-- \n'}
+[21.524605] (hesai_ros_driver) StdoutLine: {'line': b'-- === Build Configuration ===\n'}
+[21.524710] (hesai_ros_driver) StdoutLine: {'line': b'--   WITH_LIDARBOARD:    ON\n'}
+[21.524855] (hesai_ros_driver) StdoutLine: {'line': b'--   WITH_UDPPARSER:     ON\n'}
+[21.524964] (hesai_ros_driver) StdoutLine: {'line': b'--   WITH_UDPPARSERGPU:  OFF\n'}
+[21.525068] (hesai_ros_driver) StdoutLine: {'line': b'--   WITH_PTCCLIENT:     ON\n'}
+[21.525172] (hesai_ros_driver) StdoutLine: {'line': b'--   WITH_PTCS_USE:      OFF\n'}
+[21.525276] (hesai_ros_driver) StdoutLine: {'line': b'--   WITH_SERIALCLIENT:  ON\n'}
+[21.525410] (hesai_ros_driver) StdoutLine: {'line': b'--   WITH_LIDARLIB:      ON\n'}
+[21.525517] (hesai_ros_driver) StdoutLine: {'line': b'-- ===========================\n'}
+[21.525655] (hesai_ros_driver) StdoutLine: {'line': b'-- \n'}
+[21.525760] (hesai_ros_driver) StdoutLine: {'line': b'-- \n'}
+[21.525870] (hesai_ros_driver) StdoutLine: {'line': b'-- === HesaiLidarSDK Build Configuration ===\n'}
+[21.525976] (hesai_ros_driver) StdoutLine: {'line': b'--   CMAKE_BUILD_TYPE:       Release\n'}
+[21.526077] (hesai_ros_driver) StdoutLine: {'line': b'--   WITH_PTCS_USE:          OFF\n'}
+[21.526177] (hesai_ros_driver) StdoutLine: {'line': b'--   FIND_CUDA:              \n'}
+[21.526337] (hesai_ros_driver) StdoutLine: {'line': b'-- =========================================\n'}
+[21.526447] (hesai_ros_driver) StdoutLine: {'line': b'-- \n'}
+[21.526553] (hesai_ros_driver) StdoutLine: {'line': b'-- Found Boost: /usr/lib/aarch64-linux-gnu/cmake/Boost-1.71.0/BoostConfig.cmake (found version "1.71.0") found components: thread \n'}
+[21.526673] (hesai_ros_driver) StdoutLine: {'line': b'-- Found ament_index_cpp: 1.1.0 (/opt/ros/humble/share/ament_index_cpp/cmake)\n'}
+[21.526819] (hesai_ros_driver) StdoutLine: {'line': b'-- Configuring done\n'}
+[21.526923] (hesai_ros_driver) StdoutLine: {'line': b'-- Generating done\n'}
+[21.527027] (hesai_ros_driver) StdoutLine: {'line': b'-- Build files have been written to: /home/unitree/robotscene/ros2_ws/build/hesai_ros_driver\n'}
+[21.527136] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- The C compiler identification is GNU 9.4.0\n'}
+[21.527335] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 9.4.0\n'}
+[21.527449] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc\n'}
+[21.527556] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc -- works\n'}
+[21.527669] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[21.527774] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[21.527875] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[21.527977] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[21.528106] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++\n'}
+[21.528213] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ -- works\n'}
+[21.528318] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[21.528687] (hesai_ros_driver) StderrLine: {'line': b'CMake Warning:\n'}
+[21.528996] (hesai_ros_driver) StderrLine: {'line': b'  Manually-specified variables were not used by the project:\n'}
+[21.529147] (hesai_ros_driver) StderrLine: {'line': b'\n'}
+[21.529267] (hesai_ros_driver) StderrLine: {'line': b'    Python3_EXECUTABLE\n'}
+[21.529379] (hesai_ros_driver) StderrLine: {'line': b'\n'}
+[21.529486] (hesai_ros_driver) StderrLine: {'line': b'\n'}
+[21.531263] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[21.531520] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[21.531657] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[21.531780] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Found ament_cmake: 0.9.12 (/opt/ros/humble/share/ament_cmake/cmake)\n'}
+[21.531896] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") \n'}
+[21.532014] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[21.532125] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Override CMake install command with custom implementation using symlinks instead of copying resources\n'}
+[21.532887] (hesai_ros_driver) CommandEnded: {'returncode': 0}
+[21.534724] (hesai_ros_driver) JobProgress: {'identifier': 'hesai_ros_driver', 'progress': 'build'}
+[21.536575] (hesai_ros_driver) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/unitree/robotscene/ros2_ws/build/hesai_ros_driver', '--', '-j4', '-l4'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/hesai_ros_driver', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55902 22'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene'), ('NO_PROXY', 'localhost,127.0.0.1'), ('ROS_PYTHON_VERSION', '3'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '103'), ('ROS_LOCALHOST_ONLY', '0'), ('GO2W_UNITREE_ROOT', '/home/unitree/robotscene/external/unitree_ros2'), ('PATH', '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('GO2W_CONTROL_ROOT', '/home/unitree/robotscene/unitree_go2w_control'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/hesai_ros_driver'), ('SSH_CONNECTION', '192.168.123.99 55902 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble')]), 'shell': False}
+[21.562210] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Configuring done\n'}
+[21.562685] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Generating done\n'}
+[21.562860] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Build files have been written to: /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup\n'}
+[21.562994] (robot_scene_nav_bringup) StderrLine: {'line': b'CMake Warning:\n'}
+[21.563180] (robot_scene_nav_bringup) StderrLine: {'line': b'  Manually-specified variables were not used by the project:\n'}
+[21.563336] (robot_scene_nav_bringup) StderrLine: {'line': b'\n'}
+[21.563460] (robot_scene_nav_bringup) StderrLine: {'line': b'    Python3_EXECUTABLE\n'}
+[21.563576] (robot_scene_nav_bringup) StderrLine: {'line': b'    WITH_PTCS_USE\n'}
+[21.563707] (robot_scene_nav_bringup) StderrLine: {'line': b'\n'}
+[21.563821] (robot_scene_nav_bringup) StderrLine: {'line': b'\n'}
+[21.603736] (robot_scene_nav_bringup) CommandEnded: {'returncode': 0}
+[21.606108] (robot_scene_nav_bringup) JobProgress: {'identifier': 'robot_scene_nav_bringup', 'progress': 'build'}
+[21.606454] (robot_scene_nav_bringup) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup', '--', '-j4', '-l4'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55902 22'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene'), ('NO_PROXY', 'localhost,127.0.0.1'), ('ROS_PYTHON_VERSION', '3'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '103'), ('ROS_LOCALHOST_ONLY', '0'), ('GO2W_UNITREE_ROOT', '/home/unitree/robotscene/external/unitree_ros2'), ('PATH', '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('GO2W_CONTROL_ROOT', '/home/unitree/robotscene/unitree_go2w_control'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup'), ('SSH_CONNECTION', '192.168.123.99 55902 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble')]), 'shell': False}
+[21.618386] (-) TimerEvent: {}
+[21.708401] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target log_lib\n'}
+[21.718573] (-) TimerEvent: {}
+[21.755000] (hesai_ros_driver) StdoutLine: {'line': b'[  1%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/Logger/CMakeFiles/log_lib.dir/src/logger.cc.o\n'}
+[21.759467] (hesai_ros_driver) StdoutLine: {'line': b'[  2%] Generating C code for ROS interfaces\n'}
+[21.775572] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__cpp\n'}
+[21.801146] (robot_scene_nav_bringup) CommandEnded: {'returncode': 0}
+[21.817757] (hesai_ros_driver) StdoutLine: {'line': b'[  3%] Generating C++ code for ROS interfaces\n'}
+[21.818656] (-) TimerEvent: {}
+[21.918929] (-) TimerEvent: {}
+[22.012161] (robot_scene_nav_bringup) JobProgress: {'identifier': 'robot_scene_nav_bringup', 'progress': 'install'}
+[22.019249] (-) TimerEvent: {}
+[22.108653] (robot_scene_nav_bringup) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55902 22'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene'), ('NO_PROXY', 'localhost,127.0.0.1'), ('ROS_PYTHON_VERSION', '3'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '103'), ('ROS_LOCALHOST_ONLY', '0'), ('GO2W_UNITREE_ROOT', '/home/unitree/robotscene/external/unitree_ros2'), ('PATH', '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('GO2W_CONTROL_ROOT', '/home/unitree/robotscene/unitree_go2w_control'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup'), ('SSH_CONNECTION', '192.168.123.99 55902 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble')]), 'shell': False}
+[22.119456] (-) TimerEvent: {}
+[22.198420] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[22.200502] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Execute custom install script\n'}
+[22.206073] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/launch/collision_monitor.launch.py\n'}
+[22.219617] (-) TimerEvent: {}
+[22.254118] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/launch/robot_scene_nav2.launch.py\n'}
+[22.276467] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/launch/robot_scene_nav2_plan_only.launch.py\n'}
+[22.300116] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/config/collision_monitor.yaml\n'}
+[22.319791] (-) TimerEvent: {}
+[22.324413] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/config/nav2_params_humble.yaml\n'}
+[22.356912] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/config/velocity_smoother.yaml\n'}
+[22.403519] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/behavior_trees/navigate_to_pose_robot_scene.xml\n'}
+[22.419965] (-) TimerEvent: {}
+[22.477476] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/ament_index/resource_index/package_run_dependencies/robot_scene_nav_bringup\n'}
+[22.520591] (-) TimerEvent: {}
+[22.562955] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/ament_index/resource_index/parent_prefix_path/robot_scene_nav_bringup\n'}
+[22.620769] (-) TimerEvent: {}
+[22.663844] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/ament_prefix_path.sh\n'}
+[22.720925] (-) TimerEvent: {}
+[22.722826] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/ament_prefix_path.dsv\n'}
+[22.751239] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/path.sh\n'}
+[22.780401] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/path.dsv\n'}
+[22.811807] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.bash\n'}
+[22.821086] (-) TimerEvent: {}
+[22.842159] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.sh\n'}
+[22.876768] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.zsh\n'}
+[22.903695] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.dsv\n'}
+[22.934422] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/package.dsv\n'}
+[22.934991] (-) TimerEvent: {}
+[22.957974] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/ament_index/resource_index/packages/robot_scene_nav_bringup\n'}
+[22.988485] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/cmake/robot_scene_nav_bringupConfig.cmake\n'}
+[23.028156] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/cmake/robot_scene_nav_bringupConfig-version.cmake\n'}
+[23.035266] (-) TimerEvent: {}
+[23.058513] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/package.xml\n'}
+[23.111890] (robot_scene_nav_bringup) CommandEnded: {'returncode': 0}
+[23.138859] (-) TimerEvent: {}
+[23.242614] (-) TimerEvent: {}
+[23.347064] (-) TimerEvent: {}
+[23.461447] (-) TimerEvent: {}
+[23.567579] (-) TimerEvent: {}
+[23.675807] (-) TimerEvent: {}
+[23.779578] (-) TimerEvent: {}
+[23.880241] (-) TimerEvent: {}
+[23.980673] (-) TimerEvent: {}
+[23.992613] (go2w_lio_bringup) Command: {'cmd': ['/usr/bin/python3', 'setup.py', 'develop', '--editable', '--build-directory', '/home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup/build', '--no-deps', 'install_data'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup', 'env': {'HTTPS_PROXY': 'http://127.0.0.1:17891', 'USER': 'unitree', 'SSH_CLIENT': '192.168.123.99 55902 22', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'MOTD_SHOWN': 'pam', 'HOME': '/home/unitree', 'OLDPWD': '/home/unitree/robotscene', 'NO_PROXY': 'localhost,127.0.0.1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLCON_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install', 'ROS_DISTRO': 'foxy', 'LOGNAME': 'unitree', 'ALL_PROXY': 'socks5h://127.0.0.1:17891', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'XDG_SESSION_ID': '103', 'ROS_LOCALHOST_ONLY': '0', 'GO2W_UNITREE_ROOT': '/home/unitree/robotscene/external/unitree_ros2', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'en_US.UTF-8', 'GO2W_CONTROL_ROOT': '/home/unitree/robotscene/unitree_go2w_control', 'AMENT_PREFIX_PATH': '/home/unitree/robotscene/ros2_ws/install/go2w_description:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble', 'SHELL': '/bin/bash', 'PWD': '/home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup', 'SSH_CONNECTION': '192.168.123.99 55902 192.168.123.18 22', 'PYTHONPATH': '/home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/python3.8/site-packages:/home/unitree/robotscene/ros2_ws/build/go2w_description:/home/unitree/robotscene/ros2_ws/install/go2w_description/lib/python3.8/site-packages:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages', 'HTTP_PROXY': 'http://127.0.0.1:17891', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api'}, 'shell': False}
+[24.015846] (go2w_lidar_preprocessor) Command: {'cmd': ['/usr/bin/python3', 'setup.py', 'develop', '--editable', '--build-directory', '/home/unitree/robotscene/ros2_ws/build/go2w_lidar_preprocessor/build', '--no-deps', 'install_data'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_lidar_preprocessor', 'env': {'HTTPS_PROXY': 'http://127.0.0.1:17891', 'USER': 'unitree', 'SSH_CLIENT': '192.168.123.99 55902 22', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'MOTD_SHOWN': 'pam', 'HOME': '/home/unitree', 'OLDPWD': '/home/unitree/robotscene', 'NO_PROXY': 'localhost,127.0.0.1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLCON_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install', 'ROS_DISTRO': 'foxy', 'LOGNAME': 'unitree', 'ALL_PROXY': 'socks5h://127.0.0.1:17891', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'XDG_SESSION_ID': '103', 'ROS_LOCALHOST_ONLY': '0', 'GO2W_UNITREE_ROOT': '/home/unitree/robotscene/external/unitree_ros2', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'en_US.UTF-8', 'GO2W_CONTROL_ROOT': '/home/unitree/robotscene/unitree_go2w_control', 'AMENT_PREFIX_PATH': '/home/unitree/robotscene/ros2_ws/install/go2w_description:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble', 'SHELL': '/bin/bash', 'PWD': '/home/unitree/robotscene/ros2_ws/build/go2w_lidar_preprocessor', 'SSH_CONNECTION': '192.168.123.99 55902 192.168.123.18 22', 'PYTHONPATH': '/home/unitree/robotscene/ros2_ws/build/go2w_lidar_preprocessor/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/lib/python3.8/site-packages:/home/unitree/robotscene/ros2_ws/build/go2w_description:/home/unitree/robotscene/ros2_ws/install/go2w_description/lib/python3.8/site-packages:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages', 'HTTP_PROXY': 'http://127.0.0.1:17891', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api'}, 'shell': False}
+[24.080893] (-) TimerEvent: {}
+[24.181238] (-) TimerEvent: {}
+[24.281608] (-) TimerEvent: {}
+[24.423662] (-) TimerEvent: {}
+[24.530922] (-) TimerEvent: {}
+[24.654601] (-) TimerEvent: {}
+[24.758571] (-) TimerEvent: {}
+[24.859558] (-) TimerEvent: {}
+[24.959883] (-) TimerEvent: {}
+[25.083215] (-) TimerEvent: {}
+[25.194725] (-) TimerEvent: {}
+[25.305270] (-) TimerEvent: {}
+[25.410747] (-) TimerEvent: {}
+[25.518557] (-) TimerEvent: {}
+[25.619130] (-) TimerEvent: {}
+[25.726429] (robot_scene_nav_bringup) JobEnded: {'identifier': 'robot_scene_nav_bringup', 'rc': 0}
+[25.727994] (-) TimerEvent: {}
+[25.728073] (hesai_ros_driver) StdoutLine: {'line': b'[  3%] Built target hesai_ros_driver__cpp\n'}
+[25.728287] (hesai_ros_driver) StdoutLine: {'line': b'[  4%] Generating C++ type support dispatch for ROS interfaces\n'}
+[25.728423] (hesai_ros_driver) StdoutLine: {'line': b'[  5%] Linking CXX static library liblog_lib.a\n'}
+[25.728545] (hesai_ros_driver) StdoutLine: {'line': b'[  6%] Generating C++ type support for eProsima Fast-RTPS\n'}
+[25.728661] (hesai_ros_driver) StdoutLine: {'line': b'[  6%] Built target log_lib\n'}
+[25.728773] (hesai_ros_driver) StdoutLine: {'line': b'[  8%] Generating C++ introspection for ROS interfaces\n'}
+[25.728882] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__rosidl_generator_c\n'}
+[25.728987] (hesai_ros_driver) StdoutLine: {'line': b'[  9%] Building C object CMakeFiles/hesai_ros_driver__rosidl_generator_c.dir/rosidl_generator_c/hesai_ros_driver/msg/detail/udp_packet__functions.c.o\n'}
+[25.729096] (go2w_lio_bringup) StdoutLine: {'line': b'running develop\n'}
+[25.729295] (go2w_lidar_preprocessor) StdoutLine: {'line': b'running develop\n'}
+[25.729464] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[25.729600] (go2w_lio_bringup) StdoutLine: {'line': b'running egg_info\n'}
+[25.729713] (go2w_lio_bringup) StdoutLine: {'line': b'creating go2w_lio_bringup.egg-info\n'}
+[25.729820] (go2w_lio_bringup) StdoutLine: {'line': b'writing go2w_lio_bringup.egg-info/PKG-INFO\n'}
+[25.740209] (go2w_lio_bringup) StdoutLine: {'line': b'writing dependency_links to go2w_lio_bringup.egg-info/dependency_links.txt\n'}
+[25.744258] (go2w_lio_bringup) StdoutLine: {'line': b'writing entry points to go2w_lio_bringup.egg-info/entry_points.txt\n'}
+[25.746088] (go2w_lio_bringup) StdoutLine: {'line': b'writing requirements to go2w_lio_bringup.egg-info/requires.txt\n'}
+[25.747142] (go2w_lio_bringup) StdoutLine: {'line': b'writing top-level names to go2w_lio_bringup.egg-info/top_level.txt\n'}
+[25.752980] (go2w_lio_bringup) StdoutLine: {'line': b"writing manifest file 'go2w_lio_bringup.egg-info/SOURCES.txt'\n"}
+[25.828181] (-) TimerEvent: {}
+[25.861483] (go2w_lio_bringup) StdoutLine: {'line': b"reading manifest file 'go2w_lio_bringup.egg-info/SOURCES.txt'\n"}
+[25.878874] (go2w_lio_bringup) StdoutLine: {'line': b"writing manifest file 'go2w_lio_bringup.egg-info/SOURCES.txt'\n"}
+[25.928356] (-) TimerEvent: {}
+[25.957993] (go2w_lidar_preprocessor) StdoutLine: {'line': b'running egg_info\n'}
+[25.958427] (go2w_lidar_preprocessor) StdoutLine: {'line': b'creating go2w_lidar_preprocessor.egg-info\n'}
+[25.958788] (go2w_lidar_preprocessor) StdoutLine: {'line': b'writing go2w_lidar_preprocessor.egg-info/PKG-INFO\n'}
+[25.958939] (go2w_lidar_preprocessor) StdoutLine: {'line': b'writing dependency_links to go2w_lidar_preprocessor.egg-info/dependency_links.txt\n'}
+[25.959294] (go2w_lidar_preprocessor) StdoutLine: {'line': b'writing entry points to go2w_lidar_preprocessor.egg-info/entry_points.txt\n'}
+[25.959636] (go2w_lidar_preprocessor) StdoutLine: {'line': b'writing requirements to go2w_lidar_preprocessor.egg-info/requires.txt\n'}
+[25.959971] (go2w_lidar_preprocessor) StdoutLine: {'line': b'writing top-level names to go2w_lidar_preprocessor.egg-info/top_level.txt\n'}
+[25.963194] (go2w_lidar_preprocessor) StdoutLine: {'line': b"writing manifest file 'go2w_lidar_preprocessor.egg-info/SOURCES.txt'\n"}
+[26.028514] (-) TimerEvent: {}
+[26.044030] (go2w_lio_bringup) StdoutLine: {'line': b'running build_ext\n'}
+[26.048872] (go2w_lio_bringup) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/python3.8/site-packages/site.py\n'}
+[26.065700] (go2w_lio_bringup) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/python3.8/site-packages/go2w-lio-bringup.egg-link (link to .)\n'}
+[26.066714] (hesai_ros_driver) StdoutLine: {'line': b'[ 10%] Building C object CMakeFiles/hesai_ros_driver__rosidl_generator_c.dir/rosidl_generator_c/hesai_ros_driver/msg/detail/udp_frame__functions.c.o\n'}
+[26.069224] (go2w_lio_bringup) StdoutLine: {'line': b'Installing go2w_wheel_odom script to /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/go2w_lio_bringup\n'}
+[26.070049] (go2w_lio_bringup) StdoutLine: {'line': b'Installing output_adapter script to /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/go2w_lio_bringup\n'}
+[26.072782] (go2w_lio_bringup) StdoutLine: {'line': b'Installing point_lio_bridge script to /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/go2w_lio_bringup\n'}
+[26.074315] (go2w_lio_bringup) StdoutLine: {'line': b'\n'}
+[26.074562] (go2w_lio_bringup) StdoutLine: {'line': b'Installed /home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup\n'}
+[26.075361] (go2w_lio_bringup) StdoutLine: {'line': b'running install_data\n'}
+[26.076060] (go2w_lio_bringup) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/ament_index\n'}
+[26.076660] (go2w_lio_bringup) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/ament_index/resource_index\n'}
+[26.078626] (go2w_lio_bringup) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/ament_index/resource_index/packages\n'}
+[26.079598] (go2w_lio_bringup) StdoutLine: {'line': b'copying resource/go2w_lio_bringup -> /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/ament_index/resource_index/packages\n'}
+[26.080680] (go2w_lio_bringup) StdoutLine: {'line': b'copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/go2w_lio_bringup\n'}
+[26.081537] (go2w_lio_bringup) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/go2w_lio_bringup/launch\n'}
+[26.082216] (go2w_lio_bringup) StdoutLine: {'line': b'copying launch/lio.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/go2w_lio_bringup/launch\n'}
+[26.084829] (go2w_lio_bringup) StdoutLine: {'line': b'copying launch/point_lio.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/go2w_lio_bringup/launch\n'}
+[26.085737] (go2w_lio_bringup) StdoutLine: {'line': b'copying launch/wheel_odom.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/go2w_lio_bringup/launch\n'}
+[26.094621] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__rosidl_typesupport_cpp\n'}
+[26.110397] (go2w_lidar_preprocessor) StdoutLine: {'line': b"reading manifest file 'go2w_lidar_preprocessor.egg-info/SOURCES.txt'\n"}
+[26.111769] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[26.112149] (go2w_lidar_preprocessor) StdoutLine: {'line': b"writing manifest file 'go2w_lidar_preprocessor.egg-info/SOURCES.txt'\n"}
+[26.128664] (-) TimerEvent: {}
+[26.183446] (hesai_ros_driver) StdoutLine: {'line': b'[ 11%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/hesai_ros_driver/msg/udp_packet__type_support.cpp.o\n'}
+[26.228836] (-) TimerEvent: {}
+[26.249753] (go2w_lidar_preprocessor) StdoutLine: {'line': b'running build_ext\n'}
+[26.250408] (go2w_lidar_preprocessor) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/lib/python3.8/site-packages/site.py\n'}
+[26.258222] (go2w_lidar_preprocessor) StdoutLine: {'line': b'Creating /home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/lib/python3.8/site-packages/go2w-lidar-preprocessor.egg-link (link to .)\n'}
+[26.258831] (go2w_lidar_preprocessor) StdoutLine: {'line': b'Installing hesai_pandarxt16_preprocessor script to /home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/lib/go2w_lidar_preprocessor\n'}
+[26.260258] (go2w_lidar_preprocessor) StdoutLine: {'line': b'Installing lidar_preprocessor script to /home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/lib/go2w_lidar_preprocessor\n'}
+[26.260491] (go2w_lidar_preprocessor) StdoutLine: {'line': b'\n'}
+[26.260628] (go2w_lidar_preprocessor) StdoutLine: {'line': b'Installed /home/unitree/robotscene/ros2_ws/build/go2w_lidar_preprocessor\n'}
+[26.260751] (go2w_lidar_preprocessor) StdoutLine: {'line': b'running install_data\n'}
+[26.260867] (go2w_lidar_preprocessor) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/share/ament_index\n'}
+[26.260975] (go2w_lidar_preprocessor) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/share/ament_index/resource_index\n'}
+[26.261083] (go2w_lidar_preprocessor) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/share/ament_index/resource_index/packages\n'}
+[26.261381] (go2w_lidar_preprocessor) StdoutLine: {'line': b'copying resource/go2w_lidar_preprocessor -> /home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/share/ament_index/resource_index/packages\n'}
+[26.261527] (go2w_lidar_preprocessor) StdoutLine: {'line': b'copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/share/go2w_lidar_preprocessor\n'}
+[26.261643] (go2w_lidar_preprocessor) StdoutLine: {'line': b'creating /home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/share/go2w_lidar_preprocessor/launch\n'}
+[26.261753] (go2w_lidar_preprocessor) StdoutLine: {'line': b'copying launch/lidar_preprocessor.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_lidar_preprocessor/share/go2w_lidar_preprocessor/launch\n'}
+[26.329035] (-) TimerEvent: {}
+[26.340778] (go2w_lio_bringup) CommandEnded: {'returncode': 0}
+[26.429327] (-) TimerEvent: {}
+[26.531755] (-) TimerEvent: {}
+[26.632170] (-) TimerEvent: {}
+[26.732962] (-) TimerEvent: {}
+[26.832079] (go2w_lio_bringup) JobEnded: {'identifier': 'go2w_lio_bringup', 'rc': 0}
+[26.836904] (-) TimerEvent: {}
+[26.837054] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__rosidl_typesupport_fastrtps_cpp\n'}
+[26.837341] (hesai_ros_driver) StdoutLine: {'line': b'[ 12%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/hesai_ros_driver/msg/detail/dds_fastrtps/udp_packet__type_support.cpp.o\n'}
+[26.837484] (hesai_ros_driver) StdoutLine: {'line': b'[ 13%] Building C object CMakeFiles/hesai_ros_driver__rosidl_generator_c.dir/rosidl_generator_c/hesai_ros_driver/msg/detail/firetime__functions.c.o\n'}
+[26.841320] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__rosidl_typesupport_introspection_cpp\n'}
+[26.841583] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[26.841792] (go2w_lidar_preprocessor) CommandEnded: {'returncode': 0}
+[26.937039] (-) TimerEvent: {}
+[27.042523] (-) TimerEvent: {}
+[27.143796] (-) TimerEvent: {}
+[27.251934] (-) TimerEvent: {}
+[27.364798] (-) TimerEvent: {}
+[27.437319] (go2w_lidar_preprocessor) JobEnded: {'identifier': 'go2w_lidar_preprocessor', 'rc': 0}
+[27.439091] (hesai_ros_driver) StdoutLine: {'line': b'[ 14%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/hesai_ros_driver/msg/detail/udp_packet__type_support.cpp.o\n'}
+[27.439454] (hesai_ros_driver) StdoutLine: {'line': b'[ 16%] Building C object CMakeFiles/hesai_ros_driver__rosidl_generator_c.dir/rosidl_generator_c/hesai_ros_driver/msg/detail/ptp__functions.c.o\n'}
+[27.439610] (hesai_ros_driver) StdoutLine: {'line': b'[ 17%] Building C object CMakeFiles/hesai_ros_driver__rosidl_generator_c.dir/rosidl_generator_c/hesai_ros_driver/msg/detail/loss_packet__functions.c.o\n'}
+[27.439740] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[27.465169] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[27.465661] (-) TimerEvent: {}
+[27.566454] (-) TimerEvent: {}
+[27.614410] (hesai_ros_driver) StdoutLine: {'line': b'[ 18%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/hesai_ros_driver/msg/udp_frame__type_support.cpp.o\n'}
+[27.666634] (-) TimerEvent: {}
+[27.767070] (-) TimerEvent: {}
+[27.807434] (hesai_ros_driver) StdoutLine: {'line': b'[ 19%] Linking C shared library libhesai_ros_driver__rosidl_generator_c.so\n'}
+[27.867280] (-) TimerEvent: {}
+[27.941080] (hesai_ros_driver) StdoutLine: {'line': b'[ 19%] Built target hesai_ros_driver__rosidl_generator_c\n'}
+[27.967465] (-) TimerEvent: {}
+[27.969389] (hesai_ros_driver) StdoutLine: {'line': b'[ 20%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/hesai_ros_driver/msg/detail/udp_frame__type_support.cpp.o\n'}
+[28.042354] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target platutils_lib\n'}
+[28.067662] (-) TimerEvent: {}
+[28.099783] (hesai_ros_driver) StdoutLine: {'line': b'[ 21%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/Common/CMakeFiles/platutils_lib.dir/src/plat_utils.cc.o\n'}
+[28.167846] (-) TimerEvent: {}
+[28.268282] (-) TimerEvent: {}
+[28.368756] (-) TimerEvent: {}
+[28.388567] (hesai_ros_driver) StdoutLine: {'line': b'[ 22%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/hesai_ros_driver/msg/detail/dds_fastrtps/udp_frame__type_support.cpp.o\n'}
+[28.468947] (-) TimerEvent: {}
+[28.517993] (hesai_ros_driver) StdoutLine: {'line': b'[ 24%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/hesai_ros_driver/msg/firetime__type_support.cpp.o\n'}
+[28.569131] (-) TimerEvent: {}
+[28.669584] (-) TimerEvent: {}
+[28.770030] (-) TimerEvent: {}
+[28.870521] (-) TimerEvent: {}
+[28.970949] (-) TimerEvent: {}
+[29.054399] (hesai_ros_driver) StdoutLine: {'line': b'[ 25%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/hesai_ros_driver/msg/detail/firetime__type_support.cpp.o\n'}
+[29.071871] (-) TimerEvent: {}
+[29.172316] (-) TimerEvent: {}
+[29.278007] (-) TimerEvent: {}
+[29.348388] (hesai_ros_driver) StdoutLine: {'line': b'[ 26%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/hesai_ros_driver/msg/ptp__type_support.cpp.o\n'}
+[29.378204] (-) TimerEvent: {}
+[29.478674] (-) TimerEvent: {}
+[29.579205] (-) TimerEvent: {}
+[29.679655] (-) TimerEvent: {}
+[29.780118] (-) TimerEvent: {}
+[29.880574] (-) TimerEvent: {}
+[29.902511] (hesai_ros_driver) StdoutLine: {'line': b'[ 27%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/hesai_ros_driver/msg/detail/dds_fastrtps/firetime__type_support.cpp.o\n'}
+[29.937671] (hesai_ros_driver) StdoutLine: {'line': b'[ 28%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/hesai_ros_driver/msg/detail/ptp__type_support.cpp.o\n'}
+[29.982874] (-) TimerEvent: {}
+[30.083319] (-) TimerEvent: {}
+[30.183770] (-) TimerEvent: {}
+[30.284240] (-) TimerEvent: {}
+[30.398449] (-) TimerEvent: {}
+[30.431103] (hesai_ros_driver) StdoutLine: {'line': b'[ 29%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/hesai_ros_driver/msg/loss_packet__type_support.cpp.o\n'}
+[30.502505] (-) TimerEvent: {}
+[30.510478] (hesai_ros_driver) StdoutLine: {'line': b'[ 31%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/Common/CMakeFiles/platutils_lib.dir/src/auto_tick_count.cc.o\n'}
+[30.610540] (-) TimerEvent: {}
+[30.710978] (-) TimerEvent: {}
+[30.792913] (hesai_ros_driver) StdoutLine: {'line': b'[ 32%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/hesai_ros_driver/msg/detail/loss_packet__type_support.cpp.o\n'}
+[30.811160] (-) TimerEvent: {}
+[30.911593] (-) TimerEvent: {}
+[31.012040] (-) TimerEvent: {}
+[31.112475] (-) TimerEvent: {}
+[31.212916] (-) TimerEvent: {}
+[31.247564] (hesai_ros_driver) StdoutLine: {'line': b'[ 33%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/hesai_ros_driver/msg/detail/dds_fastrtps/ptp__type_support.cpp.o\n'}
+[31.313214] (-) TimerEvent: {}
+[31.369392] (hesai_ros_driver) StdoutLine: {'line': b'[ 34%] Linking CXX shared library libhesai_ros_driver__rosidl_typesupport_cpp.so\n'}
+[31.413398] (-) TimerEvent: {}
+[31.513912] (-) TimerEvent: {}
+[31.528090] (hesai_ros_driver) StdoutLine: {'line': b'[ 34%] Built target hesai_ros_driver__rosidl_typesupport_cpp\n'}
+[31.573797] (hesai_ros_driver) StdoutLine: {'line': b'[ 35%] Generating C introspection for ROS interfaces\n'}
+[31.614075] (-) TimerEvent: {}
+[31.716009] (-) TimerEvent: {}
+[31.777568] (hesai_ros_driver) StdoutLine: {'line': b'[ 36%] Linking CXX shared library libhesai_ros_driver__rosidl_typesupport_introspection_cpp.so\n'}
+[31.816212] (-) TimerEvent: {}
+[31.918443] (-) TimerEvent: {}
+[32.019795] (-) TimerEvent: {}
+[32.069505] (hesai_ros_driver) StdoutLine: {'line': b'[ 36%] Built target hesai_ros_driver__rosidl_typesupport_introspection_cpp\n'}
+[32.115038] (hesai_ros_driver) StdoutLine: {'line': b'[ 37%] Generating C type support dispatch for ROS interfaces\n'}
+[32.119959] (-) TimerEvent: {}
+[32.220348] (-) TimerEvent: {}
+[32.320770] (-) TimerEvent: {}
+[32.421161] (-) TimerEvent: {}
+[32.521560] (-) TimerEvent: {}
+[32.621991] (-) TimerEvent: {}
+[32.722759] (-) TimerEvent: {}
+[32.823192] (-) TimerEvent: {}
+[32.910129] (hesai_ros_driver) StdoutLine: {'line': b'[ 39%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/hesai_ros_driver/msg/detail/dds_fastrtps/loss_packet__type_support.cpp.o\n'}
+[32.923381] (-) TimerEvent: {}
+[32.947520] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__rosidl_typesupport_introspection_c\n'}
+[32.999379] (hesai_ros_driver) StdoutLine: {'line': b'[ 40%] Building C object CMakeFiles/hesai_ros_driver__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/hesai_ros_driver/msg/detail/udp_packet__type_support.c.o\n'}
+[33.023609] (-) TimerEvent: {}
+[33.028718] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[33.106382] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__rosidl_typesupport_c\n'}
+[33.123809] (-) TimerEvent: {}
+[33.149307] (hesai_ros_driver) StdoutLine: {'line': b'[ 41%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_c.dir/rosidl_typesupport_c/hesai_ros_driver/msg/udp_packet__type_support.cpp.o\n'}
+[33.187435] (hesai_ros_driver) StdoutLine: {'line': b'[ 42%] Building C object CMakeFiles/hesai_ros_driver__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/hesai_ros_driver/msg/detail/udp_frame__type_support.c.o\n'}
+[33.215939] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[33.223999] (-) TimerEvent: {}
+[33.284570] (hesai_ros_driver) StdoutLine: {'line': b'[ 43%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_c.dir/rosidl_typesupport_c/hesai_ros_driver/msg/udp_frame__type_support.cpp.o\n'}
+[33.326759] (-) TimerEvent: {}
+[33.344505] (hesai_ros_driver) StdoutLine: {'line': b'[ 44%] Building C object CMakeFiles/hesai_ros_driver__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/hesai_ros_driver/msg/detail/firetime__type_support.c.o\n'}
+[33.369664] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[33.426950] (-) TimerEvent: {}
+[33.436473] (hesai_ros_driver) StdoutLine: {'line': b'[ 45%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_c.dir/rosidl_typesupport_c/hesai_ros_driver/msg/firetime__type_support.cpp.o\n'}
+[33.464816] (hesai_ros_driver) StdoutLine: {'line': b'[ 47%] Linking CXX static library libplatutils_lib.a\n'}
+[33.475041] (hesai_ros_driver) StdoutLine: {'line': b'[ 48%] Building C object CMakeFiles/hesai_ros_driver__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/hesai_ros_driver/msg/detail/ptp__type_support.c.o\n'}
+[33.501293] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[33.527156] (-) TimerEvent: {}
+[33.560722] (hesai_ros_driver) StdoutLine: {'line': b'[ 49%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_c.dir/rosidl_typesupport_c/hesai_ros_driver/msg/ptp__type_support.cpp.o\n'}
+[33.590297] (hesai_ros_driver) StdoutLine: {'line': b'[ 49%] Built target platutils_lib\n'}
+[33.615143] (hesai_ros_driver) StdoutLine: {'line': b'[ 50%] Building C object CMakeFiles/hesai_ros_driver__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/hesai_ros_driver/msg/detail/loss_packet__type_support.c.o\n'}
+[33.627595] (-) TimerEvent: {}
+[33.650838] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[33.682845] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target source_lib\n'}
+[33.713174] (hesai_ros_driver) StdoutLine: {'line': b'[ 51%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_c.dir/rosidl_typesupport_c/hesai_ros_driver/msg/loss_packet__type_support.cpp.o\n'}
+[33.727821] (-) TimerEvent: {}
+[33.729171] (hesai_ros_driver) StdoutLine: {'line': b'[ 52%] Linking C shared library libhesai_ros_driver__rosidl_typesupport_introspection_c.so\n'}
+[33.739044] (hesai_ros_driver) StdoutLine: {'line': b'[ 54%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/Source/CMakeFiles/source_lib.dir/src/source.cc.o\n'}
+[33.828289] (-) TimerEvent: {}
+[33.830098] (hesai_ros_driver) StdoutLine: {'line': b'[ 55%] Linking CXX shared library libhesai_ros_driver__rosidl_typesupport_c.so\n'}
+[33.866134] (hesai_ros_driver) StdoutLine: {'line': b'[ 55%] Built target hesai_ros_driver__rosidl_typesupport_introspection_c\n'}
+[33.921342] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target ptcClient_lib\n'}
+[33.929650] (-) TimerEvent: {}
+[33.970510] (hesai_ros_driver) StdoutLine: {'line': b'[ 56%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/PtcClient/CMakeFiles/ptcClient_lib.dir/src/ptc_client.cc.o\n'}
+[33.982110] (hesai_ros_driver) StdoutLine: {'line': b'[ 56%] Built target hesai_ros_driver__rosidl_typesupport_c\n'}
+[34.030433] (-) TimerEvent: {}
+[34.031188] (hesai_ros_driver) StdoutLine: {'line': b'[ 57%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/Source/CMakeFiles/source_lib.dir/src/socket_source.cc.o\n'}
+[34.056881] (hesai_ros_driver) StdoutLine: {'line': b'[ 58%] Linking CXX shared library libhesai_ros_driver__rosidl_typesupport_fastrtps_cpp.so\n'}
+[34.130611] (-) TimerEvent: {}
+[34.231019] (-) TimerEvent: {}
+[34.331457] (-) TimerEvent: {}
+[34.380557] (hesai_ros_driver) StdoutLine: {'line': b'[ 58%] Built target hesai_ros_driver__rosidl_typesupport_fastrtps_cpp\n'}
+[34.431658] (-) TimerEvent: {}
+[34.449477] (hesai_ros_driver) StdoutLine: {'line': b'[ 59%] Generating C type support for eProsima Fast-RTPS\n'}
+[34.531819] (-) TimerEvent: {}
+[34.632202] (-) TimerEvent: {}
+[34.732637] (-) TimerEvent: {}
+[34.833071] (-) TimerEvent: {}
+[34.933513] (-) TimerEvent: {}
+[35.033927] (-) TimerEvent: {}
+[35.134422] (-) TimerEvent: {}
+[35.235228] (-) TimerEvent: {}
+[35.335646] (-) TimerEvent: {}
+[35.437554] (-) TimerEvent: {}
+[35.537972] (-) TimerEvent: {}
+[35.638408] (-) TimerEvent: {}
+[35.738862] (-) TimerEvent: {}
+[35.839309] (-) TimerEvent: {}
+[35.939738] (-) TimerEvent: {}
+[36.040169] (-) TimerEvent: {}
+[36.103560] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__rosidl_typesupport_fastrtps_c\n'}
+[36.140370] (-) TimerEvent: {}
+[36.143172] (hesai_ros_driver) StdoutLine: {'line': b'[ 60%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/hesai_ros_driver/msg/detail/udp_packet__type_support_c.cpp.o\n'}
+[36.240566] (-) TimerEvent: {}
+[36.341000] (-) TimerEvent: {}
+[36.441473] (-) TimerEvent: {}
+[36.541981] (-) TimerEvent: {}
+[36.650471] (-) TimerEvent: {}
+[36.751274] (hesai_ros_driver) StdoutLine: {'line': b'[ 62%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/Source/CMakeFiles/source_lib.dir/src/pcap_source.cc.o\n'}
+[36.751787] (-) TimerEvent: {}
+[36.788472] (hesai_ros_driver) StdoutLine: {'line': b'[ 63%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/Source/CMakeFiles/source_lib.dir/src/serial_source.cc.o\n'}
+[36.852009] (-) TimerEvent: {}
+[36.952454] (-) TimerEvent: {}
+[37.052903] (-) TimerEvent: {}
+[37.153340] (-) TimerEvent: {}
+[37.253801] (-) TimerEvent: {}
+[37.305155] (hesai_ros_driver) StdoutLine: {'line': b'[ 64%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/hesai_ros_driver/msg/detail/udp_frame__type_support_c.cpp.o\n'}
+[37.354001] (-) TimerEvent: {}
+[37.454414] (-) TimerEvent: {}
+[37.554861] (-) TimerEvent: {}
+[37.655324] (-) TimerEvent: {}
+[37.755771] (-) TimerEvent: {}
+[37.866429] (-) TimerEvent: {}
+[37.974826] (-) TimerEvent: {}
+[38.075582] (-) TimerEvent: {}
+[38.198414] (-) TimerEvent: {}
+[38.298839] (-) TimerEvent: {}
+[38.399288] (-) TimerEvent: {}
+[38.499757] (-) TimerEvent: {}
+[38.579242] (hesai_ros_driver) StdoutLine: {'line': b'[ 65%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/hesai_ros_driver/msg/detail/firetime__type_support_c.cpp.o\n'}
+[38.599966] (-) TimerEvent: {}
+[38.700422] (-) TimerEvent: {}
+[38.800879] (-) TimerEvent: {}
+[38.901323] (-) TimerEvent: {}
+[39.001769] (-) TimerEvent: {}
+[39.102211] (-) TimerEvent: {}
+[39.202670] (-) TimerEvent: {}
+[39.306421] (-) TimerEvent: {}
+[39.414423] (-) TimerEvent: {}
+[39.517451] (-) TimerEvent: {}
+[39.618705] (-) TimerEvent: {}
+[39.629658] (hesai_ros_driver) StdoutLine: {'line': b'[ 66%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/hesai_ros_driver/msg/detail/ptp__type_support_c.cpp.o\n'}
+[39.718921] (-) TimerEvent: {}
+[39.819380] (-) TimerEvent: {}
+[39.922412] (-) TimerEvent: {}
+[40.022999] (-) TimerEvent: {}
+[40.123452] (-) TimerEvent: {}
+[40.223965] (-) TimerEvent: {}
+[40.324495] (-) TimerEvent: {}
+[40.425058] (-) TimerEvent: {}
+[40.525623] (-) TimerEvent: {}
+[40.573822] (hesai_ros_driver) StdoutLine: {'line': b'[ 67%] Building CXX object CMakeFiles/hesai_ros_driver__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/hesai_ros_driver/msg/detail/loss_packet__type_support_c.cpp.o\n'}
+[40.625827] (-) TimerEvent: {}
+[40.726298] (-) TimerEvent: {}
+[40.826726] (-) TimerEvent: {}
+[40.927383] (-) TimerEvent: {}
+[40.990500] (hesai_ros_driver) StdoutLine: {'line': b'[ 68%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/Source/CMakeFiles/source_lib.dir/src/pcap_saver.cc.o\n'}
+[41.027601] (-) TimerEvent: {}
+[41.128056] (-) TimerEvent: {}
+[41.228517] (-) TimerEvent: {}
+[41.328976] (-) TimerEvent: {}
+[41.429419] (-) TimerEvent: {}
+[41.529880] (-) TimerEvent: {}
+[41.630381] (-) TimerEvent: {}
+[41.730814] (-) TimerEvent: {}
+[41.819119] (hesai_ros_driver) StdoutLine: {'line': b'[ 70%] Linking CXX shared library libhesai_ros_driver__rosidl_typesupport_fastrtps_c.so\n'}
+[41.831000] (-) TimerEvent: {}
+[41.937814] (-) TimerEvent: {}
+[42.038349] (-) TimerEvent: {}
+[42.068559] (hesai_ros_driver) StdoutLine: {'line': b'[ 71%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/PtcClient/CMakeFiles/ptcClient_lib.dir/src/tcp_client.cc.o\n'}
+[42.101508] (hesai_ros_driver) StdoutLine: {'line': b'[ 71%] Built target hesai_ros_driver__rosidl_typesupport_fastrtps_c\n'}
+[42.118973] (hesai_ros_driver) StdoutLine: {'line': b'[ 72%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/PtcClient/CMakeFiles/ptcClient_lib.dir/__/PtcParser/src/general_ptc_parser.cc.o\n'}
+[42.138533] (-) TimerEvent: {}
+[42.241922] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver\n'}
+[42.242439] (-) TimerEvent: {}
+[42.299975] (hesai_ros_driver) StdoutLine: {'line': b'[ 72%] Built target hesai_ros_driver\n'}
+[42.325628] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__py\n'}
+[42.342660] (-) TimerEvent: {}
+[42.403264] (hesai_ros_driver) StdoutLine: {'line': b'[ 73%] Generating Python code for ROS interfaces\n'}
+[42.442822] (-) TimerEvent: {}
+[42.543198] (-) TimerEvent: {}
+[42.643606] (-) TimerEvent: {}
+[42.743998] (-) TimerEvent: {}
+[42.858401] (-) TimerEvent: {}
+[42.959888] (-) TimerEvent: {}
+[43.060267] (-) TimerEvent: {}
+[43.160620] (-) TimerEvent: {}
+[43.260991] (-) TimerEvent: {}
+[43.361379] (-) TimerEvent: {}
+[43.461775] (-) TimerEvent: {}
+[43.562218] (-) TimerEvent: {}
+[43.662653] (-) TimerEvent: {}
+[43.763070] (-) TimerEvent: {}
+[43.863484] (-) TimerEvent: {}
+[43.968131] (-) TimerEvent: {}
+[44.068566] (-) TimerEvent: {}
+[44.169008] (-) TimerEvent: {}
+[44.269480] (-) TimerEvent: {}
+[44.369926] (-) TimerEvent: {}
+[44.470323] (-) TimerEvent: {}
+[44.586434] (-) TimerEvent: {}
+[44.686899] (-) TimerEvent: {}
+[44.787321] (-) TimerEvent: {}
+[44.887787] (-) TimerEvent: {}
+[44.988205] (-) TimerEvent: {}
+[45.088582] (-) TimerEvent: {}
+[45.188962] (-) TimerEvent: {}
+[45.294374] (-) TimerEvent: {}
+[45.395304] (-) TimerEvent: {}
+[45.496559] (-) TimerEvent: {}
+[45.597069] (-) TimerEvent: {}
+[45.697591] (-) TimerEvent: {}
+[45.798064] (-) TimerEvent: {}
+[45.898610] (-) TimerEvent: {}
+[45.999046] (-) TimerEvent: {}
+[46.099498] (-) TimerEvent: {}
+[46.199961] (-) TimerEvent: {}
+[46.300404] (-) TimerEvent: {}
+[46.304912] (hesai_ros_driver) StdoutLine: {'line': b'[ 73%] Built target hesai_ros_driver__py\n'}
+[46.338041] (hesai_ros_driver) StdoutLine: {'line': b'[ 74%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/PtcClient/CMakeFiles/ptcClient_lib.dir/__/PtcParser/src/ptc_2_0_parser.cc.o\n'}
+[46.400599] (-) TimerEvent: {}
+[46.501029] (-) TimerEvent: {}
+[46.601464] (-) TimerEvent: {}
+[46.620981] (hesai_ros_driver) StdoutLine: {'line': b'[ 75%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/Source/CMakeFiles/source_lib.dir/src/tcp_source.cc.o\n'}
+[46.701648] (-) TimerEvent: {}
+[46.802073] (-) TimerEvent: {}
+[46.902566] (-) TimerEvent: {}
+[47.003038] (-) TimerEvent: {}
+[47.103527] (-) TimerEvent: {}
+[47.203956] (-) TimerEvent: {}
+[47.304438] (-) TimerEvent: {}
+[47.404905] (-) TimerEvent: {}
+[47.505339] (-) TimerEvent: {}
+[47.605887] (-) TimerEvent: {}
+[47.706399] (-) TimerEvent: {}
+[47.806822] (-) TimerEvent: {}
+[47.907331] (-) TimerEvent: {}
+[48.007866] (-) TimerEvent: {}
+[48.094757] (hesai_ros_driver) StdoutLine: {'line': b'[ 77%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/PtcClient/CMakeFiles/ptcClient_lib.dir/__/PtcParser/ptc_parser.cc.o\n'}
+[48.108038] (-) TimerEvent: {}
+[48.208515] (-) TimerEvent: {}
+[48.308996] (-) TimerEvent: {}
+[48.409426] (-) TimerEvent: {}
+[48.509932] (-) TimerEvent: {}
+[48.610427] (-) TimerEvent: {}
+[48.710955] (-) TimerEvent: {}
+[48.811763] (-) TimerEvent: {}
+[48.912733] (-) TimerEvent: {}
+[49.013643] (-) TimerEvent: {}
+[49.114425] (-) TimerEvent: {}
+[49.169539] (hesai_ros_driver) StdoutLine: {'line': b'[ 78%] Linking CXX static library libsource_lib.a\n'}
+[49.214595] (-) TimerEvent: {}
+[49.267519] (hesai_ros_driver) StdoutLine: {'line': b'[ 78%] Built target source_lib\n'}
+[49.314788] (-) TimerEvent: {}
+[49.415218] (-) TimerEvent: {}
+[49.515640] (-) TimerEvent: {}
+[49.616062] (-) TimerEvent: {}
+[49.643412] (hesai_ros_driver) StdoutLine: {'line': b'[ 79%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/PtcClient/CMakeFiles/ptcClient_lib.dir/__/PtcParser/src/ptc_1_0_parser.cc.o\n'}
+[49.716268] (-) TimerEvent: {}
+[49.816918] (-) TimerEvent: {}
+[49.917383] (-) TimerEvent: {}
+[50.017850] (-) TimerEvent: {}
+[50.118336] (-) TimerEvent: {}
+[50.218818] (-) TimerEvent: {}
+[50.319296] (-) TimerEvent: {}
+[50.419743] (-) TimerEvent: {}
+[50.520181] (-) TimerEvent: {}
+[50.620619] (-) TimerEvent: {}
+[50.721054] (-) TimerEvent: {}
+[50.821529] (-) TimerEvent: {}
+[50.922174] (-) TimerEvent: {}
+[51.022663] (-) TimerEvent: {}
+[51.123214] (-) TimerEvent: {}
+[51.223710] (-) TimerEvent: {}
+[51.324179] (-) TimerEvent: {}
+[51.424629] (-) TimerEvent: {}
+[51.509131] (hesai_ros_driver) StdoutLine: {'line': b'[ 80%] Linking CXX static library libptcClient_lib.a\n'}
+[51.524858] (-) TimerEvent: {}
+[51.583562] (hesai_ros_driver) StdoutLine: {'line': b'[ 80%] Built target ptcClient_lib\n'}
+[51.612365] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target serialClient_lib\n'}
+[51.625080] (-) TimerEvent: {}
+[51.637422] (hesai_ros_driver) StdoutLine: {'line': b'[ 81%] Building CXX object src/driver/HesaiLidar_SDK_2.0/libhesai/SerialClient/CMakeFiles/serialClient_lib.dir/src/serial_client.cc.o\n'}
+[51.638730] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__python\n'}
+[51.667939] (hesai_ros_driver) StdoutLine: {'line': b'[ 83%] Building C object CMakeFiles/hesai_ros_driver__python.dir/rosidl_generator_py/hesai_ros_driver/msg/_udp_frame_s.c.o\n'}
+[51.668503] (hesai_ros_driver) StdoutLine: {'line': b'[ 83%] Building C object CMakeFiles/hesai_ros_driver__python.dir/rosidl_generator_py/hesai_ros_driver/msg/_udp_packet_s.c.o\n'}
+[51.678990] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[51.679464] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[51.725264] (-) TimerEvent: {}
+[51.825835] (-) TimerEvent: {}
+[51.926383] (-) TimerEvent: {}
+[51.962842] (hesai_ros_driver) StdoutLine: {'line': b'[ 85%] Building C object CMakeFiles/hesai_ros_driver__python.dir/rosidl_generator_py/hesai_ros_driver/msg/_firetime_s.c.o\n'}
+[51.974718] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[52.026554] (-) TimerEvent: {}
+[52.076632] (hesai_ros_driver) StdoutLine: {'line': b'[ 86%] Building C object CMakeFiles/hesai_ros_driver__python.dir/rosidl_generator_py/hesai_ros_driver/msg/_ptp_s.c.o\n'}
+[52.084984] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[52.126732] (-) TimerEvent: {}
+[52.229095] (-) TimerEvent: {}
+[52.254216] (hesai_ros_driver) StdoutLine: {'line': b'[ 87%] Building C object CMakeFiles/hesai_ros_driver__python.dir/rosidl_generator_py/hesai_ros_driver/msg/_loss_packet_s.c.o\n'}
+[52.272624] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[52.329318] (-) TimerEvent: {}
+[52.429849] (-) TimerEvent: {}
+[52.530381] (-) TimerEvent: {}
+[52.539916] (hesai_ros_driver) StdoutLine: {'line': b'[ 88%] Linking C shared library rosidl_generator_py/hesai_ros_driver/libhesai_ros_driver__python.so\n'}
+[52.630580] (-) TimerEvent: {}
+[52.635474] (hesai_ros_driver) StdoutLine: {'line': b'[ 88%] Built target hesai_ros_driver__python\n'}
+[52.673162] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__rosidl_typesupport_introspection_c__pyext\n'}
+[52.710571] (hesai_ros_driver) StdoutLine: {'line': b'[ 89%] Building C object CMakeFiles/hesai_ros_driver__rosidl_typesupport_introspection_c__pyext.dir/rosidl_generator_py/hesai_ros_driver/_hesai_ros_driver_s.ep.rosidl_typesupport_introspection_c.c.o\n'}
+[52.723604] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[52.730811] (-) TimerEvent: {}
+[52.831369] (-) TimerEvent: {}
+[52.932122] (-) TimerEvent: {}
+[53.032724] (-) TimerEvent: {}
+[53.079812] (hesai_ros_driver) StdoutLine: {'line': b'[ 90%] Linking C shared library rosidl_generator_py/hesai_ros_driver/hesai_ros_driver_s__rosidl_typesupport_introspection_c.cpython-38-aarch64-linux-gnu.so\n'}
+[53.132900] (-) TimerEvent: {}
+[53.171612] (hesai_ros_driver) StdoutLine: {'line': b'[ 90%] Built target hesai_ros_driver__rosidl_typesupport_introspection_c__pyext\n'}
+[53.207033] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__rosidl_typesupport_c__pyext\n'}
+[53.233137] (-) TimerEvent: {}
+[53.237919] (hesai_ros_driver) StdoutLine: {'line': b'[ 91%] Building C object CMakeFiles/hesai_ros_driver__rosidl_typesupport_c__pyext.dir/rosidl_generator_py/hesai_ros_driver/_hesai_ros_driver_s.ep.rosidl_typesupport_c.c.o\n'}
+[53.246225] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[53.333324] (-) TimerEvent: {}
+[53.433840] (-) TimerEvent: {}
+[53.534336] (-) TimerEvent: {}
+[53.626843] (hesai_ros_driver) StdoutLine: {'line': b'[ 93%] Linking C shared library rosidl_generator_py/hesai_ros_driver/hesai_ros_driver_s__rosidl_typesupport_c.cpython-38-aarch64-linux-gnu.so\n'}
+[53.634479] (-) TimerEvent: {}
+[53.716900] (hesai_ros_driver) StdoutLine: {'line': b'[ 93%] Built target hesai_ros_driver__rosidl_typesupport_c__pyext\n'}
+[53.734678] (-) TimerEvent: {}
+[53.767760] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver__rosidl_typesupport_fastrtps_c__pyext\n'}
+[53.802624] (hesai_ros_driver) StdoutLine: {'line': b'[ 94%] Building C object CMakeFiles/hesai_ros_driver__rosidl_typesupport_fastrtps_c__pyext.dir/rosidl_generator_py/hesai_ros_driver/_hesai_ros_driver_s.ep.rosidl_typesupport_fastrtps_c.c.o\n'}
+[53.818422] (hesai_ros_driver) StderrLine: {'line': b'cc1: warning: command line option \xe2\x80\x98-std=c++14\xe2\x80\x99 is valid for C++/ObjC++ but not for C\n'}
+[53.838402] (-) TimerEvent: {}
+[53.938842] (-) TimerEvent: {}
+[54.039328] (-) TimerEvent: {}
+[54.125836] (hesai_ros_driver) StdoutLine: {'line': b'[ 95%] Linking CXX shared library rosidl_generator_py/hesai_ros_driver/hesai_ros_driver_s__rosidl_typesupport_fastrtps_c.cpython-38-aarch64-linux-gnu.so\n'}
+[54.139571] (-) TimerEvent: {}
+[54.240143] (-) TimerEvent: {}
+[54.278452] (hesai_ros_driver) StdoutLine: {'line': b'[ 95%] Built target hesai_ros_driver__rosidl_typesupport_fastrtps_c__pyext\n'}
+[54.340339] (-) TimerEvent: {}
+[54.440779] (-) TimerEvent: {}
+[54.541190] (-) TimerEvent: {}
+[54.641821] (-) TimerEvent: {}
+[54.742314] (-) TimerEvent: {}
+[54.842712] (-) TimerEvent: {}
+[54.943125] (-) TimerEvent: {}
+[55.043581] (-) TimerEvent: {}
+[55.144037] (-) TimerEvent: {}
+[55.244493] (-) TimerEvent: {}
+[55.344931] (-) TimerEvent: {}
+[55.431474] (hesai_ros_driver) StdoutLine: {'line': b'[ 96%] Linking CXX static library libserialClient_lib.a\n'}
+[55.445098] (-) TimerEvent: {}
+[55.514075] (hesai_ros_driver) StdoutLine: {'line': b'[ 96%] Built target serialClient_lib\n'}
+[55.545284] (-) TimerEvent: {}
+[55.645663] (-) TimerEvent: {}
+[55.677529] (hesai_ros_driver) StdoutLine: {'line': b'Scanning dependencies of target hesai_ros_driver_node\n'}
+[55.718344] (hesai_ros_driver) StdoutLine: {'line': b'[ 97%] Building CXX object CMakeFiles/hesai_ros_driver_node.dir/src/manager/node_manager.cc.o\n'}
+[55.718835] (hesai_ros_driver) StdoutLine: {'line': b'[ 98%] Building CXX object CMakeFiles/hesai_ros_driver_node.dir/node/hesai_ros_driver_node.cc.o\n'}
+[55.746398] (-) TimerEvent: {}
+[55.846813] (-) TimerEvent: {}
+[55.947273] (-) TimerEvent: {}
+[56.047703] (-) TimerEvent: {}
+[56.148138] (-) TimerEvent: {}
+[56.248535] (-) TimerEvent: {}
+[56.348934] (-) TimerEvent: {}
+[56.449582] (-) TimerEvent: {}
+[56.549997] (-) TimerEvent: {}
+[56.650403] (-) TimerEvent: {}
+[56.750825] (-) TimerEvent: {}
+[56.851220] (-) TimerEvent: {}
+[56.951637] (-) TimerEvent: {}
+[57.052074] (-) TimerEvent: {}
+[57.152595] (-) TimerEvent: {}
+[57.253043] (-) TimerEvent: {}
+[57.353518] (-) TimerEvent: {}
+[57.454014] (-) TimerEvent: {}
+[57.554505] (-) TimerEvent: {}
+[57.654979] (-) TimerEvent: {}
+[57.755647] (-) TimerEvent: {}
+[57.857578] (-) TimerEvent: {}
+[57.957984] (-) TimerEvent: {}
+[58.058470] (-) TimerEvent: {}
+[58.158958] (-) TimerEvent: {}
+[58.259604] (-) TimerEvent: {}
+[58.360160] (-) TimerEvent: {}
+[58.460864] (-) TimerEvent: {}
+[58.561334] (-) TimerEvent: {}
+[58.661907] (-) TimerEvent: {}
+[58.762483] (-) TimerEvent: {}
+[58.863053] (-) TimerEvent: {}
+[58.963653] (-) TimerEvent: {}
+[59.064193] (-) TimerEvent: {}
+[59.164752] (-) TimerEvent: {}
+[59.265322] (-) TimerEvent: {}
+[59.365919] (-) TimerEvent: {}
+[59.466569] (-) TimerEvent: {}
+[59.567178] (-) TimerEvent: {}
+[59.667779] (-) TimerEvent: {}
+[59.768340] (-) TimerEvent: {}
+[59.868886] (-) TimerEvent: {}
+[59.969448] (-) TimerEvent: {}
+[60.070003] (-) TimerEvent: {}
+[60.170530] (-) TimerEvent: {}
+[60.271020] (-) TimerEvent: {}
+[60.371530] (-) TimerEvent: {}
+[60.472040] (-) TimerEvent: {}
+[60.572490] (-) TimerEvent: {}
+[60.674431] (-) TimerEvent: {}
+[60.774952] (-) TimerEvent: {}
+[60.875630] (-) TimerEvent: {}
+[60.976110] (-) TimerEvent: {}
+[61.077193] (-) TimerEvent: {}
+[61.177664] (-) TimerEvent: {}
+[61.278094] (-) TimerEvent: {}
+[61.378570] (-) TimerEvent: {}
+[61.479046] (-) TimerEvent: {}
+[61.579485] (-) TimerEvent: {}
+[61.679925] (-) TimerEvent: {}
+[61.780343] (-) TimerEvent: {}
+[61.880806] (-) TimerEvent: {}
+[61.981248] (-) TimerEvent: {}
+[62.081650] (-) TimerEvent: {}
+[62.182097] (-) TimerEvent: {}
+[62.282575] (-) TimerEvent: {}
+[62.383038] (-) TimerEvent: {}
+[62.483506] (-) TimerEvent: {}
+[62.583957] (-) TimerEvent: {}
+[62.684523] (-) TimerEvent: {}
+[62.784949] (-) TimerEvent: {}
+[62.885412] (-) TimerEvent: {}
+[62.985851] (-) TimerEvent: {}
+[63.086323] (-) TimerEvent: {}
+[63.186814] (-) TimerEvent: {}
+[63.287308] (-) TimerEvent: {}
+[63.387753] (-) TimerEvent: {}
+[63.488264] (-) TimerEvent: {}
+[63.588768] (-) TimerEvent: {}
+[63.689255] (-) TimerEvent: {}
+[63.789721] (-) TimerEvent: {}
+[63.890319] (-) TimerEvent: {}
+[63.990803] (-) TimerEvent: {}
+[64.091516] (-) TimerEvent: {}
+[64.192009] (-) TimerEvent: {}
+[64.292840] (-) TimerEvent: {}
+[64.393789] (-) TimerEvent: {}
+[64.494542] (-) TimerEvent: {}
+[64.595793] (-) TimerEvent: {}
+[64.696581] (-) TimerEvent: {}
+[64.797582] (-) TimerEvent: {}
+[64.898411] (-) TimerEvent: {}
+[64.998835] (-) TimerEvent: {}
+[65.099261] (-) TimerEvent: {}
+[65.199788] (-) TimerEvent: {}
+[65.300360] (-) TimerEvent: {}
+[65.400882] (-) TimerEvent: {}
+[65.501415] (-) TimerEvent: {}
+[65.602166] (-) TimerEvent: {}
+[65.702739] (-) TimerEvent: {}
+[65.803356] (-) TimerEvent: {}
+[65.903869] (-) TimerEvent: {}
+[66.004849] (-) TimerEvent: {}
+[66.105381] (-) TimerEvent: {}
+[66.205950] (-) TimerEvent: {}
+[66.306519] (-) TimerEvent: {}
+[66.407055] (-) TimerEvent: {}
+[66.507606] (-) TimerEvent: {}
+[66.608228] (-) TimerEvent: {}
+[66.708782] (-) TimerEvent: {}
+[66.809357] (-) TimerEvent: {}
+[66.909905] (-) TimerEvent: {}
+[67.010452] (-) TimerEvent: {}
+[67.110951] (-) TimerEvent: {}
+[67.211775] (-) TimerEvent: {}
+[67.312220] (-) TimerEvent: {}
+[67.413143] (-) TimerEvent: {}
+[67.513697] (-) TimerEvent: {}
+[67.614126] (-) TimerEvent: {}
+[67.714570] (-) TimerEvent: {}
+[67.814971] (-) TimerEvent: {}
+[67.915419] (-) TimerEvent: {}
+[68.015879] (-) TimerEvent: {}
+[68.116318] (-) TimerEvent: {}
+[68.216762] (-) TimerEvent: {}
+[68.317231] (-) TimerEvent: {}
+[68.417664] (-) TimerEvent: {}
+[68.518119] (-) TimerEvent: {}
+[68.618599] (-) TimerEvent: {}
+[68.719002] (-) TimerEvent: {}
+[68.819437] (-) TimerEvent: {}
+[68.919978] (-) TimerEvent: {}
+[69.020394] (-) TimerEvent: {}
+[69.120852] (-) TimerEvent: {}
+[69.221294] (-) TimerEvent: {}
+[69.321728] (-) TimerEvent: {}
+[69.422191] (-) TimerEvent: {}
+[69.522675] (-) TimerEvent: {}
+[69.623088] (-) TimerEvent: {}
+[69.723536] (-) TimerEvent: {}
+[69.823984] (-) TimerEvent: {}
+[69.924406] (-) TimerEvent: {}
+[70.024857] (-) TimerEvent: {}
+[70.125307] (-) TimerEvent: {}
+[70.225799] (-) TimerEvent: {}
+[70.326622] (-) TimerEvent: {}
+[70.427050] (-) TimerEvent: {}
+[70.527510] (-) TimerEvent: {}
+[70.627924] (-) TimerEvent: {}
+[70.728706] (-) TimerEvent: {}
+[70.829138] (-) TimerEvent: {}
+[70.929585] (-) TimerEvent: {}
+[71.030082] (-) TimerEvent: {}
+[71.130737] (-) TimerEvent: {}
+[71.231163] (-) TimerEvent: {}
+[71.331612] (-) TimerEvent: {}
+[71.432154] (-) TimerEvent: {}
+[71.533921] (-) TimerEvent: {}
+[71.634423] (-) TimerEvent: {}
+[71.734901] (-) TimerEvent: {}
+[71.835454] (-) TimerEvent: {}
+[71.936086] (-) TimerEvent: {}
+[72.036667] (-) TimerEvent: {}
+[72.137174] (-) TimerEvent: {}
+[72.237954] (-) TimerEvent: {}
+[72.338436] (-) TimerEvent: {}
+[72.442397] (-) TimerEvent: {}
+[72.542896] (-) TimerEvent: {}
+[72.643539] (-) TimerEvent: {}
+[72.744079] (-) TimerEvent: {}
+[72.844657] (-) TimerEvent: {}
+[72.945210] (-) TimerEvent: {}
+[73.045753] (-) TimerEvent: {}
+[73.146300] (-) TimerEvent: {}
+[73.246852] (-) TimerEvent: {}
+[73.348413] (-) TimerEvent: {}
+[73.448969] (-) TimerEvent: {}
+[73.549609] (-) TimerEvent: {}
+[73.650176] (-) TimerEvent: {}
+[73.751553] (-) TimerEvent: {}
+[73.852029] (-) TimerEvent: {}
+[73.952449] (-) TimerEvent: {}
+[74.052920] (-) TimerEvent: {}
+[74.153401] (-) TimerEvent: {}
+[74.253829] (-) TimerEvent: {}
+[74.354335] (-) TimerEvent: {}
+[74.454876] (-) TimerEvent: {}
+[74.555507] (-) TimerEvent: {}
+[74.655924] (-) TimerEvent: {}
+[74.756374] (-) TimerEvent: {}
+[74.856874] (-) TimerEvent: {}
+[74.957310] (-) TimerEvent: {}
+[75.057806] (-) TimerEvent: {}
+[75.158325] (-) TimerEvent: {}
+[75.258793] (-) TimerEvent: {}
+[75.359216] (-) TimerEvent: {}
+[75.459705] (-) TimerEvent: {}
+[75.560184] (-) TimerEvent: {}
+[75.660606] (-) TimerEvent: {}
+[75.761086] (-) TimerEvent: {}
+[75.861543] (-) TimerEvent: {}
+[75.961964] (-) TimerEvent: {}
+[76.062439] (-) TimerEvent: {}
+[76.162907] (-) TimerEvent: {}
+[76.263341] (-) TimerEvent: {}
+[76.363808] (-) TimerEvent: {}
+[76.464308] (-) TimerEvent: {}
+[76.564741] (-) TimerEvent: {}
+[76.665213] (-) TimerEvent: {}
+[76.765671] (-) TimerEvent: {}
+[76.866097] (-) TimerEvent: {}
+[76.966594] (-) TimerEvent: {}
+[77.067074] (-) TimerEvent: {}
+[77.167552] (-) TimerEvent: {}
+[77.267971] (-) TimerEvent: {}
+[77.368730] (-) TimerEvent: {}
+[77.469200] (-) TimerEvent: {}
+[77.569777] (-) TimerEvent: {}
+[77.671506] (-) TimerEvent: {}
+[77.771946] (-) TimerEvent: {}
+[77.872378] (-) TimerEvent: {}
+[77.972929] (-) TimerEvent: {}
+[78.073477] (-) TimerEvent: {}
+[78.174122] (-) TimerEvent: {}
+[78.274800] (-) TimerEvent: {}
+[78.375424] (-) TimerEvent: {}
+[78.476134] (-) TimerEvent: {}
+[78.576668] (-) TimerEvent: {}
+[78.677367] (-) TimerEvent: {}
+[78.777903] (-) TimerEvent: {}
+[78.878519] (-) TimerEvent: {}
+[78.979285] (-) TimerEvent: {}
+[79.079999] (-) TimerEvent: {}
+[79.182075] (-) TimerEvent: {}
+[79.282657] (-) TimerEvent: {}
+[79.383215] (-) TimerEvent: {}
+[79.483839] (-) TimerEvent: {}
+[79.584421] (-) TimerEvent: {}
+[79.684994] (-) TimerEvent: {}
+[79.785534] (-) TimerEvent: {}
+[79.886103] (-) TimerEvent: {}
+[79.986644] (-) TimerEvent: {}
+[80.087174] (-) TimerEvent: {}
+[80.187655] (-) TimerEvent: {}
+[80.288117] (-) TimerEvent: {}
+[80.388539] (-) TimerEvent: {}
+[80.489108] (-) TimerEvent: {}
+[80.589580] (-) TimerEvent: {}
+[80.690405] (-) TimerEvent: {}
+[80.790841] (-) TimerEvent: {}
+[80.891254] (-) TimerEvent: {}
+[80.991707] (-) TimerEvent: {}
+[81.092193] (-) TimerEvent: {}
+[81.192631] (-) TimerEvent: {}
+[81.293129] (-) TimerEvent: {}
+[81.393623] (-) TimerEvent: {}
+[81.494070] (-) TimerEvent: {}
+[81.594810] (-) TimerEvent: {}
+[81.695241] (-) TimerEvent: {}
+[81.795832] (-) TimerEvent: {}
+[81.896433] (-) TimerEvent: {}
+[81.996896] (-) TimerEvent: {}
+[82.097309] (-) TimerEvent: {}
+[82.197797] (-) TimerEvent: {}
+[82.298288] (-) TimerEvent: {}
+[82.398723] (-) TimerEvent: {}
+[82.499182] (-) TimerEvent: {}
+[82.599649] (-) TimerEvent: {}
+[82.700087] (-) TimerEvent: {}
+[82.800523] (-) TimerEvent: {}
+[82.901031] (-) TimerEvent: {}
+[83.001748] (-) TimerEvent: {}
+[83.102418] (-) TimerEvent: {}
+[83.202838] (-) TimerEvent: {}
+[83.303260] (-) TimerEvent: {}
+[83.403745] (-) TimerEvent: {}
+[83.504316] (-) TimerEvent: {}
+[83.604735] (-) TimerEvent: {}
+[83.705233] (-) TimerEvent: {}
+[83.805676] (-) TimerEvent: {}
+[83.906157] (-) TimerEvent: {}
+[84.006622] (-) TimerEvent: {}
+[84.107074] (-) TimerEvent: {}
+[84.207648] (-) TimerEvent: {}
+[84.308072] (-) TimerEvent: {}
+[84.410294] (-) TimerEvent: {}
+[84.514411] (-) TimerEvent: {}
+[84.614838] (-) TimerEvent: {}
+[84.716952] (-) TimerEvent: {}
+[84.817417] (-) TimerEvent: {}
+[84.918161] (-) TimerEvent: {}
+[85.018727] (-) TimerEvent: {}
+[85.119167] (-) TimerEvent: {}
+[85.219680] (-) TimerEvent: {}
+[85.320223] (-) TimerEvent: {}
+[85.420839] (-) TimerEvent: {}
+[85.522650] (-) TimerEvent: {}
+[85.623170] (-) TimerEvent: {}
+[85.723699] (-) TimerEvent: {}
+[85.824202] (-) TimerEvent: {}
+[85.924658] (-) TimerEvent: {}
+[86.025191] (-) TimerEvent: {}
+[86.126162] (-) TimerEvent: {}
+[86.230444] (-) TimerEvent: {}
+[86.330920] (-) TimerEvent: {}
+[86.431326] (-) TimerEvent: {}
+[86.531790] (-) TimerEvent: {}
+[86.632282] (-) TimerEvent: {}
+[86.733415] (-) TimerEvent: {}
+[86.833958] (-) TimerEvent: {}
+[86.934824] (-) TimerEvent: {}
+[87.035227] (-) TimerEvent: {}
+[87.135653] (-) TimerEvent: {}
+[87.236318] (-) TimerEvent: {}
+[87.336743] (-) TimerEvent: {}
+[87.437167] (-) TimerEvent: {}
+[87.537656] (-) TimerEvent: {}
+[87.638117] (-) TimerEvent: {}
+[87.738529] (-) TimerEvent: {}
+[87.838969] (-) TimerEvent: {}
+[87.939394] (-) TimerEvent: {}
+[88.042398] (-) TimerEvent: {}
+[88.142819] (-) TimerEvent: {}
+[88.243289] (-) TimerEvent: {}
+[88.344373] (-) TimerEvent: {}
+[88.445663] (-) TimerEvent: {}
+[88.546124] (-) TimerEvent: {}
+[88.646578] (-) TimerEvent: {}
+[88.747315] (-) TimerEvent: {}
+[88.854467] (-) TimerEvent: {}
+[88.954910] (-) TimerEvent: {}
+[89.055834] (-) TimerEvent: {}
+[89.156397] (-) TimerEvent: {}
+[89.256874] (-) TimerEvent: {}
+[89.357402] (-) TimerEvent: {}
+[89.457956] (-) TimerEvent: {}
+[89.558571] (-) TimerEvent: {}
+[89.659097] (-) TimerEvent: {}
+[89.759915] (-) TimerEvent: {}
+[89.860408] (-) TimerEvent: {}
+[89.960861] (-) TimerEvent: {}
+[90.061380] (-) TimerEvent: {}
+[90.161848] (-) TimerEvent: {}
+[90.262440] (-) TimerEvent: {}
+[90.362974] (-) TimerEvent: {}
+[90.463405] (-) TimerEvent: {}
+[90.563855] (-) TimerEvent: {}
+[90.664325] (-) TimerEvent: {}
+[90.764758] (-) TimerEvent: {}
+[90.865249] (-) TimerEvent: {}
+[90.965713] (-) TimerEvent: {}
+[91.066160] (-) TimerEvent: {}
+[91.166722] (-) TimerEvent: {}
+[91.267174] (-) TimerEvent: {}
+[91.374407] (-) TimerEvent: {}
+[91.474847] (-) TimerEvent: {}
+[91.575352] (-) TimerEvent: {}
+[91.675785] (-) TimerEvent: {}
+[91.776273] (-) TimerEvent: {}
+[91.876750] (-) TimerEvent: {}
+[91.977186] (-) TimerEvent: {}
+[92.078306] (-) TimerEvent: {}
+[92.178890] (-) TimerEvent: {}
+[92.279370] (-) TimerEvent: {}
+[92.379815] (-) TimerEvent: {}
+[92.480348] (-) TimerEvent: {}
+[92.581897] (-) TimerEvent: {}
+[92.682362] (-) TimerEvent: {}
+[92.782802] (-) TimerEvent: {}
+[92.883320] (-) TimerEvent: {}
+[92.984094] (-) TimerEvent: {}
+[93.085410] (-) TimerEvent: {}
+[93.185948] (-) TimerEvent: {}
+[93.290485] (-) TimerEvent: {}
+[93.391204] (-) TimerEvent: {}
+[93.491996] (-) TimerEvent: {}
+[93.592484] (-) TimerEvent: {}
+[93.692995] (-) TimerEvent: {}
+[93.796730] (-) TimerEvent: {}
+[93.897496] (-) TimerEvent: {}
+[93.998714] (-) TimerEvent: {}
+[94.099210] (-) TimerEvent: {}
+[94.199634] (-) TimerEvent: {}
+[94.300081] (-) TimerEvent: {}
+[94.400561] (-) TimerEvent: {}
+[94.501000] (-) TimerEvent: {}
+[94.601426] (-) TimerEvent: {}
+[94.701909] (-) TimerEvent: {}
+[94.802379] (-) TimerEvent: {}
+[94.902783] (-) TimerEvent: {}
+[95.003221] (-) TimerEvent: {}
+[95.103635] (-) TimerEvent: {}
+[95.204049] (-) TimerEvent: {}
+[95.304521] (-) TimerEvent: {}
+[95.405228] (-) TimerEvent: {}
+[95.505737] (-) TimerEvent: {}
+[95.606423] (-) TimerEvent: {}
+[95.706847] (-) TimerEvent: {}
+[95.807472] (-) TimerEvent: {}
+[95.908377] (-) TimerEvent: {}
+[96.009091] (-) TimerEvent: {}
+[96.109592] (-) TimerEvent: {}
+[96.210214] (-) TimerEvent: {}
+[96.310675] (-) TimerEvent: {}
+[96.411165] (-) TimerEvent: {}
+[96.511651] (-) TimerEvent: {}
+[96.612136] (-) TimerEvent: {}
+[96.712529] (-) TimerEvent: {}
+[96.813016] (-) TimerEvent: {}
+[96.914278] (-) TimerEvent: {}
+[97.015301] (-) TimerEvent: {}
+[97.116121] (-) TimerEvent: {}
+[97.216640] (-) TimerEvent: {}
+[97.318519] (-) TimerEvent: {}
+[97.419114] (-) TimerEvent: {}
+[97.519665] (-) TimerEvent: {}
+[97.620296] (-) TimerEvent: {}
+[97.720816] (-) TimerEvent: {}
+[97.821302] (-) TimerEvent: {}
+[97.926445] (-) TimerEvent: {}
+[98.026926] (-) TimerEvent: {}
+[98.127416] (-) TimerEvent: {}
+[98.234410] (-) TimerEvent: {}
+[98.338406] (-) TimerEvent: {}
+[98.438852] (-) TimerEvent: {}
+[98.539277] (-) TimerEvent: {}
+[98.639763] (-) TimerEvent: {}
+[98.740246] (-) TimerEvent: {}
+[98.840722] (-) TimerEvent: {}
+[98.941151] (-) TimerEvent: {}
+[99.041649] (-) TimerEvent: {}
+[99.142208] (-) TimerEvent: {}
+[99.242781] (-) TimerEvent: {}
+[99.343199] (-) TimerEvent: {}
+[99.443668] (-) TimerEvent: {}
+[99.544132] (-) TimerEvent: {}
+[99.650433] (-) TimerEvent: {}
+[99.750874] (-) TimerEvent: {}
+[99.851343] (-) TimerEvent: {}
+[99.951776] (-) TimerEvent: {}
+[100.053777] (-) TimerEvent: {}
+[100.154381] (-) TimerEvent: {}
+[100.255004] (-) TimerEvent: {}
+[100.355600] (-) TimerEvent: {}
+[100.456377] (-) TimerEvent: {}
+[100.556889] (-) TimerEvent: {}
+[100.657481] (-) TimerEvent: {}
+[100.758205] (-) TimerEvent: {}
+[100.858837] (-) TimerEvent: {}
+[100.959565] (-) TimerEvent: {}
+[101.060207] (-) TimerEvent: {}
+[101.160855] (-) TimerEvent: {}
+[101.261432] (-) TimerEvent: {}
+[101.361906] (-) TimerEvent: {}
+[101.462380] (-) TimerEvent: {}
+[101.562933] (-) TimerEvent: {}
+[101.663386] (-) TimerEvent: {}
+[101.763999] (-) TimerEvent: {}
+[101.864667] (-) TimerEvent: {}
+[101.965332] (-) TimerEvent: {}
+[102.065798] (-) TimerEvent: {}
+[102.166341] (-) TimerEvent: {}
+[102.266917] (-) TimerEvent: {}
+[102.367673] (-) TimerEvent: {}
+[102.468378] (-) TimerEvent: {}
+[102.568885] (-) TimerEvent: {}
+[102.669840] (-) TimerEvent: {}
+[102.770868] (-) TimerEvent: {}
+[102.871811] (-) TimerEvent: {}
+[102.972362] (-) TimerEvent: {}
+[103.072880] (-) TimerEvent: {}
+[103.173414] (-) TimerEvent: {}
+[103.274088] (-) TimerEvent: {}
+[103.374607] (-) TimerEvent: {}
+[103.475057] (-) TimerEvent: {}
+[103.575483] (-) TimerEvent: {}
+[103.675958] (-) TimerEvent: {}
+[103.776441] (-) TimerEvent: {}
+[103.876862] (-) TimerEvent: {}
+[103.977318] (-) TimerEvent: {}
+[104.077788] (-) TimerEvent: {}
+[104.178264] (-) TimerEvent: {}
+[104.278723] (-) TimerEvent: {}
+[104.379158] (-) TimerEvent: {}
+[104.479563] (-) TimerEvent: {}
+[104.580054] (-) TimerEvent: {}
+[104.680529] (-) TimerEvent: {}
+[104.781141] (-) TimerEvent: {}
+[104.881546] (-) TimerEvent: {}
+[104.982054] (-) TimerEvent: {}
+[105.082539] (-) TimerEvent: {}
+[105.183109] (-) TimerEvent: {}
+[105.283821] (-) TimerEvent: {}
+[105.384602] (-) TimerEvent: {}
+[105.485060] (-) TimerEvent: {}
+[105.585492] (-) TimerEvent: {}
+[105.685970] (-) TimerEvent: {}
+[105.786481] (-) TimerEvent: {}
+[105.886907] (-) TimerEvent: {}
+[105.987390] (-) TimerEvent: {}
+[106.087921] (-) TimerEvent: {}
+[106.188417] (-) TimerEvent: {}
+[106.288833] (-) TimerEvent: {}
+[106.389319] (-) TimerEvent: {}
+[106.489864] (-) TimerEvent: {}
+[106.591785] (-) TimerEvent: {}
+[106.692464] (-) TimerEvent: {}
+[106.792944] (-) TimerEvent: {}
+[106.894173] (-) TimerEvent: {}
+[106.995278] (-) TimerEvent: {}
+[107.095896] (-) TimerEvent: {}
+[107.196514] (-) TimerEvent: {}
+[107.297026] (-) TimerEvent: {}
+[107.397621] (-) TimerEvent: {}
+[107.498226] (-) TimerEvent: {}
+[107.598755] (-) TimerEvent: {}
+[107.699312] (-) TimerEvent: {}
+[107.799918] (-) TimerEvent: {}
+[107.900459] (-) TimerEvent: {}
+[108.000957] (-) TimerEvent: {}
+[108.101463] (-) TimerEvent: {}
+[108.201933] (-) TimerEvent: {}
+[108.302476] (-) TimerEvent: {}
+[108.402978] (-) TimerEvent: {}
+[108.503568] (-) TimerEvent: {}
+[108.604269] (-) TimerEvent: {}
+[108.704882] (-) TimerEvent: {}
+[108.805425] (-) TimerEvent: {}
+[108.905972] (-) TimerEvent: {}
+[109.006685] (-) TimerEvent: {}
+[109.108250] (-) TimerEvent: {}
+[109.209761] (-) TimerEvent: {}
+[109.310562] (-) TimerEvent: {}
+[109.411404] (-) TimerEvent: {}
+[109.511832] (-) TimerEvent: {}
+[109.612430] (-) TimerEvent: {}
+[109.713076] (-) TimerEvent: {}
+[109.813747] (-) TimerEvent: {}
+[109.914254] (-) TimerEvent: {}
+[110.014687] (-) TimerEvent: {}
+[110.115120] (-) TimerEvent: {}
+[110.215589] (-) TimerEvent: {}
+[110.316069] (-) TimerEvent: {}
+[110.417293] (-) TimerEvent: {}
+[110.517894] (-) TimerEvent: {}
+[110.618551] (-) TimerEvent: {}
+[110.722840] (-) TimerEvent: {}
+[110.823642] (-) TimerEvent: {}
+[110.924068] (-) TimerEvent: {}
+[111.024670] (-) TimerEvent: {}
+[111.125374] (-) TimerEvent: {}
+[111.225803] (-) TimerEvent: {}
+[111.326213] (-) TimerEvent: {}
+[111.420177] (hesai_ros_driver) StdoutLine: {'line': b'[100%] Linking CXX executable hesai_ros_driver_node\n'}
+[111.426332] (-) TimerEvent: {}
+[111.526697] (-) TimerEvent: {}
+[111.627131] (-) TimerEvent: {}
+[111.727579] (-) TimerEvent: {}
+[111.828014] (-) TimerEvent: {}
+[111.884833] (hesai_ros_driver) StdoutLine: {'line': b'[100%] Built target hesai_ros_driver_node\n'}
+[111.915123] (hesai_ros_driver) CommandEnded: {'returncode': 0}
+[111.928275] (-) TimerEvent: {}
+[112.028711] (-) TimerEvent: {}
+[112.129062] (-) TimerEvent: {}
+[112.150618] (hesai_ros_driver) JobProgress: {'identifier': 'hesai_ros_driver', 'progress': 'install'}
+[112.151230] (hesai_ros_driver) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/unitree/robotscene/ros2_ws/build/hesai_ros_driver'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/hesai_ros_driver', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55902 22'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/humble/opt/yaml_cpp_vendor/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene'), ('NO_PROXY', 'localhost,127.0.0.1'), ('ROS_PYTHON_VERSION', '3'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '103'), ('ROS_LOCALHOST_ONLY', '0'), ('GO2W_UNITREE_ROOT', '/home/unitree/robotscene/external/unitree_ros2'), ('PATH', '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('GO2W_CONTROL_ROOT', '/home/unitree/robotscene/unitree_go2w_control'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/hesai_ros_driver'), ('SSH_CONNECTION', '192.168.123.99 55902 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/humble/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control:/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/humble')]), 'shell': False}
+[112.175966] (hesai_ros_driver) StdoutLine: {'line': b'-- Install configuration: "Release"\n'}
+[112.176953] (hesai_ros_driver) StdoutLine: {'line': b'-- Execute custom install script\n'}
+[112.177624] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/ament_index/resource_index/rosidl_interfaces/hesai_ros_driver\n'}
+[112.200854] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/firetime__functions.h\n'}
+[112.220308] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/firetime__struct.h\n'}
+[112.229267] (-) TimerEvent: {}
+[112.239819] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/firetime__type_support.h\n'}
+[112.266816] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/loss_packet__functions.h\n'}
+[112.285352] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/loss_packet__struct.h\n'}
+[112.305732] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/loss_packet__type_support.h\n'}
+[112.326019] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/ptp__functions.h\n'}
+[112.329350] (-) TimerEvent: {}
+[112.346833] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/ptp__struct.h\n'}
+[112.366652] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/ptp__type_support.h\n'}
+[112.386403] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_frame__functions.h\n'}
+[112.406981] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_frame__struct.h\n'}
+[112.426216] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_frame__type_support.h\n'}
+[112.429482] (-) TimerEvent: {}
+[112.445661] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_packet__functions.h\n'}
+[112.465228] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_packet__struct.h\n'}
+[112.487560] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_packet__type_support.h\n'}
+[112.508105] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/firetime.h\n'}
+[112.526430] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/loss_packet.h\n'}
+[112.529625] (-) TimerEvent: {}
+[112.546798] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/ptp.h\n'}
+[112.569153] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/rosidl_generator_c__visibility_control.h\n'}
+[112.590260] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/udp_frame.h\n'}
+[112.610203] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/udp_packet.h\n'}
+[112.629836] (-) TimerEvent: {}
+[112.632926] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/environment/library_path.sh\n'}
+[112.653112] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/environment/library_path.dsv\n'}
+[112.674707] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/firetime__rosidl_typesupport_fastrtps_c.h\n'}
+[112.693654] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/loss_packet__rosidl_typesupport_fastrtps_c.h\n'}
+[112.714049] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/ptp__rosidl_typesupport_fastrtps_c.h\n'}
+[112.729977] (-) TimerEvent: {}
+[112.733751] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_frame__rosidl_typesupport_fastrtps_c.h\n'}
+[112.753913] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_packet__rosidl_typesupport_fastrtps_c.h\n'}
+[112.777770] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/rosidl_typesupport_fastrtps_c__visibility_control.h\n'}
+[112.799781] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_typesupport_fastrtps_c.so\n'}
+[112.822003] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/firetime__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[112.830135] (-) TimerEvent: {}
+[112.843759] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/loss_packet__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[112.864224] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/ptp__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[112.884070] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_frame__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[112.905445] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_packet__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[112.926188] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h\n'}
+[112.930284] (-) TimerEvent: {}
+[112.946502] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_typesupport_fastrtps_cpp.so\n'}
+[112.967662] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/firetime__rosidl_typesupport_introspection_c.h\n'}
+[112.988686] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/loss_packet__rosidl_typesupport_introspection_c.h\n'}
+[113.014599] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/ptp__rosidl_typesupport_introspection_c.h\n'}
+[113.030496] (-) TimerEvent: {}
+[113.035095] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_frame__rosidl_typesupport_introspection_c.h\n'}
+[113.054641] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_packet__rosidl_typesupport_introspection_c.h\n'}
+[113.075208] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/rosidl_typesupport_introspection_c__visibility_control.h\n'}
+[113.095588] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/firetime__builder.hpp\n'}
+[113.115723] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/firetime__struct.hpp\n'}
+[113.130676] (-) TimerEvent: {}
+[113.137655] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/firetime__traits.hpp\n'}
+[113.156883] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/firetime__type_support.hpp\n'}
+[113.177334] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/loss_packet__builder.hpp\n'}
+[113.198376] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/loss_packet__struct.hpp\n'}
+[113.228595] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/loss_packet__traits.hpp\n'}
+[113.230743] (-) TimerEvent: {}
+[113.247752] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/loss_packet__type_support.hpp\n'}
+[113.268191] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/ptp__builder.hpp\n'}
+[113.289970] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/ptp__struct.hpp\n'}
+[113.309967] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/ptp__traits.hpp\n'}
+[113.331007] (-) TimerEvent: {}
+[113.334768] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/ptp__type_support.hpp\n'}
+[113.354421] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_frame__builder.hpp\n'}
+[113.373995] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_frame__struct.hpp\n'}
+[113.393515] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_frame__traits.hpp\n'}
+[113.414739] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_frame__type_support.hpp\n'}
+[113.431205] (-) TimerEvent: {}
+[113.442099] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_packet__builder.hpp\n'}
+[113.460503] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_packet__struct.hpp\n'}
+[113.480652] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_packet__traits.hpp\n'}
+[113.501592] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_packet__type_support.hpp\n'}
+[113.521680] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/firetime.hpp\n'}
+[113.531416] (-) TimerEvent: {}
+[113.541988] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/loss_packet.hpp\n'}
+[113.562322] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/ptp.hpp\n'}
+[113.584291] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/rosidl_generator_cpp__visibility_control.hpp\n'}
+[113.603577] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/udp_frame.hpp\n'}
+[113.623146] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/udp_packet.hpp\n'}
+[113.631743] (-) TimerEvent: {}
+[113.645219] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/firetime__rosidl_typesupport_introspection_cpp.hpp\n'}
+[113.663973] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/loss_packet__rosidl_typesupport_introspection_cpp.hpp\n'}
+[113.683934] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/ptp__rosidl_typesupport_introspection_cpp.hpp\n'}
+[113.705086] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_frame__rosidl_typesupport_introspection_cpp.hpp\n'}
+[113.732764] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/include/hesai_ros_driver/msg/detail/udp_packet__rosidl_typesupport_introspection_cpp.hpp\n'}
+[113.733267] (-) TimerEvent: {}
+[113.752557] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/environment/pythonpath.sh\n'}
+[113.775372] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/environment/pythonpath.dsv\n'}
+[113.794978] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/python3.8/site-packages/hesai_ros_driver/__init__.py\n'}
+[113.815241] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/python3.8/site-packages/hesai_ros_driver/msg/__init__.py\n'}
+[113.833453] (-) TimerEvent: {}
+[113.835447] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/python3.8/site-packages/hesai_ros_driver/msg/_firetime.py\n'}
+[113.859066] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/python3.8/site-packages/hesai_ros_driver/msg/_loss_packet.py\n'}
+[113.879200] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/python3.8/site-packages/hesai_ros_driver/msg/_ptp.py\n'}
+[113.898895] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/python3.8/site-packages/hesai_ros_driver/msg/_udp_frame.py\n'}
+[113.918576] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/python3.8/site-packages/hesai_ros_driver/msg/_udp_packet.py\n'}
+[113.933704] (-) TimerEvent: {}
+[113.940168] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/python3.8/site-packages/hesai_ros_driver/hesai_ros_driver_s__rosidl_typesupport_fastrtps_c.cpython-38-aarch64-linux-gnu.so\n'}
+[113.959312] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/python3.8/site-packages/hesai_ros_driver/hesai_ros_driver_s__rosidl_typesupport_introspection_c.cpython-38-aarch64-linux-gnu.so\n'}
+[113.980022] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/python3.8/site-packages/hesai_ros_driver/hesai_ros_driver_s__rosidl_typesupport_c.cpython-38-aarch64-linux-gnu.so\n'}
+[114.001624] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__python.so\n'}
+[114.021509] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/msg/UdpPacket.idl\n'}
+[114.034082] (-) TimerEvent: {}
+[114.043106] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/msg/UdpFrame.idl\n'}
+[114.064204] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/msg/Firetime.idl\n'}
+[114.086702] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/msg/Ptp.idl\n'}
+[114.108402] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/msg/LossPacket.idl\n'}
+[114.127927] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/msg_ros2/UdpPacket.msg\n'}
+[114.134061] (-) TimerEvent: {}
+[114.149230] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/msg_ros2/UdpFrame.msg\n'}
+[114.169189] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/msg_ros2/Firetime.msg\n'}
+[114.189061] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/msg_ros2/Ptp.msg\n'}
+[114.211207] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/msg_ros2/LossPacket.msg\n'}
+[114.230290] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/hesai_ros_driver/hesai_ros_driver_node\n'}
+[114.234304] (-) TimerEvent: {}
+[114.251051] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/liblog_lib.a\n'}
+[114.279179] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libptcClient_lib.a\n'}
+[114.300173] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libsource_lib.a\n'}
+[114.318854] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libplatutils_lib.a\n'}
+[114.334346] (-) TimerEvent: {}
+[114.340213] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libserialClient_lib.a\n'}
+[114.361666] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/launch/dashing_start.py\n'}
+[114.383095] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/launch/start.launch\n'}
+[114.402729] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/launch/start.py\n'}
+[114.423011] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/rviz/rviz.rviz\n'}
+[114.434570] (-) TimerEvent: {}
+[114.443885] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/rviz/rviz2.rviz\n'}
+[114.463180] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/config/config.yaml\n'}
+[114.486259] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/ament_index/resource_index/package_run_dependencies/hesai_ros_driver\n'}
+[114.507982] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/ament_index/resource_index/parent_prefix_path/hesai_ros_driver\n'}
+[114.527647] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/environment/ament_prefix_path.sh\n'}
+[114.534726] (-) TimerEvent: {}
+[114.547678] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/environment/ament_prefix_path.dsv\n'}
+[114.570084] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/environment/path.sh\n'}
+[114.589304] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/environment/path.dsv\n'}
+[114.609261] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/local_setup.bash\n'}
+[114.628551] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/local_setup.sh\n'}
+[114.635010] (-) TimerEvent: {}
+[114.649484] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/local_setup.zsh\n'}
+[114.669252] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/local_setup.dsv\n'}
+[114.690124] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/package.dsv\n'}
+[114.711398] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/ament_index/resource_index/packages/hesai_ros_driver\n'}
+[114.731520] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/rosidl_cmake-extras.cmake\n'}
+[114.735207] (-) TimerEvent: {}
+[114.756595] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/ament_cmake_export_dependencies-extras.cmake\n'}
+[114.777020] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/ament_cmake_export_libraries-extras.cmake\n'}
+[114.798111] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/ament_cmake_export_targets-extras.cmake\n'}
+[114.817790] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/ament_cmake_export_include_directories-extras.cmake\n'}
+[114.835382] (-) TimerEvent: {}
+[114.837564] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake\n'}
+[114.857765] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake\n'}
+[114.879324] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driverConfig.cmake\n'}
+[114.898626] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driverConfig-version.cmake\n'}
+[114.917952] (hesai_ros_driver) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/package.xml\n'}
+[114.935561] (-) TimerEvent: {}
+[114.937820] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_generator_c.so\n'}
+[114.938517] (hesai_ros_driver) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_generator_c.so" to ""\n'}
+[114.938952] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_typesupport_introspection_c.so\n'}
+[114.939387] (hesai_ros_driver) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_typesupport_introspection_c.so" to ""\n'}
+[114.940031] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_typesupport_c.so\n'}
+[114.940339] (hesai_ros_driver) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_typesupport_c.so" to ""\n'}
+[114.940647] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_typesupport_introspection_cpp.so\n'}
+[114.941221] (hesai_ros_driver) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_typesupport_introspection_cpp.so" to ""\n'}
+[114.941676] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_typesupport_cpp.so\n'}
+[114.942052] (hesai_ros_driver) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/libhesai_ros_driver__rosidl_typesupport_cpp.so" to ""\n'}
+[115.006575] (hesai_ros_driver) StdoutLine: {'line': b"Compiling '/home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/lib/python3.8/site-packages/hesai_ros_driver/__init__.py'...\n"}
+[115.018048] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driver__rosidl_generator_cExport.cmake\n'}
+[115.018717] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driver__rosidl_generator_cExport-release.cmake\n'}
+[115.018991] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driver__rosidl_typesupport_introspection_cExport.cmake\n'}
+[115.019132] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driver__rosidl_typesupport_introspection_cExport-release.cmake\n'}
+[115.019360] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driver__rosidl_typesupport_cExport.cmake\n'}
+[115.019611] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driver__rosidl_typesupport_cExport-release.cmake\n'}
+[115.019980] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driver__rosidl_generator_cppExport.cmake\n'}
+[115.020373] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driver__rosidl_typesupport_introspection_cppExport.cmake\n'}
+[115.020692] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driver__rosidl_typesupport_introspection_cppExport-release.cmake\n'}
+[115.021031] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driver__rosidl_typesupport_cppExport.cmake\n'}
+[115.021316] (hesai_ros_driver) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/ros2_ws/install/hesai_ros_driver/share/hesai_ros_driver/cmake/hesai_ros_driver__rosidl_typesupport_cppExport-release.cmake\n'}
+[115.027571] (hesai_ros_driver) CommandEnded: {'returncode': 0}
+[115.035842] (-) TimerEvent: {}
+[115.136195] (-) TimerEvent: {}
+[115.236604] (-) TimerEvent: {}
+[115.337357] (-) TimerEvent: {}
+[115.438043] (-) TimerEvent: {}
+[115.538583] (-) TimerEvent: {}
+[115.638950] (-) TimerEvent: {}
+[115.739459] (-) TimerEvent: {}
+[115.839950] (-) TimerEvent: {}
+[115.940255] (-) TimerEvent: {}
+[116.040697] (-) TimerEvent: {}
+[116.141745] (-) TimerEvent: {}
+[116.223629] (hesai_ros_driver) JobEnded: {'identifier': 'hesai_ros_driver', 'rc': 0}
+[116.226158] (-) EventReactorShutdown: {}

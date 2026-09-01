@@ -1,0 +1,106 @@
+{
+  "places": [
+    {
+      "place_id": "P1",
+      "pose": {
+        "x": 0.9004559057742517,
+        "y": -2.4950967978013594,
+        "yaw": 0.013184278923282888,
+        "frame_id": "pslam_odom",
+        "quality": "METRIC_LIDAR",
+        "source": "plain_slam_pandarxt16_odom",
+        "provenance": {
+          "stamp_ns": 454789356,
+          "child_frame_id": "base_link_mapping_assist",
+          "extrinsic_status": "candidate_unconfirmed",
+          "mapping_mode": "mapping_assist"
+        }
+      },
+      "pose_quality": "METRIC_LIDAR",
+      "observation_ids": [
+        "bundle_191132"
+      ],
+      "heading_coverage": {
+        "3": 1
+      },
+      "observed_object_ids": [
+        "obj_001",
+        "obj_002",
+        "obj_003",
+        "obj_004"
+      ],
+      "observed_object_labels": [
+        "办公椅",
+        "电视",
+        "垃圾桶",
+        "黄色墙壁"
+      ],
+      "semantic_interest": 0.0,
+      "visit_count": 1,
+      "negative_evidence": 0,
+      "target_candidate": false,
+      "target_confirmed": false,
+      "revisited": false,
+      "pose_observation_count": 1,
+      "pose_mean": {
+        "x": 0.9004559057742517,
+        "y": -2.4950967978013594,
+        "yaw": 0.013184278923282888,
+        "frame_id": "pslam_odom",
+        "quality": "METRIC_LIDAR",
+        "source": "plain_slam_pandarxt16_odom",
+        "provenance": {
+          "stamp_ns": 454789356,
+          "child_frame_id": "base_link_mapping_assist",
+          "extrinsic_status": "candidate_unconfirmed",
+          "mapping_mode": "mapping_assist"
+        }
+      },
+      "last_pose_update": 1788235504.0127676,
+      "scene_type": "",
+      "memory_summary": "",
+      "frontier_ids": [],
+      "provenance": {
+        "created_at": 1788235529.5048537,
+        "from_place": null
+      }
+    }
+  ],
+  "observations": [
+    {
+      "observation_id": "bundle_191132",
+      "heading_sector": 3,
+      "timestamp": 1788235504.0127676,
+      "objects": [
+        "办公椅",
+        "电视",
+        "垃圾桶",
+        "黄色墙壁"
+      ],
+      "rgbd_frame_id": "191132",
+      "pose": {
+        "x": 0.9004559057742517,
+        "y": -2.4950967978013594,
+        "yaw": 0.013184278923282888,
+        "frame_id": "pslam_odom",
+        "quality": "METRIC_LIDAR",
+        "source": "plain_slam_pandarxt16_odom",
+        "provenance": {
+          "stamp_ns": 454789356,
+          "child_frame_id": "base_link_mapping_assist",
+          "extrinsic_status": "candidate_unconfirmed",
+          "mapping_mode": "mapping_assist"
+        }
+      },
+      "provenance": {
+        "place_id": "P1",
+        "revisited": false,
+        "created": true
+      }
+    }
+  ],
+  "edges": [],
+  "current_place_id": "P1",
+  "merge_distance_m": 0.35,
+  "relocation_min_displacement_m": 0.1
+}

@@ -1,0 +1,89 @@
+[0.000000] (-) TimerEvent: {}
+[0.000257] (-) JobUnselected: {'identifier': 'go2w_camera_bridge'}
+[0.000333] (-) JobUnselected: {'identifier': 'go2w_cmd_vel_bridge'}
+[0.000370] (-) JobUnselected: {'identifier': 'go2w_control_arbiter'}
+[0.000403] (-) JobUnselected: {'identifier': 'go2w_description'}
+[0.000432] (-) JobUnselected: {'identifier': 'go2w_lidar_preprocessor'}
+[0.000463] (-) JobUnselected: {'identifier': 'go2w_lio_bringup'}
+[0.000491] (-) JobUnselected: {'identifier': 'go2w_plain_slam_bridge'}
+[0.000520] (-) JobUnselected: {'identifier': 'go2w_rgb_lidar_fusion'}
+[0.000548] (-) JobUnselected: {'identifier': 'go2w_sensor_time_bridge'}
+[0.000576] (-) JobUnselected: {'identifier': 'hesai_ros_driver'}
+[0.000604] (-) JobUnselected: {'identifier': 'plain_slam_ros2'}
+[0.000632] (-) JobUnselected: {'identifier': 'robot_scene_live_bridge'}
+[0.000672] (robot_scene_nav_bringup) JobQueued: {'identifier': 'robot_scene_nav_bringup', 'dependencies': OrderedDict()}
+[0.000714] (robot_scene_nav_bringup) JobStarted: {'identifier': 'robot_scene_nav_bringup'}
+[0.085129] (-) TimerEvent: {}
+[0.185586] (-) TimerEvent: {}
+[0.286042] (-) TimerEvent: {}
+[0.386487] (-) TimerEvent: {}
+[0.428162] (robot_scene_nav_bringup) JobProgress: {'identifier': 'robot_scene_nav_bringup', 'progress': 'cmake'}
+[0.437168] (robot_scene_nav_bringup) Command: {'cmd': ['/usr/bin/cmake', '/home/unitree/robotscene/ros2_ws/src/robot_scene_nav_bringup', '-DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55382 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '26'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup'), ('SSH_CONNECTION', '192.168.123.99 55382 192.168.123.18 22'), ('PYTHONPATH', '/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/opt/ros/foxy')]), 'shell': False}
+[0.486742] (-) TimerEvent: {}
+[0.526155] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Found ament_cmake: 0.9.12 (/opt/ros/humble/share/ament_cmake/cmake)\n'}
+[0.586843] (-) TimerEvent: {}
+[0.590162] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[0.690514] (-) TimerEvent: {}
+[0.797686] (-) TimerEvent: {}
+[0.898079] (-) TimerEvent: {}
+[0.998494] (-) TimerEvent: {}
+[1.099490] (-) TimerEvent: {}
+[1.200542] (-) TimerEvent: {}
+[1.208970] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Override CMake install command with custom implementation using symlinks instead of copying resources\n'}
+[1.300689] (-) TimerEvent: {}
+[1.401215] (-) TimerEvent: {}
+[1.501643] (-) TimerEvent: {}
+[1.601373] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Configuring done\n'}
+[1.601838] (-) TimerEvent: {}
+[1.609605] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Generating done\n'}
+[1.612527] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Build files have been written to: /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup\n'}
+[1.618469] (robot_scene_nav_bringup) CommandEnded: {'returncode': 0}
+[1.620086] (robot_scene_nav_bringup) JobProgress: {'identifier': 'robot_scene_nav_bringup', 'progress': 'build'}
+[1.621519] (robot_scene_nav_bringup) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup', '--', '-j4', '-l4'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55382 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '26'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup'), ('SSH_CONNECTION', '192.168.123.99 55382 192.168.123.18 22'), ('PYTHONPATH', '/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/opt/ros/foxy')]), 'shell': False}
+[1.702133] (-) TimerEvent: {}
+[1.802833] (-) TimerEvent: {}
+[1.843465] (robot_scene_nav_bringup) CommandEnded: {'returncode': 0}
+[1.894689] (robot_scene_nav_bringup) JobProgress: {'identifier': 'robot_scene_nav_bringup', 'progress': 'install'}
+[1.909805] (-) TimerEvent: {}
+[1.928285] (robot_scene_nav_bringup) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55382 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '26'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup'), ('SSH_CONNECTION', '192.168.123.99 55382 192.168.123.18 22'), ('PYTHONPATH', '/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/opt/ros/foxy')]), 'shell': False}
+[1.955089] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[1.956224] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Execute custom install script\n'}
+[1.957196] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/launch/collision_monitor.launch.py\n'}
+[1.957592] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/launch/robot_scene_nav2.launch.py\n'}
+[1.957933] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/launch/robot_scene_nav2_plan_only.launch.py\n'}
+[1.959135] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/config/collision_monitor.yaml\n'}
+[1.959680] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/config/nav2_params_humble.yaml\n'}
+[1.960056] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/config/velocity_smoother.yaml\n'}
+[1.960426] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/behavior_trees/navigate_to_pose_robot_scene.xml\n'}
+[1.961187] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/lib/robot_scene_nav_bringup/plain_slam_map_relay.py\n'}
+[1.990711] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/ament_index/resource_index/package_run_dependencies/robot_scene_nav_bringup\n'}
+[1.991168] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/ament_index/resource_index/parent_prefix_path/robot_scene_nav_bringup\n'}
+[1.991339] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/ament_prefix_path.sh\n'}
+[1.991473] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/ament_prefix_path.dsv\n'}
+[1.991599] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/path.sh\n'}
+[1.991722] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/environment/path.dsv\n'}
+[1.991873] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.bash\n'}
+[1.992005] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.sh\n'}
+[1.992123] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.zsh\n'}
+[1.992235] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/local_setup.dsv\n'}
+[1.992345] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/package.dsv\n'}
+[2.017242] (-) TimerEvent: {}
+[2.038222] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/ament_index/resource_index/packages/robot_scene_nav_bringup\n'}
+[2.038724] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/cmake/robot_scene_nav_bringupConfig.cmake\n'}
+[2.038893] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/cmake/robot_scene_nav_bringupConfig-version.cmake\n'}
+[2.039028] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup/share/robot_scene_nav_bringup/package.xml\n'}
+[2.043981] (robot_scene_nav_bringup) CommandEnded: {'returncode': 0}
+[2.123620] (-) TimerEvent: {}
+[2.240973] (-) TimerEvent: {}
+[2.341489] (-) TimerEvent: {}
+[2.443452] (-) TimerEvent: {}
+[2.543854] (-) TimerEvent: {}
+[2.644239] (-) TimerEvent: {}
+[2.744829] (-) TimerEvent: {}
+[2.845239] (-) TimerEvent: {}
+[2.949842] (-) TimerEvent: {}
+[3.050208] (-) TimerEvent: {}
+[3.150850] (-) TimerEvent: {}
+[3.285668] (-) TimerEvent: {}
+[3.346092] (robot_scene_nav_bringup) JobEnded: {'identifier': 'robot_scene_nav_bringup', 'rc': 0}
+[3.348404] (-) EventReactorShutdown: {}

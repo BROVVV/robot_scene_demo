@@ -1,0 +1,290 @@
+{
+  "objects": [
+    {
+      "object_id": "obj_001",
+      "label": "椅子",
+      "depth_m": 1.431,
+      "camera_xyz": [
+        -0.4486,
+        0.0322,
+        1.431
+      ],
+      "map_xyz": [
+        2.6242,
+        -3.2506,
+        0.2678
+      ],
+      "bearing_deg": -17.406,
+      "spatial_quality": "METRIC_LIDAR",
+      "confidence": 0.8,
+      "observation_count": 1,
+      "first_seen": 1788235941.1983974,
+      "last_seen": 1788235941.1983974,
+      "seen_from_places": [
+        "P1"
+      ],
+      "negative_evidence": 0,
+      "provenance": {
+        "source": "depth_object_localizer",
+        "depth_valid_pixels": 49306,
+        "frame_id": "204239",
+        "source_object_id": "obj_001",
+        "source_frame": "d435_color_optical_frame",
+        "target_frame": "pslam_odom",
+        "transform_source": "nominal_extrinsic",
+        "pose_source": "plain_slam_pandarxt16_odom",
+        "map_revision": 4,
+        "transform_quality": "METRIC_LIDAR",
+        "tf_available": false,
+        "map_frame": "pslam_odom",
+        "place_id": "P1"
+      },
+      "source_observation_ids": [
+        "204239"
+      ],
+      "merge_history": [],
+      "association_score": 0.0,
+      "status": "TENTATIVE",
+      "position_mean_xyz": [
+        2.6242,
+        -3.2506,
+        0.2678
+      ],
+      "position_variance_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "map_observation_count": 1
+    },
+    {
+      "object_id": "obj_002",
+      "label": "显示器",
+      "depth_m": 2.035,
+      "camera_xyz": [
+        -1.3096,
+        -0.5563,
+        2.035
+      ],
+      "map_xyz": [
+        3.3551,
+        -2.4943,
+        0.8563
+      ],
+      "bearing_deg": -32.763,
+      "spatial_quality": "METRIC_LIDAR",
+      "confidence": 0.9,
+      "observation_count": 1,
+      "first_seen": 1788235941.1983974,
+      "last_seen": 1788235941.1983974,
+      "seen_from_places": [
+        "P1"
+      ],
+      "negative_evidence": 0,
+      "provenance": {
+        "source": "depth_object_localizer",
+        "depth_valid_pixels": 3773,
+        "frame_id": "204239",
+        "source_object_id": "obj_002",
+        "source_frame": "d435_color_optical_frame",
+        "target_frame": "pslam_odom",
+        "transform_source": "nominal_extrinsic",
+        "pose_source": "plain_slam_pandarxt16_odom",
+        "map_revision": 4,
+        "transform_quality": "METRIC_LIDAR",
+        "tf_available": false,
+        "map_frame": "pslam_odom",
+        "place_id": "P1"
+      },
+      "source_observation_ids": [
+        "204239"
+      ],
+      "merge_history": [],
+      "association_score": 0.0,
+      "status": "TENTATIVE",
+      "position_mean_xyz": [
+        3.3551,
+        -2.4943,
+        0.8563
+      ],
+      "position_variance_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "map_observation_count": 1
+    },
+    {
+      "object_id": "obj_003",
+      "label": "机器人",
+      "depth_m": 0.61,
+      "camera_xyz": [
+        0.2793,
+        -0.0103,
+        0.61
+      ],
+      "map_xyz": [
+        1.6997,
+        -3.8415,
+        0.3103
+      ],
+      "bearing_deg": 24.603,
+      "spatial_quality": "METRIC_LIDAR",
+      "confidence": 0.95,
+      "observation_count": 1,
+      "first_seen": 1788235941.1983974,
+      "last_seen": 1788235941.1983974,
+      "seen_from_places": [
+        "P1"
+      ],
+      "negative_evidence": 0,
+      "provenance": {
+        "source": "depth_object_localizer",
+        "depth_valid_pixels": 49182,
+        "frame_id": "204239",
+        "source_object_id": "obj_003",
+        "source_frame": "d435_color_optical_frame",
+        "target_frame": "pslam_odom",
+        "transform_source": "nominal_extrinsic",
+        "pose_source": "plain_slam_pandarxt16_odom",
+        "map_revision": 4,
+        "transform_quality": "METRIC_LIDAR",
+        "tf_available": false,
+        "map_frame": "pslam_odom",
+        "place_id": "P1"
+      },
+      "source_observation_ids": [
+        "204239"
+      ],
+      "merge_history": [],
+      "association_score": 0.0,
+      "status": "TENTATIVE",
+      "position_mean_xyz": [
+        1.6997,
+        -3.8415,
+        0.3103
+      ],
+      "position_variance_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "map_observation_count": 1
+    },
+    {
+      "object_id": "obj_004",
+      "label": "纸箱",
+      "depth_m": 1.968,
+      "camera_xyz": [
+        0.626,
+        -0.0722,
+        1.968
+      ],
+      "map_xyz": [
+        2.987,
+        -4.3958,
+        0.3722
+      ],
+      "bearing_deg": 17.646,
+      "spatial_quality": "METRIC_LIDAR",
+      "confidence": 0.85,
+      "observation_count": 1,
+      "first_seen": 1788235941.1983974,
+      "last_seen": 1788235941.1983974,
+      "seen_from_places": [
+        "P1"
+      ],
+      "negative_evidence": 0,
+      "provenance": {
+        "source": "depth_object_localizer",
+        "depth_valid_pixels": 4900,
+        "frame_id": "204239",
+        "source_object_id": "obj_004",
+        "source_frame": "d435_color_optical_frame",
+        "target_frame": "pslam_odom",
+        "transform_source": "nominal_extrinsic",
+        "pose_source": "plain_slam_pandarxt16_odom",
+        "map_revision": 4,
+        "transform_quality": "METRIC_LIDAR",
+        "tf_available": false,
+        "map_frame": "pslam_odom",
+        "place_id": "P1"
+      },
+      "source_observation_ids": [
+        "204239"
+      ],
+      "merge_history": [],
+      "association_score": 0.0,
+      "status": "TENTATIVE",
+      "position_mean_xyz": [
+        2.987,
+        -4.3958,
+        0.3722
+      ],
+      "position_variance_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "map_observation_count": 1
+    },
+    {
+      "object_id": "obj_005",
+      "label": "办公桌",
+      "depth_m": 2.285,
+      "camera_xyz": [
+        -0.1551,
+        0.1416,
+        2.285
+      ],
+      "map_xyz": [
+        3.422,
+        -3.6737,
+        0.1584
+      ],
+      "bearing_deg": -3.883,
+      "spatial_quality": "METRIC_LIDAR",
+      "confidence": 0.9,
+      "observation_count": 1,
+      "first_seen": 1788235941.1983974,
+      "last_seen": 1788235941.1983974,
+      "seen_from_places": [
+        "P1"
+      ],
+      "negative_evidence": 0,
+      "provenance": {
+        "source": "depth_object_localizer",
+        "depth_valid_pixels": 15968,
+        "frame_id": "204239",
+        "source_object_id": "obj_005",
+        "source_frame": "d435_color_optical_frame",
+        "target_frame": "pslam_odom",
+        "transform_source": "nominal_extrinsic",
+        "pose_source": "plain_slam_pandarxt16_odom",
+        "map_revision": 4,
+        "transform_quality": "METRIC_LIDAR",
+        "tf_available": false,
+        "map_frame": "pslam_odom",
+        "place_id": "P1"
+      },
+      "source_observation_ids": [
+        "204239"
+      ],
+      "merge_history": [],
+      "association_score": 0.0,
+      "status": "TENTATIVE",
+      "position_mean_xyz": [
+        3.422,
+        -3.6737,
+        0.1584
+      ],
+      "position_variance_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "map_observation_count": 1
+    }
+  ],
+  "merge_distance_m": 0.4
+}

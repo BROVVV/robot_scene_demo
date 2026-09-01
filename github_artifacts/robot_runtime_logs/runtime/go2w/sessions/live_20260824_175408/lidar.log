@@ -1,0 +1,1 @@
+[WARN] [1787565258.704226656] [go2w_lidar_preprocessor]: base_link TF unavailable: "base_link" passed to lookupTransform argument target_frame does not exist. 

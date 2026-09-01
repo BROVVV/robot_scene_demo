@@ -131,6 +131,8 @@ def build_argv(params: dict[str, Any]) -> list[str]:
             argv += ["--rgbd-base-url", str(params["rgbd_base_url"])]
     if params.get("spatial_v2"):
         argv.append("--spatial-v2")
+    if params.get("spatial_provider"):
+        argv += ["--spatial-provider", str(params["spatial_provider"])]
     if params.get("rtabmap"):
         argv.append("--rtabmap")
     for key, flag in (

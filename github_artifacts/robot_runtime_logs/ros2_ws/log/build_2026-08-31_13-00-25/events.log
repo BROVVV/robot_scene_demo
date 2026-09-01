@@ -1,0 +1,89 @@
+[0.000000] (-) TimerEvent: {}
+[0.000283] (-) JobUnselected: {'identifier': 'go2w_camera_bridge'}
+[0.000351] (-) JobUnselected: {'identifier': 'go2w_cmd_vel_bridge'}
+[0.000392] (-) JobUnselected: {'identifier': 'go2w_control_arbiter'}
+[0.000426] (-) JobUnselected: {'identifier': 'go2w_description'}
+[0.000457] (-) JobUnselected: {'identifier': 'go2w_lidar_preprocessor'}
+[0.000489] (-) JobUnselected: {'identifier': 'go2w_lio_bringup'}
+[0.000518] (-) JobUnselected: {'identifier': 'go2w_rgb_lidar_fusion'}
+[0.000547] (-) JobUnselected: {'identifier': 'go2w_sensor_time_bridge'}
+[0.000576] (-) JobUnselected: {'identifier': 'hesai_ros_driver'}
+[0.000604] (-) JobUnselected: {'identifier': 'plain_slam_ros2'}
+[0.000660] (-) JobUnselected: {'identifier': 'robot_scene_live_bridge'}
+[0.000693] (-) JobUnselected: {'identifier': 'robot_scene_nav_bringup'}
+[0.000765] (go2w_plain_slam_bridge) JobQueued: {'identifier': 'go2w_plain_slam_bridge', 'dependencies': OrderedDict()}
+[0.000857] (go2w_plain_slam_bridge) JobStarted: {'identifier': 'go2w_plain_slam_bridge'}
+[0.070548] (-) TimerEvent: {}
+[0.174862] (-) TimerEvent: {}
+[0.276484] (-) TimerEvent: {}
+[0.377041] (-) TimerEvent: {}
+[0.445742] (go2w_plain_slam_bridge) JobProgress: {'identifier': 'go2w_plain_slam_bridge', 'progress': 'cmake'}
+[0.449794] (go2w_plain_slam_bridge) JobProgress: {'identifier': 'go2w_plain_slam_bridge', 'progress': 'build'}
+[0.450077] (go2w_plain_slam_bridge) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge', '--', '-j4', '-l4'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 46728 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/nohup'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '28'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge'), ('SSH_CONNECTION', '192.168.123.99 46728 192.168.123.18 22'), ('PYTHONPATH', '/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/opt/ros/foxy')]), 'shell': False}
+[0.477219] (-) TimerEvent: {}
+[0.577654] (-) TimerEvent: {}
+[0.677998] (-) TimerEvent: {}
+[0.732441] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[ 11%] Built target pandar_slam_adapter\n'}
+[0.778147] (-) TimerEvent: {}
+[0.885491] (-) TimerEvent: {}
+[0.925041] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[ 22%] Built target pointcloud_to_occupancy\n'}
+[0.985643] (-) TimerEvent: {}
+[1.012321] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[ 33%] Built target gtest\n'}
+[1.085817] (-) TimerEvent: {}
+[1.158540] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[ 44%] Built target gtest_main\n'}
+[1.185986] (-) TimerEvent: {}
+[1.286427] (-) TimerEvent: {}
+[1.291375] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[ 55%] Built target plain_slam_health_monitor\n'}
+[1.358384] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[ 66%] Built target occupancy_projection_test\n'}
+[1.393394] (-) TimerEvent: {}
+[1.493744] (-) TimerEvent: {}
+[1.564984] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[ 77%] Built target timestamp_policy_test\n'}
+[1.594470] (-) TimerEvent: {}
+[1.650229] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[ 88%] Built target transform_utils_test\n'}
+[1.696553] (-) TimerEvent: {}
+[1.797743] (-) TimerEvent: {}
+[1.820699] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[100%] Built target plain_slam_odom_adapter\n'}
+[1.852970] (go2w_plain_slam_bridge) CommandEnded: {'returncode': 0}
+[1.897912] (-) TimerEvent: {}
+[1.975180] (go2w_plain_slam_bridge) JobProgress: {'identifier': 'go2w_plain_slam_bridge', 'progress': 'install'}
+[1.998507] (-) TimerEvent: {}
+[2.030928] (go2w_plain_slam_bridge) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 46728 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/nohup'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '28'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge'), ('SSH_CONNECTION', '192.168.123.99 46728 192.168.123.18 22'), ('PYTHONPATH', '/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/opt/ros/foxy')]), 'shell': False}
+[2.098636] (-) TimerEvent: {}
+[2.117712] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[2.118537] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Execute custom install script\n'}
+[2.127133] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/pandar_slam_adapter\n'}
+[2.128000] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/plain_slam_odom_adapter\n'}
+[2.128243] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/pointcloud_to_occupancy\n'}
+[2.136671] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/plain_slam_health_monitor\n'}
+[2.142767] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/launch/plain_slam_go2w.launch.py\n'}
+[2.148071] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/package_run_dependencies/go2w_plain_slam_bridge\n'}
+[2.148688] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/parent_prefix_path/go2w_plain_slam_bridge\n'}
+[2.157815] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/ament_prefix_path.sh\n'}
+[2.157976] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/ament_prefix_path.dsv\n'}
+[2.158108] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/path.sh\n'}
+[2.158231] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/path.dsv\n'}
+[2.158344] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.bash\n'}
+[2.158456] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.sh\n'}
+[2.158564] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.zsh\n'}
+[2.158670] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.dsv\n'}
+[2.158778] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/package.dsv\n'}
+[2.198798] (-) TimerEvent: {}
+[2.212985] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/packages/go2w_plain_slam_bridge\n'}
+[2.213395] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/cmake/go2w_plain_slam_bridgeConfig.cmake\n'}
+[2.213563] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/cmake/go2w_plain_slam_bridgeConfig-version.cmake\n'}
+[2.213698] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/package.xml\n'}
+[2.213871] (go2w_plain_slam_bridge) CommandEnded: {'returncode': 0}
+[2.299149] (-) TimerEvent: {}
+[2.405740] (-) TimerEvent: {}
+[2.522020] (-) TimerEvent: {}
+[2.622747] (-) TimerEvent: {}
+[2.723413] (-) TimerEvent: {}
+[2.823937] (-) TimerEvent: {}
+[2.931861] (-) TimerEvent: {}
+[3.046012] (-) TimerEvent: {}
+[3.146485] (-) TimerEvent: {}
+[3.246782] (-) TimerEvent: {}
+[3.347668] (-) TimerEvent: {}
+[3.447998] (-) TimerEvent: {}
+[3.530117] (go2w_plain_slam_bridge) JobEnded: {'identifier': 'go2w_plain_slam_bridge', 'rc': 0}
+[3.548140] (-) EventReactorShutdown: {}

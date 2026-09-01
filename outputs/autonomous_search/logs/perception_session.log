@@ -1,0 +1,7 @@
+GO2-W ROS environment ready: distro=humble rmw=rmw_cyclonedds_cpp domain=0
+Read-only Go2-W perception session: live_20260831_184530
+Spool: /home/mxt/robotscene/runtime/go2w/spool
+Logs: /home/mxt/robotscene/runtime/go2w/sessions/live_20260831_184530
+Camera source: d435
+Motion/lease/Nav2 execution nodes: NOT STARTED
+已终止

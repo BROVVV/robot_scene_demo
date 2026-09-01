@@ -1,0 +1,2 @@
+Invoking command in '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge -- -j4 -l4
+Invoked command in '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge' returned '2': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge -- -j4 -l4

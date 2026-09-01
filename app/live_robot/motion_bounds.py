@@ -22,6 +22,20 @@ class MotionObservationDecision:
     code: str = ""
     distance_m: float = 0.0
     yaw_delta_deg: float = 0.0
+    signed_progress_m: float = 0.0
+    lateral_progress_m: float = 0.0
+    motion_direction: str = "unknown"
+
+
+def _signed_and_lateral_progress(
+    before: tuple[float, float, float],
+    after: tuple[float, float, float],
+) -> tuple[float, float]:
+    dx = after[0] - before[0]
+    dy = after[1] - before[1]
+    signed = dx * math.cos(before[2]) + dy * math.sin(before[2])
+    lateral = -dx * math.sin(before[2]) + dy * math.cos(before[2])
+    return signed, lateral
 
 
 def evaluate_motion_observation(
@@ -33,8 +47,15 @@ def evaluate_motion_observation(
     minimum_translation_m: float = 0.03,
     maximum_translation_factor: float = 2.0,
     maximum_forward_yaw_drift_deg: float = 20.0,
+    maximum_lateral_drift_m: float = 0.10,
 ) -> MotionObservationDecision:
-    """Reject missing motion and odometry jumps instead of accepting them."""
+    """Reject missing motion and odometry jumps instead of accepting them.
+
+    Translation primitives are verified in signed body coordinates: forward
+    steps must produce positive ``signed_progress_m`` and backward recovery
+    steps must produce negative ``signed_progress_m``.  Euclidean distance is
+    still used as a discontinuity sanity check.
+    """
 
     values = (*before, *after, expected_forward_m)
     if not all(math.isfinite(float(value)) for value in values):
@@ -43,10 +64,15 @@ def evaluate_motion_observation(
             "ODOM_INVALID: odometry contains a non-finite value",
             "ODOM_INVALID",
         )
-    distance = math.hypot(after[0] - before[0], after[1] - before[1])
+    dx = after[0] - before[0]
+    dy = after[1] - before[1]
+    distance = math.hypot(dx, dy)
+    signed_progress, lateral_progress = _signed_and_lateral_progress(before, after)
     yaw_delta = abs((after[2] - before[2] + math.pi) % (2.0 * math.pi) - math.pi)
     yaw_delta_deg = math.degrees(yaw_delta)
-    if step.startswith("f"):
+
+    if step.startswith("f") or step.startswith("b"):
+        direction = "forward" if step.startswith("f") else "backward"
         expected = max(minimum_translation_m, float(expected_forward_m))
         minimum_required = max(minimum_translation_m, expected * 0.5)
         maximum = max(
@@ -54,44 +80,116 @@ def evaluate_motion_observation(
             expected * maximum_translation_factor,
         )
         if distance > maximum:
+            code = "ODOM_DISCONTINUITY"
             return MotionObservationDecision(
                 False,
                 (
-                    "ODOM_DISCONTINUITY: observed forward displacement "
+                    f"{code}: observed {direction} displacement "
                     f"{distance:.3f}m exceeds plausible limit {maximum:.3f}m "
                     f"for requested {expected_forward_m:.3f}m"
                 ),
-                "ODOM_DISCONTINUITY",
+                code,
                 distance,
                 yaw_delta_deg,
+                signed_progress,
+                lateral_progress,
+                direction,
             )
         if distance < minimum_required:
+            code = (
+                "FORWARD_NOT_CONFIRMED"
+                if direction == "forward"
+                else "BACKWARD_NOT_CONFIRMED"
+            )
             return MotionObservationDecision(
                 False,
                 (
-                    "FORWARD_NOT_CONFIRMED: motion RPC completed but odometry "
+                    f"{code}: motion RPC completed but odometry "
                     f"reported only {distance:.3f}m (minimum "
                     f"{minimum_required:.3f}m for requested "
                     f"{expected_forward_m:.3f}m)"
                 ),
-                "FORWARD_NOT_CONFIRMED",
+                code,
                 distance,
                 yaw_delta_deg,
+                signed_progress,
+                lateral_progress,
+                direction,
             )
-        if yaw_delta_deg > maximum_forward_yaw_drift_deg:
+        if direction == "forward" and signed_progress <= 0.0:
             return MotionObservationDecision(
                 False,
                 (
-                    "FORWARD_HEADING_DRIFT: forward step changed heading by "
+                    "FORWARD_WRONG_DIRECTION: signed body-axis progress "
+                    f"{signed_progress:.3f}m is not positive"
+                ),
+                "FORWARD_WRONG_DIRECTION",
+                distance,
+                yaw_delta_deg,
+                signed_progress,
+                lateral_progress,
+                direction,
+            )
+        if direction == "backward" and signed_progress >= 0.0:
+            return MotionObservationDecision(
+                False,
+                (
+                    "BACKWARD_WRONG_DIRECTION: signed body-axis progress "
+                    f"{signed_progress:.3f}m is not negative"
+                ),
+                "BACKWARD_WRONG_DIRECTION",
+                distance,
+                yaw_delta_deg,
+                signed_progress,
+                lateral_progress,
+                direction,
+            )
+        if abs(lateral_progress) > maximum_lateral_drift_m:
+            code = (
+                "FORWARD_LATERAL_DRIFT"
+                if direction == "forward"
+                else "BACKWARD_LATERAL_DRIFT"
+            )
+            return MotionObservationDecision(
+                False,
+                (
+                    f"{code}: lateral drift {abs(lateral_progress):.3f}m "
+                    f"exceeds limit {maximum_lateral_drift_m:.3f}m"
+                ),
+                code,
+                distance,
+                yaw_delta_deg,
+                signed_progress,
+                lateral_progress,
+                direction,
+            )
+        if yaw_delta_deg > maximum_forward_yaw_drift_deg:
+            code = (
+                "FORWARD_HEADING_DRIFT"
+                if direction == "forward"
+                else "BACKWARD_HEADING_DRIFT"
+            )
+            return MotionObservationDecision(
+                False,
+                (
+                    f"{code}: {direction} step changed heading by "
                     f"{yaw_delta_deg:.1f}deg (limit "
                     f"{maximum_forward_yaw_drift_deg:.1f}deg)"
                 ),
-                "FORWARD_HEADING_DRIFT",
+                code,
                 distance,
                 yaw_delta_deg,
+                signed_progress,
+                lateral_progress,
+                direction,
             )
         return MotionObservationDecision(
-            True, distance_m=distance, yaw_delta_deg=yaw_delta_deg
+            True,
+            distance_m=distance,
+            yaw_delta_deg=yaw_delta_deg,
+            signed_progress_m=signed_progress,
+            lateral_progress_m=lateral_progress,
+            motion_direction=direction,
         )
 
     expected_turn_deg = abs(float(step[1:])) if len(step) > 1 else 0.0
@@ -170,17 +268,18 @@ def evaluate_step_boundary(
     )
     if not current_check.allowed:
         return current_check
-    if not step.startswith("f"):
+    if not (step.startswith("f") or step.startswith("b")):
         return MotionBoundaryDecision(True, predicted_position=current[:2])
     if turn_only:
         return MotionBoundaryDecision(
             False,
-            "forward rejected by operator-scoped turn-only gate",
+            "translation rejected by operator-scoped turn-only gate",
             predicted_position=current[:2],
         )
+    direction = -1.0 if step.startswith("b") else 1.0
     predicted = (
-        current[0] + max(0.0, forward_distance_m) * math.cos(current[2]),
-        current[1] + max(0.0, forward_distance_m) * math.sin(current[2]),
+        current[0] + direction * max(0.0, forward_distance_m) * math.cos(current[2]),
+        current[1] + direction * max(0.0, forward_distance_m) * math.sin(current[2]),
     )
     return position_within_boundary(
         origin=origin,

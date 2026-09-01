@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/unitree/robotscene/ros2_ws/install/go2w_sensor_time_bridge/lib/go2w_sensor_time_bridge/time_bridge", line 11, in <module>
+    load_entry_point('go2w-sensor-time-bridge', 'console_scripts', 'time_bridge')()
+  File "/usr/lib/python3/dist-packages/pkg_resources/__init__.py", line 490, in load_entry_point
+    return get_distribution(dist).load_entry_point(group, name)
+  File "/usr/lib/python3/dist-packages/pkg_resources/__init__.py", line 2854, in load_entry_point
+    return ep.load()
+  File "/usr/lib/python3/dist-packages/pkg_resources/__init__.py", line 2445, in load
+    return self.resolve()
+  File "/usr/lib/python3/dist-packages/pkg_resources/__init__.py", line 2451, in resolve
+    module = __import__(self.module_name, fromlist=['__name__'], level=0)
+  File "/home/unitree/robotscene/ros2_ws/build/go2w_sensor_time_bridge/go2w_sensor_time_bridge/time_bridge_node.py", line 9, in <module>
+    from rclpy._rclpy_pybind11 import RCLError
+ModuleNotFoundError: No module named 'rclpy._rclpy_pybind11'

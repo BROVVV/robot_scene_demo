@@ -1,0 +1,31 @@
+[4.913s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup': AMENT_PREFIX_PATH=/home/unitree/robotscene/ros2_ws/install/go2w_description:${AMENT_PREFIX_PATH} PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/python3.8/site-packages:/home/unitree/robotscene/ros2_ws/build/go2w_description:/home/unitree/robotscene/ros2_ws/install/go2w_description/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup/build --no-deps install_data
+[6.649s] running develop
+[6.649s] running egg_info
+[6.649s] creating go2w_lio_bringup.egg-info
+[6.649s] writing go2w_lio_bringup.egg-info/PKG-INFO
+[6.660s] writing dependency_links to go2w_lio_bringup.egg-info/dependency_links.txt
+[6.664s] writing entry points to go2w_lio_bringup.egg-info/entry_points.txt
+[6.666s] writing requirements to go2w_lio_bringup.egg-info/requires.txt
+[6.667s] writing top-level names to go2w_lio_bringup.egg-info/top_level.txt
+[6.673s] writing manifest file 'go2w_lio_bringup.egg-info/SOURCES.txt'
+[6.781s] reading manifest file 'go2w_lio_bringup.egg-info/SOURCES.txt'
+[6.799s] writing manifest file 'go2w_lio_bringup.egg-info/SOURCES.txt'
+[6.964s] running build_ext
+[6.969s] Creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/python3.8/site-packages/site.py
+[6.986s] Creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/python3.8/site-packages/go2w-lio-bringup.egg-link (link to .)
+[6.989s] Installing go2w_wheel_odom script to /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/go2w_lio_bringup
+[6.990s] Installing output_adapter script to /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/go2w_lio_bringup
+[6.993s] Installing point_lio_bridge script to /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/go2w_lio_bringup
+[6.994s] 
+[6.994s] Installed /home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup
+[6.995s] running install_data
+[6.996s] creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/ament_index
+[6.996s] creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/ament_index/resource_index
+[6.998s] creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/ament_index/resource_index/packages
+[6.999s] copying resource/go2w_lio_bringup -> /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/ament_index/resource_index/packages
+[7.000s] copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/go2w_lio_bringup
+[7.001s] creating /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/go2w_lio_bringup/launch
+[7.003s] copying launch/lio.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/go2w_lio_bringup/launch
+[7.005s] copying launch/point_lio.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/go2w_lio_bringup/launch
+[7.005s] copying launch/wheel_odom.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/share/go2w_lio_bringup/launch
+[7.261s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup' returned '0': AMENT_PREFIX_PATH=/home/unitree/robotscene/ros2_ws/install/go2w_description:${AMENT_PREFIX_PATH} PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_lio_bringup/lib/python3.8/site-packages:/home/unitree/robotscene/ros2_ws/build/go2w_description:/home/unitree/robotscene/ros2_ws/install/go2w_description/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/go2w_lio_bringup/build --no-deps install_data

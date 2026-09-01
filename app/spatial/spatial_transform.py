@@ -23,6 +23,7 @@ from typing import Any, Iterable
 
 from app.spatial.models import (
     SPATIAL_QUALITY_CAMERA_LOCAL,
+    SPATIAL_QUALITY_METRIC_LIDAR,
     SPATIAL_QUALITY_METRIC_RGBD,
     SPATIAL_QUALITY_RELATIVE_RGBD,
     SpatialPose,
@@ -170,6 +171,7 @@ def quality_weight(quality: str) -> float:
     """Weights used when fusing positions across observations."""
     return {
         SPATIAL_QUALITY_METRIC_RGBD: 1.0,
+        SPATIAL_QUALITY_METRIC_LIDAR: 1.0,
         SPATIAL_QUALITY_RELATIVE_RGBD: 0.6,
         SPATIAL_QUALITY_CAMERA_LOCAL: 0.0,
         "RGB_ONLY": 0.0,

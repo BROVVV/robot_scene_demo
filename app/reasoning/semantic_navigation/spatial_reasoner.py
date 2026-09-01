@@ -39,6 +39,8 @@ class SpatialSearchReasoner:
         route_costs: dict[str, dict[str, Any]] | None = None,
         semantic_relevance: dict[str, float] | None = None,
         current_yaw_deg: float = 0.0,
+        memory_context: dict[str, Any] | None = None,
+        common_sense: dict[str, Any] | None = None,
     ) -> ScoredIntent | None:
         match_state = self._match_state(graph_match)
         return self.selector.select(
@@ -51,6 +53,8 @@ class SpatialSearchReasoner:
             route_costs=route_costs or {},
             semantic_relevance=semantic_relevance or {},
             current_yaw_deg=float(current_yaw_deg),
+            memory_context=memory_context or {},
+            common_sense=common_sense or {},
         )
 
     @staticmethod

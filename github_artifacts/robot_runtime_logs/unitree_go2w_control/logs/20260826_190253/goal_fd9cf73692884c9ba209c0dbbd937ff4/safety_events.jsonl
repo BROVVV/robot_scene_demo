@@ -1,0 +1,5 @@
+{"event":"stop_and_verify","message":"pre_goal","timestamp":"1787742185726027"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787742185991378"}
+{"event":"motion_failure","message":"relative yaw goal timed out","timestamp":"1787742186604171"}
+{"event":"stop_and_verify","message":"final","timestamp":"1787742186604304"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787742186880952"}

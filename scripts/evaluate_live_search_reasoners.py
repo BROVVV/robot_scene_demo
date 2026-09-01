@@ -29,7 +29,7 @@ from app.reasoning.semantic_navigation.models import SearchReasoningContext
 from app.reasoning.semantic_navigation.router import SemanticSearchController
 from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
 from app.video.schemas import SceneGraph, SceneGraphEdge, SceneGraphNode
-from app.video.target_profile import TargetProfile, TargetProfileResolver
+from app.reasoning.target_profile import TargetProfile, TargetProfileResolver
 
 
 def _parse_args(argv=None):

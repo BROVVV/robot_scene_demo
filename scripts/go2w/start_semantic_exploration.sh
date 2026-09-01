@@ -33,6 +33,12 @@ session_dir="outputs/live_runs"
 allow_degraded=""
 skip_stack_check=""
 extra_args=()
+# plain_slam mapping-assist integration (plan §15):
+#   GO2W_SPATIAL_PROVIDER=plain_slam  -> --spatial-provider plain_slam
+#   GO2W_START_PLAIN_SLAM=1           -> auto-start the mapping pipeline when
+#                                        /go2w/slam/ready is not present
+spatial_provider="${GO2W_SPATIAL_PROVIDER:-camera}"
+start_plain_slam="${GO2W_START_PLAIN_SLAM:-0}"
 
 while (( $# )); do
   case "$1" in
@@ -78,6 +84,9 @@ if [[ "${backend}" == "mock" || "${backend}" == "mock_metric" || "${skip_stack_c
   [[ -n "${output}" ]] && args+=( --output "${output}" )
   args+=( --session-dir "${session_dir}" --max-seconds "${max_seconds}" \
           --max-motion-steps "${max_motion_steps}" )
+  if [[ "${spatial_provider}" != "camera" ]]; then
+    args+=( --spatial-provider "${spatial_provider}" --spatial-v2 )
+  fi
   [[ -n "${allow_degraded}" ]] && args+=( "${allow_degraded}" )
   args+=( "${extra_args[@]}" )
   exec "${conda_python}" "${args[@]}"
@@ -94,29 +103,6 @@ if ! command -v timeout >/dev/null 2>&1; then
   printf '%s\n' 'ERROR: coreutils timeout missing.' >&2
   exit 2
 fi
-if ! command -v ros2 >/dev/null 2>&1; then
-  printf '%s\n' 'ros2 not on PATH; sourcing the ROS 2 environment...'
-  set +u
-  # shellcheck disable=SC1091
-  source /opt/ros/humble/setup.bash 2>/dev/null || {
-    printf '%s\n' 'ERROR: /opt/ros/humble/setup.bash not found.' >&2
-    exit 2
-  }
-  # shellcheck disable=SC1091
-  source "${unitree_root}/cyclonedds_ws/install/setup.bash" 2>/dev/null || true
-  # shellcheck disable=SC1091
-  source "${project_root}/ros2_ws/install/setup.bash" 2>/dev/null || true
-  if [[ -f "${control_root}/ros2_ws/install/setup.bash" ]]; then
-    # shellcheck disable=SC1091
-    source "${control_root}/ros2_ws/install/setup.bash" 2>/dev/null || true
-  fi
-  set -u
-  if ! command -v ros2 >/dev/null 2>&1; then
-    printf '%s\n' 'ERROR: ros2 CLI still not available after sourcing ROS.' >&2
-    exit 2
-  fi
-fi
-
 # --- network check ----------------------------------------------------------
 iface="$("${control_root}/scripts/detect_unitree_interface.sh" 2>/dev/null || true)"
 if [[ -n "${iface}" ]]; then
@@ -130,26 +116,29 @@ if ! ping -c 1 -W 1 192.168.123.18 >/dev/null 2>&1; then
 fi
 
 # --- ROS environment ---------------------------------------------------------
+# Use the same interface-pinned, ROS1-cleansed environment as every other
+# Go2-W launcher.  The previous inline setup always forced Humble and reused
+# stale ROS variables from the caller's shell.
 set +u
 # shellcheck disable=SC1091
-source /opt/ros/humble/setup.bash
-# shellcheck disable=SC1091
-source "${unitree_root}/cyclonedds_ws/install/setup.bash"
-# shellcheck disable=SC1091
-source "${project_root}/ros2_ws/install/setup.bash"
-if [[ -f "${control_root}/ros2_ws/install/setup.bash" ]]; then
-  # shellcheck disable=SC1091
-  source "${control_root}/ros2_ws/install/setup.bash"
-fi
+source "${project_root}/scripts/go2w/setup_environment.sh"
 set -u
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export ROS_DOMAIN_ID=0
-export CYCLONEDDS_URI="file://${project_root}/configs/go2w/cyclonedds_go2w.xml"
+if ! command -v ros2 >/dev/null 2>&1; then
+  printf '%s\n' 'ERROR: ros2 CLI still not available after sourcing ROS.' >&2
+  exit 2
+fi
 
 # --- helper: is a topic alive? -------------------------------------------------
 topic_alive() {
   local topic="$1"
-  # ros2 topic hz never exits; treat any captured rate output as alive.
+  # Prefer topic-info publisher count; it is more reliable in this mixed
+  # Foxy/Humble environment than `ros2 topic hz` (which can see the graph but
+  # not receive data in some shells).  Also accept hz output as a fallback.
+  local info
+  info="$(timeout 5 ros2 topic info "${topic}" -v 2>/dev/null || true)"
+  if grep -q "Publisher count: [1-9]" <<<"${info}"; then
+    return 0
+  fi
   local out
   out="$(timeout 5 ros2 topic hz "${topic}" --window 2 2>/dev/null)"
   [[ -n "${out}" ]]
@@ -243,6 +232,44 @@ if [[ "$motion_action_servers" != 1 || "$motion_action_processes" != 1 ]]; then
 fi
 printf '%s\n' '/go2w/motion action server ready.'
 
+# --- plain_slam mapping-assist (optional; plan §15) ---------------------------
+# GO2W_START_PLAIN_SLAM=1 auto-starts the Pandar plain_slam mapping pipeline
+# when /go2w/slam/ready is not yet published.  Failure to start degrades to the
+# D435/camera provider and never blocks the existing exploration stack.
+if [[ "${start_plain_slam}" == "1" ]]; then
+  if topic_alive /go2w/slam/ready; then
+    printf '%s\n' 'plain_slam mapping already running (/go2w/slam/ready present).'
+  else
+    printf '%s\n' 'Starting plain_slam mapping-assist pipeline (GO2W_START_PLAIN_SLAM=1)...'
+    nohup bash "${script_dir}/start_plain_slam_mapping.sh" \
+      >"${log_root}/start_plain_slam_mapping.log" 2>&1 &
+    mapping_pid=$!
+    printf '%s\n' "${mapping_pid}" >"${pid_root}/start_plain_slam_mapping.pid"
+    started_stacks+=(start_plain_slam_mapping)
+    ready_ok=0
+    for _ in {1..60}; do
+      if topic_alive /go2w/slam/ready; then ready_ok=1; break; fi
+      sleep 1
+    done
+    if [[ "${ready_ok}" == "1" ]]; then
+      printf '%s\n' 'plain_slam mapping ready (MAPPING_ASSIST, motion authority unchanged).'
+    else
+      printf '%s\n' \
+        'WARNING: /go2w/slam/ready not seen within 60s; spatial provider will fall back.' >&2
+      printf '%s\n' "See ${log_root}/start_plain_slam_mapping.log" >&2
+    fi
+  fi
+fi
+
+# --- VLM daemon (optional; subprocess fallback if unavailable) ------------------------
+if [[ "${NO_VLM_DAEMON:-0}" != "1" ]]; then
+  bash "${script_dir}/start_vlm_daemon.sh" >/dev/null 2>&1 || true
+  if [[ -S "${project_root}/runtime/go2w/siliconflow_vlm.sock" ]]; then
+    started_stacks+=(siliconflow_vlm)
+    printf '%s\n' 'VLM daemon ready.'
+  fi
+fi
+
 # --- run the exploration CLI ---------------------------------------------------------
 args=(scripts/go2w/run_semantic_exploration.py --target "${target}" --backend go2w_experimental)
 [[ -n "${turn_only}" ]] && args+=( "${turn_only}" )
@@ -252,6 +279,9 @@ args+=( --session-dir "${session_dir}" --max-seconds "${max_seconds}" \
         --max-motion-steps "${max_motion_steps}" \
         --operator-supervised-experiment \
         --profile-config configs/go2w/high_level_experiment.yaml )
+if [[ "${spatial_provider}" != "camera" ]]; then
+  args+=( --spatial-provider "${spatial_provider}" --spatial-v2 )
+fi
 [[ -n "${allow_degraded}" ]] && args+=( "${allow_degraded}" )
 args+=( "${extra_args[@]}" )
 exec "${system_python}" "${args[@]}"

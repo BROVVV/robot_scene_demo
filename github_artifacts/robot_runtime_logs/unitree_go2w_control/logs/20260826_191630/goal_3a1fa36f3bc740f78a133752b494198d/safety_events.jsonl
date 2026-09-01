@@ -1,0 +1,5 @@
+{"event":"stop_and_verify","message":"pre_goal","timestamp":"1787742994042255"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787742994370311"}
+{"event":"motion_failure","message":"Sport lease became unavailable","timestamp":"1787742994370457"}
+{"event":"stop_and_verify","message":"final","timestamp":"1787742994370475"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787742994635567"}

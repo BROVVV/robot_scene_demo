@@ -1,0 +1,27 @@
+1787548972.815973 [0]     python: config: //CycloneDDS/Domain/General: Interfaces: unknown element (file:///home/unitree/robotscene/runtime/go2w/cyclonedds_eth0.xml line 5)
+1787548972.816134 [0]     python: config: //CycloneDDS/Domain/Internal: SocketReceiveBufferSize: unknown element (line 17)
+1787548972.816151 [0]     python: config: //CycloneDDS/Domain/Internal: SocketSendBufferSize: unknown element (line 18)
+[ERROR] [1787548972.816258016] [rmw_cyclonedds_cpp]: rmw_create_node: failed to create domain, error Error
+
+>>> [rcutils|error_handling.c:108] rcutils_set_error_state()
+This error state is being overwritten:
+
+  'error not set, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/node.c:276'
+
+with this new error message:
+
+  'rcl node's rmw handle is invalid, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/node.c:428'
+
+rcutils_reset_error() should be called after error handling to avoid this.
+<<<
+[ERROR] [1787548972.820493344] [rcl]: Failed to fini publisher for node: 1
+Traceback (most recent call last):
+  File "/home/unitree/robotscene/scripts/go2w/realsense_rgbd_bridge.py", line 134, in <module>
+    raise SystemExit(main())
+  File "/home/unitree/robotscene/scripts/go2w/realsense_rgbd_bridge.py", line 120, in main
+    node = D435RGBDBridge(args.base_url, args.rate)
+  File "/home/unitree/robotscene/scripts/go2w/realsense_rgbd_bridge.py", line 38, in __init__
+    super().__init__("go2w_d435_rgbd_bridge")
+  File "/opt/ros/humble/lib/python3.8/site-packages/rclpy/node.py", line 165, in __init__
+    self.__handle = Handle(_rclpy.rclpy_create_node(
+_rclpy.RCLError: Unknown error creating node: rcl node's rmw handle is invalid, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/node.c:428

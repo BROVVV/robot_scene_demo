@@ -1,0 +1,210 @@
+{
+  "schema_version": "search_final_state_v1",
+  "session_id": "search_20260901_121219_0a3965d1",
+  "state": "TARGET_FOUND",
+  "result": {
+    "result": "TARGET_FOUND",
+    "target": "垃圾桶",
+    "duration_s": 29.731,
+    "planning_cycles": 0,
+    "motion_steps": 0,
+    "observations": 1,
+    "unique_nodes": 0,
+    "unique_places": 1,
+    "unique_objects": 5,
+    "frontiers_discovered": 11,
+    "map_nodes_total": 17,
+    "replans": 0,
+    "navigation_failures": 0,
+    "verify_attempts": 1,
+    "semantic_goal_selection_count": 0,
+    "fallback_goal_selection_count": 0,
+    "finish_reason": "TARGET_FOUND",
+    "session_id": "search_20260901_121219_0a3965d1",
+    "summary": {
+      "result": "TARGET_FOUND",
+      "target": "垃圾桶",
+      "duration_s": 29.731,
+      "planning_cycles": 0,
+      "motion_steps": 0,
+      "observations": 1,
+      "unique_nodes": 0,
+      "unique_places": 1,
+      "unique_objects": 5,
+      "frontiers_discovered": 11,
+      "map_nodes_total": 17,
+      "replans": 0,
+      "navigation_failures": 0,
+      "verify_attempts": 1,
+      "semantic_goal_selection_count": 0,
+      "fallback_goal_selection_count": 0,
+      "finish_reason": "TARGET_FOUND"
+    }
+  },
+  "task": {
+    "task_id": "task_3f1ec5001fdd",
+    "raw_text": "寻找垃圾桶",
+    "intent": "locate_object",
+    "canonical_target": "垃圾桶",
+    "target_attributes": {
+      "category": "object",
+      "attributes": []
+    },
+    "target_relations": [],
+    "constraints": [
+      "contact_allowed",
+      "manipulation_allowed",
+      "harmful_action_allowed",
+      "chase_or_ram_allowed",
+      "requires_safe_standoff_distance",
+      "requires_stop_after_motion",
+      "requires_stop_after_navigation",
+      "stop_distance_policy",
+      "max_speed_policy"
+    ],
+    "subtasks": [
+      {
+        "id": "subtask_1",
+        "type": "locate_object",
+        "object": "垃圾桶",
+        "recipient_or_target": "",
+        "state_query": "",
+        "is_navigation_relevant": true,
+        "requires_visual_grounding": true,
+        "requires_manipulation": false,
+        "requires_physical_contact": false,
+        "requires_harmful_action": false,
+        "semantic_role": "main_goal",
+        "llm_reason": "用户明确要求寻找垃圾桶，核心任务是定位该物体。",
+        "requested_by_user": true,
+        "allowed_by_capability": null,
+        "allowed_by_safety": null,
+        "blocked_reason": null
+      }
+    ],
+    "executable": true,
+    "rejection_reason": null,
+    "parsed_task": {
+      "raw_task": "寻找垃圾桶",
+      "language": "zh",
+      "task_summary": "用户要求寻找垃圾桶，属于物体定位任务。",
+      "primary_intent": "locate_object",
+      "target": {
+        "name_zh": "垃圾桶",
+        "name_en": "trash can",
+        "category": "object",
+        "attributes": [],
+        "relations": []
+      },
+      "area": {
+        "name_zh": "",
+        "category": "unknown"
+      },
+      "requested_subtasks": [
+        {
+          "id": "subtask_1",
+          "type": "locate_object",
+          "object": "垃圾桶",
+          "recipient_or_target": "",
+          "state_query": "",
+          "is_navigation_relevant": true,
+          "requires_visual_grounding": true,
+          "requires_manipulation": false,
+          "requires_physical_contact": false,
+          "requires_harmful_action": false,
+          "semantic_role": "main_goal",
+          "llm_reason": "用户明确要求寻找垃圾桶，核心任务是定位该物体。",
+          "requested_by_user": true,
+          "allowed_by_capability": null,
+          "allowed_by_safety": null,
+          "blocked_reason": null
+        }
+      ],
+      "safety_assessment": {
+        "contains_physical_harm_request": false,
+        "contains_manipulation_request": false,
+        "contains_privacy_sensitive_request": false,
+        "contains_non_navigation_request": false,
+        "risk_level": "none",
+        "reason": "任务仅为寻找物体，不涉及伤害、操作或非导航行为。"
+      },
+      "execution_recommendation": {
+        "can_execute_fully": false,
+        "can_execute_navigation_part": true,
+        "allowed_navigation_subtasks": [
+          "locate_object"
+        ],
+        "unsupported_subtasks": [],
+        "user_feedback_zh": "我可以执行导航搜索，尝试寻找垃圾桶并报告其位置。"
+      },
+      "confidence": {
+        "intent": 0.98,
+        "safety": 0.99,
+        "target": 0.97
+      },
+      "initial_visibility_state": "unknown",
+      "raw_llm_response": {
+        "raw_task": "寻找垃圾桶",
+        "language": "zh",
+        "task_summary": "用户要求寻找垃圾桶，属于物体定位任务。",
+        "primary_intent": "locate_object",
+        "target": {
+          "name_zh": "垃圾桶",
+          "name_en": "trash can",
+          "category": "object",
+          "attributes": [],
+          "relations": []
+        },
+        "area": {
+          "name_zh": "",
+          "category": "unknown"
+        },
+        "requested_subtasks": [
+          {
+            "id": "subtask_1",
+            "type": "locate_object",
+            "object": "垃圾桶",
+            "recipient_or_target": "",
+            "state_query": "",
+            "is_navigation_relevant": true,
+            "requires_visual_grounding": true,
+            "requires_manipulation": false,
+            "requires_physical_contact": false,
+            "requires_harmful_action": false,
+            "semantic_role": "main_goal",
+            "llm_reason": "用户明确要求寻找垃圾桶，核心任务是定位该物体。"
+          }
+        ],
+        "safety_assessment": {
+          "contains_physical_harm_request": false,
+          "contains_manipulation_request": false,
+          "contains_privacy_sensitive_request": false,
+          "contains_non_navigation_request": false,
+          "risk_level": "none",
+          "reason": "任务仅为寻找物体，不涉及伤害、操作或非导航行为。"
+        },
+        "execution_recommendation": {
+          "can_execute_fully": false,
+          "can_execute_navigation_part": true,
+          "allowed_navigation_subtasks": [
+            "locate_object"
+          ],
+          "unsupported_subtasks": [],
+          "user_feedback_zh": "我可以执行导航搜索，尝试寻找垃圾桶并报告其位置。"
+        },
+        "confidence": {
+          "intent": 0.98,
+          "safety": 0.99,
+          "target": 0.97
+        },
+        "initial_visibility_state": "unknown"
+      },
+      "parser_source": "llm",
+      "notes": []
+    },
+    "created_at": 1788235939.039464
+  },
+  "current_place_id": "P1",
+  "map_revision": 2,
+  "last_decision": null
+}

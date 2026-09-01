@@ -1,0 +1,4 @@
+[INFO] [launch]: All log files can be found below /home/unitree/.ros/log/2026-08-28-11-47-39-175743-ubuntu-13227
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [go2w_wheel_odom-1]: process started with pid [13251]
+[go2w_wheel_odom-1] [INFO] [1787888863.462664416] [go2w_wheel_odom]: wheel odometry ready: radius=0.0890 m wheels=12..15 lio_fusion=True lio_weight=0.35

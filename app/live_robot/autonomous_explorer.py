@@ -153,7 +153,41 @@ class SessionResult:
 
 
 class PerceptionFailure(RuntimeError):
-    """Observer could not produce a valid observation (recoverable)."""
+    """Observer could not produce a valid observation.
+
+    Structured error contract (计划书 §8.2/§8.5):
+
+    * ``code``: machine-readable cause (QUICK_VLM_TIMEOUT, RGBD_TIMEOUT,
+      RGB_IMAGE_ERROR, DEPTH_ERROR, VLM_PARSE_ERROR, TF_UNAVAILABLE,
+      FRAME_MISMATCH, FULL_SEMANTIC_TIMEOUT, UNKNOWN_PERCEPTION_ERROR, ...)
+    * ``recoverable``: transient errors may be retried with a fresh
+      observation; non-recoverable ones fail the session immediately.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "UNKNOWN_PERCEPTION_ERROR",
+        recoverable: bool = True,
+        detail: str = "",
+        last_success_age_s: float | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = str(code)
+        self.recoverable = bool(recoverable)
+        self.detail = str(detail)
+        self.last_success_age_s = last_success_age_s
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "error_type": "PERCEPTION_ERROR",
+            "code": self.code,
+            "message": str(self),
+            "recoverable": self.recoverable,
+            "detail": self.detail,
+            "last_success_age_s": self.last_success_age_s,
+        }
 
 
 class AutonomousExplorer:
@@ -217,6 +251,7 @@ class AutonomousExplorer:
         self._last_execution_moved = False
         self._last_goal_source: str | None = None
         self._current_place_id: str | None = None
+        self._perception_failure_detail: dict[str, Any] | None = None
         self.executor_id = executor_id
         self.worker_generation = worker_generation
         self.decision_records: list[DecisionRecord] = []
@@ -347,49 +382,85 @@ class AutonomousExplorer:
                 detail_zh="正在获取最新画面并分析目标与场景；机器狗会原地等待分析完成",
             )
             perception_retries = 0
+            last_perception_error: PerceptionFailure | None = None
             observation: LiveObservation | None = None
             while observation is None:
                 try:
                     observation = self._observer()
                 except PerceptionFailure as exc:
-                    self._emit("perception_failure", error=str(exc))
-                    if observations == 0 and perception_retries < self.max_perception_retries:
+                    last_perception_error = exc
+                    self._emit("perception_failure", error=str(exc),
+                               code=exc.code, recoverable=exc.recoverable,
+                               detail=exc.detail,
+                               last_success_age_s=exc.last_success_age_s)
+                    # 计划书 §8.3：只要错误可恢复就 retry，无论之前是否已经
+                    # 成功观察过；机器人保持 stop，不允许拿 stale 帧继续发运动。
+                    if exc.recoverable and perception_retries < self.max_perception_retries:
                         perception_retries += 1
+                        backoff = float(perception_retries)  # retry1=1s, retry2=2s
                         self._emit("perception_retry", attempt=perception_retries,
-                                   reason=str(exc))
-                        time.sleep(2.0)
+                                   reason=str(exc), code=exc.code,
+                                   backoff_seconds=backoff,
+                                   observations_so_far=observations)
+                        time.sleep(backoff)
                         continue
                     finish_reason = "PERCEPTION_FAILURE"
                     self._state = ExplorerState.FAILED
                     break
                 except Exception as exc:
+                    last_perception_error = PerceptionFailure(
+                        f"{type(exc).__name__}: {exc}",
+                        code="UNKNOWN_PERCEPTION_ERROR",
+                        recoverable=True,
+                        detail=traceback.format_exc(),
+                    )
                     self._emit("observer_error", error=f"{type(exc).__name__}: {exc}",
                                traceback=traceback.format_exc())
-                    if observations == 0 and perception_retries < self.max_perception_retries:
+                    if perception_retries < self.max_perception_retries:
                         perception_retries += 1
+                        backoff = float(perception_retries)
                         self._emit("observer_retry", attempt=perception_retries,
-                                   error=f"{type(exc).__name__}: {exc}")
-                        time.sleep(2.0)
+                                   error=f"{type(exc).__name__}: {exc}",
+                                   backoff_seconds=backoff,
+                                   observations_so_far=observations)
+                        time.sleep(backoff)
                         continue
                     finish_reason = "PERCEPTION_FAILURE"
                     self._state = ExplorerState.FAILED
                     break
             if finish_reason:
+                # 计划书 §8.5：最终失败信息必须精准，不再只显示“未分类异常”。
+                # （session_finish 由循环出口统一发射，这里只保存详情。）
+                if last_perception_error is not None:
+                    self._perception_failure_detail = {
+                        **last_perception_error.to_dict(),
+                        "attempts": perception_retries + 1,
+                    }
                 break
             observations += 1
             pose = self._backend.get_pose()
             observation.pose = pose.to_dict() if pose is not None else None
-            if observation.heading_sector is None and pose is not None:
+            # 计划书 §6.3 / 不变量 2：navigation heading sector 永远由当前
+            # capture pose 计算；不能因为 observer 塞了一个 stale sector 就跳过。
+            if pose is not None:
                 sector_deg = 360.0 / max(1, self.policy.candidates.heading_sectors)
-                observation.heading_sector = int(
+                navigation_sector = int(
                     round(pose.yaw * 180.0 / 3.141592653589793 / sector_deg)
                 ) % max(1, self.policy.candidates.heading_sectors)
+                observation.navigation_heading_sector = navigation_sector
+                observation.heading_sector = navigation_sector
             self._emit("observation", bundle_id=observation.bundle_id,
                        objects=observation.object_labels,
                        scene_objects=observation.scene_objects,
                        scene_relations=observation.scene_relations,
                        target_present=observation.target_present,
                        heading_sector=observation.heading_sector,
+                       navigation_heading_sector=observation.navigation_heading_sector,
+                       semantic_status=observation.semantic_status,
+                       semantic_quality=observation.semantic_quality,
+                       semantic_source_frame_id=observation.semantic_source_frame_id,
+                       semantic_age_ms=observation.semantic_age_ms,
+                       spatial_quality=observation.spatial_quality,
                        pose=observation.pose,
                        sensor_health=observation.sensor_health,
                        image_ref=observation.image_ref)
@@ -712,11 +783,22 @@ class AutonomousExplorer:
             self._state = ExplorerState.FINISHED
         if finish_reason == "":
             finish_reason = "SEARCH_EXHAUSTED"
+        finish_extra: dict[str, Any] = {}
+        if self._perception_failure_detail is not None:
+            detail = self._perception_failure_detail
+            finish_extra = {
+                "cause": detail.get("code"),
+                "attempts": detail.get("attempts"),
+                "last_success_age_s": detail.get("last_success_age_s"),
+                "recoverable": detail.get("recoverable"),
+                "error": detail.get("message"),
+                "error_detail": detail,
+            }
         self._emit("session_finish", result=finish_reason,
                    planning_cycles=planning_cycles, motion_steps=motion_steps,
                    observations=observations, unique_nodes=len(self.graph.nodes),
                    replans=replans, navigation_failures=navigation_failures,
-                   verify_attempts=verify_attempts)
+                   verify_attempts=verify_attempts, **finish_extra)
         return self._result(finish_reason, started, planning_cycles, motion_steps,
                             observations, replans, navigation_failures,
                             verify_attempts, semantic_goal_selection_count,
@@ -856,7 +938,7 @@ class AutonomousExplorer:
             plan_id=f"live_plan_{self.session_id}_{cycle}",
             decision_id=decision_id,
             turn_deg=float(goal.relative_dyaw or 0.0),
-            forward_m=abs(float(goal.relative_dx or 0.0)),
+            forward_m=float(goal.relative_dx or 0.0),
             reason_zh="；".join(scored.reasons) or goal.semantic_reason or "选择当前可达候选",
             target_place_id=self._current_place_id,
             target_frontier_id=goal.provenance.get("frontier_id") if isinstance(goal.provenance, dict) else None,
@@ -940,7 +1022,9 @@ class AutonomousExplorer:
         sector = getattr(goal, "heading_sector", None)
         if sector is None or self._current_place_id is None:
             return None
-        frontier_id = f"F{int(sector) + 1:02d}"
+        frontier_id = self._unique_frontier_id(int(sector))
+        if frontier_id is None:
+            return None
         try:
             return plan_live_graph_path(
                 self.semantic_graph.to_dict(),
@@ -951,6 +1035,27 @@ class AutonomousExplorer:
             )
         except (KeyError, TypeError, ValueError):
             return None
+
+    def _unique_frontier_id(self, sector: int) -> str | None:
+        """计划书 §12：frontier node_id 全局唯一（frontier:P<place>:<sector>）。
+
+        UI 短标签 Fxx 只是显示名；node_id 必须跨 Place 不冲突。
+        """
+        if self._current_place_id is None:
+            return None
+        sector_deg = 360.0 / max(1, self.policy.candidates.heading_sectors)
+        expected_bearing = sector * sector_deg
+        for entry in self.semantic_graph.frontiers.values():
+            if entry.get("source_place") != self._current_place_id:
+                continue
+            bearing = float(entry.get("bearing_deg") or 0.0)
+            if abs((bearing - expected_bearing + 180.0) % 360.0 - 180.0) <= sector_deg / 2.0:
+                return str(entry.get("frontier_id"))
+        # 兼容旧数据：唯一的旧式短 ID 也可用。
+        legacy = f"F{int(sector) + 1:02d}"
+        if legacy in self.semantic_graph.frontiers:
+            return legacy
+        return None
 
     def _emit(self, name: str, **details: Any) -> None:
         event: dict[str, Any] = {
@@ -990,6 +1095,8 @@ class AutonomousExplorer:
             "fallback_goal_selection_count": fallback_goal_selection_count,
             "finish_reason": reason,
         }
+        if self._perception_failure_detail is not None:
+            summary["perception_failure"] = self._perception_failure_detail
         return SessionResult(
             result=finish_reason,
             target=self.target,

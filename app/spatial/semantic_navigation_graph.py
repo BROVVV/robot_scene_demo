@@ -165,7 +165,7 @@ class SemanticNavigationGraph:
             nodes.append({
                 "node_id": frontier["frontier_id"],
                 "node_type": "FRONTIER",
-                "label": frontier["frontier_id"],
+                "label": frontier.get("label") or frontier["frontier_id"],
                 "pose": {
                     "x": frontier.get("position", [0.0, 0.0])[0],
                     "y": frontier.get("position", [0.0, 0.0])[1],
@@ -242,8 +242,14 @@ class SemanticNavigationGraph:
                 "to": edge.to_place,
                 "relation": "CONNECTED_TO",
                 "provenance": "geometry_derived",
-                "traversable": edge.navigation_result not in {"failed", "unreachable"},
+                "traversable": edge.status not in {"BLOCKED", "STALE"},
                 "distance": edge.observed_displacement_m or 1.0,
+                "status": edge.status,
+                "success_count": edge.success_count,
+                "failure_count": edge.failure_count,
+                "blocked_count": edge.blocked_count,
+                "last_failure_reason": edge.last_failure_reason,
+                "cost": edge.cost,
             }
             self._upsert_edge(item)
         for object_id, obj in self.object_map.objects.items():
@@ -287,19 +293,29 @@ class SemanticNavigationGraph:
         for sector in range(self.heading_sectors):
             if str(sector) in covered:
                 continue
-            frontier_id = f"F{sector + 1:02d}"
+            # 计划书 §12：frontier node_id 必须全局唯一；短标签 Fxx 仅用于显示。
+            frontier_id = f"frontier:{place_id}:{sector:02d}"
+            short_label = f"F{sector + 1:02d}"
             if frontier_id not in self.frontiers:
                 self.frontiers[frontier_id] = {
                     "frontier_id": frontier_id,
+                    "label": short_label,
                     "position": _frontier_position(pose, sector, self.heading_sectors),
                     "source_place": place_id,
                     "bearing_deg": sector * 360.0 / self.heading_sectors,
                     "information_gain": round(1.0 - len(covered) / self.heading_sectors, 3),
                     "semantic_relevance": 0.0,
                     "traversability": "unknown",
-                    "state": "UNVISITED",
+                    "state": "OPEN",
+                    "status": "OPEN",
+                    "visit_count": 0,
+                    "failure_count": 0,
+                    "created_at": time.time(),
+                    "last_seen_at": time.time(),
                     "provenance": "topological_heading_gap",
                 }
+                if frontier_id not in place.frontier_ids:
+                    place.frontier_ids.append(frontier_id)
                 self._upsert_edge({
                     "edge_id": f"{place_id}__frontier__{frontier_id}",
                     "from": place_id,

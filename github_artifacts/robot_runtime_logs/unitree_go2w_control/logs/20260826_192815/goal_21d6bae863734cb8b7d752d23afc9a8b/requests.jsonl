@@ -1,0 +1,13 @@
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787744045637577984,"timestamp":"1787744045637579"}
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787744045745869056,"timestamp":"1787744045745876"}
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787744045855167072,"timestamp":"1787744045855175"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":-0.1599999964237213,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787744046251679776,"timestamp":"1787744046251682"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":-0.1599999964237213,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787744046764306080,"timestamp":"1787744046764309"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":-0.1599999964237213,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787744047273710304,"timestamp":"1787744047273713"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787744047327639488,"timestamp":"1787744047327642"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787744047531045248,"timestamp":"1787744047531047"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787744047734848416,"timestamp":"1787744047734851"}
+{"api_id":1008,"lease_id":1787743014243546,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787744047938271680,"timestamp":"1787744047938274"}
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787744048141779008,"timestamp":"1787744048141782"}
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787744048244103040,"timestamp":"1787744048244109"}
+{"api_id":1003,"lease_id":1787743014243546,"parameter":"{}","purpose":"StopMove","request_id":1787744048443049824,"timestamp":"1787744048443058"}

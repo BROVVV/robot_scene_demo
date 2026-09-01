@@ -1,0 +1,4 @@
+Invoking command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/plain_slam_ros2 -- -j4 -l4
+Invoked command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/plain_slam_ros2 -- -j4 -l4
+Invoking command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/ros2_ws/build/plain_slam_ros2
+Invoked command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/ros2_ws/build/plain_slam_ros2

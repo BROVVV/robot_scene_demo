@@ -1,0 +1,5 @@
+GO2-W ROS environment ready: distro=foxy rmw=rmw_cyclonedds_cpp domain=0
+[INFO] [launch]: All log files can be found below /home/unitree/.ros/log/2026-08-31-09-41-42-390695-ubuntu-3246
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [go2w_wheel_odom-1]: process started with pid [3550]
+[go2w_wheel_odom-1] [INFO] [1788140507.351076352] [go2w_wheel_odom]: wheel odometry ready: radius=0.0890 m wheels=12..15 lio_fusion=True lio_weight=0.35

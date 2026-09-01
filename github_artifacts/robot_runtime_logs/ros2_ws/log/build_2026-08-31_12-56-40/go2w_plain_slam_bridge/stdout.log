@@ -1,0 +1,2 @@
+[ 11%] Built target pandar_slam_adapter
+[ 16%] Building CXX object CMakeFiles/pointcloud_to_occupancy.dir/src/pointcloud_to_occupancy.cpp.o

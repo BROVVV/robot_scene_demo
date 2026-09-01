@@ -1,0 +1,10 @@
+[ 11%] Built target pandar_slam_adapter
+[ 16%] Building CXX object CMakeFiles/pointcloud_to_occupancy.dir/src/pointcloud_to_occupancy.cpp.o
+In file included from /home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge/src/pointcloud_to_occupancy.cpp:37:
+/home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge/include/go2w_plain_slam_bridge/occupancy_grid.hpp: In member function ‘void go2w_plain_slam_bridge::OccupancyGrid2D::add_log_odds(int, int, double)’:
+/home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge/include/go2w_plain_slam_bridge/occupancy_grid.hpp:108:18: error: ‘clamp’ is not a member of ‘std’
+  108 |     value = std::clamp(value + delta, params_.log_odds_min, params_.log_odds_max);
+      |                  ^~~~~
+make[2]: *** [CMakeFiles/pointcloud_to_occupancy.dir/build.make:63: CMakeFiles/pointcloud_to_occupancy.dir/src/pointcloud_to_occupancy.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:219: CMakeFiles/pointcloud_to_occupancy.dir/all] Error 2
+make: *** [Makefile:141: all] Error 2

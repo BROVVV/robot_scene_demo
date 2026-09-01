@@ -24,6 +24,7 @@ packages=(
   python3-pip
   python3-venv
   libyaml-cpp-dev
+  libeigen3-dev
   python3-opencv
   python3-av
   python3-yaml
@@ -61,6 +62,10 @@ packages=(
   ros-humble-nav2-bringup
   ros-humble-nav2-collision-monitor
   ros-humble-nav2-velocity-smoother
+  # plain_slam_ros2 + go2w_plain_slam_bridge build/test dependencies.
+  ros-humble-ament-cmake-gtest
+  ros-humble-ament-lint-auto
+  ros-humble-ament-lint-common
 )
 
 missing=()

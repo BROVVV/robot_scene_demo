@@ -1,0 +1,26 @@
+[7.166s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/go2w_description': PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/go2w_description/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_description/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/go2w_description/build --no-deps install_data
+[7.920s] running develop
+[8.280s] running egg_info
+[8.281s] creating go2w_description.egg-info
+[8.284s] writing go2w_description.egg-info/PKG-INFO
+[8.285s] writing dependency_links to go2w_description.egg-info/dependency_links.txt
+[8.286s] writing requirements to go2w_description.egg-info/requires.txt
+[8.287s] writing top-level names to go2w_description.egg-info/top_level.txt
+[8.291s] writing manifest file 'go2w_description.egg-info/SOURCES.txt'
+[8.355s] reading manifest file 'go2w_description.egg-info/SOURCES.txt'
+[8.357s] writing manifest file 'go2w_description.egg-info/SOURCES.txt'
+[9.269s] running build_ext
+[9.269s] Creating /home/unitree/robotscene/ros2_ws/install/go2w_description/lib/python3.8/site-packages/site.py
+[9.270s] Creating /home/unitree/robotscene/ros2_ws/install/go2w_description/lib/python3.8/site-packages/go2w-description.egg-link (link to .)
+[9.270s] 
+[9.270s] Installed /home/unitree/robotscene/ros2_ws/build/go2w_description
+[9.270s] running install_data
+[9.270s] creating /home/unitree/robotscene/ros2_ws/install/go2w_description/share/ament_index
+[9.271s] creating /home/unitree/robotscene/ros2_ws/install/go2w_description/share/ament_index/resource_index
+[9.271s] creating /home/unitree/robotscene/ros2_ws/install/go2w_description/share/ament_index/resource_index/packages
+[9.271s] copying resource/go2w_description -> /home/unitree/robotscene/ros2_ws/install/go2w_description/share/ament_index/resource_index/packages
+[9.271s] copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_description/share/go2w_description
+[9.271s] creating /home/unitree/robotscene/ros2_ws/install/go2w_description/share/go2w_description/launch
+[9.271s] copying launch/description.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_description/share/go2w_description/launch
+[9.272s] copying launch/official_sensor_frames.launch.py -> /home/unitree/robotscene/ros2_ws/install/go2w_description/share/go2w_description/launch
+[9.589s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/go2w_description' returned '0': PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/go2w_description/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_description/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/go2w_description/build --no-deps install_data

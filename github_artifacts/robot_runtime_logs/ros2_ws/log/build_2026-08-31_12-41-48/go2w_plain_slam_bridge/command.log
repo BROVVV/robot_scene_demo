@@ -1,0 +1,1 @@
+Invoking command in '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge': /usr/bin/cmake /home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge

@@ -4,8 +4,10 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "go2w_motion_control/angle_utils.hpp"
@@ -30,6 +32,8 @@ struct MotionStateSnapshot {
   double yaw_rate{0.0};
   double raw_yaw{0.0};
   double unwrapped_yaw{0.0};
+  double position_x{0.0};
+  double position_y{0.0};
   std::array<double, 4> wheel_q{};
   std::array<double, 4> wheel_dq{};
 };
@@ -44,7 +48,9 @@ struct MotionEvidence {
 class MotionStateMonitor {
  public:
   MotionStateMonitor(rclcpp::Node *node, const std::string &sport_topic,
-                     const std::string &low_topic);
+                     const std::string &low_topic,
+                     bool require_low_state = true);
+  ~MotionStateMonitor();
 
   MotionStateSnapshot Snapshot() const;
   bool StateFresh(double timeout_sec) const;
@@ -75,6 +81,14 @@ class MotionStateMonitor {
   bool evidence_active_{false};
   std::vector<std::array<double, 4>> evidence_q_;
   std::vector<std::array<double, 4>> evidence_dq_;
+  std::vector<double> evidence_yaw_;
+  std::vector<double> evidence_position_x_;
+  std::vector<double> evidence_position_y_;
+  std::vector<double> evidence_speed_;
+  bool require_low_state_{true};
+  rclcpp::Node::SharedPtr state_node_;
+  std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> state_executor_;
+  std::thread state_thread_;
   rclcpp::Subscription<unitree_go::msg::SportModeState>::SharedPtr sport_sub_;
   rclcpp::Subscription<unitree_go::msg::LowState>::SharedPtr low_sub_;
 };

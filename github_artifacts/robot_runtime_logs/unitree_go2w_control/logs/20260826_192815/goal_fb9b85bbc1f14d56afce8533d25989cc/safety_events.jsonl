@@ -1,0 +1,6 @@
+{"event":"stop_and_verify","message":"pre_goal","timestamp":"1787743975034550"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787743975750226"}
+{"event":"post_timed_zero_velocity_hold","message":"started","timestamp":"1787743978792757"}
+{"event":"post_timed_zero_velocity_hold","message":"completed","timestamp":"1787743979620899"}
+{"event":"stop_and_verify","message":"final","timestamp":"1787743979621022"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787743980352351"}

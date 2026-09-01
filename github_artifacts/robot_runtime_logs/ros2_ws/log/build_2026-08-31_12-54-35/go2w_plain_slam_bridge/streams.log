@@ -1,0 +1,64 @@
+[0.654s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake /home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge
+[0.707s] -- Found ament_cmake: 0.9.12 (/opt/ros/foxy/share/ament_cmake/cmake)
+[0.777s] -- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") 
+[0.777s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[1.775s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[1.890s] -- Found rclcpp: 2.4.3 (/opt/ros/foxy/share/rclcpp/cmake)
+[2.041s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[2.057s] -- Found rosidl_adapter: 1.3.1 (/opt/ros/foxy/share/rosidl_adapter/cmake)
+[2.432s] -- Found OpenSSL: /usr/lib/aarch64-linux-gnu/libcrypto.so (found version "1.1.1f")  
+[2.611s] -- Found FastRTPS: /opt/ros/foxy/include  
+[2.946s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[3.092s] -- Found rmw_implementation_cmake: 1.0.4 (/opt/ros/foxy/share/rmw_implementation_cmake/cmake)
+[3.098s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[3.103s] -- Looking for pthread.h
+[3.397s] -- Looking for pthread.h - found
+[3.397s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[3.802s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+[3.803s] -- Looking for pthread_create in pthreads
+[4.120s] -- Looking for pthread_create in pthreads - not found
+[4.120s] -- Looking for pthread_create in pthread
+[4.501s] -- Looking for pthread_create in pthread - found
+[4.505s] -- Found Threads: TRUE  
+[5.034s] -- Found sensor_msgs: 2.0.5 (/opt/ros/foxy/share/sensor_msgs/cmake)
+[5.464s] -- Found nav_msgs: 2.0.5 (/opt/ros/foxy/share/nav_msgs/cmake)
+[5.600s] -- Found diagnostic_msgs: 2.0.5 (/opt/ros/foxy/share/diagnostic_msgs/cmake)
+[5.805s] -- Found tf2: 0.13.14 (/opt/ros/foxy/share/tf2/cmake)
+[5.833s] -- Found tf2_ros: 0.13.14 (/opt/ros/foxy/share/tf2_ros/cmake)
+[6.684s] -- Found ament_cmake_gtest: 0.9.12 (/opt/ros/foxy/share/ament_cmake_gtest/cmake)
+[6.697s] -- Found ament_lint_auto: 0.9.8 (/opt/ros/foxy/share/ament_lint_auto/cmake)
+[7.004s] -- Found gtest sources under '/opt/ros/foxy/src/gtest_vendor': C++ tests using 'Google Test' will be built
+[7.010s] -- Check if compiler accepts -pthread
+[7.339s] -- Check if compiler accepts -pthread - yes
+[7.361s] -- Added test 'copyright' to check source files copyright and LICENSE
+[7.364s] -- Added test 'cppcheck' to perform static code analysis on C / C++ code
+[7.364s] -- Configured cppcheck include dirs: $<BUILD_INTERFACE:/home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge/include>
+[7.364s] -- Configured cppcheck exclude dirs and/or files: 
+[7.368s] -- Added test 'cpplint' to check C / C++ code against the Google style
+[7.369s] -- Configured cpplint exclude dirs and/or files: 
+[7.369s] -- Added test 'flake8' to check Python code syntax and style conventions
+[7.371s] -- Added test 'lint_cmake' to check CMake code style
+[7.373s] -- Added test 'pep257' to check Python code against some of the style conventions in PEP 257
+[7.378s] -- Added test 'uncrustify' to check C / C++ code style
+[7.378s] -- Configured uncrustify additional arguments: 
+[7.378s] -- Added test 'xmllint' to check XML markup files
+[7.387s] -- Configuring done
+[7.641s] -- Generating done
+[7.641s] -- Build files have been written to: /home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge
+[7.679s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake /home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge
+[7.683s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge -- -j4 -l4
+[7.930s] Scanning dependencies of target pandar_slam_adapter
+[7.987s] [  5%] Building CXX object CMakeFiles/pandar_slam_adapter.dir/src/pandar_slam_adapter.cpp.o
+[27.688s] [ 11%] Linking CXX executable pandar_slam_adapter
+[28.806s] [ 11%] Built target pandar_slam_adapter
+[28.923s] Scanning dependencies of target pointcloud_to_occupancy
+[29.005s] [ 16%] Building CXX object CMakeFiles/pointcloud_to_occupancy.dir/src/pointcloud_to_occupancy.cpp.o
+[34.626s] In file included from /home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge/src/pointcloud_to_occupancy.cpp:37:
+[34.627s] /home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge/include/go2w_plain_slam_bridge/occupancy_grid.hpp: In member function ‘void go2w_plain_slam_bridge::OccupancyGrid2D::add_log_odds(int, int, double)’:
+[34.627s] /home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge/include/go2w_plain_slam_bridge/occupancy_grid.hpp:108:18: error: ‘clamp’ is not a member of ‘std’
+[34.627s]   108 |     value = std::clamp(value + delta, params_.log_odds_min, params_.log_odds_max);
+[34.627s]       |                  ^~~~~
+[44.357s] make[2]: *** [CMakeFiles/pointcloud_to_occupancy.dir/build.make:63: CMakeFiles/pointcloud_to_occupancy.dir/src/pointcloud_to_occupancy.cpp.o] Error 1
+[44.358s] make[1]: *** [CMakeFiles/Makefile2:219: CMakeFiles/pointcloud_to_occupancy.dir/all] Error 2
+[44.358s] make: *** [Makefile:141: all] Error 2
+[44.365s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge' returned '2': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge -- -j4 -l4

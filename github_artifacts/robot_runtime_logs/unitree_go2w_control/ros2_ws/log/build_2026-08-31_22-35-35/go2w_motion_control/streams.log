@@ -1,0 +1,123 @@
+[0.342s] Invoking command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake /home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_control -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control
+[0.444s] -- The C compiler identification is GNU 9.4.0
+[0.538s] -- The CXX compiler identification is GNU 9.4.0
+[0.546s] -- Check for working C compiler: /usr/bin/cc
+[0.679s] -- Check for working C compiler: /usr/bin/cc -- works
+[0.680s] -- Detecting C compiler ABI info
+[0.814s] -- Detecting C compiler ABI info - done
+[0.832s] -- Detecting C compile features
+[0.832s] -- Detecting C compile features - done
+[0.836s] -- Check for working CXX compiler: /usr/bin/c++
+[0.990s] -- Check for working CXX compiler: /usr/bin/c++ -- works
+[0.991s] -- Detecting CXX compiler ABI info
+[1.144s] -- Detecting CXX compiler ABI info - done
+[1.162s] -- Detecting CXX compile features
+[1.162s] -- Detecting CXX compile features - done
+[1.168s] -- Found ament_cmake: 0.9.12 (/opt/ros/foxy/share/ament_cmake/cmake)
+[1.216s] -- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") 
+[1.216s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[1.630s] -- Found rclcpp: 2.4.3 (/opt/ros/foxy/share/rclcpp/cmake)
+[1.714s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[1.728s] -- Found rosidl_adapter: 1.3.1 (/opt/ros/foxy/share/rosidl_adapter/cmake)
+[1.895s] -- Found OpenSSL: /usr/lib/aarch64-linux-gnu/libcrypto.so (found version "1.1.1f")  
+[1.952s] -- Found FastRTPS: /opt/ros/foxy/include  
+[2.103s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[2.207s] -- Found rmw_implementation_cmake: 1.0.4 (/opt/ros/foxy/share/rmw_implementation_cmake/cmake)
+[2.209s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[2.211s] -- Looking for pthread.h
+[2.355s] -- Looking for pthread.h - found
+[2.356s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[2.495s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+[2.497s] -- Looking for pthread_create in pthreads
+[2.612s] -- Looking for pthread_create in pthreads - not found
+[2.612s] -- Looking for pthread_create in pthread
+[2.748s] -- Looking for pthread_create in pthread - found
+[2.750s] -- Found Threads: TRUE  
+[3.018s] -- Found rclcpp_action: 2.4.3 (/opt/ros/foxy/share/rclcpp_action/cmake)
+[3.154s] -- Found std_srvs: 2.0.5 (/opt/ros/foxy/share/std_srvs/cmake)
+[3.171s] -- Found unitree_api: 0.0.0 (/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake)
+[3.348s] -- Found unitree_go: 0.0.0 (/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/share/unitree_go/cmake)
+[3.448s] -- Found go2w_motion_interfaces: 0.1.0 (/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake)
+[3.558s] -- Found ament_cmake_gtest: 0.9.12 (/opt/ros/foxy/share/ament_cmake_gtest/cmake)
+[3.563s] -- Found gtest sources under '/opt/ros/foxy/src/gtest_vendor': C++ tests using 'Google Test' will be built
+[3.568s] -- Check if compiler accepts -pthread
+[3.712s] -- Check if compiler accepts -pthread - yes
+[3.877s] -- Configuring done
+[3.940s] -- Generating done
+[3.944s] -- Build files have been written to: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control
+[3.976s] Invoked command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control' returned '0': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake /home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_control -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control
+[3.978s] Invoking command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake --build /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control -- -j4 -l4
+[4.079s] Scanning dependencies of target gtest_main
+[4.089s] Scanning dependencies of target gtest
+[4.106s] [  5%] Building CXX object gtest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o
+[4.137s] [ 10%] Building CXX object gtest/CMakeFiles/gtest.dir/src/gtest-all.cc.o
+[4.147s] Scanning dependencies of target go2w_motion_core
+[4.191s] [ 15%] Building CXX object CMakeFiles/go2w_motion_core.dir/src/leased_sport_client.cpp.o
+[4.191s] [ 21%] Building CXX object CMakeFiles/go2w_motion_core.dir/src/goal_logger.cpp.o
+[6.113s] [ 26%] Linking CXX static library libgtest_main.a
+[6.232s] [ 26%] Built target gtest_main
+[6.296s] [ 31%] Building CXX object CMakeFiles/go2w_motion_core.dir/src/motion_state_monitor.cpp.o
+[27.432s] [ 36%] Linking CXX static library libgtest.a
+[27.530s] [ 36%] Built target gtest
+[29.029s] Scanning dependencies of target test_goal_validation
+[29.057s] [ 42%] Building CXX object CMakeFiles/test_goal_validation.dir/test/test_goal_validation.cpp.o
+[30.070s] Scanning dependencies of target test_angle_utils
+[30.112s] [ 47%] Building CXX object CMakeFiles/test_angle_utils.dir/test/test_angle_utils.cpp.o
+[31.117s] Scanning dependencies of target test_request_matching
+[31.144s] [ 52%] Building CXX object CMakeFiles/test_request_matching.dir/test/test_request_matching.cpp.o
+[34.280s] [ 57%] Linking CXX executable test_goal_validation
+[34.302s] [ 63%] Linking CXX executable test_angle_utils
+[34.467s] [ 68%] Linking CXX executable test_request_matching
+[34.562s] [ 68%] Built target test_goal_validation
+[34.639s] [ 68%] Built target test_angle_utils
+[34.741s] [ 68%] Built target test_request_matching
+[36.340s] [ 73%] Linking CXX static library libgo2w_motion_core.a
+[36.428s] [ 73%] Built target go2w_motion_core
+[36.456s] Scanning dependencies of target test_yaw_controller
+[36.478s] [ 78%] Building CXX object CMakeFiles/test_yaw_controller.dir/test/test_yaw_controller.cpp.o
+[39.508s] [ 84%] Linking CXX executable test_yaw_controller
+[39.691s] [ 84%] Built target test_yaw_controller
+[39.788s] Scanning dependencies of target go2w_motion_action_server
+[39.824s] [ 89%] Building CXX object CMakeFiles/go2w_motion_action_server.dir/src/motion_action_server.cpp.o
+[39.824s] [ 94%] Building CXX object CMakeFiles/go2w_motion_action_server.dir/src/main.cpp.o
+[68.806s] [100%] Linking CXX executable go2w_motion_action_server
+[69.199s] [100%] Built target go2w_motion_action_server
+[69.225s] Invoked command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control' returned '0': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake --build /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control -- -j4 -l4
+[69.306s] Invoking command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake --install /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control
+[69.328s] -- Install configuration: "Release"
+[69.328s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib/libgo2w_motion_core.a
+[69.333s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib/go2w_motion_control/go2w_motion_action_server
+[69.336s] -- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib/go2w_motion_control/go2w_motion_action_server" to ""
+[69.336s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include
+[69.336s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control
+[69.337s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/safety_guard.hpp
+[69.337s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/angle_utils.hpp
+[69.337s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/leased_sport_client.hpp
+[69.338s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/yaw_controller.hpp
+[69.338s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/motion_state_monitor.hpp
+[69.338s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/request_matching.hpp
+[69.339s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/motion_action_server.hpp
+[69.339s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/goal_logger.hpp
+[69.339s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/config
+[69.339s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/config/motion_control.yaml
+[69.339s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/launch
+[69.340s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/launch/__pycache__
+[69.340s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/launch/__pycache__/go2w_motion_control.launch.cpython-38.pyc
+[69.340s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/launch/go2w_motion_control.launch.py
+[69.340s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/ament_index/resource_index/package_run_dependencies/go2w_motion_control
+[69.341s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/ament_index/resource_index/parent_prefix_path/go2w_motion_control
+[69.341s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/environment/ament_prefix_path.sh
+[69.341s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/environment/ament_prefix_path.dsv
+[69.341s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/environment/path.sh
+[69.341s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/environment/path.dsv
+[69.341s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/local_setup.bash
+[69.341s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/local_setup.sh
+[69.345s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/local_setup.zsh
+[69.345s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/local_setup.dsv
+[69.345s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.dsv
+[69.345s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/ament_index/resource_index/packages/go2w_motion_control
+[69.345s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/cmake/ament_cmake_export_include_directories-extras.cmake
+[69.346s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/cmake/go2w_motion_controlConfig.cmake
+[69.347s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/cmake/go2w_motion_controlConfig-version.cmake
+[69.347s] -- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.xml
+[69.347s] Invoked command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control' returned '0': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake --install /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control

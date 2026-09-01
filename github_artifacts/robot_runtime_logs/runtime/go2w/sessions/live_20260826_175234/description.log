@@ -1,0 +1,9 @@
+[INFO] [launch]: All log files can be found below /home/unitree/.ros/log/2026-08-26-17-52-39-021130-ubuntu-5339
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [robot_state_publisher-1]: process started with pid [5355]
+[robot_state_publisher-1] Parsing robot urdf xml string.
+[robot_state_publisher-1] Link utlidar_lidar had 1 children
+[robot_state_publisher-1] Link utlidar_imu had 0 children
+[robot_state_publisher-1] [INFO] [1787737959.402428448] [go2w_official_sensor_frame_publisher]: got segment base_link
+[robot_state_publisher-1] [INFO] [1787737959.403581344] [go2w_official_sensor_frame_publisher]: got segment utlidar_imu
+[robot_state_publisher-1] [INFO] [1787737959.404836448] [go2w_official_sensor_frame_publisher]: got segment utlidar_lidar

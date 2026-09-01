@@ -10,6 +10,8 @@ set -euo pipefail
 #       # <=0.30 m steps through the existing /go2w/motion safety stack)
 #   bash scripts/go2w/start_autonomous_search_web.sh --mock
 #       # offline frontend dev: mock backend, no robot / ROS required
+#   bash scripts/go2w/start_autonomous_search_web.sh --with-plain-slam
+#       # ensure mapping-assist is running and expose its live 3D cloud in WebUI
 #
 # This script never starts Nav2 / Point-LIO / the Pandar driver itself; it
 # only launches the single FastAPI server (manual + autonomous console) and
@@ -17,9 +19,11 @@ set -euo pipefail
 
 ENABLE_MOTION=0
 MOCK=0
+WITH_PLAIN_SLAM=0
 for arg in "$@"; do
   case "$arg" in
     --enable-autonomous-motion) ENABLE_MOTION=1 ;;
+    --with-plain-slam) WITH_PLAIN_SLAM=1 ;;
     --mock) MOCK=1 ;;
     *) printf 'ERROR: unknown argument: %s\n' "$arg" >&2; exit 2 ;;
   esac
@@ -31,11 +35,25 @@ runtime_root="${project_root}/outputs/autonomous_search/runtime"
 log_root="${project_root}/outputs/autonomous_search/logs"
 mkdir -p "${runtime_root}" "${log_root}"
 
+# Load provider/runtime settings for the WebUI and its search worker without
+# printing the values.  The VLM daemon remains the preferred credential
+# boundary, but direct worker fallback also needs the same .env contract.
+if [[ -f "${project_root}/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${project_root}/.env"
+  set +a
+fi
+
 host="${AUTONOMOUS_SEARCH_HOST:-127.0.0.1}"
 port="${AUTONOMOUS_SEARCH_PORT:-8765}"
+probe_host="$host"
+if [[ "$probe_host" == "0.0.0.0" || "$probe_host" == "::" ]]; then
+  probe_host="127.0.0.1"
+fi
 
 # ---- 0. Port conflict: only stop project-owned Go2-W web servers ---------- #
-if curl -fsS "http://${host}:${port}/api/status" >/dev/null 2>&1; then
+if curl -fsS "http://${probe_host}:${port}/api/status" >/dev/null 2>&1; then
   printf 'Port %s already serves a Go2-W web demo.\n' "${port}" >&2
   for pidfile in \
     "${project_root}/outputs/manual_web_demo/runtime/web.pid" \
@@ -79,7 +97,7 @@ fi
 # ---- 1. Network preflight ------------------------------------------------ #
 go2w_interface="${GO2W_INTERFACE:-}"
 if [[ -z "$go2w_interface" ]]; then
-  for candidate in enp6s0 enp3s0 enp4s0 enp5s0; do
+  for candidate in eth0 enp6s0 enp3s0 enp4s0 enp5s0; do
     if [[ -r "/sys/class/net/${candidate}/carrier" ]] \
       && [[ "$(< "/sys/class/net/${candidate}/carrier")" == "1" ]] \
       && ip -4 -o address show dev "$candidate" 2>/dev/null \
@@ -98,6 +116,27 @@ fi
 
 # ---- 2. Source ROS environment for the worker subprocess ----------------- #
 source "${script_dir}/setup_environment.sh"
+
+# The WebUI's real search worker uses the local Unix-socket VLM daemon.  Make
+# the launcher self-contained and idempotent so a stale/missing daemon cannot
+# silently force every Quick request into the slower subprocess fallback.
+if [[ "$MOCK" == 0 ]]; then
+  if ! bash "${script_dir}/start_vlm_daemon.sh"; then
+    printf 'WARNING: VLM daemon did not start; search may report LLM unavailable.\n' >&2
+  fi
+fi
+
+# ---- 2a. Optional one-step plain_slam mapping ---------------------------- #
+# Reuse a healthy existing graph.  Never launch a duplicate LIO/SLAM stack.
+if [[ "$MOCK" == 0 && "$WITH_PLAIN_SLAM" == 1 ]]; then
+  slam_info="$(timeout 5 ros2 topic info /go2w/slam/aligned_scan -v 2>/dev/null || true)"
+  if ! grep -q 'Publisher count: [1-9]' <<<"$slam_info"; then
+    printf 'plain_slam is not running; starting mapping-assist first...\n' >&2
+    bash "${script_dir}/start_plain_slam_mapping.sh"
+  else
+    printf 'plain_slam mapping-assist already running; reusing it.\n' >&2
+  fi
+fi
 
 # ---- 3. Camera bridge check (read-only) ---------------------------------- #
 # DDS discovery can take a moment after the environment is sourced.  Wait
@@ -138,7 +177,15 @@ if [[ "$ENABLE_MOTION" == 1 && "$MOCK" == 0 ]]; then
   odom_topic="${GO2W_ODOM_TOPIC:-/go2w/odom/fused}"
   odom_info="$(timeout 5 ros2 topic info "$odom_topic" -v 2>&1 || true)"
   odom_publishers="$(awk '/Publisher count:/ { print $3; exit }' <<<"$odom_info")"
-  odom_processes="$(ps -eo args= | awk '{ for (i=1; i<=NF; i++) { exe=$i; sub(/^.*\//, "", exe); if (exe == "go2w_wheel_odom") { count++; break } } } END { print count+0 }')"
+  # Go2-W deployments may expose the project-authoritative odom through the
+  # wheel-odom executable or through the SportModeState-backed bridge used
+  # when /lf/sportmodestate is the only available robot state source.  Both
+  # are valid, but exactly one must own the fused odom topic.
+  odom_processes="$(ps -eo args= | awk '
+    /(^|[[:space:]])go2w_[w]heel_odom([[:space:]]|$)/ { count++; next }
+    /scripts\/go2w\/sport_[o]dom_bridge[.]py([[:space:]]|$)/ { count++ }
+    END { print count+0 }
+  ')"
   if [[ "$odom_publishers" != 1 || "$odom_processes" != 1 ]]; then
     printf 'ERROR: %s requires exactly one publisher (ROS graph=%s, wheel odom processes=%s).\n' \
       "$odom_topic" "${odom_publishers:-unknown}" "$odom_processes" >&2
@@ -194,10 +241,10 @@ if [[ -z "$conda_python" ]]; then
   exit 2
 fi
 
-# ---- 6. Idempotently add FastAPI/uvicorn --------------------------------- #
-if ! "$conda_python" -c 'import fastapi, uvicorn' >/dev/null 2>&1; then
-  printf 'Installing fastapi + uvicorn into go2_robot_scene_demo...\n' >&2
-  "$conda_python" -m pip install --quiet fastapi uvicorn
+# ---- 6. Idempotently add FastAPI/Uvicorn/WebSocket support --------------- #
+if ! "$conda_python" -c 'import fastapi, uvicorn, websockets' >/dev/null 2>&1; then
+  printf 'Installing fastapi + uvicorn + websockets into go2_robot_scene_demo...\n' >&2
+  "$conda_python" -m pip install --quiet fastapi uvicorn websockets
 fi
 
 # A fresh bootstrap creates one environment containing both project packages
@@ -217,6 +264,8 @@ export MANUAL_DEMO_RUNTIME_DIR="${MANUAL_DEMO_RUNTIME_DIR:-outputs/manual_web_de
 export MANUAL_DEMO_LOGS_DIR="${MANUAL_DEMO_LOGS_DIR:-outputs/manual_web_demo/logs}"
 export AUTONOMOUS_SEARCH_RUNTIME_DIR="${runtime_root}"
 export AUTONOMOUS_SEARCH_LOGS_DIR="${log_root}"
+export GO2W_SLAM_MAP_SNAPSHOT="${runtime_root}/slam_map_3d.json"
+export GO2W_SLAM_RESET_MARKER="${runtime_root}/slam_reset.marker"
 # Search worker interpreter is auto-detected unless the unified bootstrap
 # environment above has already proved it can import both ROS and the project.
 if [[ "$MOCK" == 1 ]]; then
@@ -229,6 +278,35 @@ else
   # into every WebUI start request so it cannot be dropped at the worker
   # boundary.  Motion still requires the explicit launcher opt-in above.
   export AUTONOMOUS_SEARCH_OPERATOR_SUPERVISED="$([[ "$ENABLE_MOTION" == 1 ]] && echo 1 || echo 0)"
+  export AUTONOMOUS_SEARCH_SPATIAL_PROVIDER="plain_slam"
+fi
+
+# A ROS-system-Python sidecar decimates the PointCloud2 stream into an atomic
+# JSON snapshot.  The FastAPI process remains free of rclpy/ABI coupling.
+slam_bridge_pidfile="${runtime_root}/slam_web_bridge.pid"
+if [[ -f "$slam_bridge_pidfile" ]]; then
+  old_slam_bridge_pid="$(<"$slam_bridge_pidfile")"
+  old_slam_bridge_cmd=""
+  if [[ -r "/proc/${old_slam_bridge_pid}/cmdline" ]]; then
+    old_slam_bridge_cmd="$(tr '\0' ' ' <"/proc/${old_slam_bridge_pid}/cmdline" 2>/dev/null || true)"
+  fi
+  if [[ "$old_slam_bridge_cmd" == *"scripts/go2w/plain_slam_web_bridge.py"* ]]; then
+    kill "$old_slam_bridge_pid" 2>/dev/null || true
+    for _ in $(seq 1 20); do
+      kill -0 "$old_slam_bridge_pid" 2>/dev/null || break
+      sleep 0.1
+    done
+  fi
+  rm -f "$slam_bridge_pidfile"
+fi
+if [[ "$MOCK" == 0 ]]; then
+  setsid /usr/bin/python3 "${script_dir}/plain_slam_web_bridge.py" \
+    --output "$GO2W_SLAM_MAP_SNAPSHOT" \
+    --odom-topic "${GO2W_SLAM_ODOM_TOPIC:-/go2w/slam/odom_base}" \
+    --target-frame "pslam_odom" \
+    --reset-marker "$GO2W_SLAM_RESET_MARKER" \
+    >"${log_root}/slam_web_bridge.log" 2>&1 &
+  printf '%s\n' "$!" >"$slam_bridge_pidfile"
 fi
 setsid "$conda_python" -m uvicorn app.manual_web_demo.web_server:app \
   --host "${host}" --port "${port}" \
@@ -238,7 +316,7 @@ printf '%s\n' "$!" > "${runtime_root}/web.pid"
 # ---- 8. Wait for the API to become ready --------------------------------- #
 ready=0
 for _ in $(seq 1 60); do
-  if curl -fsS "http://${host}:${port}/api/status" >/dev/null 2>&1; then
+  if curl -fsS "http://${probe_host}:${port}/api/status" >/dev/null 2>&1; then
     ready=1
     break
   fi
@@ -249,6 +327,9 @@ for _ in $(seq 1 60); do
 done
 
 if [[ "$ready" != 1 ]]; then
+  if [[ -f "$slam_bridge_pidfile" ]]; then
+    kill "$(<"$slam_bridge_pidfile")" 2>/dev/null || true
+  fi
   printf 'ERROR: Web server did not become ready. See %s/web_server.log\n' "${log_root}" >&2
   exit 1
 fi
@@ -256,6 +337,7 @@ fi
 # ---- 9. Open the browser ------------------------------------------------- #
 printf 'Go2-W Autonomous Semantic Search WebUI: http://%s:%s\n' "${host}" "${port}"
 printf 'Search motion: %s\n' "$([[ "$ENABLE_MOTION" == 1 && "$MOCK" == 0 ]] && echo ENABLED || echo DISABLED/read-only)"
+printf 'Realtime 3D map: %s\n' "$([[ "$MOCK" == 0 ]] && echo /go2w/slam/map_3d+aligned_scan || echo mock-disabled)"
 if command -v xdg-open >/dev/null 2>&1; then
   xdg-open "http://${host}:${port}" >/dev/null 2>&1 || true
 fi

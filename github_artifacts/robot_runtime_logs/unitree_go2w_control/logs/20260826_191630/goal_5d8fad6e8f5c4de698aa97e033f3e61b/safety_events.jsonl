@@ -1,0 +1,4 @@
+{"event":"cancel_or_stop","message":"stop requested","timestamp":"1787743000549276"}
+{"event":"motion_failure","message":"goal canceled or emergency stop requested","timestamp":"1787743000549376"}
+{"event":"stop_and_verify","message":"final","timestamp":"1787743000549393"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787743000814881"}

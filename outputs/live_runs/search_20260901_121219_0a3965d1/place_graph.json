@@ -1,0 +1,109 @@
+{
+  "places": [
+    {
+      "place_id": "P1",
+      "pose": {
+        "x": 1.0419513691333642,
+        "y": -3.454869356786841,
+        "yaw": -0.15662774205148372,
+        "frame_id": "pslam_odom",
+        "quality": "METRIC_LIDAR",
+        "source": "plain_slam_pandarxt16_odom",
+        "provenance": {
+          "stamp_ns": 461548566,
+          "child_frame_id": "base_link_mapping_assist",
+          "extrinsic_status": "candidate_unconfirmed",
+          "mapping_mode": "mapping_assist"
+        }
+      },
+      "pose_quality": "METRIC_LIDAR",
+      "observation_ids": [
+        "bundle_204239"
+      ],
+      "heading_coverage": {
+        "4": 1
+      },
+      "observed_object_ids": [
+        "obj_001",
+        "obj_002",
+        "obj_003",
+        "obj_004",
+        "obj_005"
+      ],
+      "observed_object_labels": [
+        "椅子",
+        "显示器",
+        "机器人",
+        "纸箱",
+        "办公桌"
+      ],
+      "semantic_interest": 0.0,
+      "visit_count": 1,
+      "negative_evidence": 0,
+      "target_candidate": true,
+      "target_confirmed": false,
+      "revisited": false,
+      "pose_observation_count": 1,
+      "pose_mean": {
+        "x": 1.0419513691333642,
+        "y": -3.454869356786841,
+        "yaw": -0.15662774205148372,
+        "frame_id": "pslam_odom",
+        "quality": "METRIC_LIDAR",
+        "source": "plain_slam_pandarxt16_odom",
+        "provenance": {
+          "stamp_ns": 461548566,
+          "child_frame_id": "base_link_mapping_assist",
+          "extrinsic_status": "candidate_unconfirmed",
+          "mapping_mode": "mapping_assist"
+        }
+      },
+      "last_pose_update": 1788235941.1983974,
+      "scene_type": "",
+      "memory_summary": "",
+      "frontier_ids": [],
+      "provenance": {
+        "created_at": 1788235967.5050259,
+        "from_place": null
+      }
+    }
+  ],
+  "observations": [
+    {
+      "observation_id": "bundle_204239",
+      "heading_sector": 4,
+      "timestamp": 1788235941.1983974,
+      "objects": [
+        "椅子",
+        "显示器",
+        "机器人",
+        "纸箱",
+        "办公桌"
+      ],
+      "rgbd_frame_id": "204239",
+      "pose": {
+        "x": 1.0419513691333642,
+        "y": -3.454869356786841,
+        "yaw": -0.15662774205148372,
+        "frame_id": "pslam_odom",
+        "quality": "METRIC_LIDAR",
+        "source": "plain_slam_pandarxt16_odom",
+        "provenance": {
+          "stamp_ns": 461548566,
+          "child_frame_id": "base_link_mapping_assist",
+          "extrinsic_status": "candidate_unconfirmed",
+          "mapping_mode": "mapping_assist"
+        }
+      },
+      "provenance": {
+        "place_id": "P1",
+        "revisited": false,
+        "created": true
+      }
+    }
+  ],
+  "edges": [],
+  "current_place_id": "P1",
+  "merge_distance_m": 0.35,
+  "relocation_min_displacement_m": 0.1
+}

@@ -1,0 +1,25 @@
+running develop
+running egg_info
+creating robot_scene_live_bridge.egg-info
+writing robot_scene_live_bridge.egg-info/PKG-INFO
+writing dependency_links to robot_scene_live_bridge.egg-info/dependency_links.txt
+writing entry points to robot_scene_live_bridge.egg-info/entry_points.txt
+writing requirements to robot_scene_live_bridge.egg-info/requires.txt
+writing top-level names to robot_scene_live_bridge.egg-info/top_level.txt
+writing manifest file 'robot_scene_live_bridge.egg-info/SOURCES.txt'
+reading manifest file 'robot_scene_live_bridge.egg-info/SOURCES.txt'
+writing manifest file 'robot_scene_live_bridge.egg-info/SOURCES.txt'
+running build_ext
+Creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/python3.8/site-packages/site.py
+Creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/python3.8/site-packages/robot-scene-live-bridge.egg-link (link to .)
+Installing live_bridge script to /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/robot_scene_live_bridge
+
+Installed /home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge
+running install_data
+creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index
+creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index/resource_index
+creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index/resource_index/packages
+copying resource/robot_scene_live_bridge -> /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index/resource_index/packages
+copying package.xml -> /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/robot_scene_live_bridge
+creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/robot_scene_live_bridge/launch
+copying launch/live_bridge.launch.py -> /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/robot_scene_live_bridge/launch

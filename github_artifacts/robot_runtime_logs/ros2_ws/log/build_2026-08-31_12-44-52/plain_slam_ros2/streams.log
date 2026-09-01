@@ -1,0 +1,75 @@
+[0.562s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/plain_slam_ros2 -- -j4 -l4
+[0.843s] Scanning dependencies of target lidar_lidar_calibration_node
+[0.898s] [  2%] Building CXX object CMakeFiles/lidar_lidar_calibration_node.dir/src/lidar_lidar_calibration_node.cpp.o
+[9.761s] [  5%] Building CXX object CMakeFiles/lidar_lidar_calibration_node.dir/src/io.cpp.o
+[17.647s] [  8%] Building CXX object CMakeFiles/lidar_lidar_calibration_node.dir/src/voxel_grid_filter.cpp.o
+[25.034s] [ 11%] Building CXX object CMakeFiles/lidar_lidar_calibration_node.dir/src/lie_algebra.cpp.o
+[32.850s] [ 14%] Building CXX object CMakeFiles/lidar_lidar_calibration_node.dir/src/gicp.cpp.o
+[67.752s] [ 17%] Linking CXX executable lidar_lidar_calibration_node
+[68.126s] [ 17%] Built target lidar_lidar_calibration_node
+[68.505s] Scanning dependencies of target lio_3d_node
+[68.611s] [ 20%] Building CXX object CMakeFiles/lio_3d_node.dir/src/lio_3d_node.cpp.o
+[122.898s] [ 23%] Building CXX object CMakeFiles/lio_3d_node.dir/src/ros_utils.cpp.o
+[142.429s] [ 26%] Building CXX object CMakeFiles/lio_3d_node.dir/src/io.cpp.o
+[150.633s] [ 29%] Building CXX object CMakeFiles/lio_3d_node.dir/src/lie_algebra.cpp.o
+[158.355s] [ 32%] Building CXX object CMakeFiles/lio_3d_node.dir/src/lio_3d_interface.cpp.o
+[176.429s] [ 35%] Building CXX object CMakeFiles/lio_3d_node.dir/src/imu_preintegrator.cpp.o
+[198.159s] [ 38%] Building CXX object CMakeFiles/lio_3d_node.dir/src/gravity_direc_estimator.cpp.o
+[206.002s] [ 41%] Building CXX object CMakeFiles/lio_3d_node.dir/src/keyframe_detector.cpp.o
+[213.850s] [ 44%] Building CXX object CMakeFiles/lio_3d_node.dir/src/voxel_grid_filter.cpp.o
+[220.970s] [ 47%] Building CXX object CMakeFiles/lio_3d_node.dir/src/normal_map.cpp.o
+[240.698s] [ 50%] Building CXX object CMakeFiles/lio_3d_node.dir/src/hierarchical_geometric_observer.cpp.o
+[268.369s] [ 52%] Building CXX object CMakeFiles/lio_3d_node.dir/src/joint_optimizer.cpp.o
+[299.063s] [ 55%] Linking CXX executable lio_3d_node
+[299.757s] [ 55%] Built target lio_3d_node
+[299.945s] Scanning dependencies of target slam_3d_node
+[300.001s] [ 58%] Building CXX object CMakeFiles/slam_3d_node.dir/src/slam_3d_node.cpp.o
+[363.234s] [ 61%] Building CXX object CMakeFiles/slam_3d_node.dir/src/lie_algebra.cpp.o
+[371.584s] [ 64%] Building CXX object CMakeFiles/slam_3d_node.dir/src/slam_3d_interface.cpp.o
+[392.445s] [ 67%] Building CXX object CMakeFiles/slam_3d_node.dir/src/io.cpp.o
+[401.213s] [ 70%] Building CXX object CMakeFiles/slam_3d_node.dir/src/keyframe_detector.cpp.o
+[408.450s] [ 73%] Building CXX object CMakeFiles/slam_3d_node.dir/src/voxel_grid_filter.cpp.o
+[416.603s] [ 76%] Building CXX object CMakeFiles/slam_3d_node.dir/src/gicp.cpp.o
+[450.636s] [ 79%] Building CXX object CMakeFiles/slam_3d_node.dir/src/graph_optimizer.cpp.o
+[478.251s] [ 82%] Building CXX object CMakeFiles/slam_3d_node.dir/src/ros_utils.cpp.o
+[499.317s] [ 85%] Linking CXX executable slam_3d_node
+[499.836s] [ 85%] Built target slam_3d_node
+[500.042s] Scanning dependencies of target pc2_to_pcd_node
+[500.118s] [ 88%] Building CXX object CMakeFiles/pc2_to_pcd_node.dir/src/pc2_to_pcd_node.cpp.o
+[525.294s] [ 91%] Building CXX object CMakeFiles/pc2_to_pcd_node.dir/src/voxel_grid_filter.cpp.o
+[532.874s] [ 94%] Building CXX object CMakeFiles/pc2_to_pcd_node.dir/src/io.cpp.o
+[541.035s] [ 97%] Building CXX object CMakeFiles/pc2_to_pcd_node.dir/src/ros_utils.cpp.o
+[561.013s] [100%] Linking CXX executable pc2_to_pcd_node
+[561.465s] [100%] Built target pc2_to_pcd_node
+[561.504s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/plain_slam_ros2 -- -j4 -l4
+[561.838s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/ros2_ws/build/plain_slam_ros2
+[561.867s] -- Install configuration: ""
+[561.868s] -- Execute custom install script
+[561.869s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/lib/plain_slam_ros2/lio_3d_node
+[561.904s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/lib/plain_slam_ros2/slam_3d_node
+[561.967s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/lib/plain_slam_ros2/pc2_to_pcd_node
+[562.008s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/lib/plain_slam_ros2/lidar_lidar_calibration_node
+[562.060s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/ament_index/resource_index/package_run_dependencies/plain_slam_ros2
+[562.135s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/ament_index/resource_index/parent_prefix_path/plain_slam_ros2
+[562.188s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/environment/ament_prefix_path.sh
+[562.218s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/environment/ament_prefix_path.dsv
+[562.245s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/environment/path.sh
+[562.264s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/environment/path.dsv
+[562.305s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/local_setup.bash
+[562.386s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/local_setup.sh
+[562.439s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/local_setup.zsh
+[562.471s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/local_setup.dsv
+[562.528s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/package.dsv
+[562.570s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/ament_index/resource_index/packages/plain_slam_ros2
+[562.595s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/cmake/plain_slam_ros2Config.cmake
+[562.639s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/cmake/plain_slam_ros2Config-version.cmake
+[562.667s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2/package.xml
+[562.706s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2//launch/lio_3d.launch.py
+[562.737s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2//launch/slam_3d.launch.py
+[562.763s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2//config/lio_3d.rviz
+[562.816s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2//config/lio_3d_config.yaml
+[562.842s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2//config/lio_3d_params.yaml
+[562.894s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2//config/slam_3d.rviz
+[562.937s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2//config/slam_3d_config.yaml
+[562.978s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/plain_slam_ros2/share/plain_slam_ros2//config/slam_3d_params.yaml
+[563.021s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/ros2_ws/build/plain_slam_ros2

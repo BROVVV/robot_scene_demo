@@ -1,0 +1,35 @@
+[0.451s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge -- -j4 -l4
+[0.732s] [ 11%] Built target pandar_slam_adapter
+[0.924s] [ 22%] Built target pointcloud_to_occupancy
+[1.012s] [ 33%] Built target gtest
+[1.158s] [ 44%] Built target gtest_main
+[1.291s] [ 55%] Built target plain_slam_health_monitor
+[1.358s] [ 66%] Built target occupancy_projection_test
+[1.564s] [ 77%] Built target timestamp_policy_test
+[1.650s] [ 88%] Built target transform_utils_test
+[1.820s] [100%] Built target plain_slam_odom_adapter
+[1.855s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge -- -j4 -l4
+[2.031s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge
+[2.117s] -- Install configuration: ""
+[2.118s] -- Execute custom install script
+[2.127s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/pandar_slam_adapter
+[2.127s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/plain_slam_odom_adapter
+[2.127s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/pointcloud_to_occupancy
+[2.136s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/plain_slam_health_monitor
+[2.142s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/launch/plain_slam_go2w.launch.py
+[2.147s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/package_run_dependencies/go2w_plain_slam_bridge
+[2.157s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/parent_prefix_path/go2w_plain_slam_bridge
+[2.157s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/ament_prefix_path.sh
+[2.157s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/ament_prefix_path.dsv
+[2.157s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/path.sh
+[2.157s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/path.dsv
+[2.158s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.bash
+[2.158s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.sh
+[2.158s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.zsh
+[2.158s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.dsv
+[2.158s] -- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/package.dsv
+[2.212s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/packages/go2w_plain_slam_bridge
+[2.213s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/cmake/go2w_plain_slam_bridgeConfig.cmake
+[2.213s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/cmake/go2w_plain_slam_bridgeConfig-version.cmake
+[2.213s] -- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/package.xml
+[2.213s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge

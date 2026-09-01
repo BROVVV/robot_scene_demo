@@ -1,0 +1,15 @@
+{"api_id":1003,"lease_id":123456789,"parameter":"{}","purpose":"StopMove","request_id":1787740201194568896,"timestamp":"1787740201194570"}
+{"api_id":1003,"lease_id":123456789,"parameter":"{}","purpose":"StopMove","request_id":1787740201294857728,"timestamp":"1787740201294864"}
+{"api_id":1003,"lease_id":123456789,"parameter":"{}","purpose":"StopMove","request_id":1787740201395141088,"timestamp":"1787740201395147"}
+{"api_id":1008,"lease_id":123456789,"parameter":"{\"x\":0.05,\"y\":0.0,\"z\":0.06333333253860474}","purpose":"Move","request_id":1787740201713296160,"timestamp":"1787740201713299"}
+{"api_id":1008,"lease_id":123456789,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787740201915371680,"timestamp":"1787740201915374"}
+{"api_id":1008,"lease_id":123456789,"parameter":"{\"x\":-0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787740202067811648,"timestamp":"1787740202067813"}
+{"api_id":1008,"lease_id":123456789,"parameter":"{\"x\":-0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787740202269190912,"timestamp":"1787740202269193"}
+{"api_id":1008,"lease_id":123456789,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787740202420004160,"timestamp":"1787740202420006"}
+{"api_id":1008,"lease_id":123456789,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787740202623851904,"timestamp":"1787740202623854"}
+{"api_id":1008,"lease_id":123456789,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787740202833645600,"timestamp":"1787740202833648"}
+{"api_id":1008,"lease_id":123456789,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787740203035704640,"timestamp":"1787740203035707"}
+{"api_id":1008,"lease_id":123456789,"parameter":"{\"x\":0.0,\"y\":0.0,\"z\":0.0}","purpose":"Move","request_id":1787740203238425440,"timestamp":"1787740203238428"}
+{"api_id":1003,"lease_id":123456789,"parameter":"{}","purpose":"StopMove","request_id":1787740203441251168,"timestamp":"1787740203441253"}
+{"api_id":1003,"lease_id":123456789,"parameter":"{}","purpose":"StopMove","request_id":1787740203541377408,"timestamp":"1787740203541381"}
+{"api_id":1003,"lease_id":123456789,"parameter":"{}","purpose":"StopMove","request_id":1787740203641625376,"timestamp":"1787740203641629"}

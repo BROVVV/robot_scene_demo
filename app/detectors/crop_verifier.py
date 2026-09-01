@@ -12,7 +12,7 @@ from PIL import Image
 
 from app.config import Settings, get_settings
 from app.utils.json_utils import extract_json_from_text
-from app.video.target_profile import TargetProfile
+from app.reasoning.target_profile import TargetProfile
 
 
 class CropVerifier:

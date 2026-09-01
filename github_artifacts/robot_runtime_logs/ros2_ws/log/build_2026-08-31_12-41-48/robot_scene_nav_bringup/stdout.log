@@ -1,0 +1,4 @@
+-- Found ament_cmake: 0.9.12 (/opt/ros/humble/share/ament_cmake/cmake)
+-- Using PYTHON_EXECUTABLE: /usr/bin/python3
+-- Configuring incomplete, errors occurred!
+See also "/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup/CMakeFiles/CMakeOutput.log".

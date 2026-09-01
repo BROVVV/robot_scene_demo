@@ -1,0 +1,445 @@
+{
+  "schema_version": "search_final_state_v1",
+  "session_id": "search_20260901_120501_96392a00",
+  "state": "FINISHED",
+  "result": {
+    "result": "MAX_STEPS_REACHED",
+    "target": "粉色大象",
+    "duration_s": 34.826,
+    "planning_cycles": 1,
+    "motion_steps": 1,
+    "observations": 1,
+    "unique_nodes": 1,
+    "unique_places": 1,
+    "unique_objects": 4,
+    "frontiers_discovered": 11,
+    "map_nodes_total": 16,
+    "replans": 0,
+    "navigation_failures": 0,
+    "verify_attempts": 0,
+    "semantic_goal_selection_count": 0,
+    "fallback_goal_selection_count": 1,
+    "finish_reason": "MAX_STEPS_REACHED",
+    "session_id": "search_20260901_120501_96392a00",
+    "summary": {
+      "result": "MAX_STEPS_REACHED",
+      "target": "粉色大象",
+      "duration_s": 34.826,
+      "planning_cycles": 1,
+      "motion_steps": 1,
+      "observations": 1,
+      "unique_nodes": 1,
+      "unique_places": 1,
+      "unique_objects": 4,
+      "frontiers_discovered": 11,
+      "map_nodes_total": 16,
+      "replans": 0,
+      "navigation_failures": 0,
+      "verify_attempts": 0,
+      "semantic_goal_selection_count": 0,
+      "fallback_goal_selection_count": 1,
+      "finish_reason": "MAX_STEPS_REACHED"
+    }
+  },
+  "task": {
+    "task_id": "task_3a92d93fda7a",
+    "raw_text": "寻找粉色大象",
+    "intent": "locate_object",
+    "canonical_target": "粉色大象",
+    "target_attributes": {
+      "category": "object",
+      "attributes": [
+        "粉色"
+      ]
+    },
+    "target_relations": [],
+    "constraints": [
+      "contact_allowed",
+      "manipulation_allowed",
+      "harmful_action_allowed",
+      "chase_or_ram_allowed",
+      "requires_safe_standoff_distance",
+      "requires_stop_after_motion",
+      "requires_stop_after_navigation",
+      "stop_distance_policy",
+      "max_speed_policy"
+    ],
+    "subtasks": [
+      {
+        "id": "subtask_1",
+        "type": "locate_object",
+        "object": "粉色大象",
+        "recipient_or_target": "",
+        "state_query": "",
+        "is_navigation_relevant": true,
+        "requires_visual_grounding": true,
+        "requires_manipulation": false,
+        "requires_physical_contact": false,
+        "requires_harmful_action": false,
+        "semantic_role": "main_goal",
+        "llm_reason": "用户明确要求寻找粉色大象，核心任务是定位该物体。",
+        "requested_by_user": true,
+        "allowed_by_capability": null,
+        "allowed_by_safety": null,
+        "blocked_reason": null
+      }
+    ],
+    "executable": true,
+    "rejection_reason": null,
+    "parsed_task": {
+      "raw_task": "寻找粉色大象",
+      "language": "zh",
+      "task_summary": "用户要求寻找一只粉色大象，属于物体定位任务。",
+      "primary_intent": "locate_object",
+      "target": {
+        "name_zh": "粉色大象",
+        "name_en": "pink elephant",
+        "category": "object",
+        "attributes": [
+          "粉色"
+        ],
+        "relations": []
+      },
+      "area": {
+        "name_zh": "",
+        "category": "unknown"
+      },
+      "requested_subtasks": [
+        {
+          "id": "subtask_1",
+          "type": "locate_object",
+          "object": "粉色大象",
+          "recipient_or_target": "",
+          "state_query": "",
+          "is_navigation_relevant": true,
+          "requires_visual_grounding": true,
+          "requires_manipulation": false,
+          "requires_physical_contact": false,
+          "requires_harmful_action": false,
+          "semantic_role": "main_goal",
+          "llm_reason": "用户明确要求寻找粉色大象，核心任务是定位该物体。",
+          "requested_by_user": true,
+          "allowed_by_capability": null,
+          "allowed_by_safety": null,
+          "blocked_reason": null
+        }
+      ],
+      "safety_assessment": {
+        "contains_physical_harm_request": false,
+        "contains_manipulation_request": false,
+        "contains_privacy_sensitive_request": false,
+        "contains_non_navigation_request": false,
+        "risk_level": "none",
+        "reason": "任务仅为寻找物体，不涉及伤害、操作或隐私敏感行为。"
+      },
+      "execution_recommendation": {
+        "can_execute_fully": false,
+        "can_execute_navigation_part": true,
+        "allowed_navigation_subtasks": [
+          "locate_object"
+        ],
+        "unsupported_subtasks": [],
+        "user_feedback_zh": "我可以执行寻找粉色大象的导航搜索任务，但无法确认其是否存在或可见。"
+      },
+      "confidence": {
+        "intent": 0.98,
+        "safety": 0.99,
+        "target": 0.95
+      },
+      "initial_visibility_state": "unknown",
+      "raw_llm_response": {
+        "raw_task": "寻找粉色大象",
+        "language": "zh",
+        "task_summary": "用户要求寻找一只粉色大象，属于物体定位任务。",
+        "primary_intent": "locate_object",
+        "target": {
+          "name_zh": "粉色大象",
+          "name_en": "pink elephant",
+          "category": "object",
+          "attributes": [
+            "粉色"
+          ],
+          "relations": []
+        },
+        "area": {
+          "name_zh": "",
+          "category": "unknown"
+        },
+        "requested_subtasks": [
+          {
+            "id": "subtask_1",
+            "type": "locate_object",
+            "object": "粉色大象",
+            "recipient_or_target": "",
+            "state_query": "",
+            "is_navigation_relevant": true,
+            "requires_visual_grounding": true,
+            "requires_manipulation": false,
+            "requires_physical_contact": false,
+            "requires_harmful_action": false,
+            "semantic_role": "main_goal",
+            "llm_reason": "用户明确要求寻找粉色大象，核心任务是定位该物体。"
+          }
+        ],
+        "safety_assessment": {
+          "contains_physical_harm_request": false,
+          "contains_manipulation_request": false,
+          "contains_privacy_sensitive_request": false,
+          "contains_non_navigation_request": false,
+          "risk_level": "none",
+          "reason": "任务仅为寻找物体，不涉及伤害、操作或隐私敏感行为。"
+        },
+        "execution_recommendation": {
+          "can_execute_fully": false,
+          "can_execute_navigation_part": true,
+          "allowed_navigation_subtasks": [
+            "locate_object"
+          ],
+          "unsupported_subtasks": [],
+          "user_feedback_zh": "我可以执行寻找粉色大象的导航搜索任务，但无法确认其是否存在或可见。"
+        },
+        "confidence": {
+          "intent": 0.98,
+          "safety": 0.99,
+          "target": 0.95
+        },
+        "initial_visibility_state": "unknown"
+      },
+      "parser_source": "llm",
+      "notes": []
+    },
+    "created_at": 1788235501.8192675
+  },
+  "current_place_id": "P1",
+  "map_revision": 1,
+  "last_decision": {
+    "decision_id": "decision_search_20260901_120501_96392a00_1_1",
+    "session_id": "search_20260901_120501_96392a00",
+    "task_id": "task_3a92d93fda7a",
+    "cycle": 1,
+    "timestamp": 1788235529.5271516,
+    "raw_task_text": "寻找粉色大象",
+    "canonical_target": "粉色大象",
+    "map_revision": 1,
+    "current_place_id": "P1",
+    "current_pose": {
+      "x": 0.0,
+      "y": 0.0,
+      "yaw": 1.6534597180559232,
+      "frame_id": "odom",
+      "quality": "relative",
+      "timestamp": 1788235529.5219345,
+      "source": "wheel_fused_odom"
+    },
+    "target_match_level": "zero_match",
+    "selected_long_term_goal": {
+      "goal_id": "local_scan_001",
+      "goal_type": "ROTATE_VIEW",
+      "target_node_id": null,
+      "position": null,
+      "yaw": null,
+      "frame": "odom",
+      "relative_dx": null,
+      "relative_dy": null,
+      "relative_dyaw": 30.0,
+      "semantic_anchor": null,
+      "semantic_reason": "bounded local scan sector 4 (step 1/3)",
+      "heading_sector": 4,
+      "expected_information_gain": 0.2,
+      "semantic_relevance": 0.0,
+      "novelty_score": 0.0,
+      "estimated_cost": 0.0,
+      "provenance": {
+        "source": "local_scan",
+        "sector": 4,
+        "delta_sector": 1,
+        "delta_deg": 30.0,
+        "same_direction_count": 1,
+        "place_id": "P1"
+      }
+    },
+    "candidate_ranking": [
+      {
+        "goal": {
+          "goal_id": "local_scan_001",
+          "goal_type": "ROTATE_VIEW",
+          "target_node_id": null,
+          "position": null,
+          "yaw": null,
+          "frame": "odom",
+          "relative_dx": null,
+          "relative_dy": null,
+          "relative_dyaw": 30.0,
+          "semantic_anchor": null,
+          "semantic_reason": "bounded local scan sector 4 (step 1/3)",
+          "heading_sector": 4,
+          "expected_information_gain": 0.2,
+          "semantic_relevance": 0.0,
+          "novelty_score": 0.0,
+          "estimated_cost": 0.0,
+          "provenance": {
+            "source": "local_scan",
+            "sector": 4,
+            "delta_sector": 1,
+            "delta_deg": 30.0,
+            "same_direction_count": 1,
+            "place_id": "P1"
+          }
+        },
+        "score": 0.4317,
+        "components": {
+          "semantic_relevance": 0.0,
+          "novelty": 1.0,
+          "information_gain": 0.2,
+          "frontier_bonus": 1.0,
+          "continuity_bonus": 0.6667,
+          "visited_penalty": 0.0,
+          "negative_evidence_penalty": 0.0,
+          "navigation_failure_penalty": 0.0,
+          "estimated_motion_cost": 0.1667,
+          "oscillation_penalty": 0.0,
+          "score": 0.4317,
+          "current_yaw_deg": 94.7363
+        },
+        "reasons": [
+          "未探索扇区 4"
+        ]
+      }
+    ],
+    "navigation_plan": {
+      "plan_id": "live_plan_88c488d372",
+      "mode": "live_graph",
+      "planning_frame": "odom",
+      "scale_status": "relative",
+      "start_pose": {
+        "x": 0.0,
+        "y": 0.0,
+        "yaw": 1.6534597180559232,
+        "frame_id": "odom",
+        "source": "wheel_fused_odom",
+        "scale_status": "relative",
+        "provenance": {}
+      },
+      "goal_pose": {
+        "x": -0.657,
+        "y": -0.456,
+        "yaw": 2.0943951023931953,
+        "frame_id": "odom",
+        "source": "live_odom",
+        "scale_status": "relative",
+        "provenance": {}
+      },
+      "waypoints": [
+        {
+          "waypoint_id": "P1",
+          "pose": {
+            "x": 0.0,
+            "y": 0.0,
+            "yaw": 1.6534597180559232,
+            "frame_id": "odom",
+            "source": "wheel_fused_odom",
+            "scale_status": "relative",
+            "provenance": {}
+          },
+          "source_frame_id": null,
+          "semantic_label": "P1",
+          "waypoint_type": "place",
+          "confidence": 0.8,
+          "provenance": {
+            "source": "live_semantic_navigation_graph"
+          }
+        },
+        {
+          "waypoint_id": "frontier:P1:04",
+          "pose": {
+            "x": -0.657,
+            "y": -0.456,
+            "yaw": 2.0943951023931953,
+            "frame_id": "odom",
+            "source": "live_odom",
+            "scale_status": "relative",
+            "provenance": {}
+          },
+          "source_frame_id": null,
+          "semantic_label": "F05",
+          "waypoint_type": "frontier",
+          "confidence": 0.8,
+          "provenance": {
+            "source": "live_semantic_navigation_graph"
+          }
+        }
+      ],
+      "path": [
+        {
+          "x": 0.0,
+          "y": 0.0,
+          "yaw": 1.6534597180559232,
+          "frame_id": "odom",
+          "source": "wheel_fused_odom",
+          "scale_status": "relative",
+          "provenance": {}
+        },
+        {
+          "x": -0.657,
+          "y": -0.456,
+          "yaw": 2.0943951023931953,
+          "frame_id": "odom",
+          "source": "live_odom",
+          "scale_status": "relative",
+          "provenance": {}
+        }
+      ],
+      "path_length": 0.7997405829392429,
+      "estimated_time_sec": 1.7772012954205396,
+      "navigation_strategy": "live_graph_dijkstra",
+      "target_status": "target_not_seen",
+      "confidence": 0.8,
+      "executable": true,
+      "executable_reason": "current Place to reachable live graph goal",
+      "provenance": {
+        "planner": "live_graph_dijkstra",
+        "start_node": "P1",
+        "goal_node": "frontier:P1:04",
+        "source": "semantic_navigation_graph"
+      }
+    },
+    "next_motion_command": {
+      "command_id": "motion_043d1107cb1f",
+      "plan_id": "live_plan_search_20260901_120501_96392a00_1",
+      "decision_id": "decision_search_20260901_120501_96392a00_1_1",
+      "action_type": "TURN_AND_MOVE",
+      "turn_deg": 30.0,
+      "forward_m": 0.0,
+      "lateral_m": 0.0,
+      "stop_and_reobserve": true,
+      "instruction_zh": "左转 30°，停止并重新观察",
+      "reason_zh": "bounded local scan sector 4 (step 1/3)",
+      "target_place_id": "P1",
+      "target_frontier_id": null,
+      "target_object_id": null,
+      "safety_limited": true,
+      "requested_motion": {
+        "turn_deg": 30.0,
+        "forward_m": 0.0
+      }
+    },
+    "reason_zh": "bounded local scan sector 4 (step 1/3)",
+    "evidence": [
+      {
+        "type": "visual_observation",
+        "observation_id": "bundle_191132"
+      }
+    ],
+    "negative_evidence": [],
+    "requested_motion": {
+      "step": "l30",
+      "relative_yaw_deg": 30.0
+    },
+    "observed_motion": {
+      "yaw_delta_deg": 30.947
+    },
+    "execution_status": "SUCCEEDED",
+    "execution_message": "turn l30",
+    "replan_reason": null
+  }
+}

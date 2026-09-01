@@ -2,6 +2,11 @@
 
 Status date: 2026-08-06 (Asia/Shanghai)
 
+> 2026-08-31 更新：新增 plain_slam + PandarXT-16 mapping-assist 集成，
+> 详见 `docs/go2w/plain_slam_pandarxt16.md` 与
+> `docs/go2w/plain_slam_license_note.md`（上游学术/个人免费、商业需授权）。
+> mapping 仅辅助探索，不改变任何运动/安全授权。
+
 > 2026-08-13 更新：本文档部分内容已被 README 顶部的
 > “Go2-W 真机项目当前进度还原指南”取代（小范围运动已授权并完成 LLM 搜索、
 > wheel+LIO 融合里程计等）。本文保留为只读部署参考。

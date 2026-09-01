@@ -101,7 +101,8 @@ def _matched_objects(result: dict, target_text: str) -> list[dict]:
 
 
 def _quick_detect(settings, image_path: str, target_text: str,
-                  extra_instructions: str, model_override: str = "") -> dict:
+                  extra_instructions: str, model_override: str = "",
+                  client: Any | None = None) -> dict:
     """Call the vision API with a short prompt and return the worker payload."""
     from openai import OpenAI
 
@@ -110,11 +111,12 @@ def _quick_detect(settings, image_path: str, target_text: str,
     )
     from app.utils.json_utils import extract_json_from_text
 
-    client = OpenAI(
-        api_key=settings.siliconflow_api_key,
-        base_url=settings.siliconflow_base_url,
-        timeout=settings.siliconflow_timeout_seconds,
-    )
+    if client is None:
+        client = OpenAI(
+            api_key=settings.siliconflow_api_key,
+            base_url=settings.siliconflow_base_url,
+            timeout=settings.siliconflow_timeout_seconds,
+        )
     model = model_override or settings.vision_model
     image_bytes, mime_type = _load_resized_image_bytes(
         image_path, settings.image_max_side
@@ -146,7 +148,7 @@ def _quick_detect(settings, image_path: str, target_text: str,
             }
         ],
         temperature=0.1,
-        max_tokens=768,
+        max_tokens=getattr(settings, "vlm_runtime_quick_max_tokens", 768),
     )
     raw_content = response.choices[0].message.content
     if not isinstance(raw_content, str) or not raw_content.strip():
@@ -155,48 +157,91 @@ def _quick_detect(settings, image_path: str, target_text: str,
     if not isinstance(data, dict):
         raise ValueError("SiliconFlow quick response was not a JSON object")
 
-    objects = []
-    if bool(data.get("found", False)):
+    target_objects = []
+    scene_objects = []
+    found = bool(data.get("found", False))
+    if found:
         raw_bbox = data.get("bbox_2d")
         bbox = _normalize_quick_bbox(raw_bbox, image_width, image_height)
         if bbox is not None:
             confidence = _clamp01(data.get("confidence", 0.8))
             name = str(data.get("name_zh") or data.get("name") or target_text)
             label = name if name in target_text else f"{target_text} {name}"
-            objects.append(
+            target_objects.append(
                 {
                     "label": label.strip(),
                     "score": confidence,
                     "bbox_2d": bbox,
                 }
             )
-    # 目标不在时：列举画面可见的非目标物体，保证持续建图/拓扑
-    for raw_obj in data.get("objects") or []:
+    # 轻量场景物体（计划书 §4.1）：Quick 一次调用同时给出粗粒度场景物体，
+    # 供 Full Semantic 超时/未完成时仍能建拓扑。绝不混入 target_objects。
+    raw_light = data.get("scene_objects_light")
+    if not isinstance(raw_light, list):
+        raw_light = data.get("objects") or []
+    for raw_obj in raw_light:
         bbox = _normalize_quick_bbox(
             raw_obj.get("bbox_2d") or raw_obj.get("bbox"), image_width, image_height
         )
         if bbox is None:
             continue
         name = str(raw_obj.get("name_zh") or raw_obj.get("name") or "物体")
-        if any(name in item["label"] for item in objects):
+        if any(name in item["label"] for item in scene_objects):
             continue
-        objects.append({
+        scene_objects.append({
             "label": name.strip(),
             "score": _clamp01(raw_obj.get("confidence", 0.6)),
             "bbox_2d": bbox,
+            "category": str(raw_obj.get("category") or "object"),
         })
-    return {
+        if len(scene_objects) >= 10:
+            break
+    # 兼容旧调用：objects 只等于 target_objects，禁止包含普通场景物体。
+    objects = list(target_objects)
+    payload = {
         "objects": objects,
+        "target_objects": target_objects,
         "scene_summary_zh": str(data.get("reason_zh") or ""),
         "target_decision": {
             "target_text": target_text,
-            "is_present": bool(data.get("found", False)),
-            "matched_object_ids": ["obj_001"] if objects else [],
+            "is_present": found,
+            "matched_object_ids": (
+                ["obj_001"] if found and target_objects else []
+            ),
             "match_reason_zh": str(data.get("reason_zh") or ""),
             "confidence": _clamp01(data.get("confidence", 0.5)),
         },
-        "all_objects_count": len(objects),
+        "all_objects_count": len(target_objects),
     }
+    # 只有在确有小物体列表时才暴露 scene_objects；空列表不要写入，以免
+    # semantic_payload_from_quick_target_absence 把“无普通物体”误当成显式空场景。
+    if scene_objects:
+        payload["scene_objects"] = scene_objects
+        payload["scene_objects_light"] = scene_objects
+        payload["scene_objects_count"] = len(scene_objects)
+    return payload
+
+
+def quick_target_present(payload: dict, min_score: float = 0.15) -> bool:
+    """Return whether a Quick VLM payload passes the target gate.
+
+    The gate is: target_decision.is_present AND at least one target-only object
+    AND its score >= min_score.  Ordinary scene objects in ``scene_objects``
+    must never make this return True.
+    """
+    if not isinstance(payload, dict):
+        return False
+    decision = payload.get("target_decision") or {}
+    if not decision.get("is_present"):
+        return False
+    target_objects = list(payload.get("target_objects") or payload.get("objects") or [])
+    if not target_objects:
+        return False
+    try:
+        best_score = max(float(obj.get("score", 0.0)) for obj in target_objects)
+    except (TypeError, ValueError):
+        return False
+    return best_score >= float(min_score)
 
 
 def _normalize_quick_bbox(value, width: int, height: int) -> list[float] | None:
@@ -231,47 +276,54 @@ def _clamp01(value) -> float:
 
 
 _QUICK_SYSTEM_PROMPT = """你是机器狗第一人称视觉目标搜索模块。
-任务：在图片中寻找目标「{target}」。
+任务：在图片中寻找目标「{target}」，同时给出画面中少量显著物体（供建图/拓扑使用）。
 只输出一个 JSON 对象，不要 Markdown，不要任何其他文字：
 - 如果图片中存在该目标：
-  {{"found": true, "bbox_2d": [x1, y1, x2, y2], "confidence": 0.8, "name_zh": "目标中文名"}}
+  {{"found": true, "bbox_2d": [x1, y1, x2, y2], "confidence": 0.8, "name_zh": "目标中文名", "reason_zh": "一句话依据", "scene_objects_light": [...]}}
 - 如果不存在：
-  {{"found": false, "reason_zh": "一句话说明画面中有什么，为什么没找到",
-    "objects": [{{"name": "chair", "name_zh": "办公椅", "bbox_2d": [x1,y1,x2,y2], "confidence": 0.8}}, ...]}}
+  {{"found": false, "reason_zh": "一句话说明画面中有什么，为什么没找到", "scene_objects_light": [...]}}
+scene_objects_light 数组：最多 6~10 个画面中最显著的普通物体（不要包含目标本身，不要重复），每个元素为
+  {{"name_zh": "物体中文名", "confidence": 0.91, "bbox_2d": [x1, y1, x2, y2], "category": "furniture"}}
 约束：
 - bbox_2d 必须是 0 到 1 之间的归一化小数坐标 [左上x, 左上y, 右下x, 右下y]，禁止用像素值；取值保留两位小数以缩短输出。
 - confidence 取值 0 到 1。
-- 如果画面有多个候选，只输出最像目标的一个。
-- objects 字段：无论找到与否，列出当前画面 2 到 4 个最明显的可见物体（含非目标物体）即可，不要列太多以免超长；切勿截断 JSON。
+- 目标候选只放进 found/bbox_2d/name_zh，绝不混入 scene_objects_light。
+- scene_objects_light 用于快速建图：宁可少列，不要编造；画面确实没有显著物体时返回空数组。
 - 严格只输出合法、完整的 JSON，数组和花括号必须闭合。"""
 
 
 _VERIFY_SYSTEM_PROMPT = """你是机器狗目标复核模块。
-图片中有一个候选框，归一化坐标为 bbox=[{bbox}]。
-请判断框内主要物体是什么，以及它是否属于目标「{target}」。
+图1是完整环境上下文；图2是候选区域的高清裁剪。候选框归一化坐标为 bbox=[{bbox}]。
+请判断图2中的主要物体是什么，以及它是否满足目标「{target}」；同时结合图1检查目标中的关系约束（例如“饮水机旁边”）。
 只输出一个 JSON 对象，不要 Markdown，不要任何其他文字：
 {{"object_name_zh": "物体中文名", "is_target": true, "confidence": 0.9, "reason_zh": "一句话依据"}}
 约束：
 - object_name_zh 只写物体名（例如：黑色椅子、灰色书包、黑色背包）。
 - is_target 必须是布尔值 true/false。
 - confidence 取值 0 到 1。
-- reason_zh 用一句中文说明判断依据（例如：框内是带靠背和扶手的椅子，不是书包）。
+- reason_zh 用一句中文说明判断依据（例如：框内是带靠背和扶手的椅子，不是书包；图1未看到饮水机，不满足“旁边”关系）。
 - 严格只输出 JSON。"""
 
 
 def _verify_detect(settings, image_path: str, target_text: str,
-                   bbox_text: str, model_override: str = "") -> dict:
-    """Ask the vision API whether the object inside bbox is the target."""
+                   bbox_text: str, model_override: str = "",
+                   client: Any | None = None) -> dict:
+    """Ask the vision API whether the object inside bbox is the target.
+
+    Uses full-frame context + high-resolution candidate crop.  If the endpoint
+    rejects multi-image input, automatically falls back to the full frame only.
+    """
     from openai import OpenAI
 
     from app.llm_clients.siliconflow_client import _load_resized_image_bytes
     from app.utils.json_utils import extract_json_from_text
 
-    client = OpenAI(
-        api_key=settings.siliconflow_api_key,
-        base_url=settings.siliconflow_base_url,
-        timeout=settings.siliconflow_timeout_seconds,
-    )
+    if client is None:
+        client = OpenAI(
+            api_key=settings.siliconflow_api_key,
+            base_url=settings.siliconflow_base_url,
+            timeout=settings.siliconflow_timeout_seconds,
+        )
     model = model_override or settings.vision_model
     image_bytes, mime_type = _load_resized_image_bytes(
         image_path, settings.image_max_side
@@ -280,27 +332,39 @@ def _verify_detect(settings, image_path: str, target_text: str,
         f"data:{mime_type};base64,"
         + base64.b64encode(image_bytes).decode("ascii")
     )
+    crop_data_url = _make_crop_data_url(image_bytes, bbox_text, settings.image_max_side)
     prompt = _VERIFY_SYSTEM_PROMPT.format(target=target_text, bbox=bbox_text)
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": image_data_url,
-                            "detail": settings.image_detail,
-                        },
-                    },
-                ],
-            }
-        ],
-        temperature=0.0,
-        max_tokens=768,
-    )
+    multi_image_content = [
+        {"type": "text", "text": prompt},
+        {"type": "image_url", "image_url": {"url": image_data_url, "detail": settings.image_detail}},
+    ]
+    if crop_data_url is not None:
+        multi_image_content.append(
+            {"type": "image_url", "image_url": {"url": crop_data_url, "detail": "high"}}
+        )
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": multi_image_content}],
+            temperature=0.0,
+            max_tokens=getattr(settings, "vlm_runtime_verify_max_tokens", 768),
+        )
+    except Exception:
+        # Provider fallback: single full-frame verification.
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": image_data_url, "detail": settings.image_detail}},
+                    ],
+                }
+            ],
+            temperature=0.0,
+            max_tokens=getattr(settings, "vlm_runtime_verify_max_tokens", 768),
+        )
     raw_content = response.choices[0].message.content
     if not isinstance(raw_content, str) or not raw_content.strip():
         raise ValueError("SiliconFlow verify response was empty")
@@ -313,6 +377,41 @@ def _verify_detect(settings, image_path: str, target_text: str,
         "confidence": _clamp01(data.get("confidence", 0.5)),
         "reason_zh": str(data.get("reason_zh") or ""),
     }
+
+
+def _make_crop_data_url(image_bytes: bytes, bbox_text: str, max_side: int) -> str | None:
+    """Create a base64 JPEG crop from a normalized bbox string (x1,y1,x2,y2)."""
+    try:
+        from io import BytesIO
+
+        with Image.open(BytesIO(image_bytes)) as image:
+            width, height = image.size
+            values = [float(v) for v in bbox_text.split(",")]
+            if len(values) != 4:
+                return None
+            x1, y1, x2, y2 = values
+            # 1.25x expansion around the box, clamped to image.
+            cx = (x1 + x2) / 2.0
+            cy = (y1 + y2) / 2.0
+            bw = max(x2 - x1, 0.05)
+            bh = max(y2 - y1, 0.05)
+            exp_x = min(0.5, bw * 0.625)
+            exp_y = min(0.5, bh * 0.625)
+            x1 = max(0.0, cx - bw / 2 - exp_x)
+            x2 = min(1.0, cx + bw / 2 + exp_x)
+            y1 = max(0.0, cy - bh / 2 - exp_y)
+            y2 = min(1.0, cy + bh / 2 + exp_y)
+            if x2 <= x1 or y2 <= y1:
+                return None
+            box = (int(x1 * width), int(y1 * height), int(x2 * width), int(y2 * height))
+            crop = image.convert("RGB").crop(box)
+            crop.thumbnail((max_side, max_side))
+            buffer = BytesIO()
+            crop.save(buffer, format="JPEG", quality=90)
+            encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+            return f"data:image/jpeg;base64,{encoded}"
+    except Exception:
+        return None
 
 
 def main() -> int:

@@ -31,6 +31,8 @@ class _FakeMotion:
             return False, f"motion rejected: {step}", {"step": step}
         if step.startswith("f"):
             self.odom[0] += float(step[1:] or 0.18)
+        elif step.startswith("b"):
+            self.odom[0] -= float(step[1:] or 0.10)
         else:
             degrees = float(step[1:])
             if step.startswith("r"):
@@ -60,7 +62,7 @@ class TestGo2WExperimentalBackend(unittest.TestCase):
         self.assertTrue(caps.supports_relative_translation)
         self.assertEqual(
             caps.allowed_motion_primitives,
-            ("FORWARD", "ROTATE_LEFT", "ROTATE_RIGHT"),
+            ("FORWARD", "BACKWARD_RECOVERY", "ROTATE_LEFT", "ROTATE_RIGHT"),
         )
 
     def test_pose_quality_relative(self) -> None:
@@ -153,15 +155,27 @@ class TestGo2WExperimentalBackend(unittest.TestCase):
         self.assertEqual(motion.steps, [])
         self.assertTrue(result.provenance["replan_required"])
 
-    def test_reverse_rejected_and_marked_for_replan(self) -> None:
+    def test_reverse_recovery_executes_bounded_backward(self) -> None:
         motion = _FakeMotion()
         backend = _backend(motion)
         goal = ExplorationGoal(goal_id="g1", goal_type=GOAL_RELATIVE_MOVE,
                                relative_dx=-0.2)
         result = backend.execute_goal(goal).result
+        self.assertTrue(result.succeeded)
+        self.assertEqual(motion.steps, ["b0.120"])
+        self.assertEqual(result.requested_motion["primitive"], "BACKWARD_RECOVERY")
+        self.assertAlmostEqual(result.requested_motion["distance_m"], 0.12)
+        self.assertLess(result.observed_motion["signed_progress_m"], 0.0)
+
+    def test_reverse_recovery_disabled_when_config_off(self) -> None:
+        motion = _FakeMotion()
+        backend = _backend(motion, allow_backward_recovery=False)
+        goal = ExplorationGoal(goal_id="g1", goal_type=GOAL_RELATIVE_MOVE,
+                               relative_dx=-0.2)
+        result = backend.execute_goal(goal).result
         self.assertEqual(result.status, NavigationStatus.REJECTED)
-        self.assertEqual(result.provenance["unsupported_primitive"], "REVERSE")
         self.assertEqual(motion.steps, [])
+        self.assertIn("disabled", result.message)
 
     def test_metric_goal_rejected(self) -> None:
         backend = _backend(_FakeMotion())

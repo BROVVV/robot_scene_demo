@@ -76,3 +76,11 @@
 ## 6. 代码快照说明
 
 本次发布保留工作区内已有的项目改动及其输入/输出记录，不对其功能含义做额外重构。运行记录中包含成功、搜索耗尽、操作员停止和 dry-run 等不同结局，AI 在判断功能是否完成时必须读取 `status`、`mode`、`robot_action`、安全事件和证据字段，不能把文件存在等同于功能已经通过真机验收。
+
+## VLM-only 低延迟语义导航（2026-08-28）
+
+生产真机入口保持 `scripts/go2w/run_semantic_exploration.py`。当前默认视觉路线为 VLM-only：
+- Quick VLM 只负责目标候选，`target_decision.is_present` 是目标 gate。
+- Full Semantic 由后台 `AsyncSemanticObservationManager` 异步更新，不阻塞普通运动循环。
+- VLM daemon（Unix socket）优先，不可用时自动回退 subprocess。
+- GroundingDINO/SAM2 仅保留为 baseline，不进入生产 runtime。

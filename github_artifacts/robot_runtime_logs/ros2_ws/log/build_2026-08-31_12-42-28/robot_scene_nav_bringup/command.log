@@ -1,0 +1,4 @@
+Invoking command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup -- -j4 -l4
+Invoked command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup -- -j4 -l4
+Invoking command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup
+Invoked command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup' returned '0': CMAKE_PREFIX_PATH=/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup

@@ -2,21 +2,14 @@
 
 #include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <cstdint>
 #include <functional>
-#include <map>
 #include <mutex>
-#include <optional>
-#include <set>
 #include <string>
-#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/u_int64.hpp"
-#include "unitree_api/msg/request.hpp"
-#include "unitree_api/msg/response.hpp"
 
 namespace go2w_motion_control {
 
@@ -41,6 +34,7 @@ class LeasedSportClient {
                     const std::string &response_topic,
                     const std::string &lease_id_topic,
                     const std::string &lease_alive_topic,
+                    const std::string &sdk_command_socket,
                     double lease_status_timeout_sec, bool dry_run);
 
   RequestResult SendMove(double vx, double vy, double yaw_rate,
@@ -59,9 +53,9 @@ class LeasedSportClient {
   RequestResult SendRequest(int64_t api_id, const std::string &parameter,
                             std::chrono::milliseconds timeout);
   int64_t NextRequestId();
-  void OnResponse(const unitree_api::msg::Response::SharedPtr msg);
 
   rclcpp::Node *node_;
+  std::string sdk_command_socket_;
   double lease_status_timeout_sec_;
   std::atomic_bool dry_run_;
   std::atomic<uint64_t> lease_id_{0};
@@ -69,14 +63,9 @@ class LeasedSportClient {
   mutable std::mutex lease_mutex_;
   std::chrono::steady_clock::time_point lease_update_time_{};
   std::atomic<int64_t> last_request_id_{0};
-  mutable std::mutex response_mutex_;
-  std::condition_variable response_changed_;
-  std::map<std::pair<int64_t, int64_t>, unitree_api::msg::Response> responses_;
-  std::set<std::pair<int64_t, int64_t>> pending_requests_;
+  std::mutex command_mutex_;
   mutable std::mutex callback_mutex_;
   EventCallback event_callback_;
-  rclcpp::Publisher<unitree_api::msg::Request>::SharedPtr request_pub_;
-  rclcpp::Subscription<unitree_api::msg::Response>::SharedPtr response_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt64>::SharedPtr lease_id_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr lease_alive_sub_;
 };

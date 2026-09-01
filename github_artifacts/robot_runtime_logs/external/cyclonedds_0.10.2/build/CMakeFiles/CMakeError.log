@@ -1,0 +1,138 @@
+Determining if the strlcpy exist failed with the following output:
+Change Dir: /home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_88744/fast && /usr/bin/make -f CMakeFiles/cmTC_88744.dir/build.make CMakeFiles/cmTC_88744.dir/build
+make[1]: Entering directory '/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_88744.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -std=gnu99 -o CMakeFiles/cmTC_88744.dir/CheckSymbolExists.c.o   -c /home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c: In function ‘main’:
+/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:8:19: error: ‘strlcpy’ undeclared (first use in this function); did you mean ‘strncpy’?
+    8 |   return ((int*)(&strlcpy))[argc];
+      |                   ^~~~~~~
+      |                   strncpy
+/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:8:19: note: each undeclared identifier is reported only once for each function it appears in
+make[1]: *** [CMakeFiles/cmTC_88744.dir/build.make:66: CMakeFiles/cmTC_88744.dir/CheckSymbolExists.c.o] Error 1
+make[1]: Leaving directory '/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp'
+make: *** [Makefile:121: cmTC_88744/fast] Error 2
+
+
+File /home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <string.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef strlcpy
+  return ((int*)(&strlcpy))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+Determining if the strlcat exist failed with the following output:
+Change Dir: /home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_c45dc/fast && /usr/bin/make -f CMakeFiles/cmTC_c45dc.dir/build.make CMakeFiles/cmTC_c45dc.dir/build
+make[1]: Entering directory '/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_c45dc.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -std=gnu99 -o CMakeFiles/cmTC_c45dc.dir/CheckSymbolExists.c.o   -c /home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c: In function ‘main’:
+/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:8:19: error: ‘strlcat’ undeclared (first use in this function); did you mean ‘strncat’?
+    8 |   return ((int*)(&strlcat))[argc];
+      |                   ^~~~~~~
+      |                   strncat
+/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:8:19: note: each undeclared identifier is reported only once for each function it appears in
+make[1]: *** [CMakeFiles/cmTC_c45dc.dir/build.make:66: CMakeFiles/cmTC_c45dc.dir/CheckSymbolExists.c.o] Error 1
+make[1]: Leaving directory '/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp'
+make: *** [Makefile:121: cmTC_c45dc/fast] Error 2
+
+
+File /home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <string.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef strlcat
+  return ((int*)(&strlcat))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+Performing C SOURCE FILE Test COMPILER_HAS_HIDDEN_INLINE_VISIBILITY failed with the following output:
+Change Dir: /home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_62b84/fast && /usr/bin/make -f CMakeFiles/cmTC_62b84.dir/build.make CMakeFiles/cmTC_62b84.dir/build
+make[1]: Entering directory '/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_62b84.dir/src.c.o
+/usr/bin/cc   -DCOMPILER_HAS_HIDDEN_INLINE_VISIBILITY   -fvisibility-inlines-hidden -std=gnu99 -o CMakeFiles/cmTC_62b84.dir/src.c.o   -c /home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/src.c
+cc1: warning: command line option '-fvisibility-inlines-hidden' is valid for C++/ObjC++ but not for C
+Linking C executable cmTC_62b84
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_62b84.dir/link.txt --verbose=1
+/usr/bin/cc  -DCOMPILER_HAS_HIDDEN_INLINE_VISIBILITY    CMakeFiles/cmTC_62b84.dir/src.c.o  -o cmTC_62b84 
+make[1]: Leaving directory '/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C SOURCE FILE Test CMAKE_HAVE_LIBC_PTHREAD failed with the following output:
+Change Dir: /home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_01804/fast && /usr/bin/make -f CMakeFiles/cmTC_01804.dir/build.make CMakeFiles/cmTC_01804.dir/build
+make[1]: Entering directory '/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_01804.dir/src.c.o
+/usr/bin/cc   -DCMAKE_HAVE_LIBC_PTHREAD   -std=gnu99 -o CMakeFiles/cmTC_01804.dir/src.c.o   -c /home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_01804
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_01804.dir/link.txt --verbose=1
+/usr/bin/cc  -DCMAKE_HAVE_LIBC_PTHREAD    CMakeFiles/cmTC_01804.dir/src.c.o  -o cmTC_01804 
+/usr/bin/ld: CMakeFiles/cmTC_01804.dir/src.c.o: in function `main':
+src.c:(.text+0x48): undefined reference to `pthread_create'
+/usr/bin/ld: src.c:(.text+0x50): undefined reference to `pthread_detach'
+/usr/bin/ld: src.c:(.text+0x5c): undefined reference to `pthread_join'
+collect2: error: ld returned 1 exit status
+make[1]: *** [CMakeFiles/cmTC_01804.dir/build.make:87: cmTC_01804] Error 1
+make[1]: Leaving directory '/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp'
+make: *** [Makefile:121: cmTC_01804/fast] Error 2
+
+
+Source file was:
+#include <pthread.h>
+
+void* test_func(void* data)
+{
+  return data;
+}
+
+int main(void)
+{
+  pthread_t thread;
+  pthread_create(&thread, NULL, test_func, NULL);
+  pthread_detach(thread);
+  pthread_join(thread, NULL);
+  pthread_atfork(NULL, NULL, NULL);
+  pthread_exit(NULL);
+
+  return 0;
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_bf3d5/fast && /usr/bin/make -f CMakeFiles/cmTC_bf3d5.dir/build.make CMakeFiles/cmTC_bf3d5.dir/build
+make[1]: Entering directory '/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_bf3d5.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create   -std=gnu99 -o CMakeFiles/cmTC_bf3d5.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.16/Modules/CheckFunctionExists.c
+Linking C executable cmTC_bf3d5
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_bf3d5.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_bf3d5.dir/CheckFunctionExists.c.o  -o cmTC_bf3d5  -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+make[1]: *** [CMakeFiles/cmTC_bf3d5.dir/build.make:87: cmTC_bf3d5] Error 1
+make[1]: Leaving directory '/home/unitree/robotscene/external/cyclonedds_0.10.2/build/CMakeFiles/CMakeTmp'
+make: *** [Makefile:121: cmTC_bf3d5/fast] Error 2
+
+
+

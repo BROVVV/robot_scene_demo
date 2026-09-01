@@ -6,9 +6,15 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "${script_dir}/../.." && pwd)"
 workspace="${project_root}/ros2_ws"
+
+set +u
+# shellcheck disable=SC1091
+source "${script_dir}/setup_environment.sh"
+set -u
+
 config="${GO2W_HESAI_CONFIG:-${project_root}/configs/go2w/hesai_pandarxt16.yaml}"
-interface="${GO2W_HESAI_INTERFACE:-enp6s0}"
-host_address="${GO2W_HESAI_HOST_ADDRESS:-192.168.123.99}"
+interface="${GO2W_HESAI_INTERFACE:-${GO2W_INTERFACE}}"
+host_address="${GO2W_HESAI_HOST_ADDRESS:-${GO2W_HOST_IP}}"
 device_address="${GO2W_HESAI_DEVICE_ADDRESS:-192.168.123.20}"
 preprocess_config="${GO2W_HESAI_PREPROCESS_CONFIG:-${project_root}/configs/go2w/hesai_pandarxt16_preprocess.yaml}"
 with_preprocessor="${GO2W_HESAI_WITH_PREPROCESSOR:-0}"
@@ -44,13 +50,6 @@ if [[ ! -r "${workspace}/install/setup.bash" ]]; then
   printf 'ERROR: ROS workspace is not built: %s\n' "${workspace}" >&2
   exit 2
 fi
-
-set +u
-# shellcheck disable=SC1091
-source /opt/ros/humble/setup.bash
-# shellcheck disable=SC1091
-source "${workspace}/install/setup.bash"
-set -u
 
 if ! ros2 pkg prefix hesai_ros_driver >/dev/null 2>&1; then
   printf '%s\n' 'ERROR: hesai_ros_driver is not installed in this workspace.' >&2

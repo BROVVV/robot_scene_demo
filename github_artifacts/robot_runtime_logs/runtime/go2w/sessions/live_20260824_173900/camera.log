@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/unitree/robotscene/scripts/go2w/realsense_rgbd_bridge.py", line 134, in <module>
+    raise SystemExit(main())
+  File "/home/unitree/robotscene/scripts/go2w/realsense_rgbd_bridge.py", line 123, in main
+    node.spin_once()
+  File "/home/unitree/robotscene/scripts/go2w/realsense_rgbd_bridge.py", line 78, in spin_once
+    color_msg = self.bridge.cv2_to_imgmsg(color, encoding="bgr8")
+  File "/opt/ros/foxy/lib/python3.8/site-packages/cv_bridge/core.py", line 276, in cv2_to_imgmsg
+    if self.cvtype_to_name[self.encoding_to_cvtype2(encoding)] != cv_type:
+KeyError: 16

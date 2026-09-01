@@ -14,6 +14,26 @@ SPATIAL_QUALITY_RGB_ONLY = "RGB_ONLY"
 SPATIAL_QUALITY_CAMERA_LOCAL = "CAMERA_LOCAL"
 SPATIAL_QUALITY_RELATIVE_RGBD = "RELATIVE_RGBD"
 SPATIAL_QUALITY_METRIC_RGBD = "METRIC_RGBD"
+SPATIAL_QUALITY_METRIC_LIDAR = "METRIC_LIDAR"
+
+# 计划书 §9.3 / 不变量 3：不同 frame 的坐标严禁裸混。provider 收到与自身
+# map frame 不一致的 pose 时抛出该异常（调用方必须 transform 或降级）。
+SPATIAL_QUALITY_NO_GLOBAL_POSE = "NO_GLOBAL_SPATIAL_POSE"
+
+
+class SpatialFrameMismatch(ValueError):
+    """A pose/map frame does not match the SpatialProvider's world frame."""
+
+    def __init__(self, pose_frame: str, map_frame: str, detail: str = "") -> None:
+        self.pose_frame = str(pose_frame)
+        self.map_frame = str(map_frame)
+        message = (
+            f"SPATIAL_FRAME_MISMATCH: pose_frame={pose_frame} "
+            f"map_frame={map_frame}"
+        )
+        if detail:
+            message += f" ({detail})"
+        super().__init__(message)
 
 # High-level spatial exploration intents (plan §62)
 INTENT_EXPLORE_FRONTIER = "EXPLORE_FRONTIER"
@@ -122,6 +142,9 @@ class PlaceNode:
     pose_observation_count: int = 0
     pose_mean: SpatialPose | None = None
     last_pose_update: float | None = None
+    scene_type: str = ""
+    memory_summary: str = ""
+    frontier_ids: list[str] = field(default_factory=list)
     provenance: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -141,6 +164,16 @@ class MovementEdge:
     observed_displacement_m: float | None = None
     observed_yaw_delta_deg: float | None = None
     navigation_result: str = "succeeded"
+    success_count: int = 0
+    failure_count: int = 0
+    blocked_count: int = 0
+    recovery_count: int = 0
+    last_success_at: float | None = None
+    last_failure_at: float | None = None
+    status: str = "OPEN"
+    last_failure_reason: str = ""
+    traversability_score: float = 1.0
+    cost: float = 1.0
     provenance: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

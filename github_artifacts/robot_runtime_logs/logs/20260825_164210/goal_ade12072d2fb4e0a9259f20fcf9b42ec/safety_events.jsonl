@@ -1,0 +1,5 @@
+{"event":"stop_and_verify","message":"pre_goal","timestamp":"1787649608772164"}
+{"event":"stop_verification","message":"responses=failed stationary=true","timestamp":"1787649611366900"}
+{"event":"motion_failure","message":"pre-goal STOP or stationary verification failed","timestamp":"1787649611367053"}
+{"event":"stop_and_verify","message":"final","timestamp":"1787649611367076"}
+{"event":"stop_verification","message":"responses=failed stationary=true","timestamp":"1787649611955778"}

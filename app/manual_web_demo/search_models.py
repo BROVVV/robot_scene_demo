@@ -37,6 +37,9 @@ class SearchStartRequest:
     rgbd_base_url: str = "http://192.168.123.18:8080"
     # Live semantic spatial exploration loop
     spatial_v2: bool = False
+    # Explicit provider selection.  This keeps metric LiDAR mapping distinct
+    # from the legacy RTAB-Map compatibility switch.
+    spatial_provider: str = "camera"
     # Use RTAB-Map ROS2 topics as the SpatialProvider
     rtabmap: bool = False
     # optional budget overrides
@@ -109,6 +112,10 @@ class SearchStartRequest:
                 value.get("rgbd_base_url") or defaults["rgbd_base_url"]
             ),
             spatial_v2=bool(value.get("spatial_v2", defaults.get("spatial_v2", False))),
+            spatial_provider=str(
+                value.get("spatial_provider")
+                or defaults.get("spatial_provider", "camera")
+            ),
             rtabmap=bool(value.get("rtabmap", defaults.get("rtabmap", False))),
             max_seconds=_optional_float(value.get("max_seconds")),
             max_planning_cycles=_optional_int(value.get("max_planning_cycles")),
@@ -128,6 +135,8 @@ class SearchStartRequest:
             return f"unsupported reasoner: {self.reasoner}"
         if self.backend not in {"go2w_experimental", "mock", "mock_metric"}:
             return f"unsupported backend: {self.backend}"
+        if self.spatial_provider not in {"camera", "rtabmap", "plain_slam"}:
+            return f"unsupported spatial_provider: {self.spatial_provider}"
         return None
 
 
@@ -173,6 +182,7 @@ def load_search_defaults() -> dict[str, Any]:
         "rgbd_source": False,
         "rgbd_base_url": "http://192.168.123.18:8080",
         "spatial_v2": False,
+        "spatial_provider": "camera",
         "rtabmap": False,
         "max_search_seconds": None,
         "max_planning_cycles": None,
@@ -194,6 +204,8 @@ def load_search_defaults() -> dict[str, Any]:
                 defaults["rgbd_base_url"] = str(search["rgbd_base_url"])
             if search.get("spatial_v2") is not None:
                 defaults["spatial_v2"] = bool(search["spatial_v2"])
+            if search.get("spatial_provider"):
+                defaults["spatial_provider"] = str(search["spatial_provider"])
             if search.get("rtabmap") is not None:
                 defaults["rtabmap"] = bool(search["rtabmap"])
             for key in ("max_search_seconds", "max_planning_cycles",
@@ -225,6 +237,10 @@ def load_search_defaults() -> dict[str, Any]:
         # Backward-compatible launcher contract: requesting real autonomous
         # motion means using the existing supervised experiment profile.
         defaults["operator_supervised_experiment"] = True
+    if os.getenv("AUTONOMOUS_SEARCH_SPATIAL_PROVIDER"):
+        defaults["spatial_provider"] = os.getenv(
+            "AUTONOMOUS_SEARCH_SPATIAL_PROVIDER", "camera"
+        ).strip()
     return defaults
 
 

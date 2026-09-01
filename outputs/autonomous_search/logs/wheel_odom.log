@@ -1,0 +1,332 @@
+[INFO] [launch]: All log files can be found below /home/mxt/.ros/log/2026-08-31-18-48-05-722164-mxt-GP76-Leopard-10UG-879653
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [go2w_wheel_odom-1]: process started with pid [879654]
+[go2w_wheel_odom-1] [INFO] [1788173286.217249580] [go2w_wheel_odom]: wheel odometry ready: radius=0.0890 m wheels=12..15 lio_fusion=True lio_weight=0.35
+[go2w_wheel_odom-1] 1788179505.587611 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179507.187608 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179510.186827 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179510.286675 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179510.286869 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179510.386941 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179510.486980 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179510.587072 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179510.687111 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179510.787173 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179510.987233 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179511.187317 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179511.587409 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179511.987500 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179512.787620 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179513.587723 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179518.286732 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179526.286793 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179534.286864 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179542.286912 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179550.287038 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179558.287051 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179566.287110 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179574.287289 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179582.287293 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179590.287428 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179598.287442 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179606.287588 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179614.287640 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179622.287611 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179630.287774 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179638.287750 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179646.287810 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179654.287868 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179662.287929 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179670.287986 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179678.288044 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179686.288101 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179694.288231 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179702.288236 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179710.288293 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179718.288384 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179726.288482 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179734.288569 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179742.288661 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179750.288705 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179758.288793 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179766.288840 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179774.288945 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179782.289001 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179790.289060 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179798.289118 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179806.289177 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179814.289268 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179822.289360 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179830.289537 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179838.289651 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179846.289609 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179854.289777 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179862.289835 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179870.289895 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179878.289953 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179886.290010 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179894.290067 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179902.290129 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179910.290267 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179918.290291 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179926.290449 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179934.290486 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179942.290597 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179950.290609 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179958.290664 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179966.290782 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179974.290806 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179982.290863 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179990.290923 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788179998.290981 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180006.291042 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180014.291161 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180022.291268 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180030.291272 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180038.291453 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180046.291519 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180054.291635 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180062.291806 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180070.291877 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180078.291940 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180086.292039 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180094.292132 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180102.292232 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180110.292289 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180118.292430 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180126.292505 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180134.292609 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180142.292574 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180150.292669 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180158.292769 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180166.292805 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180174.292898 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180182.292953 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180190.293181 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180198.293246 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180206.293334 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180214.293425 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180222.293517 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180230.293627 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180238.293663 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180246.293724 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180254.293875 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180262.293894 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180270.293954 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180278.294011 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180286.294080 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180294.294215 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180302.294309 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180310.294401 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180318.294577 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180326.294566 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180334.294673 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180342.294752 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180350.294784 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180358.294839 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180366.294934 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180374.294991 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180382.295172 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180390.295186 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180398.295271 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180406.295473 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180414.295600 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180422.295612 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180430.295784 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180438.295878 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180446.295938 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180454.296083 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180462.296091 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180470.296149 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180478.296216 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180486.296303 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180494.296386 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180502.296444 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180510.296504 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180518.296596 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180526.296663 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180534.296796 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180542.296818 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180550.296867 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180558.296932 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180566.296983 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180574.297085 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180582.297126 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180590.297242 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180598.297333 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180606.297431 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180614.297528 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180622.297717 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180630.297722 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180638.297780 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180646.297837 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180654.297898 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180662.298060 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180670.298117 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180678.298211 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180686.298310 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180694.298495 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180702.298571 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180710.298607 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180718.298705 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180726.298760 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180734.298871 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180742.298956 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180750.299048 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180758.299104 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180766.299219 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180774.299243 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180782.299325 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180790.299409 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180798.299498 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180806.299656 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180814.299703 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180822.299801 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180830.299915 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180838.300010 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180846.300107 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180854.300197 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180862.300287 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180870.300376 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180878.300445 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180886.300512 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180894.300634 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180902.300660 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180910.300714 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180918.300781 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180926.300835 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180934.300901 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180942.300991 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180950.301061 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180958.301094 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180966.301184 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180974.301291 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180982.301363 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180990.301613 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788180998.301569 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181006.301718 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181014.301786 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181022.301845 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181030.301897 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181038.301956 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181046.302049 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181054.302141 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181062.302204 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181070.302290 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181078.302390 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181086.302486 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181094.302599 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181102.302656 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181110.302774 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181118.302839 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181126.302924 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181134.303004 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181142.303095 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181150.303190 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181158.303290 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181166.303344 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181174.303432 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181182.303522 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181190.303637 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181198.303690 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181206.303747 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181214.303806 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181222.303865 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181230.303964 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181238.303993 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181246.304053 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181254.304111 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181262.304203 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181270.304300 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181278.304394 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181286.304489 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181294.304581 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181302.304648 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181310.304804 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181318.304846 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181326.304910 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181334.305017 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181342.305125 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181350.305166 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181358.305285 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181366.305389 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181374.305408 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181382.305469 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181390.305524 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181398.305672 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181406.305715 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181414.305773 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181422.305838 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181430.305898 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181438.305949 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181446.306008 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181454.306142 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181462.306154 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181470.306217 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181478.306274 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181486.306358 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181494.306451 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181502.306576 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181510.306675 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181518.306761 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181526.306882 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181534.306912 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181542.306970 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181550.307025 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181558.307188 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181566.307213 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181574.307302 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181582.307372 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181590.307437 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181598.307499 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181606.307653 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181614.307687 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181622.307754 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181630.307812 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181638.307906 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181646.307966 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181654.308063 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181662.308121 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181670.308217 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181678.308280 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181686.308342 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181694.308428 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181702.308525 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181710.308619 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181718.308686 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181726.308750 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181734.308817 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181742.308870 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181750.308943 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] 1788181758.309001 [0]        tev: ddsi_udp_conn_write to udp/239.255.0.1:7400 failed with retcode -1
+[go2w_wheel_odom-1] [WARN] [1788181779.624033396] [go2w_wheel_odom]: wheel q jump detected; skipping integration
+[go2w_wheel_odom-1] Traceback (most recent call last):
+[go2w_wheel_odom-1]   File "/home/mxt/robotscene/ros2_ws/build/go2w_lio_bringup/go2w_lio_bringup/wheel_odom.py", line 387, in main
+[go2w_wheel_odom-1]     rclpy.spin(node)
+[go2w_wheel_odom-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+[go2w_wheel_odom-1]     executor.spin_once()
+[go2w_wheel_odom-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 808, in spin_once
+[go2w_wheel_odom-1]     self._spin_once_impl(timeout_sec)
+[go2w_wheel_odom-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 797, in _spin_once_impl
+[go2w_wheel_odom-1]     handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+[go2w_wheel_odom-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 780, in wait_for_ready_callbacks
+[go2w_wheel_odom-1]     return next(self._cb_iter)
+[go2w_wheel_odom-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 681, in _wait_for_ready_callbacks
+[go2w_wheel_odom-1]     raise ExternalShutdownException()
+[go2w_wheel_odom-1] rclpy.executors.ExternalShutdownException
+[go2w_wheel_odom-1] 
+[go2w_wheel_odom-1] During handling of the above exception, another exception occurred:
+[go2w_wheel_odom-1] 
+[go2w_wheel_odom-1] Traceback (most recent call last):
+[go2w_wheel_odom-1]   File "/home/mxt/robotscene/ros2_ws/install/go2w_lio_bringup/lib/go2w_lio_bringup/go2w_wheel_odom", line 33, in <module>
+[go2w_wheel_odom-1]     sys.exit(load_entry_point('go2w-lio-bringup', 'console_scripts', 'go2w_wheel_odom')())
+[go2w_wheel_odom-1]   File "/home/mxt/robotscene/ros2_ws/build/go2w_lio_bringup/go2w_lio_bringup/wheel_odom.py", line 390, in main
+[go2w_wheel_odom-1]     rclpy.shutdown()
+[go2w_wheel_odom-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 130, in shutdown
+[go2w_wheel_odom-1]     _shutdown(context=context)
+[go2w_wheel_odom-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/utilities.py", line 58, in shutdown
+[go2w_wheel_odom-1]     return context.shutdown()
+[go2w_wheel_odom-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/context.py", line 102, in shutdown
+[go2w_wheel_odom-1]     self.__context.shutdown()
+[go2w_wheel_odom-1] rclpy._rclpy_pybind11.RCLError: failed to shutdown: rcl_shutdown already called on the given context, at ./src/rcl/init.c:241
+[ERROR] [go2w_wheel_odom-1]: process has died [pid 879654, exit code 1, cmd '/home/mxt/robotscene/ros2_ws/install/go2w_lio_bringup/lib/go2w_lio_bringup/go2w_wheel_odom --ros-args -r __node:=go2w_wheel_odom --params-file /tmp/launch_params_4fi9w3qf'].

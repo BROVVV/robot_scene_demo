@@ -1,0 +1,529 @@
+[0.000000] (-) TimerEvent: {}
+[0.000244] (-) JobUnselected: {'identifier': 'go2w_camera_bridge'}
+[0.000314] (-) JobUnselected: {'identifier': 'go2w_cmd_vel_bridge'}
+[0.000377] (-) JobUnselected: {'identifier': 'go2w_control_arbiter'}
+[0.000435] (-) JobUnselected: {'identifier': 'go2w_description'}
+[0.000470] (-) JobUnselected: {'identifier': 'go2w_lidar_preprocessor'}
+[0.000504] (-) JobUnselected: {'identifier': 'go2w_lio_bringup'}
+[0.000534] (-) JobUnselected: {'identifier': 'go2w_rgb_lidar_fusion'}
+[0.000564] (-) JobUnselected: {'identifier': 'go2w_sensor_time_bridge'}
+[0.000592] (-) JobUnselected: {'identifier': 'hesai_ros_driver'}
+[0.000620] (-) JobUnselected: {'identifier': 'plain_slam_ros2'}
+[0.000670] (-) JobUnselected: {'identifier': 'robot_scene_live_bridge'}
+[0.000703] (-) JobUnselected: {'identifier': 'robot_scene_nav_bringup'}
+[0.000743] (go2w_plain_slam_bridge) JobQueued: {'identifier': 'go2w_plain_slam_bridge', 'dependencies': OrderedDict()}
+[0.000786] (go2w_plain_slam_bridge) JobStarted: {'identifier': 'go2w_plain_slam_bridge'}
+[0.092229] (-) TimerEvent: {}
+[0.193298] (-) TimerEvent: {}
+[0.293767] (-) TimerEvent: {}
+[0.394648] (-) TimerEvent: {}
+[0.501557] (-) TimerEvent: {}
+[0.605389] (-) TimerEvent: {}
+[0.651801] (go2w_plain_slam_bridge) JobProgress: {'identifier': 'go2w_plain_slam_bridge', 'progress': 'cmake'}
+[0.653698] (go2w_plain_slam_bridge) Command: {'cmd': ['/usr/bin/cmake', '/home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge', '-DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55382 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '26'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge'), ('SSH_CONNECTION', '192.168.123.99 55382 192.168.123.18 22'), ('PYTHONPATH', '/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/opt/ros/foxy')]), 'shell': False}
+[0.705561] (-) TimerEvent: {}
+[0.707728] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found ament_cmake: 0.9.12 (/opt/ros/foxy/share/ament_cmake/cmake)\n'}
+[0.777458] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") \n'}
+[0.777935] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[0.805679] (-) TimerEvent: {}
+[0.906035] (-) TimerEvent: {}
+[1.012982] (-) TimerEvent: {}
+[1.113311] (-) TimerEvent: {}
+[1.213665] (-) TimerEvent: {}
+[1.314131] (-) TimerEvent: {}
+[1.414468] (-) TimerEvent: {}
+[1.514858] (-) TimerEvent: {}
+[1.615194] (-) TimerEvent: {}
+[1.715542] (-) TimerEvent: {}
+[1.775651] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Override CMake install command with custom implementation using symlinks instead of copying resources\n'}
+[1.815749] (-) TimerEvent: {}
+[1.889971] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found rclcpp: 2.4.3 (/opt/ros/foxy/share/rclcpp/cmake)\n'}
+[1.915933] (-) TimerEvent: {}
+[2.018365] (-) TimerEvent: {}
+[2.041333] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[2.057015] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found rosidl_adapter: 1.3.1 (/opt/ros/foxy/share/rosidl_adapter/cmake)\n'}
+[2.118562] (-) TimerEvent: {}
+[2.219338] (-) TimerEvent: {}
+[2.319683] (-) TimerEvent: {}
+[2.420100] (-) TimerEvent: {}
+[2.432739] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found OpenSSL: /usr/lib/aarch64-linux-gnu/libcrypto.so (found version "1.1.1f")  \n'}
+[2.520257] (-) TimerEvent: {}
+[2.611509] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found FastRTPS: /opt/ros/foxy/include  \n'}
+[2.629463] (-) TimerEvent: {}
+[2.732341] (-) TimerEvent: {}
+[2.837162] (-) TimerEvent: {}
+[2.938123] (-) TimerEvent: {}
+[2.946129] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[3.039218] (-) TimerEvent: {}
+[3.092261] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found rmw_implementation_cmake: 1.0.4 (/opt/ros/foxy/share/rmw_implementation_cmake/cmake)\n'}
+[3.098503] (go2w_plain_slam_bridge) StdoutLine: {'line': b"-- Using RMW implementation 'rmw_fastrtps_cpp' as default\n"}
+[3.103115] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Looking for pthread.h\n'}
+[3.139365] (-) TimerEvent: {}
+[3.239900] (-) TimerEvent: {}
+[3.341057] (-) TimerEvent: {}
+[3.397361] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Looking for pthread.h - found\n'}
+[3.397982] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD\n'}
+[3.441374] (-) TimerEvent: {}
+[3.541812] (-) TimerEvent: {}
+[3.642228] (-) TimerEvent: {}
+[3.742573] (-) TimerEvent: {}
+[3.802855] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed\n'}
+[3.803342] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Looking for pthread_create in pthreads\n'}
+[3.842746] (-) TimerEvent: {}
+[3.943156] (-) TimerEvent: {}
+[4.043580] (-) TimerEvent: {}
+[4.119990] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Looking for pthread_create in pthreads - not found\n'}
+[4.120904] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Looking for pthread_create in pthread\n'}
+[4.143716] (-) TimerEvent: {}
+[4.244078] (-) TimerEvent: {}
+[4.344464] (-) TimerEvent: {}
+[4.444854] (-) TimerEvent: {}
+[4.501854] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Looking for pthread_create in pthread - found\n'}
+[4.504584] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found Threads: TRUE  \n'}
+[4.545021] (-) TimerEvent: {}
+[4.645371] (-) TimerEvent: {}
+[4.745767] (-) TimerEvent: {}
+[4.846214] (-) TimerEvent: {}
+[4.953016] (-) TimerEvent: {}
+[5.034933] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found sensor_msgs: 2.0.5 (/opt/ros/foxy/share/sensor_msgs/cmake)\n'}
+[5.053150] (-) TimerEvent: {}
+[5.153508] (-) TimerEvent: {}
+[5.253884] (-) TimerEvent: {}
+[5.358077] (-) TimerEvent: {}
+[5.458445] (-) TimerEvent: {}
+[5.464036] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found nav_msgs: 2.0.5 (/opt/ros/foxy/share/nav_msgs/cmake)\n'}
+[5.558622] (-) TimerEvent: {}
+[5.600232] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found diagnostic_msgs: 2.0.5 (/opt/ros/foxy/share/diagnostic_msgs/cmake)\n'}
+[5.658835] (-) TimerEvent: {}
+[5.759272] (-) TimerEvent: {}
+[5.805178] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found tf2: 0.13.14 (/opt/ros/foxy/share/tf2/cmake)\n'}
+[5.833159] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found tf2_ros: 0.13.14 (/opt/ros/foxy/share/tf2_ros/cmake)\n'}
+[5.859439] (-) TimerEvent: {}
+[5.974244] (-) TimerEvent: {}
+[6.074602] (-) TimerEvent: {}
+[6.181008] (-) TimerEvent: {}
+[6.288984] (-) TimerEvent: {}
+[6.389382] (-) TimerEvent: {}
+[6.497007] (-) TimerEvent: {}
+[6.597413] (-) TimerEvent: {}
+[6.684494] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found ament_cmake_gtest: 0.9.12 (/opt/ros/foxy/share/ament_cmake_gtest/cmake)\n'}
+[6.697217] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Found ament_lint_auto: 0.9.8 (/opt/ros/foxy/share/ament_lint_auto/cmake)\n'}
+[6.697743] (-) TimerEvent: {}
+[6.797967] (-) TimerEvent: {}
+[6.898334] (-) TimerEvent: {}
+[6.998704] (-) TimerEvent: {}
+[7.004324] (go2w_plain_slam_bridge) StdoutLine: {'line': b"-- Found gtest sources under '/opt/ros/foxy/src/gtest_vendor': C++ tests using 'Google Test' will be built\n"}
+[7.010967] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Check if compiler accepts -pthread\n'}
+[7.099268] (-) TimerEvent: {}
+[7.201038] (-) TimerEvent: {}
+[7.301387] (-) TimerEvent: {}
+[7.339014] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Check if compiler accepts -pthread - yes\n'}
+[7.361808] (go2w_plain_slam_bridge) StdoutLine: {'line': b"-- Added test 'copyright' to check source files copyright and LICENSE\n"}
+[7.364191] (go2w_plain_slam_bridge) StdoutLine: {'line': b"-- Added test 'cppcheck' to perform static code analysis on C / C++ code\n"}
+[7.364755] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Configured cppcheck include dirs: $<BUILD_INTERFACE:/home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge/include>\n'}
+[7.364994] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Configured cppcheck exclude dirs and/or files: \n'}
+[7.368939] (go2w_plain_slam_bridge) StdoutLine: {'line': b"-- Added test 'cpplint' to check C / C++ code against the Google style\n"}
+[7.369396] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Configured cpplint exclude dirs and/or files: \n'}
+[7.370107] (go2w_plain_slam_bridge) StdoutLine: {'line': b"-- Added test 'flake8' to check Python code syntax and style conventions\n"}
+[7.371866] (go2w_plain_slam_bridge) StdoutLine: {'line': b"-- Added test 'lint_cmake' to check CMake code style\n"}
+[7.373220] (go2w_plain_slam_bridge) StdoutLine: {'line': b"-- Added test 'pep257' to check Python code against some of the style conventions in PEP 257\n"}
+[7.378031] (go2w_plain_slam_bridge) StdoutLine: {'line': b"-- Added test 'uncrustify' to check C / C++ code style\n"}
+[7.378441] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Configured uncrustify additional arguments: \n'}
+[7.378608] (go2w_plain_slam_bridge) StdoutLine: {'line': b"-- Added test 'xmllint' to check XML markup files\n"}
+[7.387432] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Configuring done\n'}
+[7.401556] (-) TimerEvent: {}
+[7.502556] (-) TimerEvent: {}
+[7.609019] (-) TimerEvent: {}
+[7.641450] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Generating done\n'}
+[7.641936] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Build files have been written to: /home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge\n'}
+[7.679595] (go2w_plain_slam_bridge) CommandEnded: {'returncode': 0}
+[7.681652] (go2w_plain_slam_bridge) JobProgress: {'identifier': 'go2w_plain_slam_bridge', 'progress': 'build'}
+[7.683221] (go2w_plain_slam_bridge) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge', '--', '-j4', '-l4'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55382 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '26'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge'), ('SSH_CONNECTION', '192.168.123.99 55382 192.168.123.18 22'), ('PYTHONPATH', '/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/opt/ros/foxy')]), 'shell': False}
+[7.709262] (-) TimerEvent: {}
+[7.809618] (-) TimerEvent: {}
+[7.911307] (-) TimerEvent: {}
+[7.930522] (go2w_plain_slam_bridge) StdoutLine: {'line': b'Scanning dependencies of target pandar_slam_adapter\n'}
+[7.987671] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[  5%] Building CXX object CMakeFiles/pandar_slam_adapter.dir/src/pandar_slam_adapter.cpp.o\n'}
+[8.011453] (-) TimerEvent: {}
+[8.111863] (-) TimerEvent: {}
+[8.218477] (-) TimerEvent: {}
+[8.322379] (-) TimerEvent: {}
+[8.423901] (-) TimerEvent: {}
+[8.529023] (-) TimerEvent: {}
+[8.631070] (-) TimerEvent: {}
+[8.731462] (-) TimerEvent: {}
+[8.831885] (-) TimerEvent: {}
+[8.932301] (-) TimerEvent: {}
+[9.032718] (-) TimerEvent: {}
+[9.133215] (-) TimerEvent: {}
+[9.233594] (-) TimerEvent: {}
+[9.334007] (-) TimerEvent: {}
+[9.434391] (-) TimerEvent: {}
+[9.545021] (-) TimerEvent: {}
+[9.646174] (-) TimerEvent: {}
+[9.746612] (-) TimerEvent: {}
+[9.847022] (-) TimerEvent: {}
+[9.947460] (-) TimerEvent: {}
+[10.047827] (-) TimerEvent: {}
+[10.148401] (-) TimerEvent: {}
+[10.248839] (-) TimerEvent: {}
+[10.349260] (-) TimerEvent: {}
+[10.453024] (-) TimerEvent: {}
+[10.554402] (-) TimerEvent: {}
+[10.655198] (-) TimerEvent: {}
+[10.761061] (-) TimerEvent: {}
+[10.865118] (-) TimerEvent: {}
+[10.965480] (-) TimerEvent: {}
+[11.065857] (-) TimerEvent: {}
+[11.166224] (-) TimerEvent: {}
+[11.266594] (-) TimerEvent: {}
+[11.367067] (-) TimerEvent: {}
+[11.469466] (-) TimerEvent: {}
+[11.570960] (-) TimerEvent: {}
+[11.674726] (-) TimerEvent: {}
+[11.775163] (-) TimerEvent: {}
+[11.876482] (-) TimerEvent: {}
+[11.977258] (-) TimerEvent: {}
+[12.077679] (-) TimerEvent: {}
+[12.178035] (-) TimerEvent: {}
+[12.278391] (-) TimerEvent: {}
+[12.378766] (-) TimerEvent: {}
+[12.479131] (-) TimerEvent: {}
+[12.579549] (-) TimerEvent: {}
+[12.679900] (-) TimerEvent: {}
+[12.780278] (-) TimerEvent: {}
+[12.880637] (-) TimerEvent: {}
+[12.981003] (-) TimerEvent: {}
+[13.084770] (-) TimerEvent: {}
+[13.185214] (-) TimerEvent: {}
+[13.287179] (-) TimerEvent: {}
+[13.387586] (-) TimerEvent: {}
+[13.487991] (-) TimerEvent: {}
+[13.589071] (-) TimerEvent: {}
+[13.689423] (-) TimerEvent: {}
+[13.789787] (-) TimerEvent: {}
+[13.890388] (-) TimerEvent: {}
+[13.990856] (-) TimerEvent: {}
+[14.091327] (-) TimerEvent: {}
+[14.191686] (-) TimerEvent: {}
+[14.292175] (-) TimerEvent: {}
+[14.392534] (-) TimerEvent: {}
+[14.493004] (-) TimerEvent: {}
+[14.593571] (-) TimerEvent: {}
+[14.694130] (-) TimerEvent: {}
+[14.794497] (-) TimerEvent: {}
+[14.894835] (-) TimerEvent: {}
+[14.995216] (-) TimerEvent: {}
+[15.099858] (-) TimerEvent: {}
+[15.202252] (-) TimerEvent: {}
+[15.303755] (-) TimerEvent: {}
+[15.404247] (-) TimerEvent: {}
+[15.504705] (-) TimerEvent: {}
+[15.605211] (-) TimerEvent: {}
+[15.705714] (-) TimerEvent: {}
+[15.806077] (-) TimerEvent: {}
+[15.906510] (-) TimerEvent: {}
+[16.009057] (-) TimerEvent: {}
+[16.109429] (-) TimerEvent: {}
+[16.209790] (-) TimerEvent: {}
+[16.310154] (-) TimerEvent: {}
+[16.410530] (-) TimerEvent: {}
+[16.511065] (-) TimerEvent: {}
+[16.611461] (-) TimerEvent: {}
+[16.711800] (-) TimerEvent: {}
+[16.812199] (-) TimerEvent: {}
+[16.913354] (-) TimerEvent: {}
+[17.013734] (-) TimerEvent: {}
+[17.114180] (-) TimerEvent: {}
+[17.215011] (-) TimerEvent: {}
+[17.315473] (-) TimerEvent: {}
+[17.415878] (-) TimerEvent: {}
+[17.516637] (-) TimerEvent: {}
+[17.616997] (-) TimerEvent: {}
+[17.718569] (-) TimerEvent: {}
+[17.818925] (-) TimerEvent: {}
+[17.919343] (-) TimerEvent: {}
+[18.019808] (-) TimerEvent: {}
+[18.120203] (-) TimerEvent: {}
+[18.220615] (-) TimerEvent: {}
+[18.321043] (-) TimerEvent: {}
+[18.421586] (-) TimerEvent: {}
+[18.521996] (-) TimerEvent: {}
+[18.622453] (-) TimerEvent: {}
+[18.722892] (-) TimerEvent: {}
+[18.823260] (-) TimerEvent: {}
+[18.923604] (-) TimerEvent: {}
+[19.024969] (-) TimerEvent: {}
+[19.133079] (-) TimerEvent: {}
+[19.238602] (-) TimerEvent: {}
+[19.340157] (-) TimerEvent: {}
+[19.441191] (-) TimerEvent: {}
+[19.541616] (-) TimerEvent: {}
+[19.642078] (-) TimerEvent: {}
+[19.742540] (-) TimerEvent: {}
+[19.852986] (-) TimerEvent: {}
+[19.957112] (-) TimerEvent: {}
+[20.057546] (-) TimerEvent: {}
+[20.157999] (-) TimerEvent: {}
+[20.258391] (-) TimerEvent: {}
+[20.358901] (-) TimerEvent: {}
+[20.469021] (-) TimerEvent: {}
+[20.569384] (-) TimerEvent: {}
+[20.669721] (-) TimerEvent: {}
+[20.770078] (-) TimerEvent: {}
+[20.870467] (-) TimerEvent: {}
+[20.970814] (-) TimerEvent: {}
+[21.073156] (-) TimerEvent: {}
+[21.173656] (-) TimerEvent: {}
+[21.274060] (-) TimerEvent: {}
+[21.374459] (-) TimerEvent: {}
+[21.474818] (-) TimerEvent: {}
+[21.575207] (-) TimerEvent: {}
+[21.676309] (-) TimerEvent: {}
+[21.784625] (-) TimerEvent: {}
+[21.884998] (-) TimerEvent: {}
+[21.985421] (-) TimerEvent: {}
+[22.085777] (-) TimerEvent: {}
+[22.186129] (-) TimerEvent: {}
+[22.286477] (-) TimerEvent: {}
+[22.386844] (-) TimerEvent: {}
+[22.487209] (-) TimerEvent: {}
+[22.587561] (-) TimerEvent: {}
+[22.687915] (-) TimerEvent: {}
+[22.788312] (-) TimerEvent: {}
+[22.889778] (-) TimerEvent: {}
+[22.990173] (-) TimerEvent: {}
+[23.090534] (-) TimerEvent: {}
+[23.190917] (-) TimerEvent: {}
+[23.291264] (-) TimerEvent: {}
+[23.391598] (-) TimerEvent: {}
+[23.492156] (-) TimerEvent: {}
+[23.592490] (-) TimerEvent: {}
+[23.693542] (-) TimerEvent: {}
+[23.794716] (-) TimerEvent: {}
+[23.895105] (-) TimerEvent: {}
+[23.995566] (-) TimerEvent: {}
+[24.095947] (-) TimerEvent: {}
+[24.196277] (-) TimerEvent: {}
+[24.296701] (-) TimerEvent: {}
+[24.397043] (-) TimerEvent: {}
+[24.499786] (-) TimerEvent: {}
+[24.606808] (-) TimerEvent: {}
+[24.711781] (-) TimerEvent: {}
+[24.813539] (-) TimerEvent: {}
+[24.914173] (-) TimerEvent: {}
+[25.015072] (-) TimerEvent: {}
+[25.119001] (-) TimerEvent: {}
+[25.219370] (-) TimerEvent: {}
+[25.319755] (-) TimerEvent: {}
+[25.420238] (-) TimerEvent: {}
+[25.520727] (-) TimerEvent: {}
+[25.621200] (-) TimerEvent: {}
+[25.721548] (-) TimerEvent: {}
+[25.822158] (-) TimerEvent: {}
+[25.922578] (-) TimerEvent: {}
+[26.024028] (-) TimerEvent: {}
+[26.125141] (-) TimerEvent: {}
+[26.225521] (-) TimerEvent: {}
+[26.325845] (-) TimerEvent: {}
+[26.433047] (-) TimerEvent: {}
+[26.533564] (-) TimerEvent: {}
+[26.633935] (-) TimerEvent: {}
+[26.734296] (-) TimerEvent: {}
+[26.834770] (-) TimerEvent: {}
+[26.935112] (-) TimerEvent: {}
+[27.035488] (-) TimerEvent: {}
+[27.135849] (-) TimerEvent: {}
+[27.236204] (-) TimerEvent: {}
+[27.338592] (-) TimerEvent: {}
+[27.439069] (-) TimerEvent: {}
+[27.539564] (-) TimerEvent: {}
+[27.639973] (-) TimerEvent: {}
+[27.688389] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[ 11%] Linking CXX executable pandar_slam_adapter\n'}
+[27.740166] (-) TimerEvent: {}
+[27.840563] (-) TimerEvent: {}
+[27.952993] (-) TimerEvent: {}
+[28.054747] (-) TimerEvent: {}
+[28.164655] (-) TimerEvent: {}
+[28.273016] (-) TimerEvent: {}
+[28.374432] (-) TimerEvent: {}
+[28.474793] (-) TimerEvent: {}
+[28.575175] (-) TimerEvent: {}
+[28.684455] (-) TimerEvent: {}
+[28.784833] (-) TimerEvent: {}
+[28.806139] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[ 11%] Built target pandar_slam_adapter\n'}
+[28.885044] (-) TimerEvent: {}
+[28.923449] (go2w_plain_slam_bridge) StdoutLine: {'line': b'Scanning dependencies of target pointcloud_to_occupancy\n'}
+[28.985317] (-) TimerEvent: {}
+[29.005614] (go2w_plain_slam_bridge) StdoutLine: {'line': b'[ 16%] Building CXX object CMakeFiles/pointcloud_to_occupancy.dir/src/pointcloud_to_occupancy.cpp.o\n'}
+[29.085468] (-) TimerEvent: {}
+[29.185900] (-) TimerEvent: {}
+[29.286245] (-) TimerEvent: {}
+[29.386592] (-) TimerEvent: {}
+[29.486988] (-) TimerEvent: {}
+[29.587341] (-) TimerEvent: {}
+[29.687830] (-) TimerEvent: {}
+[29.788474] (-) TimerEvent: {}
+[29.888838] (-) TimerEvent: {}
+[29.993003] (-) TimerEvent: {}
+[30.093372] (-) TimerEvent: {}
+[30.193726] (-) TimerEvent: {}
+[30.294118] (-) TimerEvent: {}
+[30.394491] (-) TimerEvent: {}
+[30.497781] (-) TimerEvent: {}
+[30.598205] (-) TimerEvent: {}
+[30.698567] (-) TimerEvent: {}
+[30.798990] (-) TimerEvent: {}
+[30.899349] (-) TimerEvent: {}
+[30.999713] (-) TimerEvent: {}
+[31.100198] (-) TimerEvent: {}
+[31.200606] (-) TimerEvent: {}
+[31.301177] (-) TimerEvent: {}
+[31.405717] (-) TimerEvent: {}
+[31.506091] (-) TimerEvent: {}
+[31.606479] (-) TimerEvent: {}
+[31.706847] (-) TimerEvent: {}
+[31.807176] (-) TimerEvent: {}
+[31.907519] (-) TimerEvent: {}
+[32.008938] (-) TimerEvent: {}
+[32.113004] (-) TimerEvent: {}
+[32.215767] (-) TimerEvent: {}
+[32.318817] (-) TimerEvent: {}
+[32.420425] (-) TimerEvent: {}
+[32.520837] (-) TimerEvent: {}
+[32.622234] (-) TimerEvent: {}
+[32.723575] (-) TimerEvent: {}
+[32.823956] (-) TimerEvent: {}
+[32.924319] (-) TimerEvent: {}
+[33.024693] (-) TimerEvent: {}
+[33.125971] (-) TimerEvent: {}
+[33.226491] (-) TimerEvent: {}
+[33.331733] (-) TimerEvent: {}
+[33.432102] (-) TimerEvent: {}
+[33.532454] (-) TimerEvent: {}
+[33.632787] (-) TimerEvent: {}
+[33.733196] (-) TimerEvent: {}
+[33.833547] (-) TimerEvent: {}
+[33.933925] (-) TimerEvent: {}
+[34.034297] (-) TimerEvent: {}
+[34.134689] (-) TimerEvent: {}
+[34.235062] (-) TimerEvent: {}
+[34.335430] (-) TimerEvent: {}
+[34.435958] (-) TimerEvent: {}
+[34.536349] (-) TimerEvent: {}
+[34.626634] (go2w_plain_slam_bridge) StderrLine: {'line': b'In file included from /home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge/src/pointcloud_to_occupancy.cpp:37:\n'}
+[34.627217] (go2w_plain_slam_bridge) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge/include/go2w_plain_slam_bridge/occupancy_grid.hpp: In member function \xe2\x80\x98void go2w_plain_slam_bridge::OccupancyGrid2D::add_log_odds(int, int, double)\xe2\x80\x99:\n'}
+[34.627414] (go2w_plain_slam_bridge) StderrLine: {'line': b'/home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge/include/go2w_plain_slam_bridge/occupancy_grid.hpp:108:18: error: \xe2\x80\x98clamp\xe2\x80\x99 is not a member of \xe2\x80\x98std\xe2\x80\x99\n'}
+[34.627571] (go2w_plain_slam_bridge) StderrLine: {'line': b'  108 |     value = std::clamp(value + delta, params_.log_odds_min, params_.log_odds_max);\n'}
+[34.627703] (go2w_plain_slam_bridge) StderrLine: {'line': b'      |                  ^~~~~\n'}
+[34.636516] (-) TimerEvent: {}
+[34.737139] (-) TimerEvent: {}
+[34.837531] (-) TimerEvent: {}
+[34.938177] (-) TimerEvent: {}
+[35.038518] (-) TimerEvent: {}
+[35.138932] (-) TimerEvent: {}
+[35.239440] (-) TimerEvent: {}
+[35.339810] (-) TimerEvent: {}
+[35.440212] (-) TimerEvent: {}
+[35.540727] (-) TimerEvent: {}
+[35.641114] (-) TimerEvent: {}
+[35.741519] (-) TimerEvent: {}
+[35.847895] (-) TimerEvent: {}
+[35.948433] (-) TimerEvent: {}
+[36.048843] (-) TimerEvent: {}
+[36.149742] (-) TimerEvent: {}
+[36.251522] (-) TimerEvent: {}
+[36.351883] (-) TimerEvent: {}
+[36.453005] (-) TimerEvent: {}
+[36.555200] (-) TimerEvent: {}
+[36.655674] (-) TimerEvent: {}
+[36.756038] (-) TimerEvent: {}
+[36.856405] (-) TimerEvent: {}
+[36.956797] (-) TimerEvent: {}
+[37.061026] (-) TimerEvent: {}
+[37.161412] (-) TimerEvent: {}
+[37.261830] (-) TimerEvent: {}
+[37.362204] (-) TimerEvent: {}
+[37.462593] (-) TimerEvent: {}
+[37.563023] (-) TimerEvent: {}
+[37.663996] (-) TimerEvent: {}
+[37.765332] (-) TimerEvent: {}
+[37.869276] (-) TimerEvent: {}
+[37.969696] (-) TimerEvent: {}
+[38.070843] (-) TimerEvent: {}
+[38.171241] (-) TimerEvent: {}
+[38.271588] (-) TimerEvent: {}
+[38.371970] (-) TimerEvent: {}
+[38.472817] (-) TimerEvent: {}
+[38.573544] (-) TimerEvent: {}
+[38.675143] (-) TimerEvent: {}
+[38.775491] (-) TimerEvent: {}
+[38.875838] (-) TimerEvent: {}
+[38.976220] (-) TimerEvent: {}
+[39.076600] (-) TimerEvent: {}
+[39.176999] (-) TimerEvent: {}
+[39.278210] (-) TimerEvent: {}
+[39.379000] (-) TimerEvent: {}
+[39.479783] (-) TimerEvent: {}
+[39.580161] (-) TimerEvent: {}
+[39.682157] (-) TimerEvent: {}
+[39.782519] (-) TimerEvent: {}
+[39.882885] (-) TimerEvent: {}
+[39.983264] (-) TimerEvent: {}
+[40.083638] (-) TimerEvent: {}
+[40.184041] (-) TimerEvent: {}
+[40.285081] (-) TimerEvent: {}
+[40.393063] (-) TimerEvent: {}
+[40.493548] (-) TimerEvent: {}
+[40.594012] (-) TimerEvent: {}
+[40.694447] (-) TimerEvent: {}
+[40.794900] (-) TimerEvent: {}
+[40.895321] (-) TimerEvent: {}
+[40.995685] (-) TimerEvent: {}
+[41.096049] (-) TimerEvent: {}
+[41.196443] (-) TimerEvent: {}
+[41.297146] (-) TimerEvent: {}
+[41.397747] (-) TimerEvent: {}
+[41.498097] (-) TimerEvent: {}
+[41.598464] (-) TimerEvent: {}
+[41.698830] (-) TimerEvent: {}
+[41.799211] (-) TimerEvent: {}
+[41.899829] (-) TimerEvent: {}
+[42.001006] (-) TimerEvent: {}
+[42.102251] (-) TimerEvent: {}
+[42.202676] (-) TimerEvent: {}
+[42.303223] (-) TimerEvent: {}
+[42.404114] (-) TimerEvent: {}
+[42.504484] (-) TimerEvent: {}
+[42.604903] (-) TimerEvent: {}
+[42.706088] (-) TimerEvent: {}
+[42.806819] (-) TimerEvent: {}
+[42.909257] (-) TimerEvent: {}
+[43.009649] (-) TimerEvent: {}
+[43.110019] (-) TimerEvent: {}
+[43.220389] (-) TimerEvent: {}
+[43.321032] (-) TimerEvent: {}
+[43.423640] (-) TimerEvent: {}
+[43.524040] (-) TimerEvent: {}
+[43.624534] (-) TimerEvent: {}
+[43.725564] (-) TimerEvent: {}
+[43.826097] (-) TimerEvent: {}
+[43.928381] (-) TimerEvent: {}
+[44.029133] (-) TimerEvent: {}
+[44.129555] (-) TimerEvent: {}
+[44.230082] (-) TimerEvent: {}
+[44.330463] (-) TimerEvent: {}
+[44.357549] (go2w_plain_slam_bridge) StderrLine: {'line': b'make[2]: *** [CMakeFiles/pointcloud_to_occupancy.dir/build.make:63: CMakeFiles/pointcloud_to_occupancy.dir/src/pointcloud_to_occupancy.cpp.o] Error 1\n'}
+[44.358177] (go2w_plain_slam_bridge) StderrLine: {'line': b'make[1]: *** [CMakeFiles/Makefile2:219: CMakeFiles/pointcloud_to_occupancy.dir/all] Error 2\n'}
+[44.358379] (go2w_plain_slam_bridge) StderrLine: {'line': b'make: *** [Makefile:141: all] Error 2\n'}
+[44.364237] (go2w_plain_slam_bridge) CommandEnded: {'returncode': 2}
+[44.430654] (-) TimerEvent: {}
+[44.530996] (-) TimerEvent: {}
+[44.631543] (-) TimerEvent: {}
+[44.733413] (-) TimerEvent: {}
+[44.833792] (-) TimerEvent: {}
+[44.947571] (-) TimerEvent: {}
+[45.048304] (-) TimerEvent: {}
+[45.148721] (-) TimerEvent: {}
+[45.154168] (go2w_plain_slam_bridge) JobEnded: {'identifier': 'go2w_plain_slam_bridge', 'rc': 2}
+[45.157127] (-) EventReactorShutdown: {}

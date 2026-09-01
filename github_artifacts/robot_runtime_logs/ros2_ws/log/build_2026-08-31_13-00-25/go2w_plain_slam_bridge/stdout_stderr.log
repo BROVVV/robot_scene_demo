@@ -1,0 +1,31 @@
+[ 11%] Built target pandar_slam_adapter
+[ 22%] Built target pointcloud_to_occupancy
+[ 33%] Built target gtest
+[ 44%] Built target gtest_main
+[ 55%] Built target plain_slam_health_monitor
+[ 66%] Built target occupancy_projection_test
+[ 77%] Built target timestamp_policy_test
+[ 88%] Built target transform_utils_test
+[100%] Built target plain_slam_odom_adapter
+-- Install configuration: ""
+-- Execute custom install script
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/pandar_slam_adapter
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/plain_slam_odom_adapter
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/pointcloud_to_occupancy
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/plain_slam_health_monitor
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/launch/plain_slam_go2w.launch.py
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/package_run_dependencies/go2w_plain_slam_bridge
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/parent_prefix_path/go2w_plain_slam_bridge
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/ament_prefix_path.sh
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/ament_prefix_path.dsv
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/path.sh
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/path.dsv
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.bash
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.sh
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.zsh
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.dsv
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/package.dsv
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/packages/go2w_plain_slam_bridge
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/cmake/go2w_plain_slam_bridgeConfig.cmake
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/cmake/go2w_plain_slam_bridgeConfig-version.cmake
+-- Up-to-date symlink: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/package.xml

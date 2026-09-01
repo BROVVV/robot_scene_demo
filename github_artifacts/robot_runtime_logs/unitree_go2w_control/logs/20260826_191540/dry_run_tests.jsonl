@@ -1,0 +1,4 @@
+{"test": "server_available", "pass": true}
+{"test": "services_available", "pass": true}
+{"test": "timed_goal_accepted", "pass": true}
+{"test": "timed_goal_success", "pass": false, "error_code": 3}

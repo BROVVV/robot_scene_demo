@@ -1,0 +1,455 @@
+Go2-W ROS 2 ready: interface=eth0 domain=0 rmw=rmw_cyclonedds_cpp
+[INFO] [launch]: All log files can be found below /home/unitree/.ros/log/2026-08-28-11-28-28-740160-ubuntu-4464
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [python-1]: process started with pid [4555]
+[INFO] [python-2]: process started with pid [4557]
+[INFO] [go2w_motion_action_server-3]: process started with pid [4559]
+[go2w_motion_action_server-3] [INFO] [1787887709.069098816] [go2w_motion_action_server]: Go2-W motion Action ready: action=/go2w/motion dry_run=false log=/home/unitree/robotscene/unitree_go2w_control/logs/20260828_112829
+[python-2] lease bridge: id=0 alive=False mode= form=
+[python-1] [LeaseClient] lease name: sport_lease , context name: ubuntu/sport/4555
+[python-1] [LeaseClient] lease applied id: 1787887013908858 , term: 1000000
+[python-1] {"event": "lease_ready", "lease_id": 1787887013908858, "transport": "sdk_direct"}
+[python-1] {"event": "sdk_motion_executor_ready", "socket": "/tmp/go2w_sdk_motion.sock"}
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] {"event": "sdk_motion_command", "request_id": 1787888951759201184, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787888951863812576, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787888952048156864, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] {"event": "sdk_motion_command", "request_id": 1787888952382755136, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787888952485843424, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787888952689736224, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] {"event": "sdk_motion_command", "request_id": 1787892948697651552, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787892948827495776, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787892948930962624, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893016360958528, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893016470028352, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893016642210560, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893017220375904, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893017428881184, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893017631763200, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893017835938016, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893018039420928, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893018252385664, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893018463102592, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893018668720448, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893018872729600, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893019077386432, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893019281499296, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893019485348480, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893019689062784, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893019896891840, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893020101048576, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893020305496160, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893020510964288, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893020714152096, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893020922301664, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893021128440032, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893021333269088, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893021538654880, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893021703019424, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893021922092256, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893022126892576, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893022336382144, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893022538137088, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893022743624672, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893022951898112, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893023154282656, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893023356235744, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893023557686240, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893023763257280, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893023967482656, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893024170922144, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893024373575456, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893024576276032, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893024729928192, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893024933910528, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893025136986144, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893025344334912, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893025548214304, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893025753178880, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893025947747392, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893026051208384, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-1] [LeaseClient] renewal lease error. code: 3104
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893061230875104, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893061333604288, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893061439666080, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893062122327904, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893062325782752, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893062529758528, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893062733856416, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893062941723616, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893063148594016, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893063351794976, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893063556824544, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893063761119680, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893063964255136, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893064167616640, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893064371935232, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893064576473280, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893064783277536, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893064988758368, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893065196778560, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893065403086848, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893065619715808, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893065822957344, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893066026071200, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893066231569408, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893066435472736, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893066638728128, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893066847119808, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893067051356256, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893067254911744, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893067458991968, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893067612999360, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893067816272000, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893068019021344, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893068223077600, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893068426574752, "api_id": 1008, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893068631003712, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893068739233088, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893068955161344, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893070283225856, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893070489484800, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893070591916992, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893070972128608, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893071074205920, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-1] {"event": "sdk_motion_command", "request_id": 1787893071176418656, "api_id": 1003, "lease_id": 1787887013908858, "status_code": 0}
+[python-2] lease bridge: id=1787887013908858 alive=True mode= form=
+[python-2] lease bridge: id=1787887013908858 alive=True mode=ai-w form=1
+                                                                                                                                             

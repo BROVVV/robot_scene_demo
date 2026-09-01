@@ -29,6 +29,8 @@ MotionActionServer::MotionActionServer(const rclcpp::NodeOptions &options)
   const auto lease_id_topic = get_parameter("lease_id_topic").as_string();
   const auto lease_alive_topic = get_parameter("lease_alive_topic").as_string();
   const auto motion_name_topic = get_parameter("motion_name_topic").as_string();
+  const auto sdk_command_socket =
+      get_parameter("sdk_command_socket").as_string();
   const auto lease_status_timeout =
       get_parameter("lease_status_timeout_sec").as_double();
 
@@ -36,10 +38,11 @@ MotionActionServer::MotionActionServer(const rclcpp::NodeOptions &options)
   std::filesystem::create_directories(session_log_directory_);
 
   state_monitor_ = std::make_unique<MotionStateMonitor>(
-      this, sport_state_topic, low_state_topic);
+      this, sport_state_topic, low_state_topic, parameters_.require_low_state);
   sport_client_ = std::make_unique<LeasedSportClient>(
       this, sport_request_topic, sport_response_topic, lease_id_topic,
-      lease_alive_topic, lease_status_timeout, parameters_.dry_run);
+      lease_alive_topic, sdk_command_socket, lease_status_timeout,
+      parameters_.dry_run);
   sport_client_->SetEventCallback(
       [this](const std::string &kind, const RequestResult &result,
              const std::string &parameter) {
@@ -127,11 +130,14 @@ MotionActionServer::Parameters MotionActionServer::LoadParameters() {
                                  "/go2w/sport_lease/alive");
   declare_parameter<std::string>("motion_name_topic",
                                  "/go2w/motion_mode/name");
+  declare_parameter<std::string>("sdk_command_socket",
+                                 "/tmp/go2w_sdk_motion.sock");
   p.action_name = declare_parameter<std::string>("action_name", "/go2w/motion");
   p.arm_service = declare_parameter<std::string>("arm_service", "/go2w/arm");
   p.emergency_stop_service = declare_parameter<std::string>(
       "emergency_stop_service", "/go2w/emergency_stop");
   p.require_arm = declare_parameter<bool>("require_arm", true);
+  p.require_low_state = declare_parameter<bool>("require_low_state", true);
   p.dry_run = declare_parameter<bool>("dry_run", false);
   p.arm_timeout_sec = declare_parameter<double>("arm_timeout_sec", 60.0);
   p.state_timeout_sec = declare_parameter<double>("state_timeout_sec", 0.5);
@@ -634,7 +640,8 @@ void MotionActionServer::RunRelativeYaw(
     std::this_thread::sleep_for(control_period);
   }
 
-  if (parameters_.post_turn_rollback_control_sec > 0.0) {
+  if (parameters_.post_turn_rollback_control_sec > 0.0 &&
+      state_monitor_->Snapshot().low_state_received) {
     logger->LogSafety("post_turn_rollback_control", "started");
     const auto rollback_started = std::chrono::steady_clock::now();
     auto next_rollback_publish = rollback_started;
@@ -688,6 +695,9 @@ void MotionActionServer::RunRelativeYaw(
     }
     execution.post_turn_rollback_completed = true;
     logger->LogSafety("post_turn_rollback_control", "completed");
+  } else if (parameters_.post_turn_rollback_control_sec > 0.0) {
+    logger->LogSafety("post_turn_rollback_control",
+                      "skipped: lowstate unavailable");
   }
 
   if (parameters_.post_turn_zero_velocity_hold_sec > 0.0) {
@@ -876,6 +886,8 @@ void MotionActionServer::Execute(
                      {"final_mode", final_state.mode},
                      {"final_error_code", final_state.error_code},
                      {"final_yaw_rate", final_state.yaw_rate},
+                     {"require_low_state", parameters_.require_low_state},
+                     {"low_state_received", final_state.low_state_received},
                      {"wheel_evidence_strong", evidence.strong},
                      {"wheel_sample_count", evidence.sample_count},
                      {"wheel_q_peak_to_peak", evidence.q_peak_to_peak},

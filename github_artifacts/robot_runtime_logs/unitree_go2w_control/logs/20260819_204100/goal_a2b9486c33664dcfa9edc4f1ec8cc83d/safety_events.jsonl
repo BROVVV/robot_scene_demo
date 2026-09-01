@@ -1,0 +1,5 @@
+{"event":"stop_and_verify","message":"pre_goal","timestamp":"1787143632321732"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787143632918832"}
+{"event":"motion_failure","message":"turn crossed target outside tolerance","timestamp":"1787143636967357"}
+{"event":"stop_and_verify","message":"final","timestamp":"1787143636967411"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787143638118859"}

@@ -1,0 +1,12 @@
+{"test": "server_available", "pass": true}
+{"test": "services_available", "pass": true}
+{"test": "timed_goal_accepted", "pass": true}
+{"test": "timed_goal_success", "pass": true, "error_code": 0}
+{"test": "invalid_goal_rejected", "pass": true}
+{"test": "concurrent_goal_rejected", "pass": true}
+{"test": "cancel_stops_goal", "pass": true, "status": 5}
+{"test": "lease_loss_aborts", "pass": true, "error_code": 3}
+{"test": "state_stale_aborts", "pass": true, "error_code": 4}
+{"test": "emergency_stop", "pass": true}
+{"test": "relative_yaw_zero_velocity_hold_success", "pass": true, "error_code": 0}
+{"test": "relative_yaw_timeout_is_bounded", "pass": true, "error_code": 8}

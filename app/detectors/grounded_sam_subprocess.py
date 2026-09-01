@@ -24,7 +24,7 @@ from app.perception.grounding_prompt_planner import (
     GroundingPromptPlanner,
 )
 from app.task_understanding.schemas import GroundingPromptPlan
-from app.video.target_profile import TargetProfile
+from app.reasoning.target_profile import TargetProfile
 
 
 class DetectorRuntimeError(RuntimeError):

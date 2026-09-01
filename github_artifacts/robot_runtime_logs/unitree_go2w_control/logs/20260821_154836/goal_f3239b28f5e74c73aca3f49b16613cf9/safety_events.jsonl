@@ -1,0 +1,8 @@
+{"event":"stop_and_verify","message":"pre_goal","timestamp":"1787299903071291"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787299903581107"}
+{"event":"post_turn_rollback_control","message":"started","timestamp":"1787299909319392"}
+{"event":"post_turn_rollback_control","message":"completed","timestamp":"1787299909687490"}
+{"event":"post_turn_zero_velocity_hold","message":"started","timestamp":"1787299909688810"}
+{"event":"post_turn_zero_velocity_hold","message":"completed","timestamp":"1787299910731710"}
+{"event":"stop_and_verify","message":"final","timestamp":"1787299910731776"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787299911282415"}

@@ -1,0 +1,123 @@
+[INFO] [1787567124.370647168] [go2w_autonomous_loop]: starting semantic exploration target=白色垃圾桶 session=search_20260824_182519_b0d5533b
+[INFO] [1787567399.048959968] [go2w_autonomous_loop]: starting semantic exploration target=白色垃圾桶 session=search_20260824_182954_5b2c94b2
+[INFO] [1787570330.096911392] [go2w_autonomous_loop]: starting semantic exploration target=白色垃圾桶 session=search_20260824_191845_d1b59b1f
+[INFO] [1787626994.227076672] [go2w_autonomous_loop]: starting semantic exploration target=白色垃圾桶 session=search_20260825_110309_7cb5973a
+[INFO] [1787627013.664889152] [go2w_autonomous_loop]: LLM scene: 画面中是办公隔间场景，有电脑、椅子和纸箱等物品，没有白色垃圾桶 (matched=4/all=4)
+[WARN] [1787627073.161678272] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[ERROR] [1787627123.421955264] [go2w_autonomous_loop]: emergency stop after timeout failed: emergency stop service unavailable
+[ERROR] [1787627123.423125952] [go2w_autonomous_loop]: step l30 timed out and was not retried: MOTION_RESULT_TIMEOUT: /go2w/motion returned no result within 45.0s (server goal timeout=608.0s); goal cancelled and emergency stop requested
+[INFO] [1787627143.899031840] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787627229.603918240] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和绿色的塑料筐，但都不是白色垃圾桶 (matched=4/all=4)
+[INFO] [1787627311.589548960] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[WARN] [1787627386.718855360] [go2w_autonomous_loop]: semantic observer parse degraded (2 tries): SILICONFLOW_SCENE_TIMEOUT: full-scene analysis exceeded 75s; using a degraded empty scene and continuing the search
+[INFO] [1787627439.726887072] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787627512.193202176] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有黑色办公椅、蓝色塑料筐和浅绿色塑料筐等物体 (matched=4/all=4)
+[INFO] [1787627604.812024896] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787627694.200558304] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=3/all=3)
+[WARN] [1787627798.151220608] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[ERROR] [1787627848.544245728] [go2w_autonomous_loop]: emergency stop after timeout failed: emergency stop service unavailable
+[ERROR] [1787627848.545738528] [go2w_autonomous_loop]: step l30 timed out and was not retried: MOTION_RESULT_TIMEOUT: /go2w/motion returned no result within 45.0s (server goal timeout=608.0s); goal cancelled and emergency stop requested
+[INFO] [1787627863.362091328] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和绿色的垃圾桶，但都不是白色 (matched=3/all=3)
+[INFO] [1787627955.683182944] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和绿色的塑料筐，但都不是白色垃圾桶 (matched=3/all=3)
+[INFO] [1787628054.535702496] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[WARN] [1787628114.021937504] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[WARN] [1787628115.508492224] [go2w_autonomous_loop]: step l30 attempt 1 failed (pre-goal STOP or stationary verification failed; final stationary verification also failed); retrying after settle
+[ERROR] [1787628119.478435712] [go2w_autonomous_loop]: step failed: pre-goal STOP or stationary verification failed; final stationary verification also failed
+[INFO] [1787628135.600151840] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[WARN] [1787628200.638679072] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[WARN] [1787628201.878696256] [go2w_autonomous_loop]: step l30 attempt 1 failed (pre-goal STOP or stationary verification failed; final stationary verification also failed); retrying after settle
+[ERROR] [1787628209.971001312] [go2w_autonomous_loop]: step failed: pre-goal STOP or stationary verification failed; final stationary verification also failed
+[INFO] [1787628221.692529632] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的塑料筐，但都不是白色垃圾桶 (matched=4/all=4)
+[WARN] [1787628294.009923296] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[WARN] [1787628295.795781632] [go2w_autonomous_loop]: step l30 attempt 1 failed (pre-goal STOP or stationary verification failed; final stationary verification also failed); retrying after settle
+[ERROR] [1787628297.867754080] [go2w_autonomous_loop]: step failed: pre-goal STOP or stationary verification failed; final stationary verification also failed
+[INFO] [1787628312.818907392] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787628393.762565120] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787628482.309848000] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787628573.420462528] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[WARN] [1787628655.900042464] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[WARN] [1787628657.458477760] [go2w_autonomous_loop]: step l30 attempt 1 failed (pre-goal STOP or stationary verification failed; final stationary verification also failed); retrying after settle
+[ERROR] [1787628659.656188128] [go2w_autonomous_loop]: step failed: pre-goal STOP or stationary verification failed; final stationary verification also failed
+[INFO] [1787628671.958432512] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787628756.873987904] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[WARN] [1787628823.822136480] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[WARN] [1787628825.261194752] [go2w_autonomous_loop]: step l30 attempt 1 failed (pre-goal STOP or stationary verification failed; final stationary verification also failed); retrying after settle
+[ERROR] [1787628826.206619392] [go2w_autonomous_loop]: step l30 send failed: motion goal rejected
+[INFO] [1787628843.197993824] [go2w_autonomous_loop]: LLM scene: 画面中是办公环境，有办公椅、电脑显示器和背包等物品，没有白色垃圾桶 (matched=4/all=4)
+[WARN] [1787628906.582756160] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[ERROR] [1787628907.124567520] [go2w_autonomous_loop]: arm failed before step l30: arm response failed: Sport lease unavailable or stale
+[INFO] [1787628925.836700096] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=3/all=3)
+[WARN] [1787628997.382614112] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[WARN] [1787628999.070697984] [go2w_autonomous_loop]: step l30 attempt 1 failed (pre-goal STOP or stationary verification failed; final stationary verification also failed); retrying after settle
+[ERROR] [1787629001.348885536] [go2w_autonomous_loop]: step failed: pre-goal STOP or stationary verification failed; final stationary verification also failed
+[INFO] [1787629017.087646368] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787629111.230444704] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[WARN] [1787629175.243426624] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[WARN] [1787629176.360500064] [go2w_autonomous_loop]: step l30 attempt 1 failed (pre-goal STOP or stationary verification failed; final stationary verification also failed); retrying after settle
+[ERROR] [1787629178.716667456] [go2w_autonomous_loop]: step failed: pre-goal STOP or stationary verification failed; final stationary verification also failed
+[INFO] [1787629195.757703136] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787629303.742075584] [go2w_autonomous_loop]: LLM scene: 画面中是办公椅和电脑桌，没有白色垃圾桶 (matched=4/all=4)
+[INFO] [1787629411.279991808] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787629510.415057984] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787629615.250389440] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787629707.231113888] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787629818.327933856] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[WARN] [1787629893.468895008] [go2w_autonomous_loop]: semantic observer parse degraded (2 tries): SILICONFLOW_SCENE_TIMEOUT: full-scene analysis exceeded 75s; using a degraded empty scene and continuing the search
+[INFO] [1787629968.399511136] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787630094.979974336] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787630227.313459328] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787630363.691804128] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787630491.787698560] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[WARN] [1787630566.978871776] [go2w_autonomous_loop]: semantic observer parse degraded (2 tries): SILICONFLOW_SCENE_TIMEOUT: full-scene analysis exceeded 75s; using a degraded empty scene and continuing the search
+[INFO] [1787630685.944930688] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787630831.294330720] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787630993.667572672] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787631126.511803136] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=3/all=3)
+[INFO] [1787631256.421391552] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787631440.186658528] [go2w_autonomous_loop]: LLM scene: 画面中是办公隔间，有办公椅、电脑显示器和背包，没有白色垃圾桶 (matched=3/all=3)
+[INFO] [1787631584.089602336] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787631732.936932512] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=3/all=3)
+[INFO] [1787631877.795576288] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=3/all=3)
+[INFO] [1787632085.660142272] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=3/all=3)
+[INFO] [1787632243.447555328] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787632407.852359424] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=3/all=3)
+[INFO] [1787632561.024599488] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787632712.088721888] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有一个蓝色垃圾桶和一个浅绿色垃圾桶，但都不是白色 (matched=4/all=4)
+[INFO] [1787632922.823016256] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=3/all=3)
+[INFO] [1787633104.537713728] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的塑料筐，但都不是白色垃圾桶 (matched=4/all=4)
+[INFO] [1787633278.588257184] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有蓝色和浅绿色的垃圾桶，但都不是白色 (matched=3/all=3)
+[ERROR] [1787633410.605132032] [go2w_autonomous_loop]: semantic exploration failed: emergency stop service unavailable
+[INFO] [1787647536.435276256] [go2w_autonomous_loop]: starting semantic exploration target=办公椅 session=search_20260825_164531_161885c5
+[INFO] [1787649064.489243328] [go2w_autonomous_loop]: starting semantic exploration target=白色垃圾桶 session=search_20260825_171100_03c2267e
+[INFO] [1787649082.864827232] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有一个浅绿色的垃圾桶，但颜色不符 (matched=3/all=3)
+[WARN] [1787649157.208425920] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[INFO] [1787649178.056205760] [go2w_autonomous_loop]: LLM scene: 画面中主要是办公椅、显示器和背包，没有白色垃圾桶 (matched=3/all=3)
+[WARN] [1787649248.648302048] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[INFO] [1787649272.772546080] [go2w_autonomous_loop]: LLM scene: 画面中是办公室场景，有办公椅、电脑、纸箱等，没有白色垃圾桶 (matched=4/all=4)
+[WARN] [1787649347.909109024] [go2w_autonomous_loop]: semantic observer parse degraded (2 tries): SILICONFLOW_SCENE_TIMEOUT: full-scene analysis exceeded 75s; using a degraded empty scene and continuing the search
+[WARN] [1787649388.196567424] [go2w_autonomous_loop]: operator-authorized rotation overrides step r19: no pose-bound rotation lease
+[INFO] [1787649411.989324480] [go2w_autonomous_loop]: LLM scene: 画面中主要是办公椅、电脑显示器和纸箱，没有白色垃圾桶 (matched=4/all=4)
+[ERROR] [1787649527.769601440] [go2w_autonomous_loop]: FORWARD_NOT_CONFIRMED: motion RPC completed but odometry reported only 0.007m (minimum 0.150m for requested 0.300m)
+[INFO] [1787649551.361812224] [go2w_autonomous_loop]: LLM scene: 画面几乎全黑，无任何可见物体，无法找到白色垃圾桶 (matched=0/all=0)
+[WARN] [1787649574.712768000] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[WARN] [1787649578.970549216] [go2w_autonomous_loop]: step l30 attempt 1 failed (pre-goal STOP or stationary verification failed; final stationary verification also failed); retrying after settle
+[ERROR] [1787649580.094190880] [go2w_autonomous_loop]: arm failed before step l30: arm response failed: Sport lease unavailable or stale
+[INFO] [1787649588.264271328] [go2w_autonomous_loop]: LLM scene: 画面几乎全黑，无任何可见物体，无法找到白色垃圾桶 (matched=0/all=0)
+[WARN] [1787649607.991421600] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[WARN] [1787649611.962366208] [go2w_autonomous_loop]: step l30 attempt 1 failed (pre-goal STOP or stationary verification failed; final stationary verification also failed); retrying after settle
+[ERROR] [1787649613.270327904] [go2w_autonomous_loop]: arm failed before step l30: arm response failed: Sport lease unavailable or stale
+[INFO] [1787649622.191988384] [go2w_autonomous_loop]: LLM scene: 画面几乎全黑，无法辨识任何物体，更无白色垃圾桶 (matched=0/all=0)
+[WARN] [1787649645.840340992] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[INFO] [1787649682.166749888] [go2w_autonomous_loop]: LLM scene: 画面中主要为办公椅和人物，背景有蓝色桶和纸箱，无白色垃圾桶 (matched=4/all=4)
+[WARN] [1787649757.457583296] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[INFO] [1787649780.251168736] [go2w_autonomous_loop]: LLM scene: 画面中是办公室场景，有办公椅、纸箱、柜子等，没有白色垃圾桶 (matched=4/all=4)
+[WARN] [1787649989.209592640] [go2w_autonomous_loop]: operator-authorized rotation overrides step r30: no pose-bound rotation lease
+[INFO] [1787650016.930016576] [go2w_autonomous_loop]: LLM scene: 画面中没有白色垃圾桶，有黑色办公椅、纸箱、文件柜和蓝色桶等物体 (matched=3/all=3)
+[INFO] [1787650101.986687264] [go2w_autonomous_loop]: LLM scene: 画面中可见办公椅、文件柜和纸箱等办公用品，没有白色垃圾桶 (matched=4/all=4)
+[WARN] [1787650162.365511392] [go2w_autonomous_loop]: operator-authorized rotation overrides step l30: no pose-bound rotation lease
+[INFO] [1787650244.060667744] [go2w_autonomous_loop]: LLM scene: 画面中是办公室场景，有办公椅、纸箱和柜子，没有白色垃圾桶 (matched=4/all=4)
+[WARN] [1787650340.343461056] [go2w_autonomous_loop]: step f0.300 attempt 1 failed (final STOP response or stationary verification failed); retrying after settle
+[ERROR] [1787650341.452913056] [go2w_autonomous_loop]: arm failed before step f0.300: arm response failed: Sport lease unavailable or stale
+[ERROR] [1787650401.953802528] [go2w_autonomous_loop]: emergency stop failed: STOP verification failed; use remote emergency stop
+[ERROR] [1787650402.547773504] [go2w_autonomous_loop]: emergency stop failed: STOP verification failed; use remote emergency stop
+[ERROR] [1787650403.144026944] [go2w_autonomous_loop]: arm response failed: disarmed; STOP verification failed

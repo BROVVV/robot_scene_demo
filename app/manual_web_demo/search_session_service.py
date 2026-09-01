@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import threading
+import os
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -30,6 +31,19 @@ from app.live_robot.search_event import (
     SearchEvent,
     make_event,
 )
+
+
+def _touch_slam_reset_marker() -> None:
+    """计划书 §10.3：新搜索 session 触发 plain_slam WebUI 桥清空旧累积点云。"""
+    marker = os.environ.get("GO2W_SLAM_RESET_MARKER", "")
+    if not marker:
+        return
+    try:
+        path = Path(marker)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+    except OSError:
+        pass
 from app.live_robot.search_event_bus import SearchEventBus
 from app.live_robot.search_state_store import (
     STATUS_FAILED,
@@ -447,6 +461,7 @@ class SearchSessionService:
                 "rgbd_source": request.rgbd_source,
                 "rgbd_base_url": request.rgbd_base_url,
                 "spatial_v2": request.spatial_v2,
+                "spatial_provider": request.spatial_provider,
                 "rtabmap": request.rtabmap,
                 "session_dir": str(session_dir_path),
                 "output": str(run_dir / "events.jsonl"),
@@ -513,6 +528,8 @@ class SearchSessionService:
                     "error_detail": self._store.snapshot().get("error") or
                                     rejected.payload.get("error_detail"),
                 }
+            # 计划书 §10.3：新 session 清空 WebUI 旧 3D 累积点云。
+            _touch_slam_reset_marker()
             try:
                 executor.start(params)
             except Exception as exc:  # noqa: BLE001

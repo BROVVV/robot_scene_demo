@@ -1,0 +1,146 @@
+[0.000000] (-) TimerEvent: {}
+[0.000303] (-) JobUnselected: {'identifier': 'go2w_camera_bridge'}
+[0.000386] (-) JobUnselected: {'identifier': 'go2w_cmd_vel_bridge'}
+[0.000432] (-) JobUnselected: {'identifier': 'go2w_control_arbiter'}
+[0.000470] (-) JobUnselected: {'identifier': 'go2w_description'}
+[0.000503] (-) JobUnselected: {'identifier': 'go2w_lidar_preprocessor'}
+[0.000535] (-) JobUnselected: {'identifier': 'go2w_lio_bringup'}
+[0.000565] (-) JobUnselected: {'identifier': 'go2w_rgb_lidar_fusion'}
+[0.000594] (-) JobUnselected: {'identifier': 'go2w_sensor_time_bridge'}
+[0.000623] (-) JobUnselected: {'identifier': 'hesai_ros_driver'}
+[0.000652] (-) JobUnselected: {'identifier': 'robot_scene_live_bridge'}
+[0.000692] (go2w_plain_slam_bridge) JobQueued: {'identifier': 'go2w_plain_slam_bridge', 'dependencies': OrderedDict()}
+[0.000736] (plain_slam_ros2) JobQueued: {'identifier': 'plain_slam_ros2', 'dependencies': OrderedDict()}
+[0.000769] (robot_scene_nav_bringup) JobQueued: {'identifier': 'robot_scene_nav_bringup', 'dependencies': OrderedDict()}
+[0.000805] (go2w_plain_slam_bridge) JobStarted: {'identifier': 'go2w_plain_slam_bridge'}
+[0.083906] (-) TimerEvent: {}
+[0.193113] (-) TimerEvent: {}
+[0.285053] (plain_slam_ros2) JobStarted: {'identifier': 'plain_slam_ros2'}
+[0.294575] (-) TimerEvent: {}
+[0.395520] (-) TimerEvent: {}
+[0.485609] (robot_scene_nav_bringup) JobStarted: {'identifier': 'robot_scene_nav_bringup'}
+[0.497915] (-) TimerEvent: {}
+[0.605698] (-) TimerEvent: {}
+[0.657255] (go2w_plain_slam_bridge) JobProgress: {'identifier': 'go2w_plain_slam_bridge', 'progress': 'cmake'}
+[0.658215] (go2w_plain_slam_bridge) Command: {'cmd': ['/usr/bin/cmake', '/home/unitree/robotscene/ros2_ws/src/go2w_plain_slam_bridge', '-DAMENT_CMAKE_SYMLINK_INSTALL=1', '-DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55382 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '0'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '26'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge'), ('SSH_CONNECTION', '192.168.123.99 55382 192.168.123.18 22'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1')]), 'shell': False}
+[0.683655] (plain_slam_ros2) JobProgress: {'identifier': 'plain_slam_ros2', 'progress': 'cmake'}
+[0.684113] (plain_slam_ros2) Command: {'cmd': ['/usr/bin/cmake', '/home/unitree/robotscene/ros2_ws/src/plain_slam_ros2', '-DAMENT_CMAKE_SYMLINK_INSTALL=1', '-DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/plain_slam_ros2'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55382 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '0'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '26'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2'), ('SSH_CONNECTION', '192.168.123.99 55382 192.168.123.18 22'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1')]), 'shell': False}
+[0.700190] (robot_scene_nav_bringup) JobProgress: {'identifier': 'robot_scene_nav_bringup', 'progress': 'cmake'}
+[0.704112] (robot_scene_nav_bringup) Command: {'cmd': ['/usr/bin/cmake', '/home/unitree/robotscene/ros2_ws/src/robot_scene_nav_bringup', '-DAMENT_CMAKE_SYMLINK_INSTALL=1', '-DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup'], 'cwd': '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 55382 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '0'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '26'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup'), ('SSH_CONNECTION', '192.168.123.99 55382 192.168.123.18 22'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1')]), 'shell': False}
+[0.705828] (-) TimerEvent: {}
+[0.806157] (-) TimerEvent: {}
+[0.875896] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Found ament_cmake: 0.9.12 (/opt/ros/humble/share/ament_cmake/cmake)\n'}
+[0.907186] (-) TimerEvent: {}
+[1.007559] (-) TimerEvent: {}
+[1.024445] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[1.030980] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- The C compiler identification is GNU 9.4.0\n'}
+[1.090892] (plain_slam_ros2) StdoutLine: {'line': b'-- The C compiler identification is GNU 9.4.0\n'}
+[1.109474] (-) TimerEvent: {}
+[1.209837] (-) TimerEvent: {}
+[1.302578] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 9.4.0\n'}
+[1.309993] (-) TimerEvent: {}
+[1.323050] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc\n'}
+[1.410145] (-) TimerEvent: {}
+[1.479957] (plain_slam_ros2) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 9.4.0\n'}
+[1.505735] (plain_slam_ros2) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc\n'}
+[1.510294] (-) TimerEvent: {}
+[1.610610] (-) TimerEvent: {}
+[1.710965] (-) TimerEvent: {}
+[1.812140] (-) TimerEvent: {}
+[1.854419] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc -- works\n'}
+[1.868640] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[1.912317] (-) TimerEvent: {}
+[1.967132] (plain_slam_ros2) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc -- works\n'}
+[1.970294] (plain_slam_ros2) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[2.013098] (-) TimerEvent: {}
+[2.113460] (-) TimerEvent: {}
+[2.138969] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[2.154733] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[2.156941] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[2.171530] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++\n'}
+[2.211807] (robot_scene_nav_bringup) StderrLine: {'line': b'Traceback (most recent call last):\n'}
+[2.212318] (robot_scene_nav_bringup) StderrLine: {'line': b'  File "/opt/ros/humble/share/ament_cmake_core/cmake/package_templates/templates_2_cmake.py", line 21, in <module>\n'}
+[2.212476] (robot_scene_nav_bringup) StderrLine: {'line': b'    from ament_package.templates import get_environment_hook_template_path\n'}
+[2.212609] (robot_scene_nav_bringup) StderrLine: {'line': b"ModuleNotFoundError: No module named 'ament_package'\n"}
+[2.213545] (-) TimerEvent: {}
+[2.313806] (-) TimerEvent: {}
+[2.317328] (plain_slam_ros2) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[2.367625] (robot_scene_nav_bringup) StderrLine: {'line': b'CMake Error at /opt/ros/humble/share/ament_cmake_core/cmake/ament_cmake_package_templates-extras.cmake:41 (message):\n'}
+[2.372083] (robot_scene_nav_bringup) StderrLine: {'line': b'  execute_process(/usr/bin/python3\n'}
+[2.373419] (robot_scene_nav_bringup) StderrLine: {'line': b'  /opt/ros/humble/share/ament_cmake_core/cmake/package_templates/templates_2_cmake.py\n'}
+[2.373815] (robot_scene_nav_bringup) StderrLine: {'line': b'  /home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup/ament_cmake_package_templates/templates.cmake)\n'}
+[2.374122] (robot_scene_nav_bringup) StderrLine: {'line': b'  returned error code 1\n'}
+[2.374305] (robot_scene_nav_bringup) StderrLine: {'line': b'Call Stack (most recent call first):\n'}
+[2.374431] (robot_scene_nav_bringup) StderrLine: {'line': b'  /opt/ros/humble/share/ament_cmake_core/cmake/ament_cmake_coreConfig.cmake:41 (include)\n'}
+[2.374681] (robot_scene_nav_bringup) StderrLine: {'line': b'  /opt/ros/humble/share/ament_cmake/cmake/ament_cmake_export_dependencies-extras.cmake:15 (find_package)\n'}
+[2.374921] (robot_scene_nav_bringup) StderrLine: {'line': b'  /opt/ros/humble/share/ament_cmake/cmake/ament_cmakeConfig.cmake:41 (include)\n'}
+[2.375103] (robot_scene_nav_bringup) StderrLine: {'line': b'  CMakeLists.txt:3 (find_package)\n'}
+[2.379222] (robot_scene_nav_bringup) StderrLine: {'line': b'\n'}
+[2.379658] (robot_scene_nav_bringup) StderrLine: {'line': b'\n'}
+[2.380441] (robot_scene_nav_bringup) StdoutLine: {'line': b'-- Configuring incomplete, errors occurred!\n'}
+[2.380637] (robot_scene_nav_bringup) StdoutLine: {'line': b'See also "/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup/CMakeFiles/CMakeOutput.log".\n'}
+[2.382051] (plain_slam_ros2) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[2.382386] (plain_slam_ros2) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[2.386836] (plain_slam_ros2) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++\n'}
+[2.424922] (robot_scene_nav_bringup) CommandEnded: {'returncode': 1}
+[2.427113] (-) TimerEvent: {}
+[2.531449] (-) TimerEvent: {}
+[2.636354] (-) TimerEvent: {}
+[2.763875] (-) TimerEvent: {}
+[2.878312] (-) TimerEvent: {}
+[3.004204] (-) TimerEvent: {}
+[3.128504] (-) TimerEvent: {}
+[3.229246] (-) TimerEvent: {}
+[3.284111] (robot_scene_nav_bringup) JobEnded: {'identifier': 'robot_scene_nav_bringup', 'rc': 1}
+[3.291955] (plain_slam_ros2) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ -- works\n'}
+[3.296601] (plain_slam_ros2) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[3.297051] (plain_slam_ros2) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[3.297203] (plain_slam_ros2) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[3.297329] (plain_slam_ros2) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[3.297446] (plain_slam_ros2) StdoutLine: {'line': b'-- Configuring incomplete, errors occurred!\n'}
+[3.297558] (plain_slam_ros2) StdoutLine: {'line': b'See also "/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2/CMakeFiles/CMakeOutput.log".\n'}
+[3.297672] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ -- works\n'}
+[3.297837] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[3.297947] (plain_slam_ros2) StderrLine: {'line': b'CMake Error at CMakeLists.txt:9 (find_package):\n'}
+[3.298137] (plain_slam_ros2) StderrLine: {'line': b'  By not providing "Findament_cmake.cmake" in CMAKE_MODULE_PATH this project\n'}
+[3.298253] (plain_slam_ros2) StderrLine: {'line': b'  has asked CMake to find a package configuration file provided by\n'}
+[3.298360] (plain_slam_ros2) StderrLine: {'line': b'  "ament_cmake", but CMake did not find one.\n'}
+[3.298461] (plain_slam_ros2) StderrLine: {'line': b'\n'}
+[3.298561] (plain_slam_ros2) StderrLine: {'line': b'  Could not find a package configuration file provided by "ament_cmake" with\n'}
+[3.298666] (plain_slam_ros2) StderrLine: {'line': b'  any of the following names:\n'}
+[3.298766] (plain_slam_ros2) StderrLine: {'line': b'\n'}
+[3.298868] (plain_slam_ros2) StderrLine: {'line': b'    ament_cmakeConfig.cmake\n'}
+[3.298966] (plain_slam_ros2) StderrLine: {'line': b'    ament_cmake-config.cmake\n'}
+[3.299069] (plain_slam_ros2) StderrLine: {'line': b'\n'}
+[3.299169] (plain_slam_ros2) StderrLine: {'line': b'  Add the installation prefix of "ament_cmake" to CMAKE_PREFIX_PATH or set\n'}
+[3.299274] (plain_slam_ros2) StderrLine: {'line': b'  "ament_cmake_DIR" to a directory containing one of the above files.  If\n'}
+[3.299379] (plain_slam_ros2) StderrLine: {'line': b'  "ament_cmake" provides a separate development package or SDK, be sure it\n'}
+[3.299483] (plain_slam_ros2) StderrLine: {'line': b'  has been installed.\n'}
+[3.299584] (plain_slam_ros2) StderrLine: {'line': b'\n'}
+[3.299685] (plain_slam_ros2) StderrLine: {'line': b'\n'}
+[3.300434] (plain_slam_ros2) JobEnded: {'identifier': 'plain_slam_ros2', 'rc': 'SIGINT'}
+[3.325337] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[3.331365] (-) TimerEvent: {}
+[3.362110] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[3.369704] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[3.404331] (go2w_plain_slam_bridge) StderrLine: {'line': b'CMake Error at CMakeLists.txt:8 (find_package):\n'}
+[3.404800] (go2w_plain_slam_bridge) StderrLine: {'line': b'  By not providing "Findament_cmake.cmake" in CMAKE_MODULE_PATH this project\n'}
+[3.404956] (go2w_plain_slam_bridge) StderrLine: {'line': b'  has asked CMake to find a package configuration file provided by\n'}
+[3.405085] (go2w_plain_slam_bridge) StderrLine: {'line': b'  "ament_cmake", but CMake did not find one.\n'}
+[3.405204] (go2w_plain_slam_bridge) StderrLine: {'line': b'\n'}
+[3.405319] (go2w_plain_slam_bridge) StderrLine: {'line': b'  Could not find a package configuration file provided by "ament_cmake" with\n'}
+[3.405431] (go2w_plain_slam_bridge) StderrLine: {'line': b'  any of the following names:\n'}
+[3.405541] (go2w_plain_slam_bridge) StderrLine: {'line': b'\n'}
+[3.405647] (go2w_plain_slam_bridge) StderrLine: {'line': b'    ament_cmakeConfig.cmake\n'}
+[3.405752] (go2w_plain_slam_bridge) StderrLine: {'line': b'    ament_cmake-config.cmake\n'}
+[3.405879] (go2w_plain_slam_bridge) StderrLine: {'line': b'\n'}
+[3.405986] (go2w_plain_slam_bridge) StderrLine: {'line': b'  Add the installation prefix of "ament_cmake" to CMAKE_PREFIX_PATH or set\n'}
+[3.406096] (go2w_plain_slam_bridge) StderrLine: {'line': b'  "ament_cmake_DIR" to a directory containing one of the above files.  If\n'}
+[3.406204] (go2w_plain_slam_bridge) StderrLine: {'line': b'  "ament_cmake" provides a separate development package or SDK, be sure it\n'}
+[3.406312] (go2w_plain_slam_bridge) StderrLine: {'line': b'  has been installed.\n'}
+[3.406413] (go2w_plain_slam_bridge) StderrLine: {'line': b'\n'}
+[3.406513] (go2w_plain_slam_bridge) StderrLine: {'line': b'\n'}
+[3.406616] (go2w_plain_slam_bridge) StdoutLine: {'line': b'-- Configuring incomplete, errors occurred!\n'}
+[3.406732] (go2w_plain_slam_bridge) StdoutLine: {'line': b'See also "/home/unitree/robotscene/ros2_ws/build/go2w_plain_slam_bridge/CMakeFiles/CMakeOutput.log".\n'}
+[3.417741] (go2w_plain_slam_bridge) JobEnded: {'identifier': 'go2w_plain_slam_bridge', 'rc': 'SIGINT'}
+[3.429610] (-) EventReactorShutdown: {}

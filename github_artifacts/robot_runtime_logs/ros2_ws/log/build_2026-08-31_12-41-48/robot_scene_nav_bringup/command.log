@@ -1,0 +1,2 @@
+Invoking command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup': /usr/bin/cmake /home/unitree/robotscene/ros2_ws/src/robot_scene_nav_bringup -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup
+Invoked command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_nav_bringup' returned '1': /usr/bin/cmake /home/unitree/robotscene/ros2_ws/src/robot_scene_nav_bringup -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/robot_scene_nav_bringup

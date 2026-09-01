@@ -1,0 +1,1229 @@
+[0.000000] (-) TimerEvent: {}
+[0.000275] (-) JobUnselected: {'identifier': 'safe_go2w_control'}
+[0.000637] (go2w_motion_interfaces) JobQueued: {'identifier': 'go2w_motion_interfaces', 'dependencies': OrderedDict()}
+[0.000828] (go2w_motion_control) JobQueued: {'identifier': 'go2w_motion_control', 'dependencies': OrderedDict([('go2w_motion_interfaces', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces')])}
+[0.001239] (go2w_motion_interfaces) JobStarted: {'identifier': 'go2w_motion_interfaces'}
+[0.099370] (-) TimerEvent: {}
+[0.200060] (-) TimerEvent: {}
+[0.302201] (-) TimerEvent: {}
+[0.308710] (go2w_motion_interfaces) JobProgress: {'identifier': 'go2w_motion_interfaces', 'progress': 'cmake'}
+[0.309230] (go2w_motion_interfaces) Command: {'cmd': ['/usr/bin/cmake', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_interfaces', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces'], 'cwd': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 41608 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '6'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces'), ('SSH_CONNECTION', '192.168.123.99 41608 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy')]), 'shell': False}
+[0.402389] (-) TimerEvent: {}
+[0.415491] (go2w_motion_interfaces) StdoutLine: {'line': b'-- The C compiler identification is GNU 9.4.0\n'}
+[0.502580] (-) TimerEvent: {}
+[0.510902] (go2w_motion_interfaces) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 9.4.0\n'}
+[0.519930] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc\n'}
+[0.602765] (-) TimerEvent: {}
+[0.653679] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc -- works\n'}
+[0.655163] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[0.702917] (-) TimerEvent: {}
+[0.796602] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[0.803004] (-) TimerEvent: {}
+[0.803862] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[0.804381] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[0.808787] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++\n'}
+[0.903211] (-) TimerEvent: {}
+[0.964609] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ -- works\n'}
+[0.966070] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[1.003409] (-) TimerEvent: {}
+[1.103841] (-) TimerEvent: {}
+[1.114646] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[1.133348] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[1.133917] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[1.138527] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found ament_cmake: 0.9.12 (/opt/ros/foxy/share/ament_cmake/cmake)\n'}
+[1.192414] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") \n'}
+[1.192993] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[1.203966] (-) TimerEvent: {}
+[1.304313] (-) TimerEvent: {}
+[1.404657] (-) TimerEvent: {}
+[1.505012] (-) TimerEvent: {}
+[1.605394] (-) TimerEvent: {}
+[1.637794] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found rosidl_default_generators: 1.0.1 (/opt/ros/foxy/share/rosidl_default_generators/cmake)\n'}
+[1.644140] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[1.657546] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found rosidl_adapter: 1.3.1 (/opt/ros/foxy/share/rosidl_adapter/cmake)\n'}
+[1.705565] (-) TimerEvent: {}
+[1.806056] (-) TimerEvent: {}
+[1.858496] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found OpenSSL: /usr/lib/aarch64-linux-gnu/libcrypto.so (found version "1.1.1f")  \n'}
+[1.906257] (-) TimerEvent: {}
+[1.913835] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found FastRTPS: /opt/ros/foxy/include  \n'}
+[2.006469] (-) TimerEvent: {}
+[2.068572] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[2.106700] (-) TimerEvent: {}
+[2.160450] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found version "3.8.10") \n'}
+[2.206831] (-) TimerEvent: {}
+[2.307232] (-) TimerEvent: {}
+[2.407605] (-) TimerEvent: {}
+[2.507996] (-) TimerEvent: {}
+[2.541532] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found ament_cmake_ros: 0.9.2 (/opt/ros/foxy/share/ament_cmake_ros/cmake)\n'}
+[2.608173] (-) TimerEvent: {}
+[2.708565] (-) TimerEvent: {}
+[2.806220] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[2.808634] (-) TimerEvent: {}
+[2.852388] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[2.904211] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3.5") \n'}
+[2.907563] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found python_cmake_module: 0.8.1 (/opt/ros/foxy/share/python_cmake_module/cmake)\n'}
+[2.908705] (-) TimerEvent: {}
+[2.960585] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found PythonLibs: /usr/lib/aarch64-linux-gnu/libpython3.8.so (found suitable version "3.8.10", minimum required is "3.5") \n'}
+[2.961038] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[2.961179] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Using PYTHON_INCLUDE_DIRS: /usr/include/python3.8\n'}
+[2.961300] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Using PYTHON_LIBRARIES: /usr/lib/aarch64-linux-gnu/libpython3.8.so\n'}
+[3.007430] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Found PythonExtra: .so  \n'}
+[3.008809] (-) TimerEvent: {}
+[3.109071] (-) TimerEvent: {}
+[3.127999] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Configuring done\n'}
+[3.209259] (-) TimerEvent: {}
+[3.228364] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Generating done\n'}
+[3.234953] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Build files have been written to: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces\n'}
+[3.265148] (go2w_motion_interfaces) CommandEnded: {'returncode': 0}
+[3.266591] (go2w_motion_interfaces) JobProgress: {'identifier': 'go2w_motion_interfaces', 'progress': 'build'}
+[3.268217] (go2w_motion_interfaces) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces', '--', '-j4', '-l4'], 'cwd': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 41608 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '6'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces'), ('SSH_CONNECTION', '192.168.123.99 41608 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy')]), 'shell': False}
+[3.309555] (-) TimerEvent: {}
+[3.356472] (go2w_motion_interfaces) StdoutLine: {'line': b'[  3%] Generating C code for ROS interfaces\n'}
+[3.357324] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__cpp\n'}
+[3.382851] (go2w_motion_interfaces) StdoutLine: {'line': b'[  6%] Generating C++ code for ROS interfaces\n'}
+[3.409685] (-) TimerEvent: {}
+[3.510094] (-) TimerEvent: {}
+[3.610440] (-) TimerEvent: {}
+[3.710844] (-) TimerEvent: {}
+[3.811225] (-) TimerEvent: {}
+[3.911639] (-) TimerEvent: {}
+[4.012055] (-) TimerEvent: {}
+[4.112403] (-) TimerEvent: {}
+[4.212775] (-) TimerEvent: {}
+[4.313138] (-) TimerEvent: {}
+[4.336320] (go2w_motion_interfaces) StdoutLine: {'line': b'[  6%] Built target go2w_motion_interfaces__cpp\n'}
+[4.346839] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__rosidl_generator_c\n'}
+[4.359294] (go2w_motion_interfaces) StdoutLine: {'line': b'[  9%] Generating C++ type support dispatch for ROS interfaces\n'}
+[4.369055] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 12%] Building C object CMakeFiles/go2w_motion_interfaces__rosidl_generator_c.dir/rosidl_generator_c/go2w_motion_interfaces/action/detail/motion_command__functions.c.o\n'}
+[4.413289] (-) TimerEvent: {}
+[4.513703] (-) TimerEvent: {}
+[4.614071] (-) TimerEvent: {}
+[4.714517] (-) TimerEvent: {}
+[4.814957] (-) TimerEvent: {}
+[4.915334] (-) TimerEvent: {}
+[5.015779] (-) TimerEvent: {}
+[5.050411] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__rosidl_typesupport_cpp\n'}
+[5.074777] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 16%] Building CXX object CMakeFiles/go2w_motion_interfaces__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/go2w_motion_interfaces/action/motion_command__type_support.cpp.o\n'}
+[5.115976] (-) TimerEvent: {}
+[5.216445] (-) TimerEvent: {}
+[5.316853] (-) TimerEvent: {}
+[5.384385] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 19%] Linking C shared library libgo2w_motion_interfaces__rosidl_generator_c.so\n'}
+[5.417060] (-) TimerEvent: {}
+[5.467190] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 19%] Built target go2w_motion_interfaces__rosidl_generator_c\n'}
+[5.490276] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 22%] Generating C++ introspection for ROS interfaces\n'}
+[5.517222] (-) TimerEvent: {}
+[5.617570] (-) TimerEvent: {}
+[5.717956] (-) TimerEvent: {}
+[5.818344] (-) TimerEvent: {}
+[5.842073] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 25%] Linking CXX shared library libgo2w_motion_interfaces__rosidl_typesupport_cpp.so\n'}
+[5.918556] (-) TimerEvent: {}
+[5.925840] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 29%] Generating C introspection for ROS interfaces\n'}
+[5.927258] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 29%] Built target go2w_motion_interfaces__rosidl_typesupport_cpp\n'}
+[5.950526] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 32%] Generating C++ type support for eProsima Fast-RTPS\n'}
+[6.018711] (-) TimerEvent: {}
+[6.119058] (-) TimerEvent: {}
+[6.219409] (-) TimerEvent: {}
+[6.319798] (-) TimerEvent: {}
+[6.375014] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__rosidl_typesupport_introspection_cpp\n'}
+[6.400241] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 35%] Building CXX object CMakeFiles/go2w_motion_interfaces__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/go2w_motion_interfaces/action/detail/motion_command__type_support.cpp.o\n'}
+[6.419964] (-) TimerEvent: {}
+[6.520339] (-) TimerEvent: {}
+[6.620694] (-) TimerEvent: {}
+[6.721060] (-) TimerEvent: {}
+[6.821499] (-) TimerEvent: {}
+[6.840802] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__rosidl_typesupport_introspection_c\n'}
+[6.853102] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__rosidl_typesupport_fastrtps_cpp\n'}
+[6.867350] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 38%] Building C object CMakeFiles/go2w_motion_interfaces__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/go2w_motion_interfaces/action/detail/motion_command__type_support.c.o\n'}
+[6.889494] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 41%] Building CXX object CMakeFiles/go2w_motion_interfaces__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/go2w_motion_interfaces/action/detail/dds_fastrtps/motion_command__type_support.cpp.o\n'}
+[6.921702] (-) TimerEvent: {}
+[7.022132] (-) TimerEvent: {}
+[7.069627] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 45%] Linking C shared library libgo2w_motion_interfaces__rosidl_typesupport_introspection_c.so\n'}
+[7.122325] (-) TimerEvent: {}
+[7.151310] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 45%] Built target go2w_motion_interfaces__rosidl_typesupport_introspection_c\n'}
+[7.222519] (-) TimerEvent: {}
+[7.309363] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 48%] Linking CXX shared library libgo2w_motion_interfaces__rosidl_typesupport_introspection_cpp.so\n'}
+[7.322694] (-) TimerEvent: {}
+[7.423142] (-) TimerEvent: {}
+[7.480924] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 48%] Built target go2w_motion_interfaces__rosidl_typesupport_introspection_cpp\n'}
+[7.523298] (-) TimerEvent: {}
+[7.623697] (-) TimerEvent: {}
+[7.724102] (-) TimerEvent: {}
+[7.824522] (-) TimerEvent: {}
+[7.924909] (-) TimerEvent: {}
+[8.025341] (-) TimerEvent: {}
+[8.125722] (-) TimerEvent: {}
+[8.226135] (-) TimerEvent: {}
+[8.244463] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 51%] Linking CXX shared library libgo2w_motion_interfaces__rosidl_typesupport_fastrtps_cpp.so\n'}
+[8.326331] (-) TimerEvent: {}
+[8.415576] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 51%] Built target go2w_motion_interfaces__rosidl_typesupport_fastrtps_cpp\n'}
+[8.426493] (-) TimerEvent: {}
+[8.437806] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 54%] Generating C type support dispatch for ROS interfaces\n'}
+[8.526645] (-) TimerEvent: {}
+[8.626990] (-) TimerEvent: {}
+[8.727365] (-) TimerEvent: {}
+[8.827765] (-) TimerEvent: {}
+[8.928178] (-) TimerEvent: {}
+[9.028620] (-) TimerEvent: {}
+[9.092694] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__rosidl_typesupport_c\n'}
+[9.116156] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 58%] Building CXX object CMakeFiles/go2w_motion_interfaces__rosidl_typesupport_c.dir/rosidl_typesupport_c/go2w_motion_interfaces/action/motion_command__type_support.cpp.o\n'}
+[9.128841] (-) TimerEvent: {}
+[9.229304] (-) TimerEvent: {}
+[9.250248] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 61%] Linking CXX shared library libgo2w_motion_interfaces__rosidl_typesupport_c.so\n'}
+[9.329518] (-) TimerEvent: {}
+[9.330132] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 61%] Built target go2w_motion_interfaces__rosidl_typesupport_c\n'}
+[9.354499] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 64%] Generating C type support for eProsima Fast-RTPS\n'}
+[9.429633] (-) TimerEvent: {}
+[9.530338] (-) TimerEvent: {}
+[9.630754] (-) TimerEvent: {}
+[9.731332] (-) TimerEvent: {}
+[9.831766] (-) TimerEvent: {}
+[9.932200] (-) TimerEvent: {}
+[10.032577] (-) TimerEvent: {}
+[10.133063] (-) TimerEvent: {}
+[10.208597] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__rosidl_typesupport_fastrtps_c\n'}
+[10.232590] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 67%] Building CXX object CMakeFiles/go2w_motion_interfaces__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/go2w_motion_interfaces/action/detail/motion_command__type_support_c.cpp.o\n'}
+[10.233037] (-) TimerEvent: {}
+[10.333289] (-) TimerEvent: {}
+[10.433688] (-) TimerEvent: {}
+[10.534118] (-) TimerEvent: {}
+[10.634538] (-) TimerEvent: {}
+[10.734929] (-) TimerEvent: {}
+[10.835375] (-) TimerEvent: {}
+[10.935827] (-) TimerEvent: {}
+[11.036329] (-) TimerEvent: {}
+[11.136826] (-) TimerEvent: {}
+[11.237292] (-) TimerEvent: {}
+[11.337785] (-) TimerEvent: {}
+[11.368550] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 70%] Linking CXX shared library libgo2w_motion_interfaces__rosidl_typesupport_fastrtps_c.so\n'}
+[11.437944] (-) TimerEvent: {}
+[11.536565] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 70%] Built target go2w_motion_interfaces__rosidl_typesupport_fastrtps_c\n'}
+[11.537994] (-) TimerEvent: {}
+[11.558803] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces\n'}
+[11.579679] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 70%] Built target go2w_motion_interfaces\n'}
+[11.600554] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__py\n'}
+[11.622058] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 74%] Generating Python code for ROS interfaces\n'}
+[11.638207] (-) TimerEvent: {}
+[11.738578] (-) TimerEvent: {}
+[11.838983] (-) TimerEvent: {}
+[11.939421] (-) TimerEvent: {}
+[12.039835] (-) TimerEvent: {}
+[12.140293] (-) TimerEvent: {}
+[12.240727] (-) TimerEvent: {}
+[12.341182] (-) TimerEvent: {}
+[12.441597] (-) TimerEvent: {}
+[12.541962] (-) TimerEvent: {}
+[12.642321] (-) TimerEvent: {}
+[12.742623] (-) TimerEvent: {}
+[12.843104] (-) TimerEvent: {}
+[12.943647] (-) TimerEvent: {}
+[13.044291] (-) TimerEvent: {}
+[13.144859] (-) TimerEvent: {}
+[13.245295] (-) TimerEvent: {}
+[13.346030] (-) TimerEvent: {}
+[13.446516] (-) TimerEvent: {}
+[13.546991] (-) TimerEvent: {}
+[13.647391] (-) TimerEvent: {}
+[13.748720] (-) TimerEvent: {}
+[13.849090] (-) TimerEvent: {}
+[13.949499] (-) TimerEvent: {}
+[14.052177] (-) TimerEvent: {}
+[14.152589] (-) TimerEvent: {}
+[14.252962] (-) TimerEvent: {}
+[14.353354] (-) TimerEvent: {}
+[14.456151] (-) TimerEvent: {}
+[14.557710] (-) TimerEvent: {}
+[14.658052] (-) TimerEvent: {}
+[14.758385] (-) TimerEvent: {}
+[14.858740] (-) TimerEvent: {}
+[14.959148] (-) TimerEvent: {}
+[15.059552] (-) TimerEvent: {}
+[15.145443] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 74%] Built target go2w_motion_interfaces__py\n'}
+[15.159719] (-) TimerEvent: {}
+[15.176982] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__python\n'}
+[15.203802] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 77%] Building C object CMakeFiles/go2w_motion_interfaces__python.dir/rosidl_generator_py/go2w_motion_interfaces/action/_motion_command_s.c.o\n'}
+[15.259883] (-) TimerEvent: {}
+[15.360318] (-) TimerEvent: {}
+[15.460712] (-) TimerEvent: {}
+[15.561107] (-) TimerEvent: {}
+[15.661474] (-) TimerEvent: {}
+[15.761849] (-) TimerEvent: {}
+[15.812113] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 80%] Linking C shared library rosidl_generator_py/go2w_motion_interfaces/libgo2w_motion_interfaces__python.so\n'}
+[15.862048] (-) TimerEvent: {}
+[15.893461] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 80%] Built target go2w_motion_interfaces__python\n'}
+[15.924871] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__rosidl_typesupport_c__pyext\n'}
+[15.929054] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__rosidl_typesupport_fastrtps_c__pyext\n'}
+[15.950076] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 83%] Building C object CMakeFiles/go2w_motion_interfaces__rosidl_typesupport_c__pyext.dir/rosidl_generator_py/go2w_motion_interfaces/_go2w_motion_interfaces_s.ep.rosidl_typesupport_c.c.o\n'}
+[15.959284] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 87%] Building C object CMakeFiles/go2w_motion_interfaces__rosidl_typesupport_fastrtps_c__pyext.dir/rosidl_generator_py/go2w_motion_interfaces/_go2w_motion_interfaces_s.ep.rosidl_typesupport_fastrtps_c.c.o\n'}
+[15.962160] (-) TimerEvent: {}
+[16.062540] (-) TimerEvent: {}
+[16.162922] (-) TimerEvent: {}
+[16.263321] (-) TimerEvent: {}
+[16.348398] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 90%] Linking C shared library rosidl_generator_py/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_c.cpython-38-aarch64-linux-gnu.so\n'}
+[16.362847] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 93%] Linking CXX shared library rosidl_generator_py/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-38-aarch64-linux-gnu.so\n'}
+[16.363328] (-) TimerEvent: {}
+[16.423991] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 93%] Built target go2w_motion_interfaces__rosidl_typesupport_c__pyext\n'}
+[16.456766] (go2w_motion_interfaces) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_interfaces__rosidl_typesupport_introspection_c__pyext\n'}
+[16.463520] (-) TimerEvent: {}
+[16.485142] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 96%] Building C object CMakeFiles/go2w_motion_interfaces__rosidl_typesupport_introspection_c__pyext.dir/rosidl_generator_py/go2w_motion_interfaces/_go2w_motion_interfaces_s.ep.rosidl_typesupport_introspection_c.c.o\n'}
+[16.489810] (go2w_motion_interfaces) StdoutLine: {'line': b'[ 96%] Built target go2w_motion_interfaces__rosidl_typesupport_fastrtps_c__pyext\n'}
+[16.563736] (-) TimerEvent: {}
+[16.664184] (-) TimerEvent: {}
+[16.764595] (-) TimerEvent: {}
+[16.864990] (-) TimerEvent: {}
+[16.881795] (go2w_motion_interfaces) StdoutLine: {'line': b'[100%] Linking C shared library rosidl_generator_py/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_introspection_c.cpython-38-aarch64-linux-gnu.so\n'}
+[16.956770] (go2w_motion_interfaces) StdoutLine: {'line': b'[100%] Built target go2w_motion_interfaces__rosidl_typesupport_introspection_c__pyext\n'}
+[16.965124] (-) TimerEvent: {}
+[16.980797] (go2w_motion_interfaces) CommandEnded: {'returncode': 0}
+[17.065318] (-) TimerEvent: {}
+[17.066847] (go2w_motion_interfaces) JobProgress: {'identifier': 'go2w_motion_interfaces', 'progress': 'install'}
+[17.092815] (go2w_motion_interfaces) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces'], 'cwd': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 41608 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '6'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces'), ('SSH_CONNECTION', '192.168.123.99 41608 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy')]), 'shell': False}
+[17.115757] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Install configuration: "Release"\n'}
+[17.116722] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/ament_index/resource_index/rosidl_interfaces/go2w_motion_interfaces\n'}
+[17.117017] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces\n'}
+[17.117365] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action\n'}
+[17.117500] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/motion_command.h\n'}
+[17.117728] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail\n'}
+[17.117851] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__struct.h\n'}
+[17.118140] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__type_support.h\n'}
+[17.118288] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__functions.c\n'}
+[17.118401] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__functions.h\n'}
+[17.118622] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg\n'}
+[17.118856] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg/rosidl_generator_c__visibility_control.h\n'}
+[17.118975] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/library_path.sh\n'}
+[17.119086] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/library_path.dsv\n'}
+[17.119292] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_generator_c.so\n'}
+[17.119901] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_generator_c.so" to ""\n'}
+[17.120318] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces\n'}
+[17.120614] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action\n'}
+[17.120730] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail\n'}
+[17.120922] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__rosidl_typesupport_fastrtps_c.h\n'}
+[17.121042] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg\n'}
+[17.121177] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg/rosidl_typesupport_fastrtps_c__visibility_control.h\n'}
+[17.121288] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_fastrtps_c.so\n'}
+[17.121570] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_fastrtps_c.so" to ""\n'}
+[17.121987] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces\n'}
+[17.122159] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action\n'}
+[17.122290] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail\n'}
+[17.122451] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[17.122847] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/dds_fastrtps\n'}
+[17.122998] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg\n'}
+[17.123114] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h\n'}
+[17.123222] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_fastrtps_cpp.so\n'}
+[17.123444] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_fastrtps_cpp.so" to ""\n'}
+[17.123838] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces\n'}
+[17.124107] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action\n'}
+[17.124228] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail\n'}
+[17.124338] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__rosidl_typesupport_introspection_c.h\n'}
+[17.124644] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__type_support.c\n'}
+[17.124757] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg\n'}
+[17.124952] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg/rosidl_typesupport_introspection_c__visibility_control.h\n'}
+[17.125068] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_introspection_c.so\n'}
+[17.125576] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_introspection_c.so" to ""\n'}
+[17.125820] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_c.so\n'}
+[17.126377] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_c.so" to ""\n'}
+[17.126722] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces\n'}
+[17.127041] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action\n'}
+[17.127245] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/motion_command.hpp\n'}
+[17.127472] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail\n'}
+[17.127695] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__traits.hpp\n'}
+[17.127978] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__builder.hpp\n'}
+[17.128364] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__struct.hpp\n'}
+[17.128602] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__type_support.hpp\n'}
+[17.128841] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg\n'}
+[17.128956] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp\n'}
+[17.129185] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces\n'}
+[17.129303] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action\n'}
+[17.129410] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail\n'}
+[17.129518] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__type_support.cpp\n'}
+[17.129622] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__rosidl_typesupport_introspection_cpp.hpp\n'}
+[17.129885] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_introspection_cpp.so\n'}
+[17.130176] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_introspection_cpp.so" to ""\n'}
+[17.130305] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_cpp.so\n'}
+[17.130613] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_cpp.so" to ""\n'}
+[17.130858] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/pythonpath.sh\n'}
+[17.131089] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/pythonpath.dsv\n'}
+[17.131434] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/__init__.py\n'}
+[17.165438] (-) TimerEvent: {}
+[17.191487] (go2w_motion_interfaces) StdoutLine: {'line': b"Compiling '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/__init__.py'...\n"}
+[17.202068] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/action\n'}
+[17.202718] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/action/_motion_command.py\n'}
+[17.202879] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/action/__init__.py\n'}
+[17.203009] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/action/_motion_command_s.c\n'}
+[17.203776] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-38-aarch64-linux-gnu.so\n'}
+[17.205262] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-38-aarch64-linux-gnu.so" to ""\n'}
+[17.205741] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_introspection_c.cpython-38-aarch64-linux-gnu.so\n'}
+[17.207057] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_introspection_c.cpython-38-aarch64-linux-gnu.so" to ""\n'}
+[17.207478] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_c.cpython-38-aarch64-linux-gnu.so\n'}
+[17.212699] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_c.cpython-38-aarch64-linux-gnu.so" to ""\n'}
+[17.213367] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__python.so\n'}
+[17.213523] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__python.so" to ""\n'}
+[17.213767] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/action/MotionCommand.idl\n'}
+[17.213996] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/action/MotionCommand.action\n'}
+[17.214239] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/ament_index/resource_index/package_run_dependencies/go2w_motion_interfaces\n'}
+[17.214364] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/ament_index/resource_index/parent_prefix_path/go2w_motion_interfaces\n'}
+[17.214477] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/ament_prefix_path.sh\n'}
+[17.214689] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/ament_prefix_path.dsv\n'}
+[17.214801] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/path.sh\n'}
+[17.214907] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/path.dsv\n'}
+[17.215010] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/local_setup.bash\n'}
+[17.215215] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/local_setup.sh\n'}
+[17.215322] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/local_setup.zsh\n'}
+[17.215549] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/local_setup.dsv\n'}
+[17.215693] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.dsv\n'}
+[17.215815] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/ament_index/resource_index/packages/go2w_motion_interfaces\n'}
+[17.215931] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_generator_cExport.cmake\n'}
+[17.216229] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_generator_cExport-release.cmake\n'}
+[17.216529] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_introspection_cExport.cmake\n'}
+[17.216644] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_introspection_cExport-release.cmake\n'}
+[17.216888] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_cExport.cmake\n'}
+[17.218265] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_cExport-release.cmake\n'}
+[17.218606] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_generator_cppExport.cmake\n'}
+[17.219051] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_introspection_cppExport.cmake\n'}
+[17.219362] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_introspection_cppExport-release.cmake\n'}
+[17.219768] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_cppExport.cmake\n'}
+[17.220109] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_cppExport-release.cmake\n'}
+[17.220475] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/rosidl_cmake-extras.cmake\n'}
+[17.220757] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/ament_cmake_export_dependencies-extras.cmake\n'}
+[17.221029] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/ament_cmake_export_libraries-extras.cmake\n'}
+[17.221324] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/ament_cmake_export_targets-extras.cmake\n'}
+[17.221595] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/ament_cmake_export_include_directories-extras.cmake\n'}
+[17.221857] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake\n'}
+[17.222148] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake\n'}
+[17.222411] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfacesConfig.cmake\n'}
+[17.222705] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfacesConfig-version.cmake\n'}
+[17.222950] (go2w_motion_interfaces) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.xml\n'}
+[17.226881] (go2w_motion_interfaces) CommandEnded: {'returncode': 0}
+[17.266131] (-) TimerEvent: {}
+[17.366994] (-) TimerEvent: {}
+[17.467627] (-) TimerEvent: {}
+[17.567989] (-) TimerEvent: {}
+[17.668554] (-) TimerEvent: {}
+[17.769081] (-) TimerEvent: {}
+[17.869580] (-) TimerEvent: {}
+[17.970454] (-) TimerEvent: {}
+[18.070903] (-) TimerEvent: {}
+[18.171247] (-) TimerEvent: {}
+[18.214355] (go2w_motion_interfaces) JobEnded: {'identifier': 'go2w_motion_interfaces', 'rc': 0}
+[18.215651] (go2w_motion_control) JobStarted: {'identifier': 'go2w_motion_control'}
+[18.272648] (-) TimerEvent: {}
+[18.372994] (-) TimerEvent: {}
+[18.474024] (-) TimerEvent: {}
+[18.552922] (go2w_motion_control) JobProgress: {'identifier': 'go2w_motion_control', 'progress': 'cmake'}
+[18.553456] (go2w_motion_control) Command: {'cmd': ['/usr/bin/cmake', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_control', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control'], 'cwd': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 41608 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '6'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control'), ('SSH_CONNECTION', '192.168.123.99 41608 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy')]), 'shell': False}
+[18.574214] (-) TimerEvent: {}
+[18.659076] (go2w_motion_control) StdoutLine: {'line': b'-- The C compiler identification is GNU 9.4.0\n'}
+[18.674378] (-) TimerEvent: {}
+[18.753174] (go2w_motion_control) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 9.4.0\n'}
+[18.761350] (go2w_motion_control) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc\n'}
+[18.774541] (-) TimerEvent: {}
+[18.874952] (-) TimerEvent: {}
+[18.894420] (go2w_motion_control) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc -- works\n'}
+[18.895583] (go2w_motion_control) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[18.975122] (-) TimerEvent: {}
+[19.029254] (go2w_motion_control) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[19.046755] (go2w_motion_control) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[19.047463] (go2w_motion_control) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[19.051377] (go2w_motion_control) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++\n'}
+[19.075317] (-) TimerEvent: {}
+[19.175753] (-) TimerEvent: {}
+[19.205652] (go2w_motion_control) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ -- works\n'}
+[19.206616] (go2w_motion_control) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[19.275922] (-) TimerEvent: {}
+[19.359116] (go2w_motion_control) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[19.376099] (-) TimerEvent: {}
+[19.377439] (go2w_motion_control) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[19.377991] (go2w_motion_control) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[19.383049] (go2w_motion_control) StdoutLine: {'line': b'-- Found ament_cmake: 0.9.12 (/opt/ros/foxy/share/ament_cmake/cmake)\n'}
+[19.431361] (go2w_motion_control) StdoutLine: {'line': b'-- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") \n'}
+[19.431800] (go2w_motion_control) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[19.476297] (-) TimerEvent: {}
+[19.576658] (-) TimerEvent: {}
+[19.677051] (-) TimerEvent: {}
+[19.777493] (-) TimerEvent: {}
+[19.845015] (go2w_motion_control) StdoutLine: {'line': b'-- Found rclcpp: 2.4.3 (/opt/ros/foxy/share/rclcpp/cmake)\n'}
+[19.877657] (-) TimerEvent: {}
+[19.929270] (go2w_motion_control) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[19.943109] (go2w_motion_control) StdoutLine: {'line': b'-- Found rosidl_adapter: 1.3.1 (/opt/ros/foxy/share/rosidl_adapter/cmake)\n'}
+[19.977820] (-) TimerEvent: {}
+[20.078248] (-) TimerEvent: {}
+[20.110638] (go2w_motion_control) StdoutLine: {'line': b'-- Found OpenSSL: /usr/lib/aarch64-linux-gnu/libcrypto.so (found version "1.1.1f")  \n'}
+[20.167187] (go2w_motion_control) StdoutLine: {'line': b'-- Found FastRTPS: /opt/ros/foxy/include  \n'}
+[20.178373] (-) TimerEvent: {}
+[20.278724] (-) TimerEvent: {}
+[20.318435] (go2w_motion_control) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[20.378887] (-) TimerEvent: {}
+[20.422102] (go2w_motion_control) StdoutLine: {'line': b'-- Found rmw_implementation_cmake: 1.0.4 (/opt/ros/foxy/share/rmw_implementation_cmake/cmake)\n'}
+[20.424669] (go2w_motion_control) StdoutLine: {'line': b"-- Using RMW implementation 'rmw_fastrtps_cpp' as default\n"}
+[20.426249] (go2w_motion_control) StdoutLine: {'line': b'-- Looking for pthread.h\n'}
+[20.479057] (-) TimerEvent: {}
+[20.570606] (go2w_motion_control) StdoutLine: {'line': b'-- Looking for pthread.h - found\n'}
+[20.571209] (go2w_motion_control) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD\n'}
+[20.579226] (-) TimerEvent: {}
+[20.679616] (-) TimerEvent: {}
+[20.710727] (go2w_motion_control) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed\n'}
+[20.712360] (go2w_motion_control) StdoutLine: {'line': b'-- Looking for pthread_create in pthreads\n'}
+[20.779782] (-) TimerEvent: {}
+[20.827102] (go2w_motion_control) StdoutLine: {'line': b'-- Looking for pthread_create in pthreads - not found\n'}
+[20.827621] (go2w_motion_control) StdoutLine: {'line': b'-- Looking for pthread_create in pthread\n'}
+[20.880073] (-) TimerEvent: {}
+[20.963358] (go2w_motion_control) StdoutLine: {'line': b'-- Looking for pthread_create in pthread - found\n'}
+[20.965210] (go2w_motion_control) StdoutLine: {'line': b'-- Found Threads: TRUE  \n'}
+[20.980190] (-) TimerEvent: {}
+[21.080618] (-) TimerEvent: {}
+[21.181058] (-) TimerEvent: {}
+[21.233332] (go2w_motion_control) StdoutLine: {'line': b'-- Found rclcpp_action: 2.4.3 (/opt/ros/foxy/share/rclcpp_action/cmake)\n'}
+[21.281215] (-) TimerEvent: {}
+[21.368948] (go2w_motion_control) StdoutLine: {'line': b'-- Found std_srvs: 2.0.5 (/opt/ros/foxy/share/std_srvs/cmake)\n'}
+[21.381342] (-) TimerEvent: {}
+[21.386223] (go2w_motion_control) StdoutLine: {'line': b'-- Found unitree_api: 0.0.0 (/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/share/unitree_api/cmake)\n'}
+[21.481512] (-) TimerEvent: {}
+[21.563633] (go2w_motion_control) StdoutLine: {'line': b'-- Found unitree_go: 0.0.0 (/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/share/unitree_go/cmake)\n'}
+[21.581669] (-) TimerEvent: {}
+[21.662975] (go2w_motion_control) StdoutLine: {'line': b'-- Found go2w_motion_interfaces: 0.1.0 (/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake)\n'}
+[21.681833] (-) TimerEvent: {}
+[21.773548] (go2w_motion_control) StdoutLine: {'line': b'-- Found ament_cmake_gtest: 0.9.12 (/opt/ros/foxy/share/ament_cmake_gtest/cmake)\n'}
+[21.777980] (go2w_motion_control) StdoutLine: {'line': b"-- Found gtest sources under '/opt/ros/foxy/src/gtest_vendor': C++ tests using 'Google Test' will be built\n"}
+[21.781889] (-) TimerEvent: {}
+[21.783017] (go2w_motion_control) StdoutLine: {'line': b'-- Check if compiler accepts -pthread\n'}
+[21.882082] (-) TimerEvent: {}
+[21.927575] (go2w_motion_control) StdoutLine: {'line': b'-- Check if compiler accepts -pthread - yes\n'}
+[21.982233] (-) TimerEvent: {}
+[22.082611] (-) TimerEvent: {}
+[22.092611] (go2w_motion_control) StdoutLine: {'line': b'-- Configuring done\n'}
+[22.154904] (go2w_motion_control) StdoutLine: {'line': b'-- Generating done\n'}
+[22.159266] (go2w_motion_control) StdoutLine: {'line': b'-- Build files have been written to: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control\n'}
+[22.182772] (-) TimerEvent: {}
+[22.191029] (go2w_motion_control) CommandEnded: {'returncode': 0}
+[22.192382] (go2w_motion_control) JobProgress: {'identifier': 'go2w_motion_control', 'progress': 'build'}
+[22.192927] (go2w_motion_control) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control', '--', '-j4', '-l4'], 'cwd': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 41608 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '6'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control'), ('SSH_CONNECTION', '192.168.123.99 41608 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy')]), 'shell': False}
+[22.283062] (-) TimerEvent: {}
+[22.294395] (go2w_motion_control) StdoutLine: {'line': b'Scanning dependencies of target gtest_main\n'}
+[22.304109] (go2w_motion_control) StdoutLine: {'line': b'Scanning dependencies of target gtest\n'}
+[22.321467] (go2w_motion_control) StdoutLine: {'line': b'[  5%] Building CXX object gtest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o\n'}
+[22.352273] (go2w_motion_control) StdoutLine: {'line': b'[ 10%] Building CXX object gtest/CMakeFiles/gtest.dir/src/gtest-all.cc.o\n'}
+[22.361980] (go2w_motion_control) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_core\n'}
+[22.383264] (-) TimerEvent: {}
+[22.406421] (go2w_motion_control) StdoutLine: {'line': b'[ 15%] Building CXX object CMakeFiles/go2w_motion_core.dir/src/leased_sport_client.cpp.o\n'}
+[22.406981] (go2w_motion_control) StdoutLine: {'line': b'[ 21%] Building CXX object CMakeFiles/go2w_motion_core.dir/src/goal_logger.cpp.o\n'}
+[22.491115] (-) TimerEvent: {}
+[22.591522] (-) TimerEvent: {}
+[22.691961] (-) TimerEvent: {}
+[22.792477] (-) TimerEvent: {}
+[22.892892] (-) TimerEvent: {}
+[23.000191] (-) TimerEvent: {}
+[23.100663] (-) TimerEvent: {}
+[23.201075] (-) TimerEvent: {}
+[23.301525] (-) TimerEvent: {}
+[23.401981] (-) TimerEvent: {}
+[23.502438] (-) TimerEvent: {}
+[23.602864] (-) TimerEvent: {}
+[23.703318] (-) TimerEvent: {}
+[23.803748] (-) TimerEvent: {}
+[23.904205] (-) TimerEvent: {}
+[24.005556] (-) TimerEvent: {}
+[24.106026] (-) TimerEvent: {}
+[24.206504] (-) TimerEvent: {}
+[24.306967] (-) TimerEvent: {}
+[24.327955] (go2w_motion_control) StdoutLine: {'line': b'[ 26%] Linking CXX static library libgtest_main.a\n'}
+[24.407178] (-) TimerEvent: {}
+[24.447621] (go2w_motion_control) StdoutLine: {'line': b'[ 26%] Built target gtest_main\n'}
+[24.507372] (-) TimerEvent: {}
+[24.511356] (go2w_motion_control) StdoutLine: {'line': b'[ 31%] Building CXX object CMakeFiles/go2w_motion_core.dir/src/motion_state_monitor.cpp.o\n'}
+[24.607571] (-) TimerEvent: {}
+[24.708170] (-) TimerEvent: {}
+[24.808661] (-) TimerEvent: {}
+[24.909122] (-) TimerEvent: {}
+[25.009560] (-) TimerEvent: {}
+[25.109994] (-) TimerEvent: {}
+[25.210441] (-) TimerEvent: {}
+[25.310907] (-) TimerEvent: {}
+[25.411347] (-) TimerEvent: {}
+[25.511803] (-) TimerEvent: {}
+[25.612275] (-) TimerEvent: {}
+[25.712755] (-) TimerEvent: {}
+[25.813202] (-) TimerEvent: {}
+[25.913633] (-) TimerEvent: {}
+[26.014102] (-) TimerEvent: {}
+[26.114539] (-) TimerEvent: {}
+[26.214985] (-) TimerEvent: {}
+[26.315414] (-) TimerEvent: {}
+[26.415855] (-) TimerEvent: {}
+[26.516320] (-) TimerEvent: {}
+[26.616737] (-) TimerEvent: {}
+[26.717176] (-) TimerEvent: {}
+[26.817614] (-) TimerEvent: {}
+[26.918039] (-) TimerEvent: {}
+[27.018488] (-) TimerEvent: {}
+[27.118945] (-) TimerEvent: {}
+[27.219370] (-) TimerEvent: {}
+[27.327793] (-) TimerEvent: {}
+[27.429137] (-) TimerEvent: {}
+[27.529578] (-) TimerEvent: {}
+[27.630029] (-) TimerEvent: {}
+[27.730473] (-) TimerEvent: {}
+[27.830916] (-) TimerEvent: {}
+[27.931372] (-) TimerEvent: {}
+[28.031796] (-) TimerEvent: {}
+[28.144995] (-) TimerEvent: {}
+[28.257815] (-) TimerEvent: {}
+[28.372177] (-) TimerEvent: {}
+[28.476348] (-) TimerEvent: {}
+[28.576814] (-) TimerEvent: {}
+[28.677297] (-) TimerEvent: {}
+[28.777970] (-) TimerEvent: {}
+[28.879984] (-) TimerEvent: {}
+[28.980557] (-) TimerEvent: {}
+[29.081038] (-) TimerEvent: {}
+[29.181550] (-) TimerEvent: {}
+[29.282112] (-) TimerEvent: {}
+[29.382712] (-) TimerEvent: {}
+[29.483254] (-) TimerEvent: {}
+[29.583821] (-) TimerEvent: {}
+[29.684263] (-) TimerEvent: {}
+[29.784781] (-) TimerEvent: {}
+[29.885318] (-) TimerEvent: {}
+[29.985867] (-) TimerEvent: {}
+[30.086378] (-) TimerEvent: {}
+[30.186868] (-) TimerEvent: {}
+[30.287371] (-) TimerEvent: {}
+[30.387901] (-) TimerEvent: {}
+[30.488414] (-) TimerEvent: {}
+[30.588954] (-) TimerEvent: {}
+[30.689451] (-) TimerEvent: {}
+[30.790016] (-) TimerEvent: {}
+[30.890560] (-) TimerEvent: {}
+[30.991047] (-) TimerEvent: {}
+[31.091592] (-) TimerEvent: {}
+[31.192147] (-) TimerEvent: {}
+[31.292682] (-) TimerEvent: {}
+[31.393181] (-) TimerEvent: {}
+[31.494599] (-) TimerEvent: {}
+[31.595074] (-) TimerEvent: {}
+[31.695504] (-) TimerEvent: {}
+[31.795968] (-) TimerEvent: {}
+[31.896446] (-) TimerEvent: {}
+[31.996866] (-) TimerEvent: {}
+[32.097338] (-) TimerEvent: {}
+[32.197822] (-) TimerEvent: {}
+[32.298261] (-) TimerEvent: {}
+[32.398729] (-) TimerEvent: {}
+[32.499199] (-) TimerEvent: {}
+[32.599614] (-) TimerEvent: {}
+[32.700095] (-) TimerEvent: {}
+[32.800554] (-) TimerEvent: {}
+[32.908181] (-) TimerEvent: {}
+[33.012205] (-) TimerEvent: {}
+[33.112629] (-) TimerEvent: {}
+[33.213082] (-) TimerEvent: {}
+[33.313519] (-) TimerEvent: {}
+[33.413926] (-) TimerEvent: {}
+[33.514585] (-) TimerEvent: {}
+[33.615189] (-) TimerEvent: {}
+[33.715748] (-) TimerEvent: {}
+[33.816271] (-) TimerEvent: {}
+[33.916848] (-) TimerEvent: {}
+[34.020949] (-) TimerEvent: {}
+[34.122213] (-) TimerEvent: {}
+[34.222788] (-) TimerEvent: {}
+[34.323283] (-) TimerEvent: {}
+[34.424714] (-) TimerEvent: {}
+[34.527572] (-) TimerEvent: {}
+[34.629472] (-) TimerEvent: {}
+[34.732206] (-) TimerEvent: {}
+[34.832628] (-) TimerEvent: {}
+[34.933044] (-) TimerEvent: {}
+[35.033479] (-) TimerEvent: {}
+[35.133923] (-) TimerEvent: {}
+[35.234347] (-) TimerEvent: {}
+[35.334784] (-) TimerEvent: {}
+[35.435216] (-) TimerEvent: {}
+[35.535653] (-) TimerEvent: {}
+[35.636088] (-) TimerEvent: {}
+[35.736500] (-) TimerEvent: {}
+[35.836926] (-) TimerEvent: {}
+[35.937345] (-) TimerEvent: {}
+[36.037812] (-) TimerEvent: {}
+[36.138232] (-) TimerEvent: {}
+[36.244289] (-) TimerEvent: {}
+[36.344843] (-) TimerEvent: {}
+[36.445434] (-) TimerEvent: {}
+[36.545981] (-) TimerEvent: {}
+[36.646520] (-) TimerEvent: {}
+[36.760317] (-) TimerEvent: {}
+[36.867338] (-) TimerEvent: {}
+[36.967812] (-) TimerEvent: {}
+[37.080277] (-) TimerEvent: {}
+[37.182251] (-) TimerEvent: {}
+[37.282720] (-) TimerEvent: {}
+[37.383281] (-) TimerEvent: {}
+[37.492318] (-) TimerEvent: {}
+[37.592857] (-) TimerEvent: {}
+[37.693284] (-) TimerEvent: {}
+[37.793691] (-) TimerEvent: {}
+[37.896292] (-) TimerEvent: {}
+[37.996743] (-) TimerEvent: {}
+[38.097187] (-) TimerEvent: {}
+[38.197643] (-) TimerEvent: {}
+[38.298131] (-) TimerEvent: {}
+[38.398631] (-) TimerEvent: {}
+[38.499084] (-) TimerEvent: {}
+[38.599515] (-) TimerEvent: {}
+[38.699941] (-) TimerEvent: {}
+[38.800395] (-) TimerEvent: {}
+[38.900849] (-) TimerEvent: {}
+[39.001274] (-) TimerEvent: {}
+[39.101738] (-) TimerEvent: {}
+[39.202139] (-) TimerEvent: {}
+[39.302534] (-) TimerEvent: {}
+[39.402977] (-) TimerEvent: {}
+[39.506705] (-) TimerEvent: {}
+[39.607180] (-) TimerEvent: {}
+[39.707608] (-) TimerEvent: {}
+[39.808066] (-) TimerEvent: {}
+[39.908484] (-) TimerEvent: {}
+[40.008910] (-) TimerEvent: {}
+[40.109306] (-) TimerEvent: {}
+[40.209736] (-) TimerEvent: {}
+[40.310155] (-) TimerEvent: {}
+[40.410583] (-) TimerEvent: {}
+[40.511047] (-) TimerEvent: {}
+[40.611517] (-) TimerEvent: {}
+[40.711934] (-) TimerEvent: {}
+[40.812365] (-) TimerEvent: {}
+[40.912794] (-) TimerEvent: {}
+[41.013214] (-) TimerEvent: {}
+[41.113648] (-) TimerEvent: {}
+[41.214093] (-) TimerEvent: {}
+[41.314500] (-) TimerEvent: {}
+[41.414928] (-) TimerEvent: {}
+[41.515394] (-) TimerEvent: {}
+[41.616173] (-) TimerEvent: {}
+[41.716612] (-) TimerEvent: {}
+[41.817321] (-) TimerEvent: {}
+[41.918164] (-) TimerEvent: {}
+[42.019121] (-) TimerEvent: {}
+[42.119744] (-) TimerEvent: {}
+[42.220386] (-) TimerEvent: {}
+[42.320919] (-) TimerEvent: {}
+[42.421378] (-) TimerEvent: {}
+[42.521824] (-) TimerEvent: {}
+[42.622346] (-) TimerEvent: {}
+[42.722777] (-) TimerEvent: {}
+[42.823231] (-) TimerEvent: {}
+[42.923628] (-) TimerEvent: {}
+[43.024092] (-) TimerEvent: {}
+[43.124565] (-) TimerEvent: {}
+[43.225000] (-) TimerEvent: {}
+[43.325462] (-) TimerEvent: {}
+[43.425938] (-) TimerEvent: {}
+[43.526381] (-) TimerEvent: {}
+[43.626794] (-) TimerEvent: {}
+[43.731732] (-) TimerEvent: {}
+[43.832200] (-) TimerEvent: {}
+[43.932729] (-) TimerEvent: {}
+[44.033225] (-) TimerEvent: {}
+[44.133816] (-) TimerEvent: {}
+[44.234463] (-) TimerEvent: {}
+[44.335036] (-) TimerEvent: {}
+[44.435597] (-) TimerEvent: {}
+[44.536356] (-) TimerEvent: {}
+[44.637028] (-) TimerEvent: {}
+[44.737446] (-) TimerEvent: {}
+[44.837871] (-) TimerEvent: {}
+[44.938304] (-) TimerEvent: {}
+[45.038753] (-) TimerEvent: {}
+[45.139208] (-) TimerEvent: {}
+[45.239660] (-) TimerEvent: {}
+[45.340117] (-) TimerEvent: {}
+[45.440512] (-) TimerEvent: {}
+[45.541091] (-) TimerEvent: {}
+[45.641485] (-) TimerEvent: {}
+[45.647266] (go2w_motion_control) StdoutLine: {'line': b'[ 36%] Linking CXX static library libgtest.a\n'}
+[45.741677] (-) TimerEvent: {}
+[45.745157] (go2w_motion_control) StdoutLine: {'line': b'[ 36%] Built target gtest\n'}
+[45.841897] (-) TimerEvent: {}
+[45.942322] (-) TimerEvent: {}
+[46.042793] (-) TimerEvent: {}
+[46.143207] (-) TimerEvent: {}
+[46.243613] (-) TimerEvent: {}
+[46.344058] (-) TimerEvent: {}
+[46.444465] (-) TimerEvent: {}
+[46.544861] (-) TimerEvent: {}
+[46.645271] (-) TimerEvent: {}
+[46.745669] (-) TimerEvent: {}
+[46.846082] (-) TimerEvent: {}
+[46.946471] (-) TimerEvent: {}
+[47.046881] (-) TimerEvent: {}
+[47.147267] (-) TimerEvent: {}
+[47.244710] (go2w_motion_control) StdoutLine: {'line': b'Scanning dependencies of target test_goal_validation\n'}
+[47.247429] (-) TimerEvent: {}
+[47.271809] (go2w_motion_control) StdoutLine: {'line': b'[ 42%] Building CXX object CMakeFiles/test_goal_validation.dir/test/test_goal_validation.cpp.o\n'}
+[47.347641] (-) TimerEvent: {}
+[47.448123] (-) TimerEvent: {}
+[47.548531] (-) TimerEvent: {}
+[47.648999] (-) TimerEvent: {}
+[47.749457] (-) TimerEvent: {}
+[47.849849] (-) TimerEvent: {}
+[47.950333] (-) TimerEvent: {}
+[48.050755] (-) TimerEvent: {}
+[48.151182] (-) TimerEvent: {}
+[48.251737] (-) TimerEvent: {}
+[48.285788] (go2w_motion_control) StdoutLine: {'line': b'Scanning dependencies of target test_angle_utils\n'}
+[48.327101] (go2w_motion_control) StdoutLine: {'line': b'[ 47%] Building CXX object CMakeFiles/test_angle_utils.dir/test/test_angle_utils.cpp.o\n'}
+[48.351941] (-) TimerEvent: {}
+[48.452429] (-) TimerEvent: {}
+[48.552920] (-) TimerEvent: {}
+[48.653328] (-) TimerEvent: {}
+[48.756195] (-) TimerEvent: {}
+[48.858311] (-) TimerEvent: {}
+[48.958905] (-) TimerEvent: {}
+[49.059712] (-) TimerEvent: {}
+[49.160376] (-) TimerEvent: {}
+[49.260951] (-) TimerEvent: {}
+[49.332141] (go2w_motion_control) StdoutLine: {'line': b'Scanning dependencies of target test_request_matching\n'}
+[49.359356] (go2w_motion_control) StdoutLine: {'line': b'[ 52%] Building CXX object CMakeFiles/test_request_matching.dir/test/test_request_matching.cpp.o\n'}
+[49.361036] (-) TimerEvent: {}
+[49.461410] (-) TimerEvent: {}
+[49.563412] (-) TimerEvent: {}
+[49.663863] (-) TimerEvent: {}
+[49.764881] (-) TimerEvent: {}
+[49.865297] (-) TimerEvent: {}
+[49.965717] (-) TimerEvent: {}
+[50.066153] (-) TimerEvent: {}
+[50.166589] (-) TimerEvent: {}
+[50.267060] (-) TimerEvent: {}
+[50.380195] (-) TimerEvent: {}
+[50.484202] (-) TimerEvent: {}
+[50.592189] (-) TimerEvent: {}
+[50.700194] (-) TimerEvent: {}
+[50.804193] (-) TimerEvent: {}
+[50.907073] (-) TimerEvent: {}
+[51.024208] (-) TimerEvent: {}
+[51.132191] (-) TimerEvent: {}
+[51.240197] (-) TimerEvent: {}
+[51.344193] (-) TimerEvent: {}
+[51.456189] (-) TimerEvent: {}
+[51.560202] (-) TimerEvent: {}
+[51.667645] (-) TimerEvent: {}
+[51.768190] (-) TimerEvent: {}
+[51.872194] (-) TimerEvent: {}
+[51.972637] (-) TimerEvent: {}
+[52.073077] (-) TimerEvent: {}
+[52.173523] (-) TimerEvent: {}
+[52.273963] (-) TimerEvent: {}
+[52.388174] (-) TimerEvent: {}
+[52.488598] (-) TimerEvent: {}
+[52.495712] (go2w_motion_control) StdoutLine: {'line': b'[ 57%] Linking CXX executable test_goal_validation\n'}
+[52.517099] (go2w_motion_control) StdoutLine: {'line': b'[ 63%] Linking CXX executable test_angle_utils\n'}
+[52.588780] (-) TimerEvent: {}
+[52.682139] (go2w_motion_control) StdoutLine: {'line': b'[ 68%] Linking CXX executable test_request_matching\n'}
+[52.688952] (-) TimerEvent: {}
+[52.777173] (go2w_motion_control) StdoutLine: {'line': b'[ 68%] Built target test_goal_validation\n'}
+[52.789195] (-) TimerEvent: {}
+[52.854319] (go2w_motion_control) StdoutLine: {'line': b'[ 68%] Built target test_angle_utils\n'}
+[52.889372] (-) TimerEvent: {}
+[52.956794] (go2w_motion_control) StdoutLine: {'line': b'[ 68%] Built target test_request_matching\n'}
+[52.989551] (-) TimerEvent: {}
+[53.089970] (-) TimerEvent: {}
+[53.190364] (-) TimerEvent: {}
+[53.290783] (-) TimerEvent: {}
+[53.391185] (-) TimerEvent: {}
+[53.491622] (-) TimerEvent: {}
+[53.592119] (-) TimerEvent: {}
+[53.692526] (-) TimerEvent: {}
+[53.792992] (-) TimerEvent: {}
+[53.893640] (-) TimerEvent: {}
+[53.994070] (-) TimerEvent: {}
+[54.094476] (-) TimerEvent: {}
+[54.194879] (-) TimerEvent: {}
+[54.295316] (-) TimerEvent: {}
+[54.395801] (-) TimerEvent: {}
+[54.496283] (-) TimerEvent: {}
+[54.555147] (go2w_motion_control) StdoutLine: {'line': b'[ 73%] Linking CXX static library libgo2w_motion_core.a\n'}
+[54.596483] (-) TimerEvent: {}
+[54.643508] (go2w_motion_control) StdoutLine: {'line': b'[ 73%] Built target go2w_motion_core\n'}
+[54.671401] (go2w_motion_control) StdoutLine: {'line': b'Scanning dependencies of target test_yaw_controller\n'}
+[54.693307] (go2w_motion_control) StdoutLine: {'line': b'[ 78%] Building CXX object CMakeFiles/test_yaw_controller.dir/test/test_yaw_controller.cpp.o\n'}
+[54.696625] (-) TimerEvent: {}
+[54.797040] (-) TimerEvent: {}
+[54.897463] (-) TimerEvent: {}
+[54.997891] (-) TimerEvent: {}
+[55.098288] (-) TimerEvent: {}
+[55.198781] (-) TimerEvent: {}
+[55.299259] (-) TimerEvent: {}
+[55.399804] (-) TimerEvent: {}
+[55.500204] (-) TimerEvent: {}
+[55.600757] (-) TimerEvent: {}
+[55.701227] (-) TimerEvent: {}
+[55.801663] (-) TimerEvent: {}
+[55.902056] (-) TimerEvent: {}
+[56.002452] (-) TimerEvent: {}
+[56.102844] (-) TimerEvent: {}
+[56.203246] (-) TimerEvent: {}
+[56.303695] (-) TimerEvent: {}
+[56.404164] (-) TimerEvent: {}
+[56.504627] (-) TimerEvent: {}
+[56.605109] (-) TimerEvent: {}
+[56.705549] (-) TimerEvent: {}
+[56.806038] (-) TimerEvent: {}
+[56.906509] (-) TimerEvent: {}
+[57.006932] (-) TimerEvent: {}
+[57.107355] (-) TimerEvent: {}
+[57.207861] (-) TimerEvent: {}
+[57.308367] (-) TimerEvent: {}
+[57.408794] (-) TimerEvent: {}
+[57.509232] (-) TimerEvent: {}
+[57.609628] (-) TimerEvent: {}
+[57.710028] (-) TimerEvent: {}
+[57.723089] (go2w_motion_control) StdoutLine: {'line': b'[ 84%] Linking CXX executable test_yaw_controller\n'}
+[57.810204] (-) TimerEvent: {}
+[57.906028] (go2w_motion_control) StdoutLine: {'line': b'[ 84%] Built target test_yaw_controller\n'}
+[57.910296] (-) TimerEvent: {}
+[58.003053] (go2w_motion_control) StdoutLine: {'line': b'Scanning dependencies of target go2w_motion_action_server\n'}
+[58.010495] (-) TimerEvent: {}
+[58.039484] (go2w_motion_control) StdoutLine: {'line': b'[ 89%] Building CXX object CMakeFiles/go2w_motion_action_server.dir/src/motion_action_server.cpp.o\n'}
+[58.039929] (go2w_motion_control) StdoutLine: {'line': b'[ 94%] Building CXX object CMakeFiles/go2w_motion_action_server.dir/src/main.cpp.o\n'}
+[58.110725] (-) TimerEvent: {}
+[58.211135] (-) TimerEvent: {}
+[58.311599] (-) TimerEvent: {}
+[58.412638] (-) TimerEvent: {}
+[58.513111] (-) TimerEvent: {}
+[58.613580] (-) TimerEvent: {}
+[58.714033] (-) TimerEvent: {}
+[58.814484] (-) TimerEvent: {}
+[58.914930] (-) TimerEvent: {}
+[59.015360] (-) TimerEvent: {}
+[59.115815] (-) TimerEvent: {}
+[59.216283] (-) TimerEvent: {}
+[59.316731] (-) TimerEvent: {}
+[59.417146] (-) TimerEvent: {}
+[59.517623] (-) TimerEvent: {}
+[59.618075] (-) TimerEvent: {}
+[59.718475] (-) TimerEvent: {}
+[59.818959] (-) TimerEvent: {}
+[59.919662] (-) TimerEvent: {}
+[60.020177] (-) TimerEvent: {}
+[60.120587] (-) TimerEvent: {}
+[60.221051] (-) TimerEvent: {}
+[60.321511] (-) TimerEvent: {}
+[60.421927] (-) TimerEvent: {}
+[60.522385] (-) TimerEvent: {}
+[60.622841] (-) TimerEvent: {}
+[60.723254] (-) TimerEvent: {}
+[60.824220] (-) TimerEvent: {}
+[60.924648] (-) TimerEvent: {}
+[61.025087] (-) TimerEvent: {}
+[61.125528] (-) TimerEvent: {}
+[61.225946] (-) TimerEvent: {}
+[61.326425] (-) TimerEvent: {}
+[61.426968] (-) TimerEvent: {}
+[61.527465] (-) TimerEvent: {}
+[61.627905] (-) TimerEvent: {}
+[61.728403] (-) TimerEvent: {}
+[61.828872] (-) TimerEvent: {}
+[61.929293] (-) TimerEvent: {}
+[62.029780] (-) TimerEvent: {}
+[62.130250] (-) TimerEvent: {}
+[62.230682] (-) TimerEvent: {}
+[62.331174] (-) TimerEvent: {}
+[62.431683] (-) TimerEvent: {}
+[62.532148] (-) TimerEvent: {}
+[62.634571] (-) TimerEvent: {}
+[62.736259] (-) TimerEvent: {}
+[62.844204] (-) TimerEvent: {}
+[62.944705] (-) TimerEvent: {}
+[63.045138] (-) TimerEvent: {}
+[63.145627] (-) TimerEvent: {}
+[63.246167] (-) TimerEvent: {}
+[63.346720] (-) TimerEvent: {}
+[63.447254] (-) TimerEvent: {}
+[63.547779] (-) TimerEvent: {}
+[63.648213] (-) TimerEvent: {}
+[63.748721] (-) TimerEvent: {}
+[63.849759] (-) TimerEvent: {}
+[63.950199] (-) TimerEvent: {}
+[64.050674] (-) TimerEvent: {}
+[64.151128] (-) TimerEvent: {}
+[64.251533] (-) TimerEvent: {}
+[64.352188] (-) TimerEvent: {}
+[64.452661] (-) TimerEvent: {}
+[64.553108] (-) TimerEvent: {}
+[64.653536] (-) TimerEvent: {}
+[64.753995] (-) TimerEvent: {}
+[64.854476] (-) TimerEvent: {}
+[64.954900] (-) TimerEvent: {}
+[65.055346] (-) TimerEvent: {}
+[65.155787] (-) TimerEvent: {}
+[65.256194] (-) TimerEvent: {}
+[65.356674] (-) TimerEvent: {}
+[65.457090] (-) TimerEvent: {}
+[65.557544] (-) TimerEvent: {}
+[65.658017] (-) TimerEvent: {}
+[65.758449] (-) TimerEvent: {}
+[65.858996] (-) TimerEvent: {}
+[65.959537] (-) TimerEvent: {}
+[66.059980] (-) TimerEvent: {}
+[66.160422] (-) TimerEvent: {}
+[66.260858] (-) TimerEvent: {}
+[66.361321] (-) TimerEvent: {}
+[66.461729] (-) TimerEvent: {}
+[66.562203] (-) TimerEvent: {}
+[66.662638] (-) TimerEvent: {}
+[66.763059] (-) TimerEvent: {}
+[66.863525] (-) TimerEvent: {}
+[66.963985] (-) TimerEvent: {}
+[67.064412] (-) TimerEvent: {}
+[67.164855] (-) TimerEvent: {}
+[67.265284] (-) TimerEvent: {}
+[67.365699] (-) TimerEvent: {}
+[67.466175] (-) TimerEvent: {}
+[67.566579] (-) TimerEvent: {}
+[67.666972] (-) TimerEvent: {}
+[67.767374] (-) TimerEvent: {}
+[67.867783] (-) TimerEvent: {}
+[67.968228] (-) TimerEvent: {}
+[68.068621] (-) TimerEvent: {}
+[68.169052] (-) TimerEvent: {}
+[68.269486] (-) TimerEvent: {}
+[68.369971] (-) TimerEvent: {}
+[68.470392] (-) TimerEvent: {}
+[68.570807] (-) TimerEvent: {}
+[68.671184] (-) TimerEvent: {}
+[68.771603] (-) TimerEvent: {}
+[68.872033] (-) TimerEvent: {}
+[68.972503] (-) TimerEvent: {}
+[69.073032] (-) TimerEvent: {}
+[69.173493] (-) TimerEvent: {}
+[69.273948] (-) TimerEvent: {}
+[69.374475] (-) TimerEvent: {}
+[69.474931] (-) TimerEvent: {}
+[69.575390] (-) TimerEvent: {}
+[69.675838] (-) TimerEvent: {}
+[69.776371] (-) TimerEvent: {}
+[69.876859] (-) TimerEvent: {}
+[69.977295] (-) TimerEvent: {}
+[70.077785] (-) TimerEvent: {}
+[70.178251] (-) TimerEvent: {}
+[70.278674] (-) TimerEvent: {}
+[70.379151] (-) TimerEvent: {}
+[70.479553] (-) TimerEvent: {}
+[70.579984] (-) TimerEvent: {}
+[70.680452] (-) TimerEvent: {}
+[70.780866] (-) TimerEvent: {}
+[70.881268] (-) TimerEvent: {}
+[70.981666] (-) TimerEvent: {}
+[71.082071] (-) TimerEvent: {}
+[71.182473] (-) TimerEvent: {}
+[71.282891] (-) TimerEvent: {}
+[71.383309] (-) TimerEvent: {}
+[71.483719] (-) TimerEvent: {}
+[71.584140] (-) TimerEvent: {}
+[71.684555] (-) TimerEvent: {}
+[71.784966] (-) TimerEvent: {}
+[71.885389] (-) TimerEvent: {}
+[71.985869] (-) TimerEvent: {}
+[72.086344] (-) TimerEvent: {}
+[72.186773] (-) TimerEvent: {}
+[72.287270] (-) TimerEvent: {}
+[72.387701] (-) TimerEvent: {}
+[72.488194] (-) TimerEvent: {}
+[72.588687] (-) TimerEvent: {}
+[72.689116] (-) TimerEvent: {}
+[72.789594] (-) TimerEvent: {}
+[72.890037] (-) TimerEvent: {}
+[72.990445] (-) TimerEvent: {}
+[73.090888] (-) TimerEvent: {}
+[73.191328] (-) TimerEvent: {}
+[73.291723] (-) TimerEvent: {}
+[73.392160] (-) TimerEvent: {}
+[73.492551] (-) TimerEvent: {}
+[73.593004] (-) TimerEvent: {}
+[73.693440] (-) TimerEvent: {}
+[73.793824] (-) TimerEvent: {}
+[73.894260] (-) TimerEvent: {}
+[73.994655] (-) TimerEvent: {}
+[74.095086] (-) TimerEvent: {}
+[74.195550] (-) TimerEvent: {}
+[74.295954] (-) TimerEvent: {}
+[74.396400] (-) TimerEvent: {}
+[74.496823] (-) TimerEvent: {}
+[74.597197] (-) TimerEvent: {}
+[74.697604] (-) TimerEvent: {}
+[74.797968] (-) TimerEvent: {}
+[74.898412] (-) TimerEvent: {}
+[74.998804] (-) TimerEvent: {}
+[75.099275] (-) TimerEvent: {}
+[75.199672] (-) TimerEvent: {}
+[75.300087] (-) TimerEvent: {}
+[75.400481] (-) TimerEvent: {}
+[75.500864] (-) TimerEvent: {}
+[75.601296] (-) TimerEvent: {}
+[75.701650] (-) TimerEvent: {}
+[75.802045] (-) TimerEvent: {}
+[75.902439] (-) TimerEvent: {}
+[76.002867] (-) TimerEvent: {}
+[76.103283] (-) TimerEvent: {}
+[76.203655] (-) TimerEvent: {}
+[76.304092] (-) TimerEvent: {}
+[76.405159] (-) TimerEvent: {}
+[76.505578] (-) TimerEvent: {}
+[76.605952] (-) TimerEvent: {}
+[76.706351] (-) TimerEvent: {}
+[76.806765] (-) TimerEvent: {}
+[76.907176] (-) TimerEvent: {}
+[77.007563] (-) TimerEvent: {}
+[77.107939] (-) TimerEvent: {}
+[77.208371] (-) TimerEvent: {}
+[77.308760] (-) TimerEvent: {}
+[77.409194] (-) TimerEvent: {}
+[77.509630] (-) TimerEvent: {}
+[77.610066] (-) TimerEvent: {}
+[77.710468] (-) TimerEvent: {}
+[77.810875] (-) TimerEvent: {}
+[77.911269] (-) TimerEvent: {}
+[78.011691] (-) TimerEvent: {}
+[78.112133] (-) TimerEvent: {}
+[78.212578] (-) TimerEvent: {}
+[78.312987] (-) TimerEvent: {}
+[78.413426] (-) TimerEvent: {}
+[78.513903] (-) TimerEvent: {}
+[78.614375] (-) TimerEvent: {}
+[78.714848] (-) TimerEvent: {}
+[78.815340] (-) TimerEvent: {}
+[78.915806] (-) TimerEvent: {}
+[79.016316] (-) TimerEvent: {}
+[79.116770] (-) TimerEvent: {}
+[79.217234] (-) TimerEvent: {}
+[79.317720] (-) TimerEvent: {}
+[79.418167] (-) TimerEvent: {}
+[79.518644] (-) TimerEvent: {}
+[79.619068] (-) TimerEvent: {}
+[79.719567] (-) TimerEvent: {}
+[79.820067] (-) TimerEvent: {}
+[79.920491] (-) TimerEvent: {}
+[80.020960] (-) TimerEvent: {}
+[80.121457] (-) TimerEvent: {}
+[80.221906] (-) TimerEvent: {}
+[80.322334] (-) TimerEvent: {}
+[80.422799] (-) TimerEvent: {}
+[80.523286] (-) TimerEvent: {}
+[80.623746] (-) TimerEvent: {}
+[80.724320] (-) TimerEvent: {}
+[80.824798] (-) TimerEvent: {}
+[80.925209] (-) TimerEvent: {}
+[81.025706] (-) TimerEvent: {}
+[81.126181] (-) TimerEvent: {}
+[81.226619] (-) TimerEvent: {}
+[81.327095] (-) TimerEvent: {}
+[81.427516] (-) TimerEvent: {}
+[81.527922] (-) TimerEvent: {}
+[81.628367] (-) TimerEvent: {}
+[81.728851] (-) TimerEvent: {}
+[81.829258] (-) TimerEvent: {}
+[81.929650] (-) TimerEvent: {}
+[82.030058] (-) TimerEvent: {}
+[82.130459] (-) TimerEvent: {}
+[82.230872] (-) TimerEvent: {}
+[82.331274] (-) TimerEvent: {}
+[82.431672] (-) TimerEvent: {}
+[82.532113] (-) TimerEvent: {}
+[82.632506] (-) TimerEvent: {}
+[82.732870] (-) TimerEvent: {}
+[82.833274] (-) TimerEvent: {}
+[82.933696] (-) TimerEvent: {}
+[83.034125] (-) TimerEvent: {}
+[83.134595] (-) TimerEvent: {}
+[83.235055] (-) TimerEvent: {}
+[83.335475] (-) TimerEvent: {}
+[83.435932] (-) TimerEvent: {}
+[83.536352] (-) TimerEvent: {}
+[83.636768] (-) TimerEvent: {}
+[83.737199] (-) TimerEvent: {}
+[83.837613] (-) TimerEvent: {}
+[83.938067] (-) TimerEvent: {}
+[84.038503] (-) TimerEvent: {}
+[84.138913] (-) TimerEvent: {}
+[84.239347] (-) TimerEvent: {}
+[84.339759] (-) TimerEvent: {}
+[84.440160] (-) TimerEvent: {}
+[84.540605] (-) TimerEvent: {}
+[84.641022] (-) TimerEvent: {}
+[84.741505] (-) TimerEvent: {}
+[84.841942] (-) TimerEvent: {}
+[84.942384] (-) TimerEvent: {}
+[85.042831] (-) TimerEvent: {}
+[85.143293] (-) TimerEvent: {}
+[85.243682] (-) TimerEvent: {}
+[85.344090] (-) TimerEvent: {}
+[85.444476] (-) TimerEvent: {}
+[85.544878] (-) TimerEvent: {}
+[85.645275] (-) TimerEvent: {}
+[85.745658] (-) TimerEvent: {}
+[85.846068] (-) TimerEvent: {}
+[85.946477] (-) TimerEvent: {}
+[86.046887] (-) TimerEvent: {}
+[86.147293] (-) TimerEvent: {}
+[86.247682] (-) TimerEvent: {}
+[86.348089] (-) TimerEvent: {}
+[86.448473] (-) TimerEvent: {}
+[86.548888] (-) TimerEvent: {}
+[86.649316] (-) TimerEvent: {}
+[86.749749] (-) TimerEvent: {}
+[86.850141] (-) TimerEvent: {}
+[86.950533] (-) TimerEvent: {}
+[87.021531] (go2w_motion_control) StdoutLine: {'line': b'[100%] Linking CXX executable go2w_motion_action_server\n'}
+[87.050688] (-) TimerEvent: {}
+[87.151092] (-) TimerEvent: {}
+[87.251504] (-) TimerEvent: {}
+[87.352146] (-) TimerEvent: {}
+[87.414741] (go2w_motion_control) StdoutLine: {'line': b'[100%] Built target go2w_motion_action_server\n'}
+[87.439897] (go2w_motion_control) CommandEnded: {'returncode': 0}
+[87.452292] (-) TimerEvent: {}
+[87.519056] (go2w_motion_control) JobProgress: {'identifier': 'go2w_motion_control', 'progress': 'install'}
+[87.520228] (go2w_motion_control) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control'], 'cwd': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control', 'env': OrderedDict([('HTTPS_PROXY', 'http://127.0.0.1:17891'), ('no_proxy', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('USER', 'unitree'), ('SSH_CLIENT', '192.168.123.99 41608 22'), ('LC_TIME', 'zh_CN.UTF-8'), ('all_proxy', 'socks5h://127.0.0.1:17891'), ('XDG_SESSION_TYPE', 'tty'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib:/opt/ros/foxy/opt/yaml_cpp_vendor/lib:/opt/ros/foxy/opt/rviz_ogre_vendor/lib:/opt/ros/foxy/lib/aarch64-linux-gnu:/opt/ros/foxy/lib'), ('MOTD_SHOWN', 'pam'), ('HOME', '/home/unitree'), ('OLDPWD', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws'), ('NO_PROXY', 'localhost,127.0.0.1,::1,192.168.123.0/24'), ('ROS_PYTHON_VERSION', '3'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1000/bus'), ('https_proxy', 'http://127.0.0.1:17891'), ('COLCON_PREFIX_PATH', '/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install'), ('ROS_DISTRO', 'foxy'), ('LOGNAME', 'unitree'), ('ALL_PROXY', 'socks5h://127.0.0.1:17891'), ('http_proxy', 'http://127.0.0.1:17891'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('XDG_SESSION_ID', '6'), ('ROS_LOCALHOST_ONLY', '0'), ('PATH', '/opt/ros/foxy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1000'), ('LANG', 'en_US.UTF-8'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('AMENT_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('PWD', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control'), ('SSH_CONNECTION', '192.168.123.99 41608 192.168.123.18 22'), ('PYTHONPATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go/lib/python3.8/site-packages:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages'), ('HTTP_PROXY', 'http://127.0.0.1:17891'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('CMAKE_PREFIX_PATH', '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy')]), 'shell': False}
+[87.543067] (go2w_motion_control) StdoutLine: {'line': b'-- Install configuration: "Release"\n'}
+[87.543718] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib/libgo2w_motion_core.a\n'}
+[87.547987] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib/go2w_motion_control/go2w_motion_action_server\n'}
+[87.550896] (go2w_motion_control) StdoutLine: {'line': b'-- Set runtime path of "/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib/go2w_motion_control/go2w_motion_action_server" to ""\n'}
+[87.551430] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include\n'}
+[87.551725] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control\n'}
+[87.552070] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/safety_guard.hpp\n'}
+[87.552278] (-) TimerEvent: {}
+[87.552323] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/angle_utils.hpp\n'}
+[87.552531] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/leased_sport_client.hpp\n'}
+[87.553210] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/yaw_controller.hpp\n'}
+[87.553439] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/motion_state_monitor.hpp\n'}
+[87.553903] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/request_matching.hpp\n'}
+[87.554206] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/motion_action_server.hpp\n'}
+[87.554466] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/include/go2w_motion_control/goal_logger.hpp\n'}
+[87.554613] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/config\n'}
+[87.554864] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/config/motion_control.yaml\n'}
+[87.555093] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/launch\n'}
+[87.555208] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/launch/__pycache__\n'}
+[87.555446] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/launch/__pycache__/go2w_motion_control.launch.cpython-38.pyc\n'}
+[87.555675] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/launch/go2w_motion_control.launch.py\n'}
+[87.555916] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/ament_index/resource_index/package_run_dependencies/go2w_motion_control\n'}
+[87.556107] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/ament_index/resource_index/parent_prefix_path/go2w_motion_control\n'}
+[87.556331] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/environment/ament_prefix_path.sh\n'}
+[87.556465] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/environment/ament_prefix_path.dsv\n'}
+[87.556629] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/environment/path.sh\n'}
+[87.556740] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/environment/path.dsv\n'}
+[87.556872] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/local_setup.bash\n'}
+[87.557001] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/local_setup.sh\n'}
+[87.560316] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/local_setup.zsh\n'}
+[87.560525] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/local_setup.dsv\n'}
+[87.560655] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.dsv\n'}
+[87.560787] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/ament_index/resource_index/packages/go2w_motion_control\n'}
+[87.560892] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/cmake/ament_cmake_export_include_directories-extras.cmake\n'}
+[87.561015] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/cmake/go2w_motion_controlConfig.cmake\n'}
+[87.561735] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/cmake/go2w_motion_controlConfig-version.cmake\n'}
+[87.562762] (go2w_motion_control) StdoutLine: {'line': b'-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.xml\n'}
+[87.562899] (go2w_motion_control) CommandEnded: {'returncode': 0}
+[87.652460] (-) TimerEvent: {}
+[87.753289] (-) TimerEvent: {}
+[87.853897] (-) TimerEvent: {}
+[87.954317] (-) TimerEvent: {}
+[88.055015] (-) TimerEvent: {}
+[88.155637] (-) TimerEvent: {}
+[88.177152] (go2w_motion_control) JobEnded: {'identifier': 'go2w_motion_control', 'rc': 0}
+[88.178407] (-) EventReactorShutdown: {}

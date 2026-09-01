@@ -1,0 +1,116 @@
+[  3%] Built target go2w_motion_interfaces__cpp
+[ 12%] Built target go2w_motion_interfaces__rosidl_generator_c
+[ 22%] Built target go2w_motion_interfaces__rosidl_typesupport_cpp
+[ 32%] Built target go2w_motion_interfaces__rosidl_typesupport_introspection_cpp
+[ 51%] Built target go2w_motion_interfaces__rosidl_typesupport_introspection_c
+[ 51%] Built target go2w_motion_interfaces__rosidl_typesupport_fastrtps_cpp
+[ 61%] Built target go2w_motion_interfaces__rosidl_typesupport_c
+[ 70%] Built target go2w_motion_interfaces__rosidl_typesupport_fastrtps_c
+[ 70%] Built target go2w_motion_interfaces
+[ 74%] Built target go2w_motion_interfaces__py
+[ 80%] Built target go2w_motion_interfaces__python
+[ 87%] Built target go2w_motion_interfaces__rosidl_typesupport_fastrtps_c__pyext
+[ 93%] Built target go2w_motion_interfaces__rosidl_typesupport_introspection_c__pyext
+[100%] Built target go2w_motion_interfaces__rosidl_typesupport_c__pyext
+-- Install configuration: "Release"
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/ament_index/resource_index/rosidl_interfaces/go2w_motion_interfaces
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/motion_command.h
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__struct.h
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__type_support.h
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__functions.c
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__functions.h
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg/rosidl_generator_c__visibility_control.h
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/library_path.sh
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/library_path.dsv
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_generator_c.so
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_fastrtps_c.so
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/dds_fastrtps
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_fastrtps_cpp.so
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__rosidl_typesupport_introspection_c.h
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__type_support.c
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg/rosidl_typesupport_introspection_c__visibility_control.h
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_introspection_c.so
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_c.so
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/motion_command.hpp
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__traits.hpp
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__builder.hpp
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__struct.hpp
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__type_support.hpp
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__type_support.cpp
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/include/go2w_motion_interfaces/action/detail/motion_command__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_introspection_cpp.so
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__rosidl_typesupport_cpp.so
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/pythonpath.sh
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/pythonpath.dsv
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/__init__.py
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/action
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/action/_motion_command.py
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/action/__init__.py
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/action/_motion_command_s.c
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_fastrtps_c.cpython-38-aarch64-linux-gnu.so
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_introspection_c.cpython-38-aarch64-linux-gnu.so
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages/go2w_motion_interfaces/go2w_motion_interfaces_s__rosidl_typesupport_c.cpython-38-aarch64-linux-gnu.so
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/libgo2w_motion_interfaces__python.so
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/action/MotionCommand.idl
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/action/MotionCommand.action
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/ament_index/resource_index/package_run_dependencies/go2w_motion_interfaces
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/ament_index/resource_index/parent_prefix_path/go2w_motion_interfaces
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/ament_prefix_path.sh
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/ament_prefix_path.dsv
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/path.sh
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/environment/path.dsv
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/local_setup.bash
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/local_setup.sh
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/local_setup.zsh
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/local_setup.dsv
+-- Installing: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.dsv
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/ament_index/resource_index/packages/go2w_motion_interfaces
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_generator_cExport.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_generator_cExport-release.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_introspection_cExport.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_introspection_cExport-release.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_cExport.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_cExport-release.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_generator_cppExport.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_introspection_cppExport.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_introspection_cppExport-release.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_cppExport.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfaces__rosidl_typesupport_cppExport-release.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/rosidl_cmake-extras.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/ament_cmake_export_dependencies-extras.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/ament_cmake_export_libraries-extras.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/ament_cmake_export_targets-extras.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/ament_cmake_export_include_directories-extras.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfacesConfig.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/cmake/go2w_motion_interfacesConfig-version.cmake
+-- Up-to-date: /home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.xml

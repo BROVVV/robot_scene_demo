@@ -1,0 +1,237 @@
+[4.321s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build', '--packages-up-to', 'go2w_motion_control', '--cmake-args', '-DCMAKE_BUILD_TYPE=Release']
+[4.321s] DEBUG:colcon:Parsed command line arguments: Namespace(allow_overriding=[], ament_cmake_args=None, base_paths=['.'], build_base='build', catkin_cmake_args=None, catkin_skip_building_tests=False, cmake_args=['-DCMAKE_BUILD_TYPE=Release'], cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, cmake_target=None, cmake_target_skip_unavailable=False, continue_on_error=False, event_handlers=None, executor='parallel', ignore_user_meta=False, install_base='install', log_base=None, log_level=None, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0xffffb675e910>>, merge_install=False, metas=['./colcon.meta'], packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_end=None, packages_ignore=None, packages_ignore_regex=None, packages_select=None, packages_select_build_failed=False, packages_select_by_dep=None, packages_select_regex=None, packages_select_test_failures=False, packages_skip=None, packages_skip_build_finished=False, packages_skip_by_dep=None, packages_skip_regex=None, packages_skip_test_passed=False, packages_skip_up_to=None, packages_start=None, packages_up_to=['go2w_motion_control'], packages_up_to_regex=None, parallel_workers=4, paths=None, symlink_install=False, test_result_base=None, verb_extension=<colcon_core.verb.build.BuildVerb object at 0xffffb675e910>, verb_name='build', verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0xffffb63e12e0>)
+[4.512s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[4.512s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[4.512s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[4.512s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[4.512s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[4.512s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[4.512s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws'
+[4.513s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[4.513s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[4.513s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[4.513s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[4.513s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[4.513s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[4.513s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[4.514s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[4.514s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[4.538s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[4.538s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[4.538s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[4.538s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[4.538s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[4.539s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[4.539s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[4.539s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[4.539s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[4.540s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[4.540s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[4.540s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[4.540s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[4.540s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[4.540s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ignore', 'ignore_ament_install']
+[4.540s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore'
+[4.541s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore_ament_install'
+[4.541s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_pkg']
+[4.541s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_pkg'
+[4.541s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_meta']
+[4.541s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_meta'
+[4.541s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ros']
+[4.541s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ros'
+[4.541s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['cmake', 'python']
+[4.541s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'cmake'
+[4.541s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python'
+[4.541s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['python_setup_py']
+[4.542s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python_setup_py'
+[4.542s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_control) by extensions ['ignore', 'ignore_ament_install']
+[4.542s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_control) by extension 'ignore'
+[4.542s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_control) by extension 'ignore_ament_install'
+[4.542s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_control) by extensions ['colcon_pkg']
+[4.542s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_control) by extension 'colcon_pkg'
+[4.542s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_control) by extensions ['colcon_meta']
+[4.542s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_control) by extension 'colcon_meta'
+[4.542s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_control) by extensions ['ros']
+[4.542s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_control) by extension 'ros'
+[4.548s] DEBUG:colcon.colcon_core.package_identification:Package 'src/go2w_motion_control' with type 'ros.ament_cmake' and name 'go2w_motion_control'
+[4.548s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_interfaces) by extensions ['ignore', 'ignore_ament_install']
+[4.549s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_interfaces) by extension 'ignore'
+[4.549s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_interfaces) by extension 'ignore_ament_install'
+[4.549s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_interfaces) by extensions ['colcon_pkg']
+[4.549s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_interfaces) by extension 'colcon_pkg'
+[4.549s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_interfaces) by extensions ['colcon_meta']
+[4.549s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_interfaces) by extension 'colcon_meta'
+[4.549s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_interfaces) by extensions ['ros']
+[4.549s] Level 1:colcon.colcon_core.package_identification:_identify(src/go2w_motion_interfaces) by extension 'ros'
+[4.550s] DEBUG:colcon.colcon_core.package_identification:Package 'src/go2w_motion_interfaces' with type 'ros.ament_cmake' and name 'go2w_motion_interfaces'
+[4.550s] Level 1:colcon.colcon_core.package_identification:_identify(src/safe_go2w_control) by extensions ['ignore', 'ignore_ament_install']
+[4.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/safe_go2w_control) by extension 'ignore'
+[4.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/safe_go2w_control) by extension 'ignore_ament_install'
+[4.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/safe_go2w_control) by extensions ['colcon_pkg']
+[4.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/safe_go2w_control) by extension 'colcon_pkg'
+[4.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/safe_go2w_control) by extensions ['colcon_meta']
+[4.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/safe_go2w_control) by extension 'colcon_meta'
+[4.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/safe_go2w_control) by extensions ['ros']
+[4.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/safe_go2w_control) by extension 'ros'
+[4.552s] DEBUG:colcon.colcon_core.package_identification:Package 'src/safe_go2w_control' with type 'ros.ament_cmake' and name 'safe_go2w_control'
+[4.552s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[4.552s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[4.553s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[4.553s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[4.553s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[4.838s] INFO:colcon.colcon_core.package_selection:Skipping package 'safe_go2w_control' in 'src/safe_go2w_control'
+[4.979s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[4.979s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[5.125s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 3 installed packages in /home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install
+[5.197s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 297 installed packages in /opt/ros/foxy
+[5.200s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[5.486s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_interfaces' build argument 'cmake_args' from command line to '['-DCMAKE_BUILD_TYPE=Release']'
+[5.486s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_interfaces' build argument 'cmake_target' from command line to 'None'
+[5.486s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_interfaces' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[5.486s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_interfaces' build argument 'cmake_clean_cache' from command line to 'False'
+[5.486s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_interfaces' build argument 'cmake_clean_first' from command line to 'False'
+[5.486s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_interfaces' build argument 'cmake_force_configure' from command line to 'False'
+[5.486s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_interfaces' build argument 'ament_cmake_args' from command line to 'None'
+[5.487s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_interfaces' build argument 'catkin_cmake_args' from command line to 'None'
+[5.487s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_interfaces' build argument 'catkin_skip_building_tests' from command line to 'False'
+[5.487s] DEBUG:colcon.colcon_core.verb:Building package 'go2w_motion_interfaces' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': ['-DCMAKE_BUILD_TYPE=Release'], 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces', 'merge_install': False, 'path': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_interfaces', 'symlink_install': False, 'test_result_base': None}
+[5.558s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_control' build argument 'cmake_args' from command line to '['-DCMAKE_BUILD_TYPE=Release']'
+[5.558s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_control' build argument 'cmake_target' from command line to 'None'
+[5.559s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_control' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[5.559s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_control' build argument 'cmake_clean_cache' from command line to 'False'
+[5.559s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_control' build argument 'cmake_clean_first' from command line to 'False'
+[5.559s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_control' build argument 'cmake_force_configure' from command line to 'False'
+[5.559s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_control' build argument 'ament_cmake_args' from command line to 'None'
+[5.559s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_control' build argument 'catkin_cmake_args' from command line to 'None'
+[5.559s] Level 5:colcon.colcon_core.verb:set package 'go2w_motion_control' build argument 'catkin_skip_building_tests' from command line to 'False'
+[5.559s] DEBUG:colcon.colcon_core.verb:Building package 'go2w_motion_control' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': ['-DCMAKE_BUILD_TYPE=Release'], 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control', 'merge_install': False, 'path': '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_control', 'symlink_install': False, 'test_result_base': None}
+[5.629s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[5.734s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[5.734s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_interfaces' with build type 'ament_cmake'
+[5.735s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_interfaces'
+[5.810s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[5.810s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[5.810s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[6.047s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake /home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_interfaces -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces
+[8.999s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake /home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_interfaces -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces
+[9.002s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces -- -j4 -l4
+[22.715s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake --build /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces -- -j4 -l4
+[22.830s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces
+[22.960s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(go2w_motion_interfaces)
+[22.961s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/foxy /usr/bin/cmake --install /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_interfaces
+[23.039s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces' for CMake module files
+[23.040s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces' for CMake config files
+[23.041s] Level 1:colcon.colcon_core.shell:create_environment_hook('go2w_motion_interfaces', 'cmake_prefix_path')
+[23.115s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/cmake_prefix_path.ps1'
+[23.117s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/cmake_prefix_path.dsv'
+[23.117s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/cmake_prefix_path.sh'
+[23.119s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib'
+[23.120s] Level 1:colcon.colcon_core.shell:create_environment_hook('go2w_motion_interfaces', 'ld_library_path_lib')
+[23.192s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/ld_library_path_lib.ps1'
+[23.193s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/ld_library_path_lib.dsv'
+[23.194s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/ld_library_path_lib.sh'
+[23.195s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/bin'
+[23.195s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/pkgconfig/go2w_motion_interfaces.pc'
+[23.195s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages'
+[23.195s] Level 1:colcon.colcon_core.shell:create_environment_hook('go2w_motion_interfaces', 'pythonpath')
+[23.267s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/pythonpath.ps1'
+[23.269s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/pythonpath.dsv'
+[23.269s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/pythonpath.sh'
+[23.270s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/bin'
+[23.343s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.ps1'
+[23.345s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.dsv'
+[23.347s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.sh'
+[23.348s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.bash'
+[23.349s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.zsh'
+[23.350s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/colcon-core/packages/go2w_motion_interfaces)
+[23.523s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(go2w_motion_interfaces)
+[23.603s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces' for CMake module files
+[23.605s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces' for CMake config files
+[23.606s] Level 1:colcon.colcon_core.shell:create_environment_hook('go2w_motion_interfaces', 'cmake_prefix_path')
+[23.687s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/cmake_prefix_path.ps1'
+[23.689s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/cmake_prefix_path.dsv'
+[23.689s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/cmake_prefix_path.sh'
+[23.691s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib'
+[23.691s] Level 1:colcon.colcon_core.shell:create_environment_hook('go2w_motion_interfaces', 'ld_library_path_lib')
+[23.770s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/ld_library_path_lib.ps1'
+[23.772s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/ld_library_path_lib.dsv'
+[23.773s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/ld_library_path_lib.sh'
+[23.773s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/bin'
+[23.774s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/pkgconfig/go2w_motion_interfaces.pc'
+[23.774s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages'
+[23.774s] Level 1:colcon.colcon_core.shell:create_environment_hook('go2w_motion_interfaces', 'pythonpath')
+[23.856s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/pythonpath.ps1'
+[23.857s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/pythonpath.dsv'
+[23.858s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/hook/pythonpath.sh'
+[23.859s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/bin'
+[23.941s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.ps1'
+[23.943s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.dsv'
+[23.944s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.sh'
+[23.945s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.bash'
+[23.946s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/go2w_motion_interfaces/package.zsh'
+[23.947s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/share/colcon-core/packages/go2w_motion_interfaces)
+[23.948s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_control' with build type 'ament_cmake'
+[23.948s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_control'
+[24.029s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[24.029s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[24.291s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake /home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_control -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control
+[27.925s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control' returned '0': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake /home/unitree/robotscene/unitree_go2w_control/ros2_ws/src/go2w_motion_control -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control
+[27.927s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake --build /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control -- -j4 -l4
+[93.174s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control' returned '0': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake --build /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control -- -j4 -l4
+[93.259s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake --install /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control
+[93.295s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(go2w_motion_control)
+[93.297s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control' returned '0': AMENT_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_hg:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_go:/home/unitree/robotscene/external/unitree_ros2/cyclonedds_ws/install/unitree_api:/opt/ros/foxy LD_LIBRARY_PATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_interfaces/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/cmake --install /home/unitree/robotscene/unitree_go2w_control/ros2_ws/build/go2w_motion_control
+[93.370s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control' for CMake module files
+[93.372s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control' for CMake config files
+[93.372s] Level 1:colcon.colcon_core.shell:create_environment_hook('go2w_motion_control', 'cmake_prefix_path')
+[93.445s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/hook/cmake_prefix_path.ps1'
+[93.446s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/hook/cmake_prefix_path.dsv'
+[93.447s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/hook/cmake_prefix_path.sh'
+[93.448s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib'
+[93.448s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/bin'
+[93.448s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib/pkgconfig/go2w_motion_control.pc'
+[93.448s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib/python3.8/site-packages'
+[93.449s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/bin'
+[93.522s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.ps1'
+[93.524s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.dsv'
+[93.525s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.sh'
+[93.526s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.bash'
+[93.526s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.zsh'
+[93.527s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/colcon-core/packages/go2w_motion_control)
+[93.677s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(go2w_motion_control)
+[93.750s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control' for CMake module files
+[93.752s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control' for CMake config files
+[93.752s] Level 1:colcon.colcon_core.shell:create_environment_hook('go2w_motion_control', 'cmake_prefix_path')
+[93.825s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/hook/cmake_prefix_path.ps1'
+[93.827s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/hook/cmake_prefix_path.dsv'
+[93.828s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/hook/cmake_prefix_path.sh'
+[93.829s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib'
+[93.830s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/bin'
+[93.830s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib/pkgconfig/go2w_motion_control.pc'
+[93.830s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/lib/python3.8/site-packages'
+[93.831s] Level 1:colcon.colcon_core.environment:checking '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/bin'
+[93.905s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.ps1'
+[93.906s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.dsv'
+[93.907s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.sh'
+[93.908s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.bash'
+[93.909s] INFO:colcon.colcon_core.shell:Creating package script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/go2w_motion_control/package.zsh'
+[93.910s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/go2w_motion_control/share/colcon-core/packages/go2w_motion_control)
+[93.910s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[93.911s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[93.911s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[93.911s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[93.994s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[93.994s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[93.994s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[94.017s] DEBUG:colcon.colcon_notification.desktop_notification.notify2:Failed to initialize notify2: org.freedesktop.DBus.Error.Spawn.ChildExited: Process org.freedesktop.Notifications exited with status 1
+[94.017s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[94.125s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/local_setup.ps1'
+[94.127s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/_local_setup_util_ps1.py'
+[94.130s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/setup.ps1'
+[94.204s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/local_setup.sh'
+[94.205s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/_local_setup_util_sh.py'
+[94.206s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/setup.sh'
+[94.281s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/local_setup.bash'
+[94.282s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/setup.bash'
+[94.357s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/local_setup.zsh'
+[94.358s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/unitree/robotscene/unitree_go2w_control/ros2_ws/install/setup.zsh'

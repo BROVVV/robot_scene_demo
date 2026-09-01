@@ -33,10 +33,16 @@ def main() -> int:
     rclpy.init(args=[])
     node = rclpy.create_node("go2w_motion_cli")
     client = ActionClient(node, MotionCommand, "/go2w/motion")
-    if not client.wait_for_server(timeout_sec=5.0):
-        print(json.dumps({"event": "error", "message": "Action server unavailable"}))
+
+    def shutdown() -> None:
+        # Foxy requires ActionClient handles to be destroyed before their node.
+        client.destroy()
         node.destroy_node()
         rclpy.shutdown()
+
+    if not client.wait_for_server(timeout_sec=5.0):
+        print(json.dumps({"event": "error", "message": "Action server unavailable"}))
+        shutdown()
         return 2
 
     goal = MotionCommand.Goal()
@@ -80,14 +86,12 @@ def main() -> int:
     while rclpy.ok() and not send_future.done():
         rclpy.spin_once(node, timeout_sec=0.05)
     if not send_future.done() or send_future.result() is None:
-        node.destroy_node()
-        rclpy.shutdown()
+        shutdown()
         return 2
     goal_handle = send_future.result()
     if not goal_handle.accepted:
         print(json.dumps({"event": "goal", "accepted": False}), flush=True)
-        node.destroy_node()
-        rclpy.shutdown()
+        shutdown()
         return 3
     print(json.dumps({"event": "goal", "accepted": True}), flush=True)
     result_future = goal_handle.get_result_async()
@@ -107,8 +111,7 @@ def main() -> int:
 
     wrapped = result_future.result()
     if wrapped is None:
-        node.destroy_node()
-        rclpy.shutdown()
+        shutdown()
         return 2
     result = wrapped.result
     output = {
@@ -124,8 +127,7 @@ def main() -> int:
         "last_stop_status_code": result.last_stop_status_code,
     }
     print(json.dumps(output), flush=True)
-    node.destroy_node()
-    rclpy.shutdown()
+    shutdown()
     return 0 if result.success or (cancel_sent and result.error_code == 9) else 1
 
 

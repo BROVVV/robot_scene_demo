@@ -1,0 +1,16 @@
+[INFO] [launch]: All log files can be found below /home/unitree/.ros/log/2026-08-31-13-09-48-023574-ubuntu-133889
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [pandar_slam_adapter-1]: process started with pid [133925]
+[INFO] [plain_slam_odom_adapter-2]: process started with pid [133927]
+[INFO] [pointcloud_to_occupancy-3]: process started with pid [133938]
+[INFO] [plain_slam_health_monitor-4]: process started with pid [133940]
+[pandar_slam_adapter-1] 1788152988.652531 [0] pandar_sla: using network interface eth0 (udp/192.168.123.18) selected arbitrarily from: eth0, docker0
+[pandar_slam_adapter-1] [INFO] [1788152988.712800608] [pandar_slam_adapter]: pandar_slam_adapter: /hesai/pandarxt16/points_raw -> /go2w/slam/pandar_points
+[plain_slam_odom_adapter-2] 1788152988.719905 [0] plain_slam: using network interface eth0 (udp/192.168.123.18) selected arbitrarily from: eth0, docker0
+[pointcloud_to_occupancy-3] 1788152988.723809 [0] pointcloud: using network interface eth0 (udp/192.168.123.18) selected arbitrarily from: eth0, docker0
+[plain_slam_health_monitor-4] 1788152988.814129 [0] plain_slam: using network interface eth0 (udp/192.168.123.18) selected arbitrarily from: eth0, docker0
+[plain_slam_odom_adapter-2] [INFO] [1788152989.272473280] [plain_slam_odom_adapter]: loaded base->utlidar_imu: t=(0.2803, -0.0147, -0.0424); publish_tf=false
+[ERROR] [pandar_slam_adapter-1]: process has died [pid 133925, exit code -11, cmd '/home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/pandar_slam_adapter --ros-args -r __node:=pandar_slam_adapter --params-file /tmp/launch_params_0pbmpdz1'].
+[ERROR] [pointcloud_to_occupancy-3]: process has died [pid 133938, exit code -11, cmd '/home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/pointcloud_to_occupancy --ros-args -r __node:=pointcloud_to_occupancy --params-file /tmp/launch_params_ry0emgry'].
+[ERROR] [plain_slam_health_monitor-4]: process has died [pid 133940, exit code -11, cmd '/home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/plain_slam_health_monitor --ros-args -r __node:=plain_slam_health_monitor --params-file /tmp/launch_params_4bh6q53v'].
+[ERROR] [plain_slam_odom_adapter-2]: process has died [pid 133927, exit code -11, cmd '/home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/plain_slam_odom_adapter --ros-args -r __node:=plain_slam_odom_adapter --params-file /tmp/launch_params_egprx4uy'].

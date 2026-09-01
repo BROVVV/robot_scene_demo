@@ -1,0 +1,27 @@
+[4.582s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge': PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge/prefix_override:/home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge/build --no-deps install_data
+[5.158s] running develop
+[5.496s] running egg_info
+[5.496s] creating robot_scene_live_bridge.egg-info
+[5.497s] writing robot_scene_live_bridge.egg-info/PKG-INFO
+[5.497s] writing dependency_links to robot_scene_live_bridge.egg-info/dependency_links.txt
+[5.497s] writing entry points to robot_scene_live_bridge.egg-info/entry_points.txt
+[5.497s] writing requirements to robot_scene_live_bridge.egg-info/requires.txt
+[5.497s] writing top-level names to robot_scene_live_bridge.egg-info/top_level.txt
+[5.497s] writing manifest file 'robot_scene_live_bridge.egg-info/SOURCES.txt'
+[5.556s] reading manifest file 'robot_scene_live_bridge.egg-info/SOURCES.txt'
+[5.557s] writing manifest file 'robot_scene_live_bridge.egg-info/SOURCES.txt'
+[5.627s] running build_ext
+[5.629s] Creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/python3.8/site-packages/site.py
+[5.634s] Creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/python3.8/site-packages/robot-scene-live-bridge.egg-link (link to .)
+[5.636s] Installing live_bridge script to /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/robot_scene_live_bridge
+[5.637s] 
+[5.638s] Installed /home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge
+[5.638s] running install_data
+[5.639s] creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index
+[5.640s] creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index/resource_index
+[5.641s] creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index/resource_index/packages
+[5.641s] copying resource/robot_scene_live_bridge -> /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/ament_index/resource_index/packages
+[5.642s] copying package.xml -> /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/robot_scene_live_bridge
+[5.643s] creating /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/robot_scene_live_bridge/launch
+[5.644s] copying launch/live_bridge.launch.py -> /home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/share/robot_scene_live_bridge/launch
+[5.758s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge' returned '0': PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge/prefix_override:/home/unitree/robotscene/ros2_ws/install/robot_scene_live_bridge/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/robot_scene_live_bridge/build --no-deps install_data

@@ -1,0 +1,27 @@
+1787548978.525022 [0] fusion_nod: config: //CycloneDDS/Domain/General: Interfaces: unknown element (file:///home/unitree/robotscene/runtime/go2w/cyclonedds_eth0.xml line 5)
+1787548978.525183 [0] fusion_nod: config: //CycloneDDS/Domain/Internal: SocketReceiveBufferSize: unknown element (line 17)
+1787548978.525198 [0] fusion_nod: config: //CycloneDDS/Domain/Internal: SocketSendBufferSize: unknown element (line 18)
+[ERROR] [1787548978.525304960] [rmw_cyclonedds_cpp]: rmw_create_node: failed to create domain, error Error
+
+>>> [rcutils|error_handling.c:108] rcutils_set_error_state()
+This error state is being overwritten:
+
+  'error not set, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/node.c:276'
+
+with this new error message:
+
+  'rcl node's rmw handle is invalid, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/node.c:428'
+
+rcutils_reset_error() should be called after error handling to avoid this.
+<<<
+[ERROR] [1787548978.525398048] [rcl]: Failed to fini publisher for node: 1
+Traceback (most recent call last):
+  File "/home/unitree/robotscene/ros2_ws/install/go2w_rgb_lidar_fusion/lib/go2w_rgb_lidar_fusion/fusion_node", line 11, in <module>
+    load_entry_point('go2w-rgb-lidar-fusion', 'console_scripts', 'fusion_node')()
+  File "/home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion/go2w_rgb_lidar_fusion/fusion_node.py", line 430, in main
+    node = FusionNode()
+  File "/home/unitree/robotscene/ros2_ws/build/go2w_rgb_lidar_fusion/go2w_rgb_lidar_fusion/fusion_node.py", line 106, in __init__
+    super().__init__("go2w_rgb_lidar_fusion")
+  File "/opt/ros/humble/lib/python3.8/site-packages/rclpy/node.py", line 165, in __init__
+    self.__handle = Handle(_rclpy.rclpy_create_node(
+_rclpy.RCLError: Unknown error creating node: rcl node's rmw handle is invalid, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/node.c:428

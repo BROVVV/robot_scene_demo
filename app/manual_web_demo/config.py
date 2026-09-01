@@ -104,6 +104,7 @@ class ManualDemoSettings:
     runtime_dir: str = "outputs/manual_web_demo/runtime"
     logs_dir: str = "outputs/manual_web_demo/logs"
     analysis_frames_dir: str = "outputs/manual_web_demo/analysis_frames"
+    slam_map_snapshot: str = "outputs/autonomous_search/runtime/slam_map_3d.json"
 
     # ROS worker subprocess. It runs under the system Python with the ROS
     # environment sourced by the start script; the web process only spawns it.
@@ -155,6 +156,11 @@ class ManualDemoSettings:
     @property
     def web_pid_path(self) -> Path:
         return self.runtime_dir_path / "web.pid"
+
+    @property
+    def slam_map_snapshot_path(self) -> Path:
+        path = Path(self.slam_map_snapshot)
+        return path if path.is_absolute() else _PROJECT_ROOT / path
 
 
 def get_manual_demo_settings() -> ManualDemoSettings:
@@ -219,6 +225,10 @@ def get_manual_demo_settings() -> ManualDemoSettings:
         analysis_frames_dir=_env_value(
             "MANUAL_DEMO_ANALYSIS_FRAMES_DIR",
             "outputs/manual_web_demo/analysis_frames",
+        ),
+        slam_map_snapshot=_env_value(
+            "GO2W_SLAM_MAP_SNAPSHOT",
+            "outputs/autonomous_search/runtime/slam_map_3d.json",
         ),
         ros_worker_cmd=tuple(
             (

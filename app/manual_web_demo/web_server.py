@@ -38,6 +38,7 @@ from app.manual_web_demo.ros_worker_client import RosWorkerClient
 from app.manual_web_demo.scene_object_analyzer import SceneObjectAnalyzer
 from app.manual_web_demo.search_routes import create_search_router
 from app.manual_web_demo.search_session_service import SearchSessionService
+from app.manual_web_demo.slam_map_snapshot import load_slam_map_snapshot
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 INDEX_HTML = PACKAGE_DIR / "templates" / "index.html"
@@ -352,7 +353,11 @@ class DemoRuntime:
         return {
             "ready": ready,
             "checks": checks,
-            "blocking": list(blocking),
+            # Return only failed mandatory checks.  Returning the complete
+            # list here made a healthy WebUI appear blocked even when
+            # ``ready`` was true, which is especially confusing before an
+            # operator enables autonomous motion.
+            "blocking": blocked,
             "degraded": degraded,
             "reason": "" if ready else "readiness failed: " + "; ".join(blocked),
             "owner": self.owner.snapshot(),
@@ -471,6 +476,15 @@ def create_app(
     @app.get("/api/objects")
     async def api_objects() -> dict[str, Any]:
         return runtime.analyzer.state_dict()
+
+    @app.get("/api/slam/map3d")
+    async def api_slam_map3d() -> JSONResponse:
+        """Latest decimated mapping-assist cloud; display-only and no-store."""
+        response = JSONResponse(
+            load_slam_map_snapshot(config.slam_map_snapshot_path)
+        )
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        return response
 
     @app.post("/api/llm/enable")
     async def api_llm_enable() -> JSONResponse:

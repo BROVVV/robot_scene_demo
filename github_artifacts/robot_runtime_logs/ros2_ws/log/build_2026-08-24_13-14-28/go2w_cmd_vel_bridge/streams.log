@@ -1,0 +1,25 @@
+[6.369s] Invoking command in '/home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge': PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge/build --no-deps install_data
+[6.999s] running develop
+[8.344s] running egg_info
+[8.344s] creating go2w_cmd_vel_bridge.egg-info
+[8.344s] writing go2w_cmd_vel_bridge.egg-info/PKG-INFO
+[8.344s] writing dependency_links to go2w_cmd_vel_bridge.egg-info/dependency_links.txt
+[8.344s] writing entry points to go2w_cmd_vel_bridge.egg-info/entry_points.txt
+[8.344s] writing requirements to go2w_cmd_vel_bridge.egg-info/requires.txt
+[8.344s] writing top-level names to go2w_cmd_vel_bridge.egg-info/top_level.txt
+[8.345s] writing manifest file 'go2w_cmd_vel_bridge.egg-info/SOURCES.txt'
+[8.345s] reading manifest file 'go2w_cmd_vel_bridge.egg-info/SOURCES.txt'
+[8.345s] writing manifest file 'go2w_cmd_vel_bridge.egg-info/SOURCES.txt'
+[8.345s] running build_ext
+[8.345s] Creating /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/lib/python3.8/site-packages/site.py
+[8.345s] Creating /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/lib/python3.8/site-packages/go2w-cmd-vel-bridge.egg-link (link to .)
+[8.345s] Installing bridge script to /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/lib/go2w_cmd_vel_bridge
+[8.345s] 
+[8.346s] Installed /home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge
+[8.346s] running install_data
+[8.346s] creating /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/share/ament_index
+[8.346s] creating /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/share/ament_index/resource_index
+[8.346s] creating /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/share/ament_index/resource_index/packages
+[8.346s] copying resource/go2w_cmd_vel_bridge -> /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/share/ament_index/resource_index/packages
+[8.346s] copying package.xml -> /home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/share/go2w_cmd_vel_bridge
+[8.975s] Invoked command in '/home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge' returned '0': PYTHONPATH=/home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge/prefix_override:/home/unitree/robotscene/ros2_ws/install/go2w_cmd_vel_bridge/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/unitree/robotscene/ros2_ws/build/go2w_cmd_vel_bridge/build --no-deps install_data

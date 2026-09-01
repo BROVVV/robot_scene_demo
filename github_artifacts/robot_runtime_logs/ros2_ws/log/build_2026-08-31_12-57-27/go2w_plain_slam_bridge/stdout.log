@@ -1,0 +1,55 @@
+[ 11%] Built target pandar_slam_adapter
+Scanning dependencies of target pointcloud_to_occupancy
+[ 16%] Building CXX object CMakeFiles/pointcloud_to_occupancy.dir/src/pointcloud_to_occupancy.cpp.o
+[ 22%] Linking CXX executable pointcloud_to_occupancy
+[ 22%] Built target pointcloud_to_occupancy
+Scanning dependencies of target gtest
+[ 27%] Building CXX object gtest/CMakeFiles/gtest.dir/src/gtest-all.cc.o
+[ 33%] Linking CXX static library libgtest.a
+[ 33%] Built target gtest
+Scanning dependencies of target gtest_main
+[ 38%] Building CXX object gtest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o
+[ 44%] Linking CXX static library libgtest_main.a
+[ 44%] Built target gtest_main
+Scanning dependencies of target plain_slam_health_monitor
+[ 50%] Building CXX object CMakeFiles/plain_slam_health_monitor.dir/src/plain_slam_health_monitor.cpp.o
+[ 55%] Linking CXX executable plain_slam_health_monitor
+[ 55%] Built target plain_slam_health_monitor
+Scanning dependencies of target occupancy_projection_test
+[ 61%] Building CXX object CMakeFiles/occupancy_projection_test.dir/test/occupancy_projection_test.cpp.o
+[ 66%] Linking CXX executable occupancy_projection_test
+[ 66%] Built target occupancy_projection_test
+Scanning dependencies of target timestamp_policy_test
+[ 72%] Building CXX object CMakeFiles/timestamp_policy_test.dir/test/timestamp_policy_test.cpp.o
+[ 77%] Linking CXX executable timestamp_policy_test
+[ 77%] Built target timestamp_policy_test
+Scanning dependencies of target transform_utils_test
+[ 83%] Building CXX object CMakeFiles/transform_utils_test.dir/test/transform_utils_test.cpp.o
+[ 88%] Linking CXX executable transform_utils_test
+[ 88%] Built target transform_utils_test
+Scanning dependencies of target plain_slam_odom_adapter
+[ 94%] Building CXX object CMakeFiles/plain_slam_odom_adapter.dir/src/plain_slam_odom_adapter.cpp.o
+[100%] Linking CXX executable plain_slam_odom_adapter
+[100%] Built target plain_slam_odom_adapter
+-- Install configuration: ""
+-- Execute custom install script
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/pandar_slam_adapter
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/plain_slam_odom_adapter
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/pointcloud_to_occupancy
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/lib/go2w_plain_slam_bridge/plain_slam_health_monitor
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/launch/plain_slam_go2w.launch.py
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/package_run_dependencies/go2w_plain_slam_bridge
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/parent_prefix_path/go2w_plain_slam_bridge
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/ament_prefix_path.sh
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/ament_prefix_path.dsv
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/path.sh
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/environment/path.dsv
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.bash
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.sh
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.zsh
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/local_setup.dsv
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/package.dsv
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/ament_index/resource_index/packages/go2w_plain_slam_bridge
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/cmake/go2w_plain_slam_bridgeConfig.cmake
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/cmake/go2w_plain_slam_bridgeConfig-version.cmake
+-- Symlinking: /home/unitree/robotscene/ros2_ws/install/go2w_plain_slam_bridge/share/go2w_plain_slam_bridge/package.xml

@@ -3,7 +3,7 @@
   <Domain id="any">
     <General>
       <Interfaces>
-        <NetworkInterface name="enp6s0" priority="default" multicast="default" />
+        <NetworkInterface name="eth0" priority="default" multicast="default" />
       </Interfaces>
       <AllowMulticast>true</AllowMulticast>
       <MaxMessageSize>14720B</MaxMessageSize>

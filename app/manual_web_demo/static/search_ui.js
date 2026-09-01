@@ -11,6 +11,7 @@
   var appState = {
     search: {},
     observation: {},
+    semantic: {},
     objects: {},
     targetMatch: {},
     selectedGoal: null,
@@ -78,6 +79,8 @@
     stAnchor: document.getElementById("st-anchor"),
     stAction: document.getElementById("st-action"),
     stPose: document.getElementById("st-pose"),
+    stSemantic: document.getElementById("st-semantic"),
+    stSemanticDetail: document.getElementById("st-semantic-detail"),
     stEvidence: document.getElementById("st-evidence"),
     taskUnderstanding: document.getElementById("task-understanding"),
     // observation
@@ -331,10 +334,20 @@
           detections: payload.detections || [],
           target_present: payload.target_present,
           heading_sector: payload.heading_sector,
+          navigation_heading_sector: payload.navigation_heading_sector,
+          semantic_status: payload.semantic_status,
+          semantic_quality: payload.semantic_quality,
+          semantic_source_frame_id: payload.semantic_source_frame_id,
+          semantic_age_ms: payload.semantic_age_ms,
+          spatial_quality: payload.spatial_quality,
           pose: payload.pose,
           sensor_health: payload.sensor_health || {},
         };
         lastDetectionFrame = payload.detections || null;
+        break;
+      case "SEMANTIC_STATUS":
+        // 计划书 §13：语义健康状态（Quick VLM / Full Semantic / frame / age）。
+        appState.semantic = payload || {};
         break;
       case "OBJECTS_UPDATED":
         appState.objects.current = payload.current || [];
@@ -515,6 +528,8 @@
           showBanner("搜索成功：已找到目标！", "success");
         } else if (failed) {
           var reason = payload.error || payload.reason || payload.finish_reason || "FAILED";
+          if (payload.cause) reason += " · cause=" + payload.cause;
+          if (payload.attempts != null) reason += " · attempts=" + payload.attempts;
           var hint = "";
           if (/No module named|ModuleNotFoundError|ImportError/.test(reason)) {
             hint = "（worker 缺少依赖，请检查 outputs/autonomous_search/logs/search_worker.log；或用 --mock 离线演示）";
@@ -765,6 +780,39 @@
     els.stAction.textContent = appState.robotAction || "IDLE";
     var obs = appState.observation || {};
     els.stPose.textContent = obs.pose ? "relative" : "--";
+    // 计划书 §13：语义健康状态（Quick VLM / Full Semantic / frame / age）。
+    var sem = appState.semantic || obs || {};
+    var semStatus = sem.semantic_status || "--";
+    var semText = semStatus;
+    if (semStatus === "fresh_full") semText = "Full 新鲜";
+    else if (semStatus === "fresh_quick_scene") semText = "轻量场景";
+    else if (semStatus === "pending") semText = "Full 后台运行中";
+    else if (semStatus === "stale") semText = "旧帧兜底";
+    else if (semStatus === "timeout") semText = "Full 超时";
+    else if (semStatus === "error") semText = "Full 错误";
+    else if (semStatus === "unavailable") semText = "语义不可用";
+    if (els.stSemantic) els.stSemantic.textContent = semText;
+    if (els.stSemanticDetail) {
+      var parts = [];
+      var sframe = sem.semantic_source_frame_id || sem.frame_id;
+      if (sframe) parts.push("source=" + sframe);
+      if (sem.semantic_age_ms != null) parts.push("age=" + Math.round(sem.semantic_age_ms) + "ms");
+      if (sem.semantic_object_count != null) parts.push("objects=" + sem.semantic_object_count);
+      if (sem.spatial_quality) parts.push("spatial=" + sem.spatial_quality);
+      if (sem.navigation_heading_sector != null) parts.push("nav_sector=" + sem.navigation_heading_sector);
+      if (semStatus === "timeout" || semStatus === "error" || semStatus === "unavailable") {
+        els.stSemanticDetail.className = "semantic-detail no";
+        els.stSemanticDetail.textContent = "Full Semantic unavailable · " +
+          (parts.join(" · ") || "使用轻量场景物体");
+      } else if (semStatus === "fresh_quick_scene") {
+        els.stSemanticDetail.className = "semantic-detail";
+        els.stSemanticDetail.textContent = "Using lightweight scene objects" +
+          (parts.length ? " · " + parts.join(" · ") : "");
+      } else {
+        els.stSemanticDetail.className = "semantic-detail";
+        els.stSemanticDetail.textContent = parts.join(" · ") || "--";
+      }
+    }
     els.scamCycle.textContent = "cycle " + (s.cycle || "--");
     // search light
     var status = s.status || "IDLE";

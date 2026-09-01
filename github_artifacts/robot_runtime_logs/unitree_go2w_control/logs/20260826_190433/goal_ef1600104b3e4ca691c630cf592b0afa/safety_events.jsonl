@@ -1,0 +1,4 @@
+{"event":"stop_and_verify","message":"pre_goal","timestamp":"1787742407137045"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787742409689459"}
+{"event":"stop_and_verify","message":"final","timestamp":"1787742410570201"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787742411189123"}

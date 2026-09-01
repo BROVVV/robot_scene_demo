@@ -1,0 +1,23 @@
+[INFO] [launch]: All log files can be found below /home/unitree/.ros/log/2026-08-24-13-22-52-292865-ubuntu-303662
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [robot_state_publisher-1]: process started with pid [303768]
+[robot_state_publisher-1] 1787548973.396155 [0] robot_stat: config: //CycloneDDS/Domain/General: Interfaces: unknown element (file:///home/unitree/robotscene/runtime/go2w/cyclonedds_eth0.xml line 5)
+[robot_state_publisher-1] 1787548973.404879 [0] robot_stat: config: //CycloneDDS/Domain/Internal: SocketReceiveBufferSize: unknown element (line 17)
+[robot_state_publisher-1] 1787548973.406186 [0] robot_stat: config: //CycloneDDS/Domain/Internal: SocketSendBufferSize: unknown element (line 18)
+[robot_state_publisher-1] [ERROR] [1787548973.407798304] [rmw_cyclonedds_cpp]: rmw_create_node: failed to create domain, error Error
+[robot_state_publisher-1] 
+[robot_state_publisher-1] >>> [rcutils|error_handling.c:108] rcutils_set_error_state()
+[robot_state_publisher-1] This error state is being overwritten:
+[robot_state_publisher-1] 
+[robot_state_publisher-1]   'error not set, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/node.c:276'
+[robot_state_publisher-1] 
+[robot_state_publisher-1] with this new error message:
+[robot_state_publisher-1] 
+[robot_state_publisher-1]   'rcl node's rmw handle is invalid, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/node.c:428'
+[robot_state_publisher-1] 
+[robot_state_publisher-1] rcutils_reset_error() should be called after error handling to avoid this.
+[robot_state_publisher-1] <<<
+[robot_state_publisher-1] [ERROR] [1787548973.410356704] [rcl]: Failed to fini publisher for node: 1
+[robot_state_publisher-1] terminate called after throwing an instance of 'rclcpp::exceptions::RCLError'
+[robot_state_publisher-1]   what():  failed to initialize rcl node: rcl node's rmw handle is invalid, at /tmp/binarydeb/ros-foxy-rcl-1.1.14/src/rcl/node.c:428
+[ERROR] [robot_state_publisher-1]: process has died [pid 303768, exit code -6, cmd '/opt/ros/humble/lib/robot_state_publisher/robot_state_publisher --ros-args -r __node:=go2w_official_sensor_frame_publisher --params-file /tmp/launch_params_g9mkppjk'].

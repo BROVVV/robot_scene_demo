@@ -9,7 +9,18 @@ set -uo pipefail
 
 GO2W_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 GO2W_PROJECT_ROOT="$(cd -- "$GO2W_SCRIPT_DIR/../.." && pwd)"
-GO2W_ROS_SETUP="${GO2W_ROS_SETUP:-/opt/ros/humble/setup.bash}"
+# Jetson 真机：humble 为移植版（DDS 栈崩溃），foxy 为官方 apt 包（稳定）。
+# Prefer an explicitly selected ROS installation.  Otherwise select the
+# installation that actually exists on this machine: the Jetson deployment
+# uses Foxy, while the x86_64 host uses the official Humble installation.
+GO2W_ROS_SETUP="${GO2W_ROS_SETUP:-}"
+if [[ -z "$GO2W_ROS_SETUP" ]]; then
+  if [[ -f /opt/ros/foxy/setup.bash ]]; then
+    GO2W_ROS_SETUP=/opt/ros/foxy/setup.bash
+  elif [[ -f /opt/ros/humble/setup.bash ]]; then
+    GO2W_ROS_SETUP=/opt/ros/humble/setup.bash
+  fi
+fi
 GO2W_WORKSPACE_SETUP="${GO2W_WORKSPACE_SETUP:-$GO2W_PROJECT_ROOT/ros2_ws/install/setup.bash}"
 GO2W_CONTROL_ROOT="${GO2W_CONTROL_ROOT:-$GO2W_PROJECT_ROOT/unitree_go2w_control}"
 GO2W_UNITREE_ROOT="${GO2W_UNITREE_ROOT:-$HOME/unitree_ros2}"
@@ -17,7 +28,7 @@ GO2W_CONTROL_SETUP="${GO2W_CONTROL_SETUP:-$GO2W_CONTROL_ROOT/ros2_ws/install/set
 GO2W_UNITREE_SETUP="${GO2W_UNITREE_SETUP:-}"
 
 if [[ -z "${GO2W_INTERFACE:-}" ]]; then
-  for candidate in enp6s0 enp3s0 enp4s0 enp5s0; do
+  for candidate in eth0 enp6s0 enp3s0 enp4s0 enp5s0; do
     if [[ -r "/sys/class/net/${candidate}/carrier" ]] \
       && [[ "$(< "/sys/class/net/${candidate}/carrier")" == "1" ]] \
       && ip -4 -o address show dev "$candidate" 2>/dev/null \
@@ -91,17 +102,40 @@ set +u
 # shellcheck disable=SC1090
 source "$GO2W_ROS_SETUP"
 set -u
-if [[ -n "${GO2W_UNITREE_SETUP:-}" && -f "$GO2W_UNITREE_SETUP" ]]; then
+
+# A colcon setup.bash records every underlay that was active when that
+# workspace was built.  Avoid an incompatible recorded underlay, but retain
+# the full vendor chain on the DCU where /opt/ros/humble is intentionally a
+# Foxy-compatible vendor environment (ROS_DISTRO differs from the path name).
+GO2W_BASE_SETUP_LABEL="$(basename "$(dirname "$GO2W_ROS_SETUP")")"
+GO2W_VENDOR_CHAIN_MODE=0
+if [[ "${ROS_DISTRO:-}" != "$GO2W_BASE_SETUP_LABEL" ]]; then
+  GO2W_VENDOR_CHAIN_MODE=1
+fi
+
+source_overlay_safely() {
+  local setup_file="$1"
+  local local_setup="${setup_file%/setup.bash}/local_setup.bash"
   set +u
-  # shellcheck disable=SC1090
-  source "$GO2W_UNITREE_SETUP"
+  if [[ "$GO2W_VENDOR_CHAIN_MODE" == "0" ]] \
+    && grep -Eq 'COLCON_CURRENT_PREFIX="/opt/ros/[^"/]+' "$setup_file" \
+    && grep -E 'COLCON_CURRENT_PREFIX="/opt/ros/[^"/]+' "$setup_file" \
+      | grep -Fvq "/opt/ros/${ROS_DISTRO}" \
+    && [[ -f "$local_setup" ]]; then
+    # shellcheck disable=SC1090
+    source "$local_setup"
+  else
+    # shellcheck disable=SC1090
+    source "$setup_file"
+  fi
   set -u
+}
+
+if [[ -n "${GO2W_UNITREE_SETUP:-}" && -f "$GO2W_UNITREE_SETUP" ]]; then
+  source_overlay_safely "$GO2W_UNITREE_SETUP"
 fi
 if [[ -f "$GO2W_WORKSPACE_SETUP" ]]; then
-  set +u
-  # shellcheck disable=SC1090
-  source "$GO2W_WORKSPACE_SETUP"
-  set -u
+  source_overlay_safely "$GO2W_WORKSPACE_SETUP"
 fi
 if [[ -z "${GO2W_CONTROL_SETUP:-}" ]]; then
   for candidate in \
@@ -119,11 +153,9 @@ if [[ -z "${GO2W_CONTROL_SETUP:-}" ]]; then
   :
 fi
 if [[ -n "${GO2W_CONTROL_SETUP:-}" && -f "$GO2W_CONTROL_SETUP" ]]; then
-  set +u
-  # shellcheck disable=SC1090
-  source "$GO2W_CONTROL_SETUP"
-  set -u
+  source_overlay_safely "$GO2W_CONTROL_SETUP"
 fi
+unset -f source_overlay_safely
 
 export GO2W_CONTROL_ROOT GO2W_UNITREE_ROOT GO2W_CONTROL_SETUP GO2W_UNITREE_SETUP
 export GO2W_CONTROL_PYTHON="${GO2W_CONTROL_PYTHON:-$GO2W_CONTROL_ROOT/.venv/bin/python}"

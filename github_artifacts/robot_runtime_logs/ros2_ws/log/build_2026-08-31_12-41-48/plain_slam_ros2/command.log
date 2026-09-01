@@ -1,0 +1,1 @@
+Invoking command in '/home/unitree/robotscene/ros2_ws/build/plain_slam_ros2': /usr/bin/cmake /home/unitree/robotscene/ros2_ws/src/plain_slam_ros2 -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/unitree/robotscene/ros2_ws/install/plain_slam_ros2

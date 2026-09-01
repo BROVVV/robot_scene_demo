@@ -1,0 +1,5 @@
+{"event":"stop_and_verify","message":"pre_goal","timestamp":"1787742995353291"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787742995614839"}
+{"event":"motion_failure","message":"SportModeState or LowState became stale","timestamp":"1787742996601471"}
+{"event":"stop_and_verify","message":"final","timestamp":"1787742996601583"}
+{"event":"stop_verification","message":"responses=ok stationary=false","timestamp":"1787742999817514"}

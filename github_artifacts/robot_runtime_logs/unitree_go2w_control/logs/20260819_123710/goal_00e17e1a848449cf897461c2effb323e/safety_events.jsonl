@@ -1,0 +1,9 @@
+{"event":"stop_and_verify","message":"pre_goal","timestamp":"1787131205924276"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787131206454423"}
+{"event":"post_turn_rollback_control","message":"started","timestamp":"1787131210603903"}
+{"event":"post_turn_rollback_control","message":"completed","timestamp":"1787131213230353"}
+{"event":"post_turn_zero_velocity_hold","message":"started","timestamp":"1787131213230402"}
+{"event":"cancel_or_stop","message":"stop requested","timestamp":"1787131213737579"}
+{"event":"motion_failure","message":"goal canceled or emergency stop requested","timestamp":"1787131213737640"}
+{"event":"stop_and_verify","message":"final","timestamp":"1787131213737661"}
+{"event":"stop_verification","message":"responses=ok stationary=true","timestamp":"1787131214254533"}
