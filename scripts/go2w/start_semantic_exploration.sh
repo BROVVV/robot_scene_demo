@@ -127,6 +127,13 @@ if ! command -v ros2 >/dev/null 2>&1; then
   printf '%s\n' 'ERROR: ros2 CLI still not available after sourcing ROS.' >&2
   exit 2
 fi
+# setup_environment.sh intentionally clears stale PYTHONPATH. Re-add only the
+# matching system-Python user site where this host keeps app dependencies.
+system_py_minor="$(${system_python} -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+system_user_site="${HOME}/.local/lib/python${system_py_minor}/site-packages"
+if [[ -d "${system_user_site}" ]]; then
+  export PYTHONPATH="${system_user_site}${PYTHONPATH:+:${PYTHONPATH}}"
+fi
 
 # --- helper: is a topic alive? -------------------------------------------------
 topic_alive() {
@@ -208,12 +215,19 @@ odom_topic="${GO2W_ODOM_TOPIC:-/go2w/odom/fused}"
 odom_info="$(timeout 5 ros2 topic info "$odom_topic" -v 2>&1 || true)"
 odom_publishers="$(awk '/Publisher count:/ { print $3; exit }' <<<"$odom_info")"
 odom_processes="$(ps -eo args= | awk '{ for (i=1; i<=NF; i++) { exe=$i; sub(/^.*\//, "", exe); if (exe == "go2w_wheel_odom") { count++; break } } } END { print count+0 }')"
-if [[ "$odom_publishers" != 1 || "$odom_processes" != 1 ]]; then
+odom_processes_valid=0
+if [[ "$odom_processes" == 0 || "$odom_processes" == 1 ]]; then
+  odom_processes_valid=1
+fi
+if [[ "$odom_publishers" != 1 || "$odom_processes_valid" != 1 ]]; then
   printf 'ODOM_BACKEND_UNAVAILABLE: %s requires exactly one publisher (ROS graph=%s, processes=%s).\n' \
     "$odom_topic" "${odom_publishers:-unknown}" "$odom_processes" >&2
   printf '%s\n' "$odom_info" >&2
   printf '%s\n' 'Stop duplicate wheel_odom launch processes before autonomous motion.' >&2
   exit 2
+fi
+if [[ "$odom_processes" == 0 ]]; then
+  printf '%s\n' 'Using the single network wheel-odom publisher from the control host.' >&2
 fi
 
 # --- motion action server ---------------------------------------------------------

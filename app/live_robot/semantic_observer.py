@@ -11,6 +11,11 @@ from typing import Any, Callable
 from app.video.object_tracker import VideoObjectTracker
 from app.video.observed_scene_graph_builder import ObservedSceneGraphBuilder
 from app.video.schemas import FrameObject, FrameObservation, FrameRelation, SceneGraph
+from app.perception.target_state import (
+    TARGET_ABSENT,
+    normalize_target_state,
+    target_state_from_payload,
+)
 
 # 语义结果状态机（计划书 §3.2/§3.3）：只有 fresh_* 才能被当作“当前帧的真实
 # 场景事实”；timeout/error/pending/stale/unavailable 一律解释为“语义不可用”，
@@ -41,6 +46,7 @@ class SemanticObservation:
     # ---- 计划书 §3.3：语义 freshness / frame binding 元信息 ------------------
     semantic_source_frame_id: str | None = None
     semantic_capture_timestamp: float | None = None
+    timestamp_quality: str | None = None
     semantic_completed_timestamp: float | None = None
     semantic_age_ms: float | None = None
     semantic_status: str = SEMANTIC_STATUS_FRESH_FULL
@@ -48,6 +54,7 @@ class SemanticObservation:
     semantic_error_code: str | None = None
     semantic_error_detail: str | None = None
     semantic_source_pose: dict[str, Any] | None = None
+    target_state: str = TARGET_ABSENT
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -257,6 +264,7 @@ def _from_payload(payload: dict[str, Any], *, robot_pose: dict[str, Any] | None,
             payload.get("semantic_capture_timestamp")
             or payload.get("capture_timestamp")
         ),
+        timestamp_quality=_opt_str(payload.get("timestamp_quality")),
         semantic_completed_timestamp=_opt_float(
             payload.get("semantic_completed_timestamp")
             or payload.get("completed_timestamp")
@@ -272,6 +280,7 @@ def _from_payload(payload: dict[str, Any], *, robot_pose: dict[str, Any] | None,
         semantic_error_detail=_opt_str(payload.get("semantic_error_detail")),
         semantic_source_pose=payload.get("semantic_source_pose")
         or (dict(robot_pose) if robot_pose is not None else None),
+        target_state=target_state_from_payload(payload),
     )
 
 
@@ -281,6 +290,7 @@ def semantic_observation_to_live(
     bundle_id: str,
     detections: list[dict[str, Any]],
     target_present: bool,
+    target_state: str | None = None,
     pose: dict[str, Any] | None,
     sensor_health: dict[str, Any] | None = None,
     timestamp: float | None = None,
@@ -322,6 +332,10 @@ def semantic_observation_to_live(
         scene_relations=list(semantic.relations),
         target_match={
             "target_present": bool(target_present),
+            "target_state": normalize_target_state(
+                target_state,
+                default=("PRESENT" if target_present else semantic.target_state),
+            ),
             "score": max((item.get("score", 0.0) for item in detections), default=0.0),
         },
         pose=pose,
@@ -338,7 +352,10 @@ def semantic_observation_to_live(
         semantic_error_detail=semantic.semantic_error_detail,
         semantic_source_pose=semantic.semantic_source_pose,
         sensor_health=dict(sensor_health or {}),
-        provenance={"source": str(semantic.source)},
+        provenance={
+            "source": str(semantic.source),
+            "timestamp_quality": semantic.timestamp_quality,
+        },
     )
 
 

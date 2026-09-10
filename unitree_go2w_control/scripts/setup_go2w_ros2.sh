@@ -102,14 +102,16 @@ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export ROS_DOMAIN_ID=0
 _GO2W_CYCLONE_FILE="/tmp/go2w_cyclonedds_${UID}.xml"
 if [[ "$(uname -m)" == "aarch64" ]]; then
-  # Jetson 真机（arm64）：foxy CycloneDDS 0.7.0 在默认多播模式下解析 SPDP
-  # 报文会段错误（ddsi_plist_init_frommsg）；且其 CycloneDDS 不识别
-  # <Interfaces> 元素。本机部署所有 ROS 节点都在本机，SDK 走 DDS RPC——
-  # 用 localhost-only 环回通信（talker 实测稳定），并生成无 Interfaces 的配置。
-  export ROS_LOCALHOST_ONLY=1
+  # Jetson 真机（arm64）：foxy CycloneDDS 0.7.0 不识别 <Interfaces> 元素，
+  # 因此使用无 Interfaces、无组播、127.0.0.1 静态 peer 的兼容配置。保留
+  # ROS_LOCALHOST_ONLY=1，防止 Foxy 在没有 Interfaces 元素时随机选 eth0；
+  # 显式 loopback peer 保证新参与者之间的 action/service 数据面可用。SDK
+  # 独立进程只读采集 DCU 状态，再由本机 ROS relay 转发，避免在同一进程中
+  # 混用 Unitree SDK 与 Foxy CycloneDDS。
+  export ROS_LOCALHOST_ONLY="${GO2W_ROS_LOCALHOST_ONLY:-1}"
   {
     printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
-    printf '%s\n' '<CycloneDDS xmlns="https://cdds.io/config"><Domain id="any"><General><AllowMulticast>true</AllowMulticast></General><Discovery><ParticipantIndex>auto</ParticipantIndex><MaxAutoParticipantIndex>120</MaxAutoParticipantIndex></Discovery></Domain></CycloneDDS>'
+    printf '%s\n' '<CycloneDDS xmlns="https://cdds.io/config"><Domain id="any"><General><AllowMulticast>false</AllowMulticast></General><Discovery><ParticipantIndex>auto</ParticipantIndex><MaxAutoParticipantIndex>120</MaxAutoParticipantIndex><Peers><Peer Address="127.0.0.1"/></Peers></Discovery></Domain></CycloneDDS>'
   } >"$_GO2W_CYCLONE_FILE"
 else
   # 工作站（x86_64，Ubuntu 22.04 官方 humble，CycloneDDS 0.10）：多播直连

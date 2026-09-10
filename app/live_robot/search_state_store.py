@@ -77,6 +77,7 @@ STATUS_FINISHED = "FINISHED"
 BUDGET_COMPLETION_RESULTS = frozenset({
     "MAX_STEPS_REACHED",
     "MAX_PLANNING_CYCLES_REACHED",
+    "BUDGET_EXHAUSTED",
 })
 
 
@@ -132,6 +133,7 @@ def _empty_snapshot() -> dict[str, Any]:
             "objects": [],
             "detections": [],
             "target_present": False,
+            "target_state": "ABSENT",
             "heading_sector": None,
             "pose": None,
             "image_ref": None,
@@ -150,6 +152,7 @@ def _empty_snapshot() -> dict[str, Any]:
         },
         "target_match": {
             "level": "none",
+            "target_state": "ABSENT",
             "target_confirmed": False,
             "explicit_anchor_found": False,
             "anchor_labels": [],
@@ -203,6 +206,18 @@ def _empty_snapshot() -> dict[str, Any]:
             "worker_state": "idle",
             "last_worker_message_at": None,
             "last_error": None,
+        },
+        # 计划书 §29/§30：净空 / 感知质量 / 卡住 / 视点 / 脱困 / 目标接近的
+        # 可观测摘要。这些状态决定"能不能动"，刷新页面后必须还在。
+        "embodiment": {
+            "local_safety": None,
+            "perception_quality": None,
+            "stuck_state": None,
+            "viewpoint_candidates": [],
+            "selected_viewpoint": None,
+            "safety_rejections": [],
+            "recovery": None,
+            "target_approach": None,
         },
         "health": {},
         "last_warning": None,
@@ -406,6 +421,18 @@ class SearchStateStore:
             self._snapshot["startup"] = worker
         if payload.get("warning"):
             self._snapshot["last_warning"] = copy.deepcopy(payload["warning"])
+        if payload.get("embodiment"):
+            # 目标接近是跨多个事件累积的（确认 -> 定位 -> 逐步 -> 最终确认），
+            # 所以同名 dict 做合并而不是整体覆盖。
+            embodiment = dict(self._snapshot["embodiment"])
+            for key, value in dict(payload["embodiment"]).items():
+                if isinstance(value, dict) and isinstance(embodiment.get(key), dict):
+                    merged = dict(embodiment[key])
+                    merged.update(value)
+                    embodiment[key] = merged
+                else:
+                    embodiment[key] = copy.deepcopy(value)
+            self._snapshot["embodiment"] = embodiment
 
     def _on_observation(self, event: SearchEvent) -> None:
         payload = event.payload
@@ -415,6 +442,10 @@ class SearchStateStore:
         observation["objects"] = list(payload.get("scene_objects") or payload.get("objects") or [])
         observation["detections"] = list(payload.get("detections") or [])
         observation["target_present"] = bool(payload.get("target_present", False))
+        observation["target_state"] = str(
+            payload.get("target_state")
+            or ("PRESENT" if observation["target_present"] else "ABSENT")
+        )
         observation["heading_sector"] = payload.get("heading_sector")
         observation["navigation_heading_sector"] = payload.get("navigation_heading_sector")
         observation["semantic_status"] = payload.get("semantic_status")
@@ -463,6 +494,7 @@ class SearchStateStore:
         payload = event.payload
         match = self._snapshot["target_match"]
         match["level"] = payload.get("target_match_level") or match["level"]
+        match["target_state"] = str(payload.get("target_state") or match["target_state"])
         match["target_score"] = float(payload.get("target_score", match["target_score"]))
         match["explicit_anchor_found"] = bool(
             payload.get("explicit_anchor_found", match["explicit_anchor_found"])
@@ -689,6 +721,11 @@ class SearchStateStore:
                     if edge.get("from", "").startswith("P")
                     or edge.get("to", "").startswith("P")
                 ],
+                # Keep the dedicated PlaceGraph endpoint a projection of the
+                # same canonical current place as the semantic graph.  Without
+                # this field /api/search/place-graph reported null while the
+                # semantic graph correctly reported P1.
+                "current_place_id": graph.get("current_place_id"),
             }
             self._snapshot["spatial"]["semantic_objects"] = copy.deepcopy(
                 graph.get("objects") or []
@@ -742,7 +779,8 @@ class SearchStateStore:
                 detail = search_error(
                     payload.get("message") or payload.get("reason") or
                     payload.get("error_type") or "搜索异常",
-                    code=payload.get("error_type"),
+                    code=payload.get("code") or payload.get("cause") or
+                    payload.get("error_type"),
                     source=str(payload.get("source") or "autonomous_explorer"),
                     stage=str(payload.get("phase") or self._snapshot.get("phase") or "RUNNING"),
                     detail=payload.get("detail"),

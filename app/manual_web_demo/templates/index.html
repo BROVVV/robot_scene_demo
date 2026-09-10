@@ -88,6 +88,8 @@
           </div>
           <div class="cell-title" style="margin-top:8px">目标证据</div>
           <div id="st-evidence" class="evidence">--</div>
+          <div class="cell-title" style="margin-top:8px">本体安全 / 目标接近</div>
+          <div id="st-embodiment" class="evidence">--</div>
           <div class="cell-title" style="margin-top:8px">任务理解</div>
           <div id="task-understanding" class="task-understanding">等待任务解析…</div>
         </div>
@@ -138,8 +140,11 @@
         </div>
 
         <div class="cell cell-slam3d">
-          <div class="cell-title">Pandar 实时三维建图
+          <div class="cell-title">Pandar 固定世界三维建图
             <span class="sub" id="slam3d-meta">等待 /go2w/slam/map_3d…</span>
+            <label class="viewport-hint" title="当前 scan 只是调试图层，永远不写进永久地图">
+              <input type="checkbox" id="slam3d-preview-toggle"> 当前 scan 调试层
+            </label>
             <span class="viewport-hint" title="拖拽旋转 / 滚轮缩放 / 双击复位">拖拽旋转 · 滚轮缩放 · 双击复位</span>
           </div>
           <div class="slam3d-wrap">
@@ -147,6 +152,7 @@
             <div id="slam3d-state" class="slam3d-state">正在连接实时点云…</div>
             <div class="slam3d-axis"><i class="axis-x">X</i><i class="axis-y">Y</i><i class="axis-z">Z</i></div>
           </div>
+          <div class="slam3d-capacity" id="slam3d-capacity">容量：等待地图…</div>
           <div class="slam3d-safety">mapping_assist · candidate_unconfirmed · 不接管 /go2w/odom/fused</div>
         </div>
 

@@ -7,6 +7,8 @@ merge without map_xyz, weighted fusion and lifecycle transitions.
 
 from __future__ import annotations
 
+import pytest
+
 from app.perception.depth_object_localizer import ObjectSpatialObservation
 from app.spatial.models import (
     SPATIAL_QUALITY_CAMERA_LOCAL,
@@ -30,12 +32,15 @@ def _obs(
     quality="RELATIVE_RGBD",
     confidence=0.8,
     oid=None,
+    timestamp=None,
 ):
     provenance = {}
     if frame:
         provenance["frame_id"] = frame
     if place:
         provenance["place_id"] = place
+    if timestamp is not None:
+        provenance["timestamp"] = timestamp
     return ObjectSpatialObservation(
         object_id=oid,
         label=label,
@@ -176,3 +181,29 @@ def test_stale_then_reobserved_confirmed():
         place_id="P3", now=100.0,
     )
     assert smap.objects[oid].status == ENTITY_CONFIRMED
+
+
+def test_loop_reprojection_keeps_object_id_and_refits_position():
+    smap = SemanticObjectMap(confirm_min_observations=1)
+    result = smap.update_with_associations(
+        [_obs(
+            "椅子",
+            map_xyz=(3.3, 0.0, 1.0),
+            camera_xyz=(0.0, 0.0, 1.0),
+            quality="METRIC_LIDAR",
+            confidence=0.9,
+            oid="frame-chair",
+            timestamp=100.0,
+        )],
+        now=100.0,
+    )
+    object_id = result.created_ids[0]
+
+    report = smap.reproject_observations(
+        lambda camera_xyz, timestamp: (3.0, 0.0, camera_xyz[2])
+    )
+
+    assert list(smap.objects) == [object_id]
+    assert smap.objects[object_id].map_xyz == pytest.approx((3.0, 0.0, 1.0))
+    assert smap.objects[object_id].provenance["semantic_reprojected"] is True
+    assert report == {"objects": 1, "observations": 1}

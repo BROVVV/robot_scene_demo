@@ -49,7 +49,8 @@ class MotionStateMonitor {
  public:
   MotionStateMonitor(rclcpp::Node *node, const std::string &sport_topic,
                      const std::string &low_topic,
-                     bool require_low_state = true);
+                     bool require_low_state = true,
+                     double wheel_radius_m = 0.089);
   ~MotionStateMonitor();
 
   MotionStateSnapshot Snapshot() const;
@@ -76,8 +77,11 @@ class MotionStateMonitor {
   YawUnwrapper yaw_unwrapper_;
   bool distance_active_{false};
   double estimated_distance_{0.0};
+  double wheel_radius_m_{0.089};
   std::chrono::steady_clock::time_point previous_distance_time_{};
   double previous_speed_{0.0};
+  bool previous_wheel_q_valid_{false};
+  std::array<double, 4> previous_wheel_q_{};
   bool evidence_active_{false};
   std::vector<std::array<double, 4>> evidence_q_;
   std::vector<std::array<double, 4>> evidence_dq_;

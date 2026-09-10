@@ -6,6 +6,12 @@ import math
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from app.perception.target_state import (
+    TARGET_ABSENT,
+    TARGET_PRESENT,
+    normalize_target_state,
+)
+
 
 SCALE_METRIC = "metric"
 SCALE_RELATIVE = "relative"
@@ -175,7 +181,17 @@ class LiveObservation:
 
     @property
     def target_present(self) -> bool:
-        return bool((self.target_match or {}).get("target_present"))
+        # Backwards-compatible boolean view.  POSSIBLE is deliberately not
+        # positive evidence and must not terminate a search.
+        return self.target_state == TARGET_PRESENT
+
+    @property
+    def target_state(self) -> str:
+        value = self.target_match or {}
+        explicit = value.get("target_state") or value.get("state")
+        if explicit is not None:
+            return normalize_target_state(explicit)
+        return TARGET_PRESENT if bool(value.get("target_present")) else TARGET_ABSENT
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -195,6 +211,7 @@ class LiveObservation:
             "scene_objects": self.scene_objects,
             "scene_relations": self.scene_relations,
             "target_match": self.target_match,
+            "target_state": self.target_state,
             "pose": self.pose,
             "heading_sector": self.heading_sector,
             "navigation_heading_sector": self.navigation_heading_sector,

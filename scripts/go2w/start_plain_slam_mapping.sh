@@ -28,6 +28,7 @@ runtime_dir="${project_root}/runtime/go2w/plain_slam"
 pid_root="${project_root}/runtime/go2w/pids"
 log_root="${project_root}/runtime/go2w/sessions"
 mkdir -p "${runtime_dir}" "${pid_root}" "${log_root}"
+web_relay_pidfile="${pid_root}/plain_slam_web_cloud_relay.pid"
 
 use_rviz=0
 start_hesai=1
@@ -130,6 +131,20 @@ fi
 # ---------------------------------------------------------------------------
 # 6. + 7. launch + readiness
 # ---------------------------------------------------------------------------
+# A new mapping session starts from an empty pose graph.  ClearSLAMDataDir()
+# only runs in the node constructor, so the old nodes must die *and* the cache
+# directory must go; otherwise the previous session's keyframe poses (and their
+# accumulated drift) are re-stacked into every map_3d message.
+# Path source: configs/go2w/plain_slam.yaml map_cache_dir -> generator ->
+# generated_{lio,slam}_3d_config.yaml map_cloud_dir (both nodes share it).
+# 必须连 launch 树一起杀。只杀 lio/slam 两个节点会把 imu_fallback_adapter、
+# pandar_slam_adapter、plain_slam_odom_adapter 等留下来，下一次启动就多出一份
+# /go2w/slam/imu 和 /go2w/slam/pandar_points 发布者：IMU 预积分把同一时刻的数据
+# 吃两遍三遍，机器狗静止不动 odom_base 也会飞到 1e10 m。
+pkill -f 'plain_slam_go2w.launch.py|lio_3d_node|slam_3d_node|imu_fallback_adapter|pandar_slam_adapter|plain_slam_odom_adapter|pointcloud_to_occupancy|plain_slam_health_monitor|lidar_delay_buffer' 2>/dev/null || true
+sleep 2
+rm -rf /tmp/go2w_plain_slam
+
 launch_log="${log_root}/plain_slam_go2w.launch.log"
 printf 'Launching plain_slam mapping (log: %s)...\n' "${launch_log}"
 # Detach the launch process into its own session.  A plain `nohup ... &`
@@ -170,6 +185,54 @@ if [[ "${ready_ok}" == "1" ]]; then
   printf '[OK] plain_slam LIO: running\n'
   printf '[OK] Spatial mapping ready (mode=MAPPING_ASSIST)\n'
   printf '%s\n' '[INFO] /go2w/odom/fused remains motion authority'
+
+  # ---- LiDAR 延迟缓冲（IMU 覆盖修复，见 docs/SLAM_VALIDATION_REPORT.md §3.5.9）----
+  # IMU 数据比 LiDAR 帧晚到 ≈89 ms，直接喂 LIO 时每帧只有 3/25 个 IMU（窗口覆盖 8.7%），
+  # deskew 残差 2.7 cm，同一面墙反复重建时层层偏移 → 地图上"墙很厚 / 多角度稀疏叠加"。
+  # 这里把点云缓冲 0.12 s 后转发（header 时间戳不变），IMU 即可覆盖整帧：
+  # imu_n 12–14 → 24–26、dsk_max 0.026 → 0.003–0.008 m。
+  # 关闭：设 GO2W_SLAM_LIDAR_DELAY_S=0，并把 configs/go2w/plain_slam.yaml 的
+  #       pandar_adapted 改回 /go2w/slam/pandar_points。
+  lidar_delay_s="${GO2W_SLAM_LIDAR_DELAY_S:-0.12}"
+  if [[ "${lidar_delay_s}" != "0" && "${lidar_delay_s}" != "0.0" ]]; then
+    setsid /usr/bin/python3 "${script_dir}/lidar_delay_buffer.py" --ros-args \
+      -p input_topic:=/go2w/slam/pandar_points \
+      -p output_topic:=/go2w/slam/pandar_points_buffered \
+      -p delay_s:="${lidar_delay_s}" \
+      >"${log_root}/lidar_delay_buffer.log" 2>&1 &
+    printf '%s\n' "$!" >"${pid_root}/lidar_delay_buffer.pid"
+    printf '[OK] LiDAR delay buffer: %ss (IMU deskew coverage fix)\n' "${lidar_delay_s}"
+  else
+    printf '[INFO] LiDAR delay buffer disabled (GO2W_SLAM_LIDAR_DELAY_S=%s)\n' "${lidar_delay_s}"
+  fi
+
+  # Display-only bridge: the raw aligned scan stays local to the mapping
+  # host; only the compact XYZ stream crosses to the machine-dog WebUI.
+  if [[ -f "${web_relay_pidfile}" ]]; then
+    old_relay_pid="$(<"${web_relay_pidfile}")"
+    old_relay_cmd=""
+    if [[ -r "/proc/${old_relay_pid}/cmdline" ]]; then
+      old_relay_cmd="$(tr '\0' ' ' <"/proc/${old_relay_pid}/cmdline" 2>/dev/null || true)"
+    fi
+    if [[ "${old_relay_cmd}" == *"plain_slam_web_cloud_relay.py"* ]]; then
+      kill "${old_relay_pid}" 2>/dev/null || true
+    fi
+    rm -f "${web_relay_pidfile}"
+  fi
+  setsid /usr/bin/python3 "${script_dir}/plain_slam_web_cloud_relay.py" \
+    --input-topic /go2w/slam/aligned_scan \
+    --output-topic "${GO2W_SLAM_WEB_SCAN_TOPIC:-/go2w/slam/web_scan}" \
+    --map-input-topic /go2w/slam/map_3d \
+    --map-output-topic "${GO2W_SLAM_WEB_MAP_TOPIC:-/go2w/slam/web_map}" \
+    --map-info-topic "${GO2W_SLAM_WEB_MAP_INFO_TOPIC:-/go2w/slam/web_map_info}" \
+    --map-frame pslam_map \
+    --map-voxel-size "${GO2W_SLAM_RELAY_MAP_VOXEL_SIZE:-0.12}" \
+    --max-map-output-points "${GO2W_SLAM_RELAY_MAX_MAP_POINTS:-60000}" \
+    >"${log_root}/plain_slam_web_cloud_relay.log" 2>&1 &
+  printf '%s\n' "$!" >"${web_relay_pidfile}"
+  printf '[OK] WebUI compact scan relay: %s\n' "${GO2W_SLAM_WEB_SCAN_TOPIC:-/go2w/slam/web_scan}"
+  printf '[OK] WebUI fixed-world map relay: %s (frame pslam_map)\n' \
+    "${GO2W_SLAM_WEB_MAP_TOPIC:-/go2w/slam/web_map}"
 else
   printf '%s\n' 'WARNING: /go2w/slam/ready not seen within 60s.' >&2
   printf 'See %s\n' "${launch_log}" >&2

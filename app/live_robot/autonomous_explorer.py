@@ -21,11 +21,23 @@ import traceback
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
+from app.navigation.approach_controller import (
+    ACTION_APPROACH_BLOCKED,
+    ACTION_APPROACH_COMPLETE,
+    ACTION_APPROACH_FORWARD,
+    ACTION_ROTATE_SMALL,
+    ACTION_STOP_REOBSERVE,
+    ACTION_TARGET_REACHED_OR_TOO_CLOSE,
+    decide_approach,
+    evaluate_target_reached,
+    robot_bearing_from_camera,
+)
 from app.navigation.candidate_goal_generator import (
     generate_live_exploration_candidates,
 )
+from app.navigation.clearance_map import ClearanceMap, clearance_map_from_local_safety
 from app.navigation.exploration_config import (
     CandidateConfig,
     ExplorationBudget,
@@ -41,9 +53,36 @@ from app.navigation.exploration_planner import (
     score_exploration_goal,
     select_exploration_goal,
 )
-from app.navigation.models import LiveObservation
+from app.navigation.models import (
+    GOAL_RELATIVE_MOVE,
+    GOAL_ROTATE_VIEW,
+    ExplorationGoal,
+    LiveObservation,
+)
+from app.navigation.target_pose_generator import generate_target_approach_viewpoints
+from app.navigation.viewpoint_models import TargetApproachContext
 from app.navigation.decision_models import DecisionRecord, make_motion_command
 from app.navigation.live_graph_path_planner import plan_live_graph_path
+from app.navigation.recovery_manager import (
+    RecoveryManager,
+    RecoveryManagerConfig,
+    select_escape_rotation,
+)
+from app.navigation.safety_models import LocalSafetySnapshot, PerceptionQuality
+from app.navigation.search_policy_config import SearchPolicy
+from app.navigation.stuck_detector import (
+    StuckDetectorInput,
+    StuckState,
+    detect_stuck,
+    requires_recovery,
+)
+from app.navigation.viewpoint_planner import ViewpointPlanner, ViewpointPlannerConfig
+from app.reasoning.embodiment_context import (
+    build_local_safety_context,
+    build_perception_quality_context,
+    build_recovery_context,
+    build_topology_context,
+)
 from app.navigation.robot_backend import (
     NavigationResult,
     NavigationStatus,
@@ -51,7 +90,31 @@ from app.navigation.robot_backend import (
     TERMINAL_NAVIGATION_STATUSES,
 )
 from app.spatial.semantic_navigation_graph import SemanticNavigationGraph
+from app.perception.target_state import TARGET_POSSIBLE
 from app.task_understanding.search_task_context import SearchTaskContext
+
+
+def _json_context(context: dict[str, Any]) -> dict[str, Any]:
+    """Render the pydantic embodiment context for the event stream."""
+    return {
+        key: value.model_dump(mode="json") if hasattr(value, "model_dump") else value
+        for key, value in context.items()
+    }
+
+
+def _pose_xy_yaw(pose: dict[str, Any] | None) -> tuple[float, float, float]:
+    """Read ``(x, y, yaw_rad)`` from an observation pose dict.
+
+    The key priority matches ``SemanticNavigationGraph`` frontier placement so
+    frontier positions, the clearance map and viewpoint poses share one frame.
+    """
+    data = pose or {}
+    yaw = data.get("yaw_rad")
+    if yaw is None:
+        yaw = data.get("yaw")
+    if yaw is None and data.get("yaw_deg") is not None:
+        yaw = math.radians(float(data["yaw_deg"]))
+    return float(data.get("x", 0.0)), float(data.get("y", 0.0)), float(yaw or 0.0)
 
 
 class ExplorerState(str, Enum):
@@ -65,6 +128,16 @@ class ExplorerState(str, Enum):
     WAIT_RESULT = "WAIT_RESULT"
     RECOVER = "RECOVER"
     PAUSED = "PAUSED"
+    # 计划书 §6.3：地图暂时不新鲜是一种等待状态，绝不是搜索穷尽。
+    WAITING_FOR_MAP = "WAITING_FOR_MAP"
+    # 计划书 §18.1：视觉确认之后不再直接成功，必须走完接近闭环。
+    TARGET_CONFIRMED = "TARGET_CONFIRMED"
+    TARGET_LOCALIZE = "TARGET_LOCALIZE"
+    APPROACH_PLAN = "APPROACH_PLAN"
+    APPROACH_EXECUTE = "APPROACH_EXECUTE"
+    FINAL_OBSERVE = "FINAL_OBSERVE"
+    FINAL_VERIFY = "FINAL_VERIFY"
+    TARGET_REACHED = "TARGET_REACHED"
     TARGET_FOUND = "TARGET_FOUND"
     SEARCH_EXHAUSTED = "SEARCH_EXHAUSTED"
     OPERATOR_STOP = "OPERATOR_STOP"
@@ -80,6 +153,11 @@ EXPLORER_FINISH_REASONS = (
     "BACKEND_FAILURE",
     "PERCEPTION_FAILURE",
     "MAX_STEPS_REACHED",
+    # 计划书 §6.2：候选生成异常和长时间等不到地图是程序/数据问题，用独立
+    # finish reason 表达，不允许伪装成 SEARCH_EXHAUSTED。
+    "PLANNING_ERROR",
+    "MAP_UNAVAILABLE",
+    "BUDGET_EXHAUSTED",
 )
 
 
@@ -95,6 +173,7 @@ class SemanticMatch:
     directive: Any | None = None
     target_score: float = 0.0
     target_match_level: str = "none"
+    target_state: str = "ABSENT"
     provenance: dict[str, Any] = field(default_factory=dict)
 
 
@@ -208,15 +287,26 @@ class AutonomousExplorer:
         negative_target_key: str = "target",
         candidate_generator: Callable[..., list[Any]] | None = None,
         planner: Callable[..., ScoredGoal | None] | None = None,
+        exhaustion_probe: Callable[[], dict[str, Any]] | None = None,
         on_event: Callable[[dict[str, Any]], None] | None = None,
         finish_on_visual_confirmation: bool = True,
         turn_only: bool = False,
         session_id: str | None = None,
         max_perception_retries: int = 2,
+        max_waiting_for_map_cycles: int = 20,
         now: Callable[[], float] = time.time,
         semantic_graph: SemanticNavigationGraph | None = None,
         executor_id: str | None = None,
         worker_generation: int | None = None,
+        local_safety_provider: Callable[[LiveObservation], LocalSafetySnapshot | None] | None = None,
+        perception_quality_provider: Callable[[LiveObservation, float], PerceptionQuality | None] | None = None,
+        breadcrumb_provider: Callable[[], Any] | None = None,
+        recovery_manager: RecoveryManager | None = None,
+        search_policy: SearchPolicy | None = None,
+        clearance_map_provider: Callable[
+            [LiveObservation, LocalSafetySnapshot | None], ClearanceMap | None
+        ] | None = None,
+        viewpoint_planner: ViewpointPlanner | None = None,
     ) -> None:
         self.task_context = task_context
         self.target = task_context.canonical_target if task_context else target
@@ -231,11 +321,15 @@ class AutonomousExplorer:
         self.negative_target_key = negative_target_key
         self._candidate_generator = candidate_generator or generate_live_exploration_candidates
         self._planner = planner or select_exploration_goal
+        # 计划书 §6.3：空候选必须由真实地图/frontier 证据分类，探索器自己不再
+        # 猜测原因。探针只读，不产生第二套候选。
+        self._exhaustion_probe = exhaustion_probe
         self._on_event = on_event or (lambda event: None)
         self.finish_on_visual_confirmation = bool(finish_on_visual_confirmation)
         self.turn_only = bool(turn_only)
         self.session_id = session_id or time.strftime("explore_%Y%m%d_%H%M%S")
         self.max_perception_retries = max(0, int(max_perception_retries))
+        self.max_waiting_for_map_cycles = max(1, int(max_waiting_for_map_cycles))
         self._now = now
         self._state = ExplorerState.BOOTSTRAP
         self._operator_stop_requested = False
@@ -250,11 +344,57 @@ class AutonomousExplorer:
         # visible from this office corner yet).
         self._last_execution_moved = False
         self._last_goal_source: str | None = None
+        # 计划书 §6.2/§6.3：候选生成异常与等待地图各自独立计数，异常第二次
+        # 复现才判 FAILED，地图长时间不新鲜才判 MAP_UNAVAILABLE。
+        self._candidate_error_signatures: list[str] = []
+        self._waiting_for_map_cycles = 0
         self._current_place_id: str | None = None
         self._perception_failure_detail: dict[str, Any] | None = None
         self.executor_id = executor_id
         self.worker_generation = worker_generation
         self.decision_records: list[DecisionRecord] = []
+        # POSSIBLE target evidence gets a bounded fresh-frame verification
+        # loop.  It is never allowed to fall directly through to motion.
+        self._possible_reobserve_count = 0
+        # 计划书 §11/§12/§13：局部安全快照 + 卡死判定 + 脱困。
+        # ``local_safety_provider is None`` 时保持旧行为（无 LiDAR 证据就不
+        # 允许任何自主脱困动作，fail-closed）。
+        self._local_safety_provider = local_safety_provider
+        self._perception_quality_provider = perception_quality_provider
+        self._breadcrumb_provider = breadcrumb_provider
+        self.search_policy = search_policy or SearchPolicy()
+        self._recovery_manager = recovery_manager or RecoveryManager(
+            RecoveryManagerConfig(
+                enabled=self.search_policy.recovery.enabled,
+                max_backward_step_m=self.search_policy.recovery.max_backward_step_m,
+                min_backward_step_m=self.search_policy.recovery.min_backward_step_m,
+                max_age_sec=self.search_policy.recovery.max_age_sec,
+                heading_tolerance_deg=self.search_policy.recovery.heading_tolerance_deg,
+                max_consecutive=self.search_policy.recovery.max_consecutive,
+                max_total_m=self.search_policy.recovery.max_total_m,
+            )
+        )
+        # 计划书 §5/§7/§10：净空地图 + 视点规划。没有 clearance 证据时
+        # (provider 与 local_safety_provider 都为 None) 保持旧候选逻辑。
+        self._clearance_map_provider = clearance_map_provider
+        clearance = self.search_policy.clearance_navigation
+        self._viewpoint_planner = viewpoint_planner or ViewpointPlanner(
+            ViewpointPlannerConfig(
+                hard_clearance_m=clearance.hard_clearance_m,
+                preferred_clearance_m=clearance.preferred_clearance_m,
+                footprint_radius_m=clearance.footprint_radius_m,
+            ),
+            weights=self.policy.scoring,
+        )
+        self._last_clearance_map: ClearanceMap | None = None
+        self._last_embodiment_context: dict[str, Any] = {}
+        self._last_safety_rejections: list[dict[str, Any]] = []
+        self._pose_history: list[tuple[float, float, float]] = []
+        self._command_history: list[dict[str, Any]] = []
+        self._result_history: list[str] = []
+        self._last_stuck_state: StuckState | None = None
+        self._no_information_replans = 0
+        self._recovery_count = 0
 
     # ---- operator interface ----------------------------------------------
 
@@ -313,7 +453,14 @@ class AutonomousExplorer:
         self._emit("session_start", target=self.target, session_id=self.session_id,
                    task_id=self.task_context.task_id if self.task_context else None,
                    task_context=self.task_context.to_dict() if self.task_context else None,
-                   budget=budget.to_dict(), policy=asdict(self.policy) if hasattr(self.policy, "__dataclass_fields__") else self.policy.to_dict())
+                   budget=budget.to_dict(),
+                   # Keep the terminal-behaviour switch in the first durable
+                   # event.  A deployed run can then prove whether a visual
+                   # confirmation was intentionally legacy-terminal or was
+                   # required to enter the target-approach state machine.
+                   finish_on_visual_confirmation=self.finish_on_visual_confirmation,
+                   target_approach_enabled=self.search_policy.target_approach.enabled,
+                   policy=asdict(self.policy) if hasattr(self.policy, "__dataclass_fields__") else self.policy.to_dict())
 
         # ---- BOOTSTRAP ------------------------------------------------------
         backend_ready = False
@@ -438,6 +585,8 @@ class AutonomousExplorer:
                     }
                 break
             observations += 1
+            if observation.target_state != TARGET_POSSIBLE:
+                self._possible_reobserve_count = 0
             pose = self._backend.get_pose()
             observation.pose = pose.to_dict() if pose is not None else None
             # 计划书 §6.3 / 不变量 2：navigation heading sector 永远由当前
@@ -454,6 +603,7 @@ class AutonomousExplorer:
                        scene_objects=observation.scene_objects,
                        scene_relations=observation.scene_relations,
                        target_present=observation.target_present,
+                       target_state=observation.target_state,
                        heading_sector=observation.heading_sector,
                        navigation_heading_sector=observation.navigation_heading_sector,
                        semantic_status=observation.semantic_status,
@@ -474,7 +624,14 @@ class AutonomousExplorer:
                 match = SemanticMatch(has_candidate=False)
             if not isinstance(match, SemanticMatch):
                 match = SemanticMatch(has_candidate=bool(getattr(match, "has_candidate", False)))
+            if observation.target_state == TARGET_POSSIBLE:
+                # The observer's tri-state is the hard safety boundary even
+                # when a legacy matcher only understands target_present.
+                match.has_candidate = True
+                match.target_state = TARGET_POSSIBLE
+                match.target_match_level = "possible"
             self._emit("match", has_candidate=match.has_candidate,
+                       target_state=observation.target_state,
                        target_match_level=match.target_match_level,
                        target_score=match.target_score,
                        anchor_labels=match.anchor_labels,
@@ -522,6 +679,18 @@ class AutonomousExplorer:
                         target_candidate=True,
                     )
                     self._current_place_id = spatial_update["place_id"]
+                    # Stamp the confirmation before the snapshot; otherwise the
+                    # only semantic graph the WebUI ever receives is the
+                    # pre-confirmation one and its topology shows no confirmed
+                    # target at all.
+                    self.graph.mark_target_confirmed(self._current_node_id(observation))
+                    confirmed_object_id = self._confirmed_target_object_id(
+                        observation, spatial_update
+                    )
+                    self.semantic_graph.mark_target_confirmed(
+                        object_id=confirmed_object_id,
+                        observation_id=observation.bundle_id,
+                    )
                     semantic_map = self.semantic_graph.to_dict()
                     self._emit(
                         "memory_update",
@@ -539,26 +708,73 @@ class AutonomousExplorer:
                         map_nodes_total=len(semantic_map.get("nodes") or []),
                         semantic_navigation_graph=semantic_map,
                     )
-                    self.graph.mark_target_confirmed(self._current_node_id(observation))
-                    self.semantic_graph.mark_target_confirmed(
-                        object_id=self._target_object_id(observation),
-                        observation_id=observation.bundle_id,
-                    )
-                    self._state = ExplorerState.TARGET_FOUND
-                    finish_reason = "TARGET_FOUND"
-                    self._emit("target_found",
-                               reason_zh=verification.reason_zh,
-                               attempts=verification.attempts,
-                               place_id=self._current_place_id,
-                               object_id=self._target_object_id(observation),
-                               observation_id=observation.bundle_id)
-                    try:
-                        self._backend.stop()
-                    except Exception:
-                        pass
-                    break
-                if verification is not None:
+                    # 计划书 §18.2：确认只是接近的开始。只有 legacy 开关打开
+                    # 时才允许"远处看到就结束"。
+                    approach_detail: dict[str, Any] = {}
+                    reached = True
+                    if not self.finish_on_visual_confirmation and self.search_policy.target_approach.enabled:
+                        self._state = ExplorerState.TARGET_CONFIRMED
+                        self._emit("target_confirmed",
+                                   reason_zh=verification.reason_zh,
+                                   attempts=verification.attempts,
+                                   place_id=self._current_place_id,
+                                   object_id=confirmed_object_id,
+                                   observation_id=observation.bundle_id)
+                        reached, approach_detail = self._run_target_approach(
+                            observation, match, confirmed_object_id
+                        )
+                    if reached:
+                        self._state = ExplorerState.TARGET_FOUND
+                        finish_reason = "TARGET_FOUND"
+                        self._emit("target_found",
+                                   reason_zh=verification.reason_zh,
+                                   attempts=verification.attempts,
+                                   place_id=self._current_place_id,
+                                   object_id=confirmed_object_id,
+                                   observation_id=observation.bundle_id,
+                                   approach=approach_detail)
+                        try:
+                            self._backend.stop()
+                        except Exception:
+                            pass
+                        break
+                    # 没走到 standoff 就不算成功：继续搜索，由预算决定何时收尾。
+                    self._emit("approach_aborted", **approach_detail)
+                if verification is not None and not verification.confirmed:
                     self._emit("verification_rejected", reason_zh=verification.reason_zh)
+                if observation.target_state == TARGET_POSSIBLE:
+                    # Re-enter OBSERVE with the robot stopped.  Once the
+                    # bounded fresh-frame budget is spent, downgrade this
+                    # candidate to ABSENT for this planning cycle so no stale
+                    # uncertainty can authorize a motion command.
+                    if self._possible_reobserve_count < 2:
+                        self._possible_reobserve_count += 1
+                        try:
+                            self._backend.stop()
+                        except Exception:
+                            pass
+                        self._emit(
+                            "target_possible_reobserve",
+                            attempt=self._possible_reobserve_count,
+                            max_attempts=2,
+                            reason="POSSIBLE requires a fresh stopped frame before motion",
+                        )
+                        time.sleep(0.2)
+                        continue
+                    observation.target_match = {
+                        **dict(observation.target_match or {}),
+                        "target_present": False,
+                        "target_state": "ABSENT",
+                        "resolution": "possible_verification_exhausted",
+                    }
+                    match.has_candidate = False
+                    match.target_state = "ABSENT"
+                    match.target_match_level = "none"
+                    self._emit(
+                        "target_possible_resolved_absent",
+                        attempts=self._possible_reobserve_count + 1,
+                        reason="fresh verification did not confirm target",
+                    )
 
             # ---- UPDATE_MEMORY ----------------------------------------------
             self._state = ExplorerState.UPDATE_MEMORY
@@ -590,10 +806,50 @@ class AutonomousExplorer:
                        map_nodes_total=len(semantic_map.get("nodes") or []),
                        semantic_navigation_graph=semantic_map)
             if self._no_information_cycles >= max(1, budget.max_consecutive_no_information_cycles):
+                # 计划书 §12：低信息先排除卡死/传感器退化/仍有 frontier，
+                # 只有真正无可达 frontier 才允许判 SEARCH_EXHAUSTED。
+                low_info = self._classify_no_information(
+                    observation, pose, navigation_failures)
+                stuck_state = low_info.get("stuck_state")
+                stuck_value = stuck_state.value if stuck_state is not None else None
+                self._emit("no_information_classified",
+                           no_information_cycles=self._no_information_cycles,
+                           **{**low_info, "stuck_state": stuck_value})
+                if low_info["decision"] == "RECOVERY_REQUIRED":
+                    self._run_recovery(observation=observation, pose=pose,
+                                       stuck_state=stuck_state,
+                                       goal_id=f"recovery_low_info_{planning_cycles}")
+                    self._no_information_cycles = 0
+                    replans += 1
+                    continue
+                if low_info["decision"] == "WAITING_FOR_MAP":
+                    self._state = ExplorerState.WAITING_FOR_MAP
+                    self._waiting_for_map_cycles += 1
+                    self._backend.stop()
+                    if self._waiting_for_map_cycles > self.max_waiting_for_map_cycles:
+                        finish_reason = "MAP_UNAVAILABLE"
+                        self._state = ExplorerState.FAILED
+                        self._emit("map_unavailable",
+                                   waiting_cycles=self._waiting_for_map_cycles,
+                                   reason="local safety evidence degraded")
+                        break
+                    self._emit("waiting_for_map",
+                               waiting_cycles=self._waiting_for_map_cycles,
+                               reason="local safety evidence degraded",
+                               detail_zh="LiDAR 证据不新鲜或几何未校验，机器狗停稳等待")
+                    self._no_information_cycles = 0
+                    continue
+                if low_info["decision"] == "REPLAN":
+                    self._no_information_cycles = 0
+                    self._no_information_replans += 1
+                    replans += 1
+                    continue
                 finish_reason = "SEARCH_EXHAUSTED"
                 self._state = ExplorerState.SEARCH_EXHAUSTED
                 self._emit("search_exhausted",
-                           reason=f"{self._no_information_cycles} consecutive no-information cycles")
+                           reason=f"{self._no_information_cycles} consecutive no-information cycles",
+                           stuck_state=stuck_value,
+                           open_frontiers=low_info.get("open_frontiers"))
                 break
 
             # ---- PLAN --------------------------------------------------------
@@ -601,6 +857,28 @@ class AutonomousExplorer:
             planning_cycles += 1
             current_yaw_deg = (pose.yaw * 180.0 / 3.141592653589793) if pose is not None else 0.0
             anchor_labels = match.anchor_labels
+            # 计划书 §5/§7/§11：候选生成前先取局部安全快照、感知质量与净空
+            # 地图。没有注入 provider 时三者均为 None，候选逻辑保持旧行为。
+            safety = self._local_safety(observation)
+            perception = self._perception_quality(observation, info_gain)
+            if safety is not None:
+                self._emit("local_safety_snapshot", local_safety=safety.to_dict(),
+                           planning_cycles=planning_cycles)
+            if perception is not None:
+                self._emit("perception_quality",
+                           perception_quality=perception.to_dict(),
+                           planning_cycles=planning_cycles)
+            clearance_map = self._clearance_map(observation, safety)
+            self._last_clearance_map = clearance_map
+            safety_rejections: list[dict[str, Any]] = []
+            self._last_safety_rejections = safety_rejections
+            plan_context = self._candidate_plan_context(
+                observation=observation,
+                safety=safety,
+                perception=perception,
+                clearance_map=clearance_map,
+                safety_rejections=safety_rejections,
+            )
             try:
                 candidates = self._candidate_generator(
                     observation=observation,
@@ -614,15 +892,103 @@ class AutonomousExplorer:
                     current_yaw_deg=current_yaw_deg,
                     turn_only=self.turn_only,
                     max_candidates=self.policy.candidates.max_candidates,
+                    **plan_context,
                 )
             except Exception as exc:
-                self._emit("candidate_generator_error", error=f"{type(exc).__name__}: {exc}")
-                candidates = []
+                # 计划书 §6.2：候选生成异常是 PLANNING_ERROR，不是搜索穷尽。
+                # 第一次：停稳、记录、允许一次新观测后重新规划；同一异常第二次
+                # 复现才判 FAILED。
+                signature = f"{type(exc).__name__}: {exc}"
+                repeated = signature in self._candidate_error_signatures
+                self._candidate_error_signatures.append(signature)
+                self._emit("candidate_generator_error", error=signature,
+                           error_type="PLANNING_ERROR",
+                           source="candidate_generator",
+                           traceback=traceback.format_exc(),
+                           repeated=repeated,
+                           action="fail" if repeated else "replan_after_new_observation")
+                try:
+                    self._backend.stop()
+                except Exception:
+                    pass
+                if repeated:
+                    finish_reason = "PLANNING_ERROR"
+                    self._state = ExplorerState.FAILED
+                    break
+                replans += 1
+                continue
+            if safety_rejections:
+                # 计划书 §29：被硬安全拒掉的 frontier 必须留下证据，绝不能
+                # 静默消失成 "没有候选"。
+                self._emit("candidate_rejected_safety",
+                           rejections=safety_rejections,
+                           planning_cycles=planning_cycles)
+            viewpoint_provenance = [
+                item.provenance for item in candidates
+                if isinstance(item.provenance, dict)
+                and item.provenance.get("source") == "frontier_viewpoint"
+            ]
+            if viewpoint_provenance:
+                self._emit("viewpoint_candidates",
+                           viewpoints=viewpoint_provenance,
+                           planning_cycles=planning_cycles)
+            if safety is not None:
+                # 计划书 §15：LLM 与人一样只看结构化摘要，绝不看原始点云。
+                self._last_embodiment_context = self.llm_embodiment_context(
+                    safety=safety, perception=perception,
+                    viewpoint_provenance=viewpoint_provenance,
+                    navigation_failures=navigation_failures,
+                )
+                self._emit("llm_embodiment_context",
+                           **_json_context(self._last_embodiment_context))
             if not candidates:
+                decision = self._classify_empty_candidates()
+                self._emit("candidates_empty", **decision)
+                if decision["classification"] == "WAITING_FOR_MAP":
+                    # 计划书 §6.3：地图不新鲜时停稳等待新地图，绝不盲目前进，
+                    # 也绝不宣告搜索穷尽。
+                    self._state = ExplorerState.WAITING_FOR_MAP
+                    self._waiting_for_map_cycles += 1
+                    try:
+                        self._backend.stop()
+                    except Exception:
+                        pass
+                    if self._waiting_for_map_cycles > self.max_waiting_for_map_cycles:
+                        finish_reason = "MAP_UNAVAILABLE"
+                        self._state = ExplorerState.FAILED
+                        self._emit("map_unavailable",
+                                   waiting_cycles=self._waiting_for_map_cycles,
+                                   reason=decision["reason"])
+                        break
+                    self._emit("waiting_for_map",
+                               waiting_cycles=self._waiting_for_map_cycles,
+                               reason=decision["reason"],
+                               detail_zh="地图暂时不新鲜，机器狗停稳等待新地图后重新规划")
+                    time.sleep(1.0)
+                    continue
+                if decision["classification"] == "PLANNING_ERROR":
+                    # 有可达 frontier 却拿不到候选：这是规划缺陷，不是穷尽。
+                    signature = f"empty_candidates_with_reachable_frontiers:{decision['reason']}"
+                    repeated = signature in self._candidate_error_signatures
+                    self._candidate_error_signatures.append(signature)
+                    try:
+                        self._backend.stop()
+                    except Exception:
+                        pass
+                    if repeated:
+                        finish_reason = "PLANNING_ERROR"
+                        self._state = ExplorerState.FAILED
+                        break
+                    replans += 1
+                    continue
+                self._waiting_for_map_cycles = 0
                 finish_reason = "SEARCH_EXHAUSTED"
                 self._state = ExplorerState.SEARCH_EXHAUSTED
-                self._emit("search_exhausted", reason="no exploration candidates")
+                self._emit("search_exhausted", reason=decision["reason"],
+                           **{key: value for key, value in decision.items()
+                              if key not in {"reason", "classification"}})
                 break
+            self._waiting_for_map_cycles = 0
             # Failed goals: exclude sectors that failed >= N times (section
             # 10.5) while alternatives exist; recent-goal tabu avoids
             # immediate repeats.
@@ -651,10 +1017,31 @@ class AutonomousExplorer:
                 exclude_sectors=exclude_sectors,
             )
             if scored is None:
-                finish_reason = "SEARCH_EXHAUSTED"
-                self._state = ExplorerState.SEARCH_EXHAUSTED
-                self._emit("search_exhausted", reason="planner returned no goal")
-                break
+                # 计划书 §6.2：planner 拿到候选却选不出目标是规划缺陷；只有在
+                # 真正没有可达区域时才允许判定穷尽。
+                decision = self._classify_empty_candidates()
+                self._emit("planner_returned_no_goal",
+                           candidate_count=len(candidates), **decision)
+                if decision["classification"] == "SEARCH_EXHAUSTED":
+                    finish_reason = "SEARCH_EXHAUSTED"
+                    self._state = ExplorerState.SEARCH_EXHAUSTED
+                    self._emit("search_exhausted", reason=decision["reason"],
+                               **{key: value for key, value in decision.items()
+                                  if key not in {"reason", "classification"}})
+                    break
+                signature = f"planner_returned_no_goal:{decision['classification']}"
+                repeated = signature in self._candidate_error_signatures
+                self._candidate_error_signatures.append(signature)
+                try:
+                    self._backend.stop()
+                except Exception:
+                    pass
+                if repeated:
+                    finish_reason = "PLANNING_ERROR"
+                    self._state = ExplorerState.FAILED
+                    break
+                replans += 1
+                continue
             goal = scored.goal
             # Emit the full scored ranking (plan book §33-§34) so the WebUI
             # can render the candidate list with per-component scores.
@@ -689,6 +1076,13 @@ class AutonomousExplorer:
                        components=scored.components,
                        reasons=scored.reasons,
                        planning_cycles=planning_cycles)
+            goal_provenance = goal.provenance if isinstance(goal.provenance, dict) else {}
+            if goal_provenance.get("source") == "frontier_viewpoint":
+                self._emit("viewpoint_selected",
+                           frontier_id=goal_provenance.get("frontier_id"),
+                           viewpoint_id=goal_provenance.get("viewpoint_id"),
+                           viewpoint=goal_provenance,
+                           planning_cycles=planning_cycles)
 
             decision = self._make_decision_record(
                 observation=observation,
@@ -697,6 +1091,9 @@ class AutonomousExplorer:
                 scored=scored,
                 candidates=all_scored,
                 cycle=planning_cycles,
+                safety=safety,
+                perception=perception,
+                safety_rejections=safety_rejections,
             )
             self.decision_records.append(decision)
             self._emit("decision_recorded", decision=decision.to_dict(),
@@ -719,6 +1116,7 @@ class AutonomousExplorer:
             # If this goal physically moved the robot (even without new visual
             # info), it is still active exploration - don't penalize it.
             self._last_execution_moved = bool(result.succeeded)
+            self._record_execution_history(goal, self._backend.get_pose(), result)
             updated_decision = decision.with_execution(
                 status="SUCCEEDED" if result.succeeded else "FAILED",
                 message=result.message,
@@ -765,10 +1163,23 @@ class AutonomousExplorer:
                     self.graph.mark_unreachable(node_id, reason=result.message)
             if self._state != ExplorerState.OPERATOR_STOP:
                 self._state = ExplorerState.RECOVER
+                # 计划书 §13.2：导航失败必须先停稳、刷新局部安全证据并决策
+                # 脱困，再进入下一轮规划；没有 LiDAR 证据时保持旧行为。
+                recovery: dict[str, Any] | None = None
+                if self._local_safety_provider is not None:
+                    safety = self._local_safety(observation)
+                    perception = self._perception_quality(observation, 0.0)
+                    stuck_state = self._stuck_state(
+                        observation, pose, safety, perception, navigation_failures)
+                    recovery = self._run_recovery(
+                        observation=observation, pose=pose, result=result,
+                        stuck_state=stuck_state,
+                        goal_id=f"recovery_{planning_cycles}")
                 replans += 1
                 self._emit("replan", goal_id=goal.goal_id,
                            status=result.status.value,
-                           navigation_failures=navigation_failures)
+                           navigation_failures=navigation_failures,
+                           recovery=recovery)
         else:
             elapsed = float(self._now()) - started
             if finish_reason == "":
@@ -779,10 +1190,14 @@ class AutonomousExplorer:
                 else:
                     finish_reason = "MAX_PLANNING_CYCLES_REACHED"
 
-        if self._state not in {ExplorerState.TARGET_FOUND, ExplorerState.OPERATOR_STOP}:
+        # 计划书 §6.2：失败终局（PLANNING_ERROR / MAP_UNAVAILABLE / 感知失败）
+        # 不许被压成 FINISHED，否则 WebUI 会把缺陷显示成正常结束。
+        if self._state not in {ExplorerState.TARGET_FOUND, ExplorerState.OPERATOR_STOP,
+                               ExplorerState.FAILED}:
             self._state = ExplorerState.FINISHED
         if finish_reason == "":
-            finish_reason = "SEARCH_EXHAUSTED"
+            # 计划书 §6.2：预算耗尽时不能冒充 SEARCH_EXHAUSTED。
+            finish_reason = "BUDGET_EXHAUSTED"
         finish_extra: dict[str, Any] = {}
         if self._perception_failure_detail is not None:
             detail = self._perception_failure_detail
@@ -831,6 +1246,579 @@ class AutonomousExplorer:
             status=NavigationStatus.TIMEOUT,
             message=f"navigation wait timeout after {timeout_sec:.0f}s",
         )
+
+    # ---- local safety / stuck / recovery (计划书 §11-§14) ------------------
+
+    def _local_safety(self, observation: LiveObservation) -> LocalSafetySnapshot | None:
+        if self._local_safety_provider is None:
+            return None
+        return self._local_safety_provider(observation)
+
+    def _perception_quality(
+        self, observation: LiveObservation, information_gain: float
+    ) -> PerceptionQuality | None:
+        if self._perception_quality_provider is None:
+            return None
+        return self._perception_quality_provider(observation, float(information_gain))
+
+    def _breadcrumb(self) -> Any:
+        if self._breadcrumb_provider is None:
+            return None
+        return self._breadcrumb_provider()
+
+    def _record_execution_history(
+        self, goal: ExplorationGoal, pose: Any, result: NavigationResult
+    ) -> None:
+        """Keep the short pose/command window the stuck detector reads."""
+        window = max(1, int(self.search_policy.stuck_detection.history_cycles)) + 1
+        if pose is not None:
+            self._pose_history.append((float(pose.x), float(pose.y), float(pose.yaw)))
+        self._command_history.append({
+            "goal_type": goal.goal_type,
+            "distance_m": abs(float(goal.relative_dx or 0.0))
+            + abs(float(goal.relative_dy or 0.0)),
+            "dyaw_deg": float(goal.relative_dyaw or 0.0),
+        })
+        self._result_history.append(result.status.value)
+        del self._pose_history[:-window]
+        del self._command_history[:-window]
+        del self._result_history[:-window]
+
+    def _clearance_map(
+        self, observation: LiveObservation, safety: LocalSafetySnapshot | None
+    ) -> ClearanceMap | None:
+        """净空地图：优先用注入的 provider，否则由局部安全快照推导。"""
+        if self._clearance_map_provider is not None:
+            return self._clearance_map_provider(observation, safety)
+        if safety is None:
+            return None
+        return clearance_map_from_local_safety(
+            safety, pose=_pose_xy_yaw(observation.pose)
+        )
+
+    # ---- 目标接近闭环（计划书 §18/§21/§23） ------------------------------
+
+    def _fresh_observation(self) -> LiveObservation | None:
+        """接近闭环里的一帧新观测；拿不到就返回 None，由调用方保守停车。"""
+        try:
+            observation = self._observer()
+        except Exception as exc:
+            self._emit("approach_observer_error", error=f"{type(exc).__name__}: {exc}")
+            return None
+        if observation is None:
+            return None
+        pose = self._backend.get_pose()
+        observation.pose = pose.to_dict() if pose is not None else None
+        return observation
+
+    def _target_scene_object(
+        self, observation: LiveObservation
+    ) -> dict[str, Any] | None:
+        """找出这一帧里代表目标的那个物体。
+
+        live 链路由 ``DepthObjectLocalizer`` 给目标物体打上 ``category="target"``；
+        没有该标记时退回标签互相包含的匹配。``observation.spatial_quality`` 说的是
+        置信度最高的物体，不一定是目标，所以这里必须逐物体取。"""
+        target = (self.target or "").strip().lower()
+        fallback: dict[str, Any] | None = None
+        for item in observation.scene_objects or ():
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("category") or "").strip().lower() == "target":
+                return item
+            label = str(item.get("label") or "").strip().lower()
+            if fallback is None and target and label and (label in target or target in label):
+                fallback = item
+        return fallback
+
+    def _target_approach_context(
+        self, observation: LiveObservation, *, object_id: str | None = None
+    ) -> TargetApproachContext | None:
+        """把目标物体的 RGBD 真值装进接近上下文（§19.1）。"""
+        item = self._target_scene_object(observation)
+        if item is None:
+            return None
+        quality = str(item.get("spatial_quality") or "RGB_ONLY")
+        depth = item.get("depth_m")
+        camera_xyz = item.get("camera_xyz")
+        # 只有 metric 等级才谈得上 global 位姿，其余等级坚决不伪造 map_xyz（§20.2）。
+        map_xyz: tuple[float, float, float] | None = None
+        if quality == "METRIC_RGBD" and object_id:
+            entry = self.semantic_graph.object_map.objects.get(object_id)
+            if entry is not None and entry.map_xyz is not None:
+                map_xyz = tuple(float(value) for value in entry.map_xyz)
+        policy = self.search_policy.target_approach
+        return TargetApproachContext(
+            object_id=object_id or str(item.get("object_id") or ""),
+            label=str(item.get("label") or self.target),
+            depth_m=None if depth is None else float(depth),
+            # 相机 bearing 图像右为正，机器人系左为正，进决策前必须取反（§21.1）。
+            bearing_deg=robot_bearing_from_camera(item.get("bearing_deg")),
+            camera_xyz=None if not camera_xyz else tuple(
+                float(value) for value in camera_xyz),
+            map_xyz=map_xyz,
+            spatial_quality=quality,
+            confidence=float(item.get("confidence") or item.get("score") or 0.0),
+            desired_standoff_m=policy.preferred_standoff_m,
+            min_standoff_m=policy.minimum_standoff_m,
+            max_standoff_m=policy.maximum_standoff_m,
+            last_seen_timestamp=float(observation.timestamp or 0.0),
+        )
+
+    def _run_target_approach(
+        self, observation: LiveObservation, match: SemanticMatch,
+        object_id: str | None,
+    ) -> tuple[bool, dict[str, Any]]:
+        """确认之后一步步走到 standoff，停稳后再确认一次（§18/§21/§23）。
+
+        返回 ``(reached, detail)``。任何一步失去 RGBD 真值、前向硬门不通过或运动
+        失败都返回 False，让调用方继续探索——绝不假装成功。"""
+        policy = self.search_policy.target_approach
+        detail: dict[str, Any] = {"object_id": object_id, "steps": 0, "reason": ""}
+        current = observation
+        lost_count = 0
+        steps = 0
+
+        while steps < 12:
+            # ---- TARGET_LOCALIZE ---------------------------------------
+            self._state = ExplorerState.TARGET_LOCALIZE
+            context = self._target_approach_context(current, object_id=object_id)
+            safety = self._local_safety(current)
+            perception = self._perception_quality(current, 0.0)
+            if context is None or safety is None or perception is None:
+                detail["reason"] = "NO_APPROACH_EVIDENCE: 缺少目标 RGBD 或局部安全证据"
+                return False, detail
+            context.lost_count = lost_count
+            self._emit("target_localized", **context.to_dict())
+
+            # ---- APPROACH_PLAN：只有 metric 目标才有 global 视点可排 ----
+            if context.spatial_quality == "METRIC_RGBD" and context.map_xyz is not None:
+                self._state = ExplorerState.APPROACH_PLAN
+                clearance_map = self._clearance_map(current, safety)
+                if clearance_map is not None:
+                    candidates = generate_target_approach_viewpoints(
+                        context,
+                        robot_pose=_pose_xy_yaw(current.pose),
+                        clearance_map=clearance_map,
+                        policy=policy,
+                        planner=self._viewpoint_planner,
+                    )
+                    best = candidates[0] if candidates and candidates[0].hard_safe else None
+                    self._emit(
+                        "approach_candidate_selected",
+                        candidate_count=len(candidates),
+                        selected=best.to_dict() if best is not None else None,
+                        candidates=[item.to_dict() for item in candidates[:6]],
+                    )
+
+            # ---- APPROACH_EXECUTE --------------------------------------
+            self._state = ExplorerState.APPROACH_EXECUTE
+            decision = decide_approach(
+                context,
+                safety=safety,
+                perception=perception,
+                policy=policy,
+                clearance=self.search_policy.clearance_navigation,
+                capabilities=self._backend.capabilities(),
+            )
+            self._emit("approach_step", step=steps + 1, **decision.to_dict())
+
+            if decision.action in (
+                ACTION_APPROACH_COMPLETE, ACTION_TARGET_REACHED_OR_TOO_CLOSE
+            ):
+                break
+            if decision.action == ACTION_APPROACH_BLOCKED:
+                detail.update(reason=decision.reason, steps=steps)
+                return False, detail
+            if decision.action == ACTION_STOP_REOBSERVE:
+                self._backend.stop()
+                lost_count += 1
+                if lost_count > 2:
+                    # 带上最后一次决策原因，否则现场分不清「真丢了」还是
+                    # 「深度不新鲜」。
+                    detail.update(reason="TARGET_LOST_DURING_APPROACH",
+                                  steps=steps, lost_count=lost_count,
+                                  decision_reason=decision.reason)
+                    return False, detail
+                refreshed = self._fresh_observation()
+                if refreshed is None:
+                    detail.update(reason="NO_FRESH_FRAME_DURING_APPROACH", steps=steps)
+                    return False, detail
+                current = refreshed
+                continue
+            if decision.action == ACTION_APPROACH_FORWARD and self.turn_only:
+                detail.update(reason="TURN_ONLY_MODE: 只允许转向，无法接近目标",
+                              steps=steps)
+                return False, detail
+
+            steps += 1
+            goal = ExplorationGoal(
+                goal_id=f"approach_step_{steps}",
+                goal_type=(
+                    GOAL_ROTATE_VIEW if decision.action == ACTION_ROTATE_SMALL
+                    else GOAL_RELATIVE_MOVE
+                ),
+                relative_dx=decision.relative_dx,
+                relative_dyaw=decision.relative_dyaw_deg,
+                semantic_reason=decision.reason,
+                provenance={"approach": decision.to_dict(), "object_id": object_id},
+            )
+            handle = self._backend.execute_goal(goal)
+            result = self._wait_result(handle, timeout_sec=20.0)
+            self._record_execution_history(goal, self._backend.get_pose(), result)
+            if result.status is not NavigationStatus.SUCCEEDED:
+                detail.update(reason=f"APPROACH_MOTION_{result.status.value}",
+                              steps=steps, message=result.message)
+                return False, detail
+            refreshed = self._fresh_observation()
+            if refreshed is None:
+                detail.update(reason="NO_FRESH_FRAME_DURING_APPROACH", steps=steps)
+                return False, detail
+            current = refreshed
+        else:
+            detail.update(reason="APPROACH_STEP_BUDGET_EXHAUSTED", steps=steps)
+            return False, detail
+
+        # ---- FINAL_OBSERVE -> FINAL_VERIFY（§23）----------------------
+        self._state = ExplorerState.FINAL_OBSERVE
+        self._backend.stop()
+        final = self._fresh_observation()
+        if final is None:
+            detail.update(reason="NO_FINAL_FRAME", steps=steps)
+            return False, detail
+        self._state = ExplorerState.FINAL_VERIFY
+        final_context = self._target_approach_context(final, object_id=object_id)
+        final_safety = self._local_safety(final)
+        final_perception = self._perception_quality(final, 0.0)
+        if final_context is None or final_safety is None or final_perception is None:
+            detail.update(reason="NO_FINAL_EVIDENCE", steps=steps)
+            return False, detail
+        try:
+            final_verification = self._verifier(final, match)
+            verified_again = bool(
+                final_verification is not None and final_verification.confirmed)
+        except Exception as exc:
+            verified_again = False
+            self._emit("verification_error", phase="FINAL_VERIFY",
+                       error=f"{type(exc).__name__}: {exc}")
+        reached, reason = evaluate_target_reached(
+            final_context,
+            safety=final_safety,
+            perception=final_perception,
+            verified_again=verified_again,
+            robot_stationary=True,
+            policy=policy,
+        )
+        detail.update(reason=reason, steps=steps, reached=reached,
+                      verified_again=verified_again,
+                      final_target=final_context.to_dict())
+        self._emit("final_verification", reached=reached, reason=reason,
+                   verified_again=verified_again, steps=steps,
+                   target=final_context.to_dict())
+        if not reached:
+            return False, detail
+        self._state = ExplorerState.TARGET_REACHED
+        self._emit("target_reached", **detail)
+        return True, detail
+
+    def _candidate_plan_context(
+        self,
+        *,
+        observation: LiveObservation,
+        safety: LocalSafetySnapshot | None,
+        perception: PerceptionQuality | None,
+        clearance_map: ClearanceMap | None,
+        safety_rejections: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """计划书 §7/§8：把 frontier / 净空地图 / 视点规划器交给候选生成。
+
+        没有安全证据时返回空字典，自定义 candidate_generator 与旧会话完全不受
+        影响。"""
+        context: dict[str, Any] = {}
+        if self._local_safety_provider is None:
+            return context
+        context["local_safety"] = safety
+        context["perception_quality"] = perception
+        if clearance_map is None:
+            return context
+        frontiers = [
+            entry for entry in self.semantic_graph.frontiers.values()
+            if str(entry.get("status") or entry.get("state") or "OPEN").upper() == "OPEN"
+        ]
+        if not frontiers:
+            return context
+        backend_config = getattr(self._backend, "config", None)
+        context.update(
+            clearance_map=clearance_map,
+            viewpoint_planner=self._viewpoint_planner,
+            frontiers=frontiers,
+            robot_pose=_pose_xy_yaw(observation.pose),
+            traversal_failures={
+                str(entry.get("frontier_id")): int(entry.get("failure_count") or 0)
+                for entry in frontiers
+            },
+            forward_step_m=float(
+                getattr(backend_config, "max_forward_step_m", 0.20) or 0.20
+            ),
+            safety_rejections=safety_rejections,
+        )
+        return context
+
+    def llm_embodiment_context(
+        self,
+        *,
+        safety: LocalSafetySnapshot | None,
+        perception: PerceptionQuality | None,
+        viewpoint_provenance: Sequence[dict[str, Any]] = (),
+        navigation_failures: int = 0,
+    ) -> dict[str, Any]:
+        """计划书 §15：LLM 推理请求的几何/拓扑/脱困上下文。"""
+        frontiers = [
+            entry for entry in self.semantic_graph.frontiers.values()
+            if str(entry.get("status") or entry.get("state") or "OPEN").upper() == "OPEN"
+        ]
+        recent: list[str] = []
+        for record in reversed(self.decision_records[-5:]):
+            place = record.current_place_id
+            if place and place not in recent:
+                recent.append(place)
+        return {
+            "local_safety": build_local_safety_context(safety),
+            "perception_quality": build_perception_quality_context(perception),
+            "topology_context": build_topology_context(
+                current_place_id=self._current_place_id,
+                recent_place_ids=recent,
+                frontiers=frontiers,
+                viewpoint_provenance=viewpoint_provenance,
+            ),
+            "recovery_context": build_recovery_context(
+                stuck_state=self._last_stuck_state,
+                navigation_failures=navigation_failures,
+                recoveries=self._recovery_count,
+                breadcrumb_backward_available=self._breadcrumb() is not None,
+            ),
+        }
+
+    def _stuck_state(
+        self,
+        observation: LiveObservation,
+        pose: Any,
+        safety: LocalSafetySnapshot | None,
+        perception: PerceptionQuality | None,
+        navigation_failures: int,
+    ) -> StuckState:
+        history = StuckDetectorInput(
+            pose_history=tuple(self._pose_history),
+            command_history=tuple(self._command_history),
+            result_history=tuple(self._result_history),
+            local_safety=safety,
+            perception_quality=perception,
+            repeated_heading_count=self.graph.sector_visited_count(
+                observation.heading_sector
+            ),
+            navigation_failures=int(navigation_failures),
+        )
+        state = detect_stuck(history, policy=self.search_policy.stuck_detection)
+        self._last_stuck_state = state
+        self._emit("stuck_detected", stuck_state=state.value,
+                   navigation_failures=int(navigation_failures),
+                   local_safety=safety.summary() if safety is not None else None,
+                   perception_quality=perception.to_dict() if perception is not None else None)
+        return state
+
+    def _run_recovery(
+        self,
+        *,
+        observation: LiveObservation,
+        pose: Any,
+        result: NavigationResult | None = None,
+        stuck_state: StuckState | None = None,
+        goal_id: str = "recovery",
+    ) -> dict[str, Any]:
+        """计划书 §13.2：停 -> 刷新证据 -> 决策 -> 先退后转，全程 fail-closed。"""
+        self._state = ExplorerState.RECOVER
+        self._recovery_count += 1
+        self._backend.stop()
+        safety = self._local_safety(observation)
+        breadcrumb = self._breadcrumb()
+        current_pose = (
+            (float(pose.x), float(pose.y), float(pose.yaw))
+            if pose is not None
+            else (0.0, 0.0, 0.0)
+        )
+        hard_clearance = self.search_policy.clearance_navigation.hard_clearance_m
+        perception = self._perception_quality(observation, 0.0)
+        decision = self._recovery_manager.decide(
+            result=result,
+            breadcrumb=breadcrumb,
+            current_pose=current_pose,
+            front_clearance_m=safety.front_clearance_m if safety is not None else None,
+            forward_min_clearance_m=hard_clearance,
+            camera_occluded=bool(perception is not None and perception.camera_blocked),
+            stuck_state=stuck_state.value if stuck_state is not None else None,
+            goal_id=goal_id,
+        )
+        payload: dict[str, Any] = {
+            "stuck_state": stuck_state.value if stuck_state is not None else None,
+            "decision": decision.to_dict(),
+            "escape_rotation": None,
+            "executed": None,
+        }
+        self._emit("recovery_triggered", **payload)
+        if decision.backward_allowed and decision.backward_goal is not None:
+            goal = decision.backward_goal
+            self._emit("recovery_backward_start", goal=goal.to_dict())
+            handle = self._backend.execute_goal(goal)
+            backward_result = self._wait_result(handle, timeout_sec=20.0)
+            self._emit("recovery_backward_result", goal_id=goal.goal_id,
+                       status=backward_result.status.value,
+                       message=backward_result.message,
+                       requested_motion=backward_result.requested_motion,
+                       observed_motion=backward_result.observed_motion)
+            self._backend.stop()
+            payload["executed"] = "BACKWARD_RECOVERY"
+            payload["status"] = backward_result.status.value
+            self._emit("recovery_reobserve",
+                       reason="fresh frame required after backward recovery")
+            self._emit("recovery_result", **payload)
+            return payload
+        escape = select_escape_rotation(
+            safety,
+            candidates_deg=self.search_policy.recovery.escape_turn_candidates_deg,
+            rotation_clearance_m=hard_clearance,
+        )
+        payload["escape_rotation"] = escape.to_dict()
+        if not escape.allowed:
+            self._backend.stop()
+            payload["executed"] = None
+            payload["reason"] = escape.reason or decision.reason
+            self._emit("recovery_budget_exceeded", reason=payload["reason"],
+                       escape_rotation=escape.to_dict())
+            self._emit("recovery_result", **payload)
+            return payload
+        turn = ExplorationGoal(
+            goal_id=f"{goal_id}_escape_turn",
+            goal_type=GOAL_ROTATE_VIEW,
+            relative_dyaw=float(escape.yaw_deg),
+            semantic_reason=f"escape rotation after {payload['stuck_state']}",
+            provenance={
+                "recovery_reason": decision.trigger or (payload["stuck_state"] or ""),
+                "escape_rotation": escape.to_dict(),
+            },
+        )
+        self._emit("recovery_backward_start", goal=turn.to_dict(),
+                   primitive="ESCAPE_ROTATION")
+        handle = self._backend.execute_goal(turn)
+        turn_result = self._wait_result(handle, timeout_sec=20.0)
+        self._backend.stop()
+        payload["executed"] = "ESCAPE_ROTATION"
+        payload["status"] = turn_result.status.value
+        self._emit("recovery_reobserve",
+                   reason="fresh frame required after escape rotation")
+        self._emit("recovery_result", **payload)
+        return payload
+
+    def _classify_no_information(
+        self, observation: LiveObservation, pose: Any, navigation_failures: int
+    ) -> dict[str, Any]:
+        """计划书 §12：低信息不等于搜索穷尽，先排除卡死与传感器退化。"""
+        if self._local_safety_provider is None:
+            return {"decision": "SEARCH_EXHAUSTED", "stuck_state": None}
+        safety = self._local_safety(observation)
+        perception = self._perception_quality(observation, 0.0)
+        stuck = self._stuck_state(observation, pose, safety, perception, navigation_failures)
+        if requires_recovery(stuck):
+            return {"decision": "RECOVERY_REQUIRED", "stuck_state": stuck}
+        if stuck is StuckState.SENSOR_DEGRADED:
+            return {"decision": "WAITING_FOR_MAP", "stuck_state": stuck}
+        open_frontiers = [
+            frontier for frontier in self.semantic_graph.frontiers.values()
+            if getattr(frontier, "status", "") == "OPEN"
+        ]
+        if open_frontiers and self._no_information_replans < 2:
+            return {"decision": "REPLAN", "stuck_state": stuck,
+                    "open_frontiers": len(open_frontiers)}
+        return {"decision": "SEARCH_EXHAUSTED", "stuck_state": stuck,
+                "open_frontiers": len(open_frontiers)}
+
+    def _classify_empty_candidates(self) -> dict[str, Any]:
+        """Classify an empty candidate list against real map/frontier evidence.
+
+        计划书 §6.3 只承认三种情况：地图不新鲜要等地图；地图健康且还有可达
+        frontier 说明规划链有缺陷；只有地图健康、方向扫完、可达 frontier 全部
+        访问或失败才是真正的 ``SEARCH_EXHAUSTED``。
+        """
+        probe: dict[str, Any] = {}
+        if self._exhaustion_probe is not None:
+            try:
+                probe = dict(self._exhaustion_probe() or {})
+            except Exception as exc:
+                probe = {"probe_error": f"{type(exc).__name__}: {exc}"}
+        frontiers = self.semantic_graph.frontiers
+        reachable = probe.get("reachable_frontier_count")
+        if reachable is None:
+            reachable = sum(
+                1 for item in frontiers.values()
+                if str(getattr(item, "status", "OPEN")).upper() == "OPEN"
+            )
+        visited = probe.get("visited_frontier_count")
+        if visited is None:
+            visited = sum(
+                1 for item in frontiers.values()
+                if str(getattr(item, "status", "")).upper() == "VISITED"
+            )
+        unreachable = probe.get("unreachable_frontier_count")
+        if unreachable is None:
+            unreachable = sum(
+                1 for item in frontiers.values()
+                if str(getattr(item, "status", "")).upper() in {"UNREACHABLE", "FAILED"}
+            )
+        place = self.semantic_graph.place_graph.places.get(self._current_place_id or "")
+        scanned_sectors = probe.get("scanned_sector_count")
+        if scanned_sectors is None:
+            coverage = dict(getattr(place, "heading_coverage", {}) or {}) if place else {}
+            scanned_sectors = sum(1 for value in coverage.values() if value)
+        evidence = {
+            "map_fresh": probe.get("map_fresh"),
+            "map_source": probe.get("map_source"),
+            "map_revision": probe.get("map_revision"),
+            "generator_empty_reason": probe.get("empty_reason"),
+            "local_scan_quota_exhausted": probe.get("local_scan_quota_exhausted"),
+            "scanned_sector_count": int(scanned_sectors),
+            "reachable_frontier_count": int(reachable),
+            "visited_frontier_count": int(visited),
+            "unreachable_frontier_count": int(unreachable),
+            "place_id": self._current_place_id,
+        }
+        if probe.get("map_fresh") is False:
+            return {
+                "classification": "WAITING_FOR_MAP",
+                "reason": (
+                    "metric map not fresh "
+                    f"(source={probe.get('map_source')}, "
+                    f"revision={probe.get('map_revision')})"
+                ),
+                **evidence,
+            }
+        if int(reachable) > 0:
+            return {
+                "classification": "PLANNING_ERROR",
+                "reason": (
+                    f"{int(reachable)} reachable frontier(s) remain but the "
+                    "candidate generator produced no goal"
+                ),
+                **evidence,
+            }
+        return {
+            "classification": "SEARCH_EXHAUSTED",
+            "reason": (
+                "search space exhausted: "
+                f"{int(scanned_sectors)} sector(s) scanned, "
+                f"{int(reachable)} reachable / {int(visited)} visited / "
+                f"{int(unreachable)} unreachable frontier(s)"
+            ),
+            **evidence,
+        }
 
     def _current_node_id(self, observation: LiveObservation) -> str:
         # ExplorationGraph remains an internal scoring/recovery ledger keyed
@@ -913,13 +1901,48 @@ class AutonomousExplorer:
             self.graph.mark_target_candidate(node_id)
         return info_gain, new_labels, new_relations, new_sector
 
-    def _target_object_id(self, observation: LiveObservation) -> str | None:
-        labels = {
-            str(item.get("label_zh") or item.get("label") or item.get("name") or "")
-            for item in observation.scene_objects
-        }
-        for object_id, entry in self.semantic_graph.object_map.objects.items():
-            if entry.label in labels:
+    def _confirmed_target_object_id(
+        self,
+        observation: LiveObservation,
+        spatial_update: dict[str, Any],
+    ) -> str | None:
+        """Return the persistent object id of this frame's target candidate.
+
+        The quick VLM puts the confirmed/possible target into scene_objects
+        with category "target", so the object map already holds it and the
+        association carries frame id -> persistent id.  Label matching is only
+        the fallback for frames whose target had no box.
+        """
+        mapping = spatial_update.get("frame_object_ids") or {}
+        for item in observation.scene_objects:
+            if str(item.get("category") or "") != "target":
+                continue
+            frame_id = str(item.get("frame_object_id") or item.get("id") or "")
+            if frame_id in mapping:
+                return mapping[frame_id]
+        return self._target_object_id()
+
+    def _target_object_id(self) -> str | None:
+        """Return the persistent object whose label is the search target.
+
+        Matching any label of the current frame stamped the first unrelated
+        object in insertion order instead: measured search_20260902_180313,
+        the confirmed object was a white mesh bin but the flag landed on
+        obj_005 "纸箱" (STALE, 4.17 m, last seen 770 s earlier) because
+        "纸箱" happened to be in that frame.  When the target itself is not
+        in the object map the confirmation stays on the Place only.
+        """
+        objects = self.semantic_graph.object_map.objects
+        for object_id, entry in objects.items():
+            if entry.label == self.target:
+                return object_id
+        # The scene VLM writes the same bin as "绿色垃圾桶" in one frame and
+        # "浅绿色垃圾桶" in the next, so exact equality alone leaves the
+        # confirmation on the Place.  Containment either way still rejects an
+        # unrelated object: "白色垃圾桶" neither contains nor is contained by
+        # "绿色垃圾桶" or "纸箱".
+        for object_id, entry in objects.items():
+            if entry.label and (entry.label in self.target or self.target in entry.label):
                 return object_id
         return None
 
@@ -932,8 +1955,12 @@ class AutonomousExplorer:
         scored: ScoredGoal,
         candidates: list[ScoredGoal],
         cycle: int,
+        safety: LocalSafetySnapshot | None = None,
+        perception: PerceptionQuality | None = None,
+        safety_rejections: list[dict[str, Any]] | None = None,
     ) -> DecisionRecord:
         decision_id = f"decision_{self.session_id}_{cycle}_{len(self.decision_records) + 1}"
+        provenance = goal.provenance if isinstance(goal.provenance, dict) else {}
         command = make_motion_command(
             plan_id=f"live_plan_{self.session_id}_{cycle}",
             decision_id=decision_id,
@@ -941,7 +1968,7 @@ class AutonomousExplorer:
             forward_m=float(goal.relative_dx or 0.0),
             reason_zh="；".join(scored.reasons) or goal.semantic_reason or "选择当前可达候选",
             target_place_id=self._current_place_id,
-            target_frontier_id=goal.provenance.get("frontier_id") if isinstance(goal.provenance, dict) else None,
+            target_frontier_id=provenance.get("frontier_id"),
             safety_limited=True,
         )
         command_values = command.to_dict()
@@ -1008,6 +2035,19 @@ class AutonomousExplorer:
             evidence=[{"type": "visual_observation", "observation_id": observation.bundle_id}],
             negative_evidence=[],
             requested_motion=command.requested_motion,
+            # 计划书 §29：可诊断字段随决策一起落盘。
+            local_safety_summary=safety.summary() if safety is not None else None,
+            perception_quality=perception.to_dict() if perception is not None else None,
+            stuck_state=(
+                self._last_stuck_state.value
+                if self._last_stuck_state is not None else None
+            ),
+            selected_frontier_id=provenance.get("frontier_id"),
+            selected_viewpoint_id=provenance.get("viewpoint_id"),
+            path_min_clearance_m=provenance.get("path_min_clearance_m"),
+            path_mean_clearance_m=provenance.get("path_mean_clearance_m"),
+            view_quality=provenance.get("view_quality"),
+            hard_safety_rejections=list(safety_rejections or []),
         )
 
     def _build_live_navigation_plan(

@@ -38,7 +38,8 @@ MotionActionServer::MotionActionServer(const rclcpp::NodeOptions &options)
   std::filesystem::create_directories(session_log_directory_);
 
   state_monitor_ = std::make_unique<MotionStateMonitor>(
-      this, sport_state_topic, low_state_topic, parameters_.require_low_state);
+      this, sport_state_topic, low_state_topic, parameters_.require_low_state,
+      parameters_.wheel_radius_m);
   sport_client_ = std::make_unique<LeasedSportClient>(
       this, sport_request_topic, sport_response_topic, lease_id_topic,
       lease_alive_topic, sdk_command_socket, lease_status_timeout,

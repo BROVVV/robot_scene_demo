@@ -71,15 +71,15 @@ def test_navigation_heading_sector_uses_current_pose_not_stale_semantic():
     """§17.4（最重要回归）：语义永远返回 sector=0，导航 coverage 仍记录
     0,1,2,...，绝不能仍为 {"0": N}。"""
     yaws_deg = [0.0, 30.0, 60.0, 90.0, 120.0, 150.0]
-    index = [0]
+    calls = [0]
 
     def pose_provider():
-        value = yaws_deg[min(index[0], len(yaws_deg) - 1)]
-        index[0] += 1
+        # 姿态按「帧」推进而不是按调用次数推进：一个 cycle 内 OBSERVE 与
+        # EXECUTE 之后的 pose 读取必须是同一个物理姿态。
+        value = yaws_deg[min(max(calls[0] - 1, 0), len(yaws_deg) - 1)]
         return (0.0, 0.0, math.radians(value))
 
     backend = create_backend("mock", pose_provider=pose_provider)
-    calls = [0]
 
     def observer() -> LiveObservation:
         calls[0] += 1
@@ -159,3 +159,31 @@ def test_quick_continuous_failure_reports_precise_cause():
     assert finish.get("recoverable") is True
     summary = result.to_dict()["summary"]
     assert summary["perception_failure"]["code"] == "QUICK_VLM_TIMEOUT"
+
+
+def test_bare_runtime_error_after_success_still_retries():
+    """归档 search_20260831_192836_aa3ca51c 的回归：一次 VLM 超时判死整场搜索。
+
+    那份 events.jsonl 里两次会话都是 `observer_error`
+    (`RuntimeError: SiliconFlow vision API timed out`) 紧跟 `session_finish
+    PERCEPTION_FAILURE`，中间没有任何 `observer_retry` —— 当时的重试条件是
+    `observations == 0 and ...`，已经成功观察过就不再重试。daemon 客户端抛的是
+    裸 RuntimeError 而不是 PerceptionFailure，走的是通用 except 分支，所以
+    §17.7 那条只覆盖 PerceptionFailure 的回归拦不住它。
+    """
+    backend = create_backend("mock", pose_provider=lambda: (0.0, 0.0, 0.0))
+    calls = [0]
+
+    def observer() -> LiveObservation:
+        calls[0] += 1
+        if calls[0] == 2:
+            raise RuntimeError("SiliconFlow vision API timed out")
+        return _base_observation(f"bundle_{calls[0]}")
+
+    explorer, result = _run_explorer(observer, backend)
+    retries = [
+        event for event in explorer.events if event.get("event") == "observer_retry"
+    ]
+    assert len(retries) == 1
+    assert retries[0]["observations_so_far"] == 1
+    assert result.result != "PERCEPTION_FAILURE"

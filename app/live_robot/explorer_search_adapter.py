@@ -68,7 +68,108 @@ _RECOVERABLE_EVENTS = {
     "observer_retry": ("PERCEPTION_ERROR", "observer_retry"),
     "matcher_error": ("SEARCH_ERROR", "matcher"),
     "verification_error": ("LLM_ERROR", "verifier"),
-    "candidate_generator_error": ("SEARCH_ERROR", "candidate_generator"),
+    # 计划书 §6.2：候选生成异常是 PLANNING_ERROR；第一次可恢复（重新规划），
+    # 终局判定由 session_finish 决定，绝不在这里映射成搜索穷尽。
+    "candidate_generator_error": ("PLANNING_ERROR", "candidate_generator"),
+    "candidates_empty": ("PLANNING_ERROR", "candidates_empty"),
+    "planner_returned_no_goal": ("PLANNING_ERROR", "planner"),
+}
+
+
+def _viewpoint_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    viewpoint = payload.get("viewpoint") or {}
+    return {
+        "frontier_id": payload.get("frontier_id"),
+        "viewpoint_id": payload.get("viewpoint_id"),
+        "path_min_clearance_m": viewpoint.get("path_min_clearance_m"),
+        "local_clearance_m": viewpoint.get("local_clearance_m"),
+        "view_quality": viewpoint.get("view_quality"),
+        "score": viewpoint.get("viewpoint_score"),
+    }
+
+
+def _recovery_summary(payload: dict[str, Any], stage: str) -> dict[str, Any]:
+    decision = payload.get("decision") or {}
+    goal = decision.get("backward_goal") or {}
+    return {
+        "stage": stage,
+        "stuck_state": payload.get("stuck_state"),
+        "trigger": decision.get("trigger") or "",
+        "reason": decision.get("reason") or "",
+        "backward_allowed": decision.get("backward_allowed"),
+        "backward_dx_m": goal.get("relative_dx"),
+        "escape_rotation_deg": (payload.get("escape_rotation") or {}).get("yaw_deg"),
+        "executed": payload.get("executed"),
+        "status": payload.get("status"),
+    }
+
+
+# 计划书 §29/§30：这些事件没有独立的 SearchEvent 类型，统一压到
+# SEARCH_STATE_CHANGED 的 ``embodiment`` 字段。这样 WebUI 复用已有 generic
+# event 通道，刷新后也还能从快照里读回净空/卡住/视点/脱困/接近状态。
+_EMBODIMENT_PATCHES: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
+    "local_safety_snapshot": lambda p: {"local_safety": p.get("local_safety")},
+    "perception_quality": lambda p: {
+        "perception_quality": p.get("perception_quality")},
+    "stuck_detected": lambda p: {"stuck_state": p.get("stuck_state")},
+    "viewpoint_candidates": lambda p: {
+        "viewpoint_candidates": p.get("viewpoints") or []},
+    "viewpoint_selected": lambda p: {"selected_viewpoint": _viewpoint_summary(p)},
+    "candidate_rejected_safety": lambda p: {
+        "safety_rejections": p.get("rejections") or []},
+    "recovery_triggered": lambda p: {
+        "recovery": _recovery_summary(p, "TRIGGERED")},
+    "recovery_result": lambda p: {"recovery": _recovery_summary(p, "FINISHED")},
+    "target_confirmed": lambda p: {"target_approach": {
+        "status": "VISUALLY_CONFIRMED", "reached": False,
+        "object_id": p.get("object_id"),
+        "reason_zh": p.get("reason_zh") or "", "steps": 0}},
+    "target_localized": lambda p: {"target_approach": {
+        "status": "LOCALIZED", "depth_m": p.get("depth_m"),
+        "bearing_deg": p.get("bearing_deg"),
+        "spatial_quality": p.get("spatial_quality"),
+        "desired_standoff_m": p.get("desired_standoff_m"),
+        "lost_count": p.get("lost_count")}},
+    "approach_candidate_selected": lambda p: {"target_approach": {
+        "approach_viewpoint": p.get("selected"),
+        "approach_candidate_count": p.get("candidate_count")}},
+    "approach_step": lambda p: {"target_approach": {
+        "status": "APPROACHING", "steps": p.get("step"),
+        "action": p.get("action"), "reason": p.get("reason"),
+        "relative_dx": p.get("relative_dx"),
+        "relative_dyaw": p.get("relative_dyaw"),
+        "depth_m": p.get("target_depth_m"),
+        "bearing_deg": p.get("target_bearing_deg")}},
+    "final_verification": lambda p: {"target_approach": {
+        "status": "FINAL_VERIFY", "reached": p.get("reached"),
+        "reason": p.get("reason"), "verified_again": p.get("verified_again"),
+        "steps": p.get("steps"),
+        "depth_m": (p.get("target") or {}).get("depth_m"),
+        "bearing_deg": (p.get("target") or {}).get("bearing_deg")}},
+    "target_reached": lambda p: {"target_approach": {
+        "status": "REACHED", "reached": True, "reason": p.get("reason"),
+        "steps": p.get("steps")}},
+    "approach_aborted": lambda p: {"target_approach": {
+        "status": "ABORTED", "reached": False, "reason": p.get("reason"),
+        "decision_reason": p.get("decision_reason"), "steps": p.get("steps")}},
+}
+
+# 需要在 UI 上直接读出中文原因的事件（其余只是遥测，不改 phase_detail）。
+_EMBODIMENT_DETAIL_ZH: dict[str, Callable[[dict[str, Any]], str]] = {
+    "stuck_detected": lambda p: f"卡住判定：{p.get('stuck_state') or '未知'}",
+    "recovery_triggered": lambda p: (
+        "触发脱困：" + str((p.get("decision") or {}).get("trigger") or
+                      p.get("stuck_state") or "")),
+    "recovery_result": lambda p: (
+        "脱困结束：" + str(p.get("executed") or "仅停车")
+        + "（" + str(p.get("status") or (p.get("reason") or "")) + "）"),
+    "target_confirmed": lambda p: "已视觉确认目标，开始安全接近（尚未完成）",
+    "approach_step": lambda p: (
+        f"接近第 {p.get('step')} 步：{p.get('action')} / {p.get('reason')}"),
+    "final_verification": lambda p: (
+        ("已到达目标：" if p.get("reached") else "未到达目标：")
+        + str(p.get("reason") or "")),
+    "approach_aborted": lambda p: "接近中止：" + str(p.get("reason") or ""),
 }
 
 
@@ -170,6 +271,7 @@ class ExplorerSearchAdapter:
                     "scene_objects": payload.get("scene_objects") or [],
                     "scene_relations": payload.get("scene_relations") or [],
                     "target_present": payload.get("target_present", False),
+                    "target_state": payload.get("target_state") or "ABSENT",
                     "heading_sector": payload.get("heading_sector"),
                     "navigation_heading_sector": payload.get("navigation_heading_sector"),
                     "semantic_status": payload.get("semantic_status"),
@@ -211,6 +313,7 @@ class ExplorerSearchAdapter:
             return [
                 self._emit(TARGET_MATCH_UPDATED, payload={
                     "has_candidate": payload.get("has_candidate", False),
+                    "target_state": payload.get("target_state") or "ABSENT",
                     "target_match_level": payload.get("target_match_level") or "none",
                     "target_score": payload.get("target_score", 0.0),
                     "anchor_labels": payload.get("anchor_labels") or [],
@@ -353,10 +456,29 @@ class ExplorerSearchAdapter:
             return [self._emit(PAUSED, payload={"phase": "PAUSED"})]
         if name == "resumed":
             return [self._emit(RESUMED, payload={"phase": "OBSERVE"})]
+        if name == "waiting_for_map":
+            # 计划书 §6.3：等地图是显式的等待状态，机器狗已停稳。
+            return [
+                self._emit(SEARCH_STATE_CHANGED, payload={
+                    "phase": "WAITING_FOR_MAP",
+                    "phase_detail": str(
+                        payload.get("detail_zh")
+                        or "地图暂时不新鲜，机器狗停稳等待新地图后重新规划"
+                    ),
+                    "waiting_cycles": payload.get("waiting_cycles"),
+                    "reason": payload.get("reason") or "",
+                })
+            ]
         if name == "search_exhausted":
             return [
                 self._emit(SEARCH_EXHAUSTED, payload={
                     "reason": payload.get("reason") or "",
+                    # 计划书 §6.5：穷尽必须列出已扫描方向数与 frontier 统计。
+                    "scanned_sector_count": payload.get("scanned_sector_count"),
+                    "reachable_frontier_count": payload.get("reachable_frontier_count"),
+                    "visited_frontier_count": payload.get("visited_frontier_count"),
+                    "unreachable_frontier_count": payload.get("unreachable_frontier_count"),
+                    "map_fresh": payload.get("map_fresh"),
                     "phase": "SEARCH_EXHAUSTED",
                 })
             ]
@@ -380,20 +502,38 @@ class ExplorerSearchAdapter:
             if result == "OPERATOR_STOP":
                 events.append(self._emit(OPERATOR_STOP, payload={"phase": "OPERATOR_STOP"}))
             elif result in {"TIMEOUT", "BACKEND_FAILURE",
-                            "PERCEPTION_FAILURE"}:
+                            "PERCEPTION_FAILURE", "PLANNING_ERROR",
+                            "MAP_UNAVAILABLE"}:
                 # 计划书 §8.5：最终失败信息必须精准（cause/attempts 等）。
+                perception_detail = dict(payload.get("error_detail") or {})
                 events.append(self._emit(ERROR, payload={
                     "error_type": _finish_to_error_type(result),
-                    "message": payload.get("reason") or result,
-                    "cause": payload.get("cause"),
+                    "code": perception_detail.get("code") or payload.get("cause"),
+                    "message": (
+                        perception_detail.get("message")
+                        or payload.get("error")
+                        or payload.get("reason")
+                        or result
+                    ),
+                    "cause": payload.get("cause") or perception_detail.get("code"),
                     "attempts": payload.get("attempts"),
                     "last_success_age_s": payload.get("last_success_age_s"),
                     "recoverable": payload.get("recoverable"),
-                    "error_detail": payload.get("error_detail"),
+                    "detail": perception_detail.get("detail"),
+                    "error_detail": perception_detail,
                     "phase": "FAILED",
                 }))
             events.append(self._emit(SEARCH_FINISHED, payload=finish_payload))
             return events
+        if name in _EMBODIMENT_PATCHES:
+            state_payload: dict[str, Any] = {
+                "phase": payload.get("phase"),
+                "embodiment": _EMBODIMENT_PATCHES[name](payload),
+            }
+            detail = _EMBODIMENT_DETAIL_ZH.get(name)
+            if detail is not None:
+                state_payload["phase_detail"] = detail(payload)
+            return [self._emit(SEARCH_STATE_CHANGED, payload=state_payload)]
         if name in _RECOVERABLE_EVENTS:
             error_type, source = _RECOVERABLE_EVENTS[name]
             message = str(
@@ -511,4 +651,6 @@ def _finish_to_error_type(result: str) -> str:
         return "BACKEND_ERROR"
     if result == "PERCEPTION_FAILURE":
         return "PERCEPTION_ERROR"
+    if result in {"PLANNING_ERROR", "MAP_UNAVAILABLE"}:
+        return "PLANNING_ERROR"
     return "SEARCH_ERROR"

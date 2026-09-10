@@ -495,8 +495,18 @@ class AutonomousLoop(Node):
             depth=20, reliability=QoSReliabilityPolicy.RELIABLE
         )
         qos = QoSProfile(depth=20, reliability=QoSReliabilityPolicy.BEST_EFFORT)
+        # On the Jetson, ROS 2 discovery stays local-only and the SDK-only
+        # sport-state capture is relayed into this topic.  Keep the original
+        # DCU topic as well so the same runner remains usable on the x86 host
+        # and on deployments where direct Unitree DDS discovery is enabled.
         self.create_subscription(SportModeState, "/lf/sportmodestate",
                                  self._on_sport, state_qos)
+        self.create_subscription(
+            SportModeState,
+            "/go2w/motion/local_sportmodestate",
+            self._on_sport,
+            state_qos,
+        )
         self.create_subscription(LowState, "/lf/lowstate", self._on_low, state_qos)
         self.create_subscription(Odometry, self._odom_topic, self._on_odom,
                                  QoSProfile(
@@ -2195,20 +2205,45 @@ class AutonomousLoop(Node):
                 key, _, value = line.partition("=")
                 values[key.strip()] = value.strip().strip("'\"")
         env = os.environ.copy()
-        env["PYTHONPATH"] = values.get(
+        grounded_pythonpath = values.get(
             "GROUNDED_SAM_PYTHONPATH",
             str(PROJECT_ROOT / "external/Grounded-SAM-2") + ":"
             + str(PROJECT_ROOT / "external/Grounded-SAM-2/grounding_dino"),
         )
+        # The detector is launched by absolute path, so Python does not put
+        # the repository root on sys.path. Keep the external detector paths,
+        # but always prepend this deployment's project root so imports such as
+        # ``app.perception.target_state`` work on a robot checkout.
+        env["PYTHONPATH"] = os.pathsep.join(
+            part for part in (str(PROJECT_ROOT), grounded_pythonpath) if part
+        )
         env["GROUNDED_SAM_ROOT"] = values.get(
             "GROUNDED_SAM_ROOT", str(PROJECT_ROOT / "external/Grounded-SAM-2")
         )
-        env.setdefault(
-            "SILICONFLOW_PYTHON",
-            os.environ.get("GO2W_CONDA_PYTHON")
-            or str(PROJECT_ROOT / ".venv/bin/python")
-            or sys.executable,
-        )
+        # A deployment may not have the historical project-local ``.venv``
+        # symlink (the robot uses ``.runtime_venv``).  Do not pass a merely
+        # non-empty but nonexistent path to the detector subprocess.
+        python_candidates = [
+            values.get("SILICONFLOW_PYTHON"),
+            os.environ.get("SILICONFLOW_PYTHON"),
+            os.environ.get("GO2W_CONDA_PYTHON"),
+            str(PROJECT_ROOT / ".runtime_venv/bin/python"),
+            str(PROJECT_ROOT / ".venv/bin/python"),
+            sys.executable,
+        ]
+        resolved_python = None
+        for candidate in python_candidates:
+            if candidate and Path(candidate).is_file():
+                env["SILICONFLOW_PYTHON"] = candidate
+                resolved_python = candidate
+                break
+        # A copied developer .env can leave a non-empty but nonexistent
+        # GROUNDED_SAM_PYTHON path. Sanitize it just like
+        # SILICONFLOW_PYTHON so the child detector cannot fail before making
+        # an API request on the robot.
+        grounded_python = env.get("GROUNDED_SAM_PYTHON")
+        if grounded_python and not Path(grounded_python).is_file() and resolved_python:
+            env["GROUNDED_SAM_PYTHON"] = resolved_python
         return env
 
     def _latest_bundle_image(self, spool_root: str,
@@ -2382,13 +2417,14 @@ class AutonomousLoop(Node):
                 recoverable=True,
                 detail="GO2W_QUICK_TIMEOUT_INJECT_ONCE=1",
             )
+        quick_timeout = float(get_settings().vlm_runtime_quick_timeout_seconds)
         daemon_payload = self._daemon_vlm_request(
             "quick",
             image_path,
             self._target,
             model=getattr(self, "_llm_model", ""),
             frame_id=str(getattr(self, "_latest_frame_id", "")),
-            timeout=20.0,
+            timeout=quick_timeout,
         )
         if daemon_payload is not None:
             self._last_llm_detection_payload = daemon_payload
@@ -2419,7 +2455,7 @@ class AutonomousLoop(Node):
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                timeout=float(get_settings().vlm_runtime_quick_timeout_seconds),
+                timeout=quick_timeout,
                 check=False,
             )
         except subprocess.TimeoutExpired as exc:
@@ -2797,7 +2833,7 @@ def main() -> None:
         default=1.40,
         help="calibrated duration multiplier for distance-qualified reverse steps",
     )
-    parser.add_argument("--max-yaw-rate", type=float, default=0.15)
+    parser.add_argument("--max-yaw-rate", type=float, default=1.0)
     parser.add_argument("--min-clearance", type=float, default=0.30)
     parser.add_argument(
         "--mode",

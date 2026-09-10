@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
 
 class StreamlitNaturalLanguageTaskUiTest(unittest.TestCase):
     def test_sidebar_uses_natural_language_task_input_without_presets(self) -> None:
-        app = AppTest.from_file("streamlit_app.py", default_timeout=30).run()
+        app = AppTest.from_file(
+            str(Path(__file__).resolve().parents[1] / "streamlit_app.py"),
+            default_timeout=30,
+        ).run()
 
         self.assertEqual(len(app.exception), 0)
         self.assertIn("自然语言任务", [item.label for item in app.text_area])

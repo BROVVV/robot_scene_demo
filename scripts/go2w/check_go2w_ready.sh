@@ -6,7 +6,7 @@
 #   bash scripts/go2w/check_go2w_ready.sh --json     # 只输出机器可读 JSON
 #
 # 检查项（全部自动，不需要人工标定/摆场）：
-#   network    enp6s0 carrier + 主机 192.168.123.99/24 + ping 机器人 192.168.123.18
+#   network    robot-facing interface carrier + 192.168.123.0/24 + ping 机器人 192.168.123.18
 #   sport      /lf/sportmodestate（mode=1、error_code=0）
 #   odom       /go2w/odom/fused、/go2w/odom/wheel（20 Hz）
 #   camera     /camera/front/image_raw（~15-28 Hz）与 CameraInfo
@@ -25,7 +25,10 @@ unitree_root="${GO2W_UNITREE_ROOT:-${HOME}/unitree_ros2}"
 control_root="${GO2W_CONTROL_ROOT:-${project_root}/unitree_go2w_control}"
 go2w_interface="${GO2W_INTERFACE:-}"
 if [[ -z "$go2w_interface" ]]; then
-  for candidate in enp6s0 enp3s0 enp4s0 enp5s0; do
+  # The workstation normally uses enp3s0/enp6s0; the Jetson deployment uses
+  # eth0.  Keep the probe portable so the same one-click check is useful on
+  # both sides of the deployment.
+  for candidate in eth0 enp6s0 enp3s0 enp4s0 enp5s0; do
     if [[ -r "/sys/class/net/${candidate}/carrier" ]] \
       && [[ "$(< "/sys/class/net/${candidate}/carrier")" == "1" ]] \
       && ip -4 -o address show dev "$candidate" 2>/dev/null \
@@ -35,7 +38,7 @@ if [[ -z "$go2w_interface" ]]; then
     fi
   done
 fi
-go2w_interface="${go2w_interface:-enp6s0}"
+go2w_interface="${go2w_interface:-eth0}"
 export GO2W_INTERFACE="$go2w_interface"
 json_only="0"
 for arg in "$@"; do
@@ -83,40 +86,32 @@ set -u
 command -v ros2 >/dev/null 2>&1 && ros_ok="true"
 
 topic_alive() {
-  # ros2 topic hz never exits; treat any captured rate output as alive.
-  local out
-  out="$(timeout 5 ros2 topic hz "$1" --window 2 2>/dev/null)"
-  [[ -n "${out}" && "${out}" != *"does not appear to be published yet"* ]]
+  # Read one sample first: active topics normally return immediately. Fall
+  # back to the graph for sparse topics, without waiting for a hz window.
+  timeout 2 ros2 topic echo --once "$1" >/dev/null 2>&1 && return 0
+  timeout 2 ros2 topic info "$1" 2>/dev/null \
+    | awk '/Publisher count:/ { found = ($3 + 0 > 0); exit } END { exit !found }'
 }
 
 service_ok() {
-  local service="$1" node info
-  while IFS= read -r node; do
-    [[ -z "$node" ]] && continue
-    info="$(timeout 5 ros2 node info "$node" 2>/dev/null || true)"
-    if awk -v service="$service" '
-      /^  Service Servers:/ { in_servers=1; next }
-      /^  Service Clients:/ { in_servers=0 }
-      in_servers && $1 == service ":" { found=1 }
-      END { exit !found }
-    ' <<<"$info"; then
-      return 0
-    fi
-  done < <(timeout 5 ros2 node list 2>/dev/null || true)
-  return 1
+  local services="$1"
+  grep -Fxq "$2" <<<"$services"
 }
 
 action_server_ok() {
   local info
-  info="$(timeout 5 ros2 action info "$1" 2>/dev/null || true)"
+  info="$(timeout 2 ros2 action info "$1" 2>/dev/null || true)"
   grep -Eq 'Action servers:[[:space:]]*[1-9][0-9]*' <<<"$info"
 }
 
 if [[ "${ros_ok}" == "true" ]]; then
   # sport mode
   sport_ok="false"
-  sport_mode="$(timeout 6 ros2 topic echo /lf/sportmodestate --once --field mode 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
-  sport_error="$(timeout 6 ros2 topic echo /lf/sportmodestate --once --field error_code 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
+  # Foxy has no --once/--field options.  Read one bounded full sample and
+  # extract the two scalar fields, which is compatible with Foxy and Humble.
+  sport_sample="$(timeout 3 ros2 topic echo --once --qos-reliability reliable /lf/sportmodestate 2>/dev/null || true)"
+  sport_mode="$(printf '%s\n' "$sport_sample" | awk '$1 == "mode:" {print $2; exit}' | tr -d '[:space:]')"
+  sport_error="$(printf '%s\n' "$sport_sample" | awk '$1 == "error_code:" {print $2; exit}' | tr -d '[:space:]')"
   if [[ "${sport_mode}" == "1" && "${sport_error}" == "0" ]]; then
     sport_ok="true"
   fi
@@ -139,11 +134,11 @@ if [[ "${ros_ok}" == "true" ]]; then
 
   # safety topics
   lidar_fresh="false"
-  fresh_value="$(timeout 6 ros2 topic echo /go2w/safety/lidar_fresh --once --field data 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
+  fresh_value="$(timeout 3 ros2 topic echo --once --qos-reliability reliable /go2w/safety/lidar_fresh 2>/dev/null | awk '$1 == "data:" {print $2; exit}' | tr -d '[:space:]')"
   [[ "${fresh_value}" == "True" || "${fresh_value}" == "true" ]] && lidar_fresh="true"
   set_check lidar_fresh "${lidar_fresh}"
   rotation_clearance="false"
-  rc_value="$(timeout 6 ros2 topic echo /go2w/safety/rotation_clearance_valid --once --field data 2>/dev/null | grep -v "^---" | tr -d '[:space:]')"
+  rc_value="$(timeout 3 ros2 topic echo --once --qos-reliability reliable /go2w/safety/rotation_clearance_valid 2>/dev/null | awk '$1 == "data:" {print $2; exit}' | tr -d '[:space:]')"
   [[ "${rc_value}" == "True" || "${rc_value}" == "true" ]] && rotation_clearance="true"
   set_check rotation_clearance_valid "${rotation_clearance}"
 
@@ -151,8 +146,9 @@ if [[ "${ros_ok}" == "true" ]]; then
   motion="false"
   action_server_ok /go2w/motion && motion="true"
   set_check motion_action "${motion}"
-  set_check arm_service "$(service_ok /go2w/arm && echo true || echo false)"
-  set_check emergency_stop_service "$(service_ok /go2w/emergency_stop && echo true || echo false)"
+  service_list="$(timeout 2 ros2 service list 2>/dev/null || true)"
+  set_check arm_service "$(service_ok "$service_list" /go2w/arm && echo true || echo false)"
+  set_check emergency_stop_service "$(service_ok "$service_list" /go2w/emergency_stop && echo true || echo false)"
 else
   set_check ros unavailable
 fi
@@ -221,7 +217,10 @@ unreachable = checks["network"]["ok"] is False
 state = "unreachable" if unreachable else ("ready" if ready else "degraded")
 print(json.dumps({
     "state": state,
-    "ready": ready and not degraded,
+    # ``state=ready`` means every hard prerequisite is met.  The soft
+    # checks remain visible in ``degraded`` and keep their exit-code 1 path,
+    # but must not contradict the state by reporting ready=false here.
+    "ready": ready,
     "degraded": degraded,
     "checks": checks,
     "backend": "go2w_experimental",

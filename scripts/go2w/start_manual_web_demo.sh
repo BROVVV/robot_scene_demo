@@ -139,6 +139,33 @@ setsid "$conda_python" -m uvicorn app.manual_web_demo.web_server:app \
   > "${log_root}/web_server.log" 2>&1 &
 printf '%s\n' "$!" > "${runtime_root}/web.pid"
 
+# ---- 7b. WebUI 地图/物体快照写入器 ------------------------------------- #
+# 背景：WebUI 的 /api/slam/map3d **不订阅实时话题**，只读
+#   outputs/autonomous_search/runtime/slam_map_3d.json 这个快照文件；
+# 该文件曾长期停留在 8 天前（内含 pose=2.28e11 的坏数据），这就是"WebUI 上地图重叠"的
+# 直接来源。这里按 WebUI 要求的格式周期性写入**权威 SLAM 地图**与**最新 Dataset D 的
+# 语义物体**（物体由前端 static/slam_map_3d.js 画在三维视图上）。
+# 关闭：GO2W_WEBUI_SNAPSHOT_WRITER=0
+if [[ "${GO2W_WEBUI_SNAPSHOT_WRITER:-1}" == "1" ]]; then
+  snapshot_events="${GO2W_WEBUI_SNAPSHOT_EVENTS:-}"
+  if [[ -z "${snapshot_events}" ]]; then
+    snapshot_events="$(ls -t "${project_root}"/artifacts/slam_validation/semanticD_*/events.jsonl 2>/dev/null | head -1 || true)"
+  fi
+  WEBUI_SNAPSHOT_PYTHON="/usr/bin/python3"
+  PYTHONPATH="${HOME}/.local/lib/python3.10/site-packages${PYTHONPATH:+:${PYTHONPATH}}" \
+  setsid "${WEBUI_SNAPSHOT_PYTHON}" "${script_dir}/webui_map_snapshot_writer.py" --ros-args \
+    -p map_topic:="${GO2W_WEBUI_SNAPSHOT_MAP_TOPIC:-/go2w/slam/map_3d}" \
+    -p max_points:="${GO2W_WEBUI_SNAPSHOT_MAX_POINTS:-60000}" \
+    -p max_range_m:="${GO2W_WEBUI_SNAPSHOT_MAX_RANGE_M:-25.0}" \
+    -p min_range_m:=1.0 \
+    -p voxel_size_m:="${GO2W_WEBUI_SNAPSHOT_VOXEL_M:-0.05}" \
+    -p objects_events:="${snapshot_events}" \
+    > "${log_root}/webui_map_snapshot_writer.log" 2>&1 &
+  printf '%s\n' "$!" > "${runtime_root}/snapshot_writer.pid"
+  printf '[OK] WebUI map snapshot writer (map=%s, objects=%s)\n' \
+    "${GO2W_WEBUI_SNAPSHOT_MAP_TOPIC:-/go2w/slam/map_3d}" "${snapshot_events:-none}"
+fi
+
 # ---- 8. Wait for the API to become ready ------------------------------ #
 ready=0
 for _ in $(seq 1 60); do

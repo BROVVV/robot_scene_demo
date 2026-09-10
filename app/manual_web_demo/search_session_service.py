@@ -205,7 +205,13 @@ class SearchSessionService:
         if self._executor is None:
             return {"state": "stopped", "session_id": None}
         status = dict(self._executor.status() or {})
-        status["alive"] = bool(self._executor.alive())
+        alive = bool(self._executor.alive())
+        # A terminal worker is retired asynchronously after its final result.
+        # Do not expose its last RUNNING payload through /api/status while the
+        # session is already archived and no worker can accept commands.
+        if not alive:
+            return {"state": "stopped", "session_id": None, "alive": False}
+        status["alive"] = True
         return status
 
     # ------------------------------------------------------------------ #
@@ -908,8 +914,14 @@ class SearchSessionService:
         session_id = str(marker.get("session_id") or state.get("session_id") or "")
         if not session_id:
             return
+        restored_status = str(state.get("status") or marker.get("status") or STATUS_IDLE)
+        # History is durable evidence, not a live worker lease.  A fresh web
+        # process must start with an empty IDLE slot after a terminal task;
+        # the archived session remains available through the history API.
+        if restored_status in TERMINAL_STATUSES or restored_status == STATUS_IDLE:
+            return
         self._session_id = session_id
-        self._status = str(state.get("status") or marker.get("status") or STATUS_IDLE)
+        self._status = restored_status
         self._started_at = state.get("started_at")
         task = dict(state.get("task") or marker.get("task") or {})
         self._task_context = None
@@ -940,6 +952,10 @@ class SearchSessionService:
             self._fail_interrupted_session_locked(
                 "WebUI 服务重启后无法安全接管原搜索 worker；原任务已标记为中断，重启前状态已完整保留。"
             )
+            # The interruption record above is archived.  Do not expose it as
+            # the current live session or reuse its map/target evidence.
+            self._reset_session_locked()
+            self._bus.clear()
 
     def _mark_status(self, status: str) -> None:
         with self._lock:

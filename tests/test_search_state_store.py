@@ -198,6 +198,31 @@ def test_observer_retry_is_recoverable_warning_not_failed() -> None:
     assert "vision request timed out" in snapshot["phase_detail"]
 
 
+def test_store_surfaces_terminal_quick_vlm_timeout() -> None:
+    """Terminal perception failures retain the concrete VLM cause for WebUI."""
+    store = SearchStateStore()
+    bus = SearchEventBus()
+    adapter = ExplorerSearchAdapter(bus, store, session_id="search_test")
+    adapter.on_explorer_event({"event": "session_start", "state": "BOOTSTRAP"})
+    adapter.on_explorer_event({
+        "event": "session_finish",
+        "state": "FINISHED",
+        "result": "PERCEPTION_FAILURE",
+        "cause": "QUICK_VLM_TIMEOUT",
+        "attempts": 3,
+        "error": "SiliconFlow vision API timed out",
+        "error_detail": {
+            "code": "QUICK_VLM_TIMEOUT",
+            "message": "SiliconFlow vision API timed out",
+            "detail": "daemon request exceeded 65 seconds",
+        },
+    })
+    error = store.snapshot()["error"]
+    assert error["code"] == "QUICK_VLM_TIMEOUT"
+    assert error["message"] == "SiliconFlow vision API timed out"
+    assert error["category"] == "reasoning"
+
+
 def test_store_snapshot_is_a_copy() -> None:
     store = SearchStateStore()
     store.apply(_event(SESSION_CREATED, payload={"target": "x"}))

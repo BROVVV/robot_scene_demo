@@ -117,7 +117,9 @@ def test_legacy_retry_event_is_not_restored_as_terminal_error(tmp_path: Path) ->
     assert archive.list(1)[0]["status"] == "FINISHED"
 
 
-def test_service_restores_last_terminal_snapshot_after_restart(tmp_path: Path) -> None:
+def test_service_keeps_terminal_snapshot_in_history_without_resurrecting_live_session(
+    tmp_path: Path,
+) -> None:
     sid = "search_20260821_140000_1234abcd"
     archive = SearchSessionArchive(tmp_path)
     archive.begin(sid, {"task_text": "找红色椅子", "backend": "mock"})
@@ -132,6 +134,30 @@ def test_service_restores_last_terminal_snapshot_after_restart(tmp_path: Path) -
 
     service = SearchSessionService(owner=ControlOwner(), session_dir=str(tmp_path))
     restored = service.state_snapshot()
-    assert restored["session_id"] == sid
-    assert restored["status"] == "OPERATOR_STOP"
-    assert restored["spatial"]["semantic_graph"]["object_topology"]["nodes"]
+    assert restored["session_id"] == ""
+    assert restored["status"] == "IDLE"
+    assert restored["spatial"]["semantic_graph"] is None
+    history = service.history()
+    assert history and history[0]["session_id"] == sid
+    archived = service.history_session(sid)
+    assert archived is not None
+    assert archived["state"]["status"] == "OPERATOR_STOP"
+    assert archived["state"]["spatial"]["semantic_graph"]["object_topology"]["nodes"]
+
+
+def test_terminal_worker_is_not_reported_as_live_executor(tmp_path: Path) -> None:
+    class DeadExecutor:
+        def status(self):
+            return {"state": "running", "session_id": "terminal"}
+
+        def alive(self):
+            return False
+
+    service = SearchSessionService(
+        owner=ControlOwner(), session_dir=str(tmp_path / "sessions")
+    )
+    service._executor = DeadExecutor()  # type: ignore[assignment]
+
+    assert service.executor_state() == {
+        "state": "stopped", "session_id": None, "alive": False
+    }

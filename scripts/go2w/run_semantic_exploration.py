@@ -38,7 +38,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from app.config import get_settings
-from app.detectors.siliconflow_vision_worker import quick_target_present
+from app.detectors.siliconflow_vision_worker import quick_target_present, quick_target_state
 from app.live_robot.autonomous_explorer import (
     AutonomousExplorer,
     PerceptionFailure,
@@ -77,6 +77,7 @@ from app.navigation.exploration_config import (
     load_exploration_policy,
     load_go2w_experiment_profile,
 )
+from app.navigation.search_policy_config import load_search_policy
 from app.navigation.exploration_graph import ExplorationGraph
 from app.navigation.local_scan import LocalScanState, select_local_scan_goal
 from app.navigation.models import (
@@ -84,11 +85,18 @@ from app.navigation.models import (
     ExplorationGoal,
     LiveObservation,
 )
+from app.navigation.safety_models import (
+    evaluate_perception_quality,
+    local_safety_from_clearance,
+)
 from app.reasoning.semantic_navigation.models import SearchReasoningContext
 from app.reasoning.semantic_navigation.router import SemanticSearchController
 from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
 from app.reasoning.target_profile import TargetProfileResolver
 from app.spatial.models import SpatialFrameMismatch
+from app.perception.target_state import TARGET_PRESENT
+from app.spatial.geometric_relation_extractor import extract_geometric_relations
+from app.spatial.spatial_pose_validator import MotionEvidence, SpatialPoseValidator
 
 
 def _navigation_sector(*, yaw_rad: float, sectors: int) -> int:
@@ -116,6 +124,17 @@ def _requested_dyaw_deg(step: str) -> float:
         except ValueError:
             return 0.0
     return 0.0
+
+
+def _requested_forward_m(step: str) -> float:
+    """Parse the local primitive's signed forward/backward request."""
+    if not step or step[0] not in {"f", "b"}:
+        return 0.0
+    try:
+        distance = float(step[1:])
+    except (TypeError, ValueError):
+        return 0.0
+    return distance if step[0] == "f" else -distance
 
 
 def _wrap_pi(value: float) -> float:
@@ -204,10 +223,10 @@ def _topic_publisher_count(topic: str) -> tuple[int | None, str]:
 def _wheel_odom_process_count() -> tuple[int | None, list[int]]:
     """Count the single project-authoritative odom process.
 
-    The current Go2-W rig has no usable low-state wheel-odom executable; its
-    fused motion odom is published by ``sport_odom_bridge.py`` from
-    ``/lf/sportmodestate``.  Treat that bridge and the legacy executable as
-    equivalent authorities, while still rejecting duplicates.
+    This is a local-process diagnostic only.  The WebUI may run on the robot
+    while the one canonical ``go2w_wheel_odom`` publisher runs on the control
+    host, so a zero local count is valid when the ROS graph reports exactly one
+    odom publisher.  The backend applies that network-authority rule.
     """
 
     pids: list[int] = []
@@ -518,6 +537,11 @@ def run_replay(args, event_hook=None) -> int:
             observation = LiveObservation.from_dict(event)
             observation.target_match = {
                 "target_present": bool(event.get("target_present", False)),
+                "target_state": str(
+                    event.get("target_state")
+                    or (event.get("target_match") or {}).get("target_state")
+                    or ("PRESENT" if event.get("target_present") else "ABSENT")
+                ),
                 "score": (
                     float((event.get("target_match") or {}).get("score", 0.0))
                     if isinstance(event.get("target_match"), dict) else 0.0
@@ -543,6 +567,7 @@ def run_replay(args, event_hook=None) -> int:
             target_match=observation.target_match,
             target_score=float((observation.target_match or {}).get("score", 0.0)),
             target_match_level="candidate" if observation.target_present else "none",
+            target_state=observation.target_state,
             provenance={"source": "replay"},
         )
 
@@ -658,11 +683,19 @@ def run_go2w(args, event_hook=None) -> int:
             "candidates": {"fallback_turn_deg": max_turn_deg},
         },
     })
+    search_policy = load_search_policy()
+    # There is one request-level compatibility switch for the terminal
+    # behaviour.  Mirror it into the typed target-approach policy so the
+    # explorer cannot accidentally use a default-only policy that contradicts
+    # the CLI/WebUI request.
+    search_policy.target_approach.finish_on_visual_confirmation = bool(
+        args.finish_on_visual_confirmation
+    )
     rclpy.init()
     output_path = str(Path(args.output))
     node = AutonomousLoop(
         pattern=["f"], output=output_path, forward_vx=0.12,
-        forward_seconds=2.0, max_yaw_rate=0.15, min_clearance_m=0.30,
+        forward_seconds=2.0, max_yaw_rate=1.0, min_clearance_m=0.30,
         mode="state_machine_search", max_seconds=args.max_seconds,
         wander_front_go_m=0.45, wander_turn_deg=max_turn_deg,
         max_radius_m=args.max_radius, scan_turn_deg=30.0, scan_span=3,
@@ -711,7 +744,15 @@ def run_go2w(args, event_hook=None) -> int:
     try:
         return _run_go2w_explorer(args, node, policy, PROMPT_MAP, event_hook)
     except Exception as exc:
-        node.get_logger().error(f"semantic exploration failed: {exc}")
+        # Keep the worker protocol concise, but retain the complete traceback
+        # in the ROS log.  A plain errno (especially from a relative runtime
+        # path) is otherwise impossible to distinguish from a sensor/API
+        # failure when the WebUI only receives the terminal exit code.
+        import traceback
+
+        node.get_logger().error(
+            f"semantic exploration failed: {exc}\n{traceback.format_exc()}"
+        )
         try:
             node._emergency_stop()
         except Exception:
@@ -758,6 +799,13 @@ def run_go2w(args, event_hook=None) -> int:
 def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     import rclpy  # noqa: F401  (used by the observer closure; rclpy.init already done)
     settings = get_settings()
+    search_policy = load_search_policy()
+    # The CLI/WebUI flag is the per-run authority for whether confirmation is
+    # legacy-terminal. Keep the typed approach policy's observable contract in
+    # sync with that request.
+    search_policy.target_approach.finish_on_visual_confirmation = bool(
+        args.finish_on_visual_confirmation
+    )
     env = node._load_detector_env()
     # `vision_model` is used by the nested ``analyze_semantic`` observer.  It
     # is a local variable of the caller ``run_go2w`` and is never passed into
@@ -768,11 +816,15 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     # Ensure the detector subprocess uses a real interpreter on this machine
     # instead of the author's hard-coded path.
     if not env.get("SILICONFLOW_PYTHON") and not env.get("GROUNDED_SAM_PYTHON"):
-        env["SILICONFLOW_PYTHON"] = (
-            os.environ.get("GO2W_CONDA_PYTHON")
-            or str(PROJECT_ROOT / ".venv/bin/python")
-            or sys.executable
-        )
+        for candidate in (
+            os.environ.get("GO2W_CONDA_PYTHON"),
+            str(PROJECT_ROOT / ".runtime_venv/bin/python"),
+            str(PROJECT_ROOT / ".venv/bin/python"),
+            sys.executable,
+        ):
+            if candidate and Path(candidate).is_file():
+                env["SILICONFLOW_PYTHON"] = candidate
+                break
     spool_root = args.spool_root
     state: dict[str, Any] = {
         "image_path": None,
@@ -786,6 +838,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         "motion_end_timestamp": 0.0,
         "last_frame_id_before_motion": None,
         "last_yaw_before": None,
+        "pending_motion_evidence": None,
     }
 
     def _last_success_age_s() -> float | None:
@@ -1038,6 +1091,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     spatial_memory = None
     camera_provider = None
     bev_mapper = None
+    pose_validator = None
     frontier_extractor = None
     psg_provider = None
     spatial_reasoner = None
@@ -1059,8 +1113,9 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
 
         place_graph = PlaceGraph(
             merge_distance_m=0.35,
-            relocation_min_displacement_m=0.10,
+            relocation_min_displacement_m=0.50,
         )
+        pose_validator = SpatialPoseValidator()
         semantic_map = SemanticObjectMap(
             merge_distance_m=0.4,
             confirm_min_observations=2,
@@ -1099,6 +1154,38 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 relocate_distance_m=args.forward_step_m or 0.25,
             )
         node.get_logger().info(f"spatial provider = {args.spatial_provider}")
+        # 2026-09-09 P2 修复：先等 provider 真正拿到地图，再进入观测循环。
+        # 否则首次观测会早于 DDS 首批 map/pose 到达，quality() 降级成 CAMERA_LOCAL，
+        # map_xyz 与 map_frame 都不会写进 semantic_object_localized（实测于
+        # search_20260909_103523：5 个物体全部 CAMERA_LOCAL、map_xyz=None）。
+        if camera_provider is not None and hasattr(camera_provider, "get_map"):
+            # 条件必须同时满足「有地图」和「map→odom TF 已到达」：实测 TF 比 map 晚约 1 秒出现，
+            # 只等 get_map() 会让循环提前退出，随后 camera_point_to_map() 因 tf_available=false
+            # 恒返回 None（P2 第三处断点的真正原因）。
+            _deadline = time.time() + 25.0
+            _probe = None
+            while time.time() < _deadline:
+                _spin = getattr(camera_provider, "spin_once", None)
+                if _spin is None:
+                    break
+                _spin()
+                time.sleep(0.05)
+                # 注意：transform_provenance()["tf_available"] 恒为 False（该标志从未被置位），
+                # 所以改用真实探测——能否把一个测试点投影到 map 系。
+                if camera_provider.get_map() is not None:
+                    try:
+                        _probe = camera_provider.camera_point_to_map((0.0, 0.0, 2.0), None)
+                    except Exception:  # noqa: BLE001
+                        _probe = None
+                    if _probe is not None:
+                        break
+            node.get_logger().info(
+                "spatial provider ready: map="
+                + ("yes" if camera_provider.get_map() is not None else "no")
+                + ", map_point=" + ("yes" if _probe is not None else "no")
+                + ", quality="
+                + str(getattr(camera_provider, "quality", lambda: "?")())
+            )
         bev_mapper = LightweightDepthBEVMapper()
         frontier_extractor = FrontierExtractor(min_component_size=1)
         psg_provider = RuleSemanticPriorProvider()
@@ -1234,7 +1321,16 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         x, y, yaw = node._odom_snapshot()
         pose = {"x": x, "y": y, "yaw_rad": yaw,
                 "yaw_deg": math.degrees(yaw)}
-        capture_ts = time.time()
+        capture_ts = (
+            float(rgbd_frame.timestamp)
+            if rgbd_frame is not None
+            else time.time()
+        )
+        capture_timestamp_quality = (
+            str(rgbd_frame.timestamp_quality)
+            if rgbd_frame is not None
+            else "receive_time"
+        )
         # 计划书 §6.2：navigation heading sector 是运动状态，永远由当前
         # capture pose 计算，与语义是否 stale 无关。
         navigation_sector = _navigation_sector(
@@ -1247,6 +1343,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             "frame_id": str(frame_id),
             "navigation_heading_sector": navigation_sector,
             "yaw_deg": round(math.degrees(yaw), 3),
+            "image_timestamp": capture_ts,
+            "timestamp_quality": capture_timestamp_quality,
             "host_s": node._host_s(),
         })
         # 后台 Full Semantic single-flight（计划书 §3.5）：首帧也提交后台，
@@ -1255,6 +1353,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             image_path=stable_image,
             frame_id=str(frame_id),
             capture_timestamp=capture_ts,
+            timestamp_quality=capture_timestamp_quality,
             robot_pose=pose,
             target_profile=controller.target_profile,
             scene_signature=compute_scene_signature(stable_image),
@@ -1295,13 +1394,20 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             )
             detections = []
             for item in target_objects:
-                bbox = [float(v) for v in item.get("bbox_2d", [0.0, 0.0, 1.0, 1.0])]
+                raw_bbox = item.get("bbox_2d") or item.get("bbox")
+                if not isinstance(raw_bbox, (list, tuple)) or len(raw_bbox) != 4:
+                    # POSSIBLE candidates are still carried by target_state,
+                    # but an invalid box must never be used as a full-frame
+                    # verification crop.
+                    continue
+                bbox = [float(v) for v in raw_bbox]
                 detections.append({
                     "label": str(item.get("label", "object")),
                     "score": float(item.get("score", 0.0)),
                     "bbox_2d": bbox,
                 })
             target_present = quick_target_present(quick_payload, args.target_score_min)
+            target_state = quick_target_state(quick_payload, args.target_score_min)
         else:
             detections = []
             for item in objects:
@@ -1312,6 +1418,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                     "bbox_2d": bbox,
                 })
             target_present = bool(detections)
+            target_state = TARGET_PRESENT if target_present else "ABSENT"
         if detections:
             best = max(detections, key=lambda item: item["score"])
             node._feed_detection(best["label"], best["score"], best["bbox_2d"])
@@ -1339,9 +1446,12 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             "semantic_quality": "quick_scene_light",
             "semantic_source_frame_id": str(frame_id),
             "semantic_capture_timestamp": capture_ts,
+            "timestamp_quality": capture_timestamp_quality,
             "semantic_completed_timestamp": capture_ts,
             "semantic_age_ms": 0.0,
             "semantic_source_pose": pose,
+            "target_state": target_state,
+            "target_decision": (quick_payload or {}).get("target_decision", {}),
         }
         profiler.mark("semantic_start")
         # 先收割后台已完成结果；未完成时继续用 latest completed。
@@ -1423,6 +1533,29 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 (time.time() - float(semantic.semantic_capture_timestamp
                                      or semantic.timestamp_sec)) * 1000.0,
             )
+        semantic_frame_id = str(
+            getattr(semantic, "semantic_source_frame_id", None)
+            or semantic.frame_id
+        )
+        timestamp_frame = None
+        if rgbd_frame is not None and str(rgbd_frame.frame_id) == semantic_frame_id:
+            timestamp_frame = rgbd_frame
+        elif semantic_frame_id in rgbd_frame_cache:
+            timestamp_frame = rgbd_frame_cache[semantic_frame_id]
+        image_timestamp = float(
+            timestamp_frame.timestamp
+            if timestamp_frame is not None
+            else semantic.semantic_capture_timestamp or semantic.timestamp_sec
+        )
+        image_timestamp_quality = str(
+            timestamp_frame.timestamp_quality
+            if timestamp_frame is not None
+            else (
+                capture_timestamp_quality
+                if semantic_frame_id == str(frame_id)
+                else semantic.timestamp_quality or "semantic_capture_timestamp"
+            )
+        )
         state["semantic"] = semantic
         profiler.set_counter("semantic_source_frame_id", str(getattr(semantic, "frame_id", "")))
         profiler.set_counter("semantic_result_age_ms", max(0.0, float(semantic.semantic_age_ms or 0.0)))
@@ -1438,6 +1571,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             "semantic_age_ms": round(float(semantic.semantic_age_ms or 0.0), 3),
             "semantic_object_count": len(semantic.objects or []),
             "semantic_error_code": semantic.semantic_error_code,
+            "image_timestamp": image_timestamp,
+            "timestamp_quality": image_timestamp_quality,
             "host_s": node._host_s(),
         })
 
@@ -1453,10 +1588,6 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             # 只能使用语义 source frame 对应的深度帧（当前帧或 RGB-D 缓存）。
             from app.perception.depth_object_localizer import resolve_depth_frame
 
-            semantic_frame_id = str(
-                getattr(semantic, "semantic_source_frame_id", None)
-                or semantic.frame_id
-            )
             depth_frame = resolve_depth_frame(
                 semantic_frame_id, rgbd_frame, rgbd_frame_cache
             )
@@ -1470,6 +1601,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 })
                 spatial_quality = "SEMANTIC_2D_ONLY"
             if depth_frame is not None:
+                image_timestamp = float(depth_frame.timestamp)
+                image_timestamp_quality = str(depth_frame.timestamp_quality)
                 localized_frame_id = str(depth_frame.frame_id)
                 localized = depth_localizer.localize(semantic.objects, depth_frame)
                 # Enrich object dicts with spatial fields and remember the best
@@ -1510,11 +1643,39 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 }
                 depth_scale = depth_frame.depth_unit_m
 
+        # Quick and Full are both allowed to omit basic geometric relations.
+        # Derive conservative same-frame edges after RGB-D enrichment and
+        # before persistent association; endpoint ids remain frame-local here.
+        geometric_relations = extract_geometric_relations(semantic.objects)
+        if geometric_relations:
+            existing_relation_keys = {
+                (
+                    str(item.get("subject_id") or item.get("source_id") or ""),
+                    str(item.get("object_id") or item.get("target_id") or ""),
+                    str(item.get("relation") or item.get("relation_type") or "").lower(),
+                )
+                for item in semantic.relations
+                if isinstance(item, dict)
+            }
+            semantic.relations = list(semantic.relations) + [
+                relation for relation in geometric_relations
+                if (
+                    relation["subject_id"], relation["object_id"], relation["relation"]
+                ) not in existing_relation_keys
+            ]
+            node._write({
+                "event": "geometric_relations_extracted",
+                "frame_id": str(frame_id),
+                "relation_count": len(geometric_relations),
+                "host_s": node._host_s(),
+            })
+
         observation = semantic_observation_to_live(
             semantic,
             bundle_id=f"bundle_{frame_id}",
             detections=detections,
             target_present=target_present,
+            target_state=target_state,
             pose=pose,
             image_ref=stable_image,
             depth_ref=depth_ref,
@@ -1524,6 +1685,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             spatial_quality=spatial_quality,
             camera_xyz=camera_xyz,
             navigation_heading_sector=navigation_sector,
+            timestamp=image_timestamp,
             sensor_health={
                 "camera": True,
                 "lidar": node._lidar_fresh is True,
@@ -1534,6 +1696,10 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 ),
             },
         )
+        observation.provenance.update({
+            "image_timestamp": image_timestamp,
+            "timestamp_quality": image_timestamp_quality,
+        })
 
         # ---- SemanticNavigation V2 spatial state update -------------------------------
         if place_graph is not None and pose is not None:
@@ -1544,11 +1710,20 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             # 世界坐标系（plain_slam -> pslam_odom）。wheel odom 只用于相对运动/
             # 当前 yaw/运动验证，绝不冒充 pslam pose。
             spatial_pose = None
+            raw_spatial_pose = None
             provider_quality = "CAMERA_LOCAL"
             if camera_provider is not None:
                 spin = getattr(camera_provider, "spin_once", None)
                 if spin is not None:
-                    spin()
+                    # 2026-09-09 P2 修复第二步（加强）：BEST_EFFORT 订阅不重传，而 map_2d
+                    # 每 0.5 s 才发一次 —— 固定 6×50 ms 会错过，导致 quality() 仍降级
+                    # CAMERA_LOCAL。改为直接等到 quality() 不再降级（map 与 pose 都到位），
+                    # 上限 2 s。注意 quality() 还要求 _pose 非 None，只等 get_map() 不够。
+                    for _ in range(40):
+                        spin()
+                        time.sleep(0.05)
+                        if str(getattr(camera_provider, "quality", lambda: "CAMERA_LOCAL")()) != "CAMERA_LOCAL":
+                            break
                 try:
                     spatial_pose = camera_provider.get_pose()
                 except Exception:  # noqa: BLE001 - degraded pose never crashes
@@ -1556,6 +1731,20 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 provider_quality = getattr(
                     camera_provider, "quality", lambda: "CAMERA_LOCAL"
                 )()
+                # 2026-09-09 P2 诊断：确认 worker 内 provider 的 _pose 是否被赋值
+                # （quality() 返回 CAMERA_LOCAL 只可能是 _pose is None）。
+                try:
+                    _dbg_pose = camera_provider.get_pose()
+                    node.get_logger().info(
+                        "spatial probe: quality=" + str(provider_quality)
+                        + " internal_pose="
+                        + ("yes" if getattr(camera_provider, "_pose", None) is not None else "no")
+                        + " get_pose=" + ("yes" if _dbg_pose is not None else "no")
+                        + " pose_frame=" + str(getattr(_dbg_pose, "frame_id", None))
+                        + " map=" + ("yes" if camera_provider.get_map() is not None else "no")
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
                 if spatial_pose is None and isinstance(camera_provider, CameraLocalSpatialProvider):
                     # 仅 camera-local 提供者接受 wheel odom 相对位姿（无全局地图）。
                     spatial_pose = SpatialPose(
@@ -1575,6 +1764,42 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                         "provider": type(camera_provider).__name__,
                         "host_s": node._host_s(),
                     })
+            raw_spatial_pose = spatial_pose
+            motion_evidence = motion_state.get("pending_motion_evidence")
+            validation = (
+                pose_validator.validate(
+                    spatial_pose,
+                    motion_evidence,
+                    timestamp=observation.timestamp,
+                )
+                if pose_validator is not None else None
+            )
+            if validation is not None:
+                if validation.accepted:
+                    spatial_pose = validation.accepted_pose
+                else:
+                    # Preserve only the last good pose for diagnostics; do not
+                    # write the rejected raw pose into metric map/place data.
+                    spatial_pose = None
+                    provider_quality = "DEGRADED_LIO"
+                node._write({
+                    "event": "spatial_pose_validation",
+                    "frame_id": str(frame_id),
+                    "accepted": validation.accepted,
+                    "health": validation.health,
+                    "reason_code": validation.reason_code,
+                    "pslam_delta_xy_m": validation.pslam_delta_xy_m,
+                    "pslam_delta_yaw_deg": validation.pslam_delta_yaw_deg,
+                    "wheel_delta_xy_m": validation.wheel_delta_xy_m,
+                    "raw_pose": raw_spatial_pose.to_dict() if raw_spatial_pose else None,
+                    "accepted_pose": validation.accepted_pose.to_dict() if validation.accepted_pose else None,
+                    "host_s": node._host_s(),
+                })
+                observation.sensor_health.update({
+                    "spatial_pose_health": validation.health,
+                    "spatial_pose_reason": validation.reason_code,
+                    "spatial_pose_accepted": validation.accepted,
+                })
             spatial_provenance = {}
             if camera_provider is not None and hasattr(camera_provider, "transform_provenance"):
                 try:
@@ -1584,30 +1809,65 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             # Phase 2: write map_xyz into each localized observation BEFORE
             # entity association so cross-view fusion can use world coords.
             if camera_provider is not None and spatial_pose is not None:
+                map_projector = getattr(camera_provider, "camera_point_to_map", None)
+                image_stamp = getattr(observation, "timestamp", None)
                 for obs_item in localized:
                     if getattr(obs_item, "camera_xyz", None) is None:
                         continue
-                    try:
-                        mapped = camera_provider.camera_point_to_spatial(
-                            obs_item.camera_xyz, pose=spatial_pose
-                        )
-                    except SpatialFrameMismatch as exc:
-                        node._write({
-                            "event": "spatial_frame_mismatch",
-                            "error": str(exc),
-                            "host_s": node._host_s(),
-                        })
-                        mapped = None
-                    except Exception:  # noqa: BLE001 - degraded mapping must not crash
-                        mapped = None
+                    mapped = None
+                    mapped_frame = spatial_provenance.get("target_frame", "map")
+                    # 计划书 §10：优先 T_map_camera(t_image)，输出 pslam_map 系。
+                    if callable(map_projector):
+                        try:
+                            mapped = map_projector(obs_item.camera_xyz, image_stamp)
+                        except Exception:  # noqa: BLE001 - 投影失败不阻断探索
+                            mapped = None
+                        if mapped is not None:
+                            mapped_frame = "pslam_map"
+                    if mapped is None:
+                        # 回退：pslam_odom 系 + 标称外参（旧行为，如实标注）。
+                        try:
+                            mapped = camera_provider.camera_point_to_spatial(
+                                obs_item.camera_xyz, pose=spatial_pose
+                            )
+                        except SpatialFrameMismatch as exc:
+                            node._write({
+                                "event": "spatial_frame_mismatch",
+                                "error": str(exc),
+                                "host_s": node._host_s(),
+                            })
+                            mapped = None
+                        except Exception:  # noqa: BLE001 - degraded mapping must not crash
+                            mapped = None
                     if mapped is not None:
                         obs_item.map_xyz = mapped
                         obs_item.spatial_quality = provider_quality
+                        # 2026-09-09 P2 诊断：物体侧看到的 quality 到底是什么。
+                        node.get_logger().info(
+                            "object quality: label="
+                            + str(getattr(obs_item, "label", "?"))
+                            + " provider_quality=" + str(provider_quality)
+                            + " map_xyz=" + str(tuple(round(float(v), 3) for v in mapped))
+                        )
                         obs_item.provenance = {
                             **dict(obs_item.provenance or {}),
                             **spatial_provenance,
-                            "map_frame": spatial_provenance.get("target_frame", "map"),
+                            "map_frame": mapped_frame,
+                            "timestamp": image_stamp,
+                            "timestamp_quality": observation.provenance.get(
+                                "timestamp_quality"
+                            ),
                         }
+            # 把最终的逐帧原始坐标写回 LiveObservation。匹配只认同帧
+            # frame_object_id/source id，不按 label 或下标猜测。
+            from app.perception.depth_object_localizer import enrich_scene_objects_with_spatial
+
+            observation.scene_objects = enrich_scene_objects_with_spatial(
+                observation.scene_objects,
+                localized,
+                image_timestamp=float(image_stamp or observation.timestamp),
+            )
+
             place_id, created = place_graph.register_observation(
                 observation_id=observation.bundle_id,
                 heading_sector=(
@@ -1617,6 +1877,10 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 objects=observation.object_labels,
                 rgbd_frame_id=observation.rgbd_frame_id,
                 pose=spatial_pose,
+                observed_displacement_m=(
+                    motion_evidence.wheel_delta_xy_m
+                    if motion_evidence is not None else None
+                ),
                 timestamp=observation.timestamp,
                 target_candidate=observation.target_present,
             )
@@ -1624,6 +1888,41 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             state["created_place"] = created
             update_result = None
             if semantic_map is not None:
+                correction_revision = spatial_provenance.get(
+                    "map_correction_revision"
+                )
+                previous_revision = state.get("semantic_map_correction_revision")
+                reprojector = getattr(
+                    camera_provider, "reproject_camera_point_to_map", None
+                )
+                if (
+                    callable(reprojector)
+                    and previous_revision is not None
+                    and correction_revision is not None
+                    and correction_revision != previous_revision
+                ):
+                    reprojected = semantic_map.reproject_observations(reprojector)
+                    if reprojected["observations"]:
+                        node._write({
+                            "event": "semantic_reprojected",
+                            "from_map_correction_revision": previous_revision,
+                            "to_map_correction_revision": correction_revision,
+                            **reprojected,
+                            "host_s": node._host_s(),
+                        })
+                if correction_revision is not None:
+                    state["semantic_map_correction_revision"] = correction_revision
+                # 2026-09-09 P2 诊断：把交给语义图的 localized 整体打出来，
+                # 看"打印的那条"是否就是"写进实体的那条"。
+                node.get_logger().info(
+                    "localized dump: " + str([
+                        (getattr(o, "label", "?"),
+                         getattr(o, "spatial_quality", "?"),
+                         id(o),
+                         tuple(round(float(v), 3) for v in (getattr(o, "map_xyz", None) or ())))
+                        for o in localized
+                    ])
+                )
                 update_result = semantic_map.update_with_associations(
                     localized,
                     place_id=place_id,
@@ -1639,7 +1938,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             # relation graph must NEVER use label-based identity, so that two
             # chairs / bins keep distinct persistent ids.
             association_by_index: dict[int, Any] = {}
-            persistent_by_source_id: dict[str, str] = {}
+            persistent_by_source_id: dict[str, Any] = {}
             if update_result is not None:
                 association_by_index = {
                     assoc.observation_index: assoc
@@ -1650,6 +1949,29 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                     for assoc in update_result.associations
                     if assoc.source_object_id
                 }
+
+            # 独立记录每帧原始观测；即使本帧没有成功关联持久实体也照常落盘。
+            # persistent_object_id 仅来自 source id 的严格关联，绝不按 label 补猜。
+            frame_objects: list[dict[str, Any]] = []
+            for scene_object in observation.scene_objects:
+                event_item = dict(scene_object)
+                source_object_id = event_item.get("source_object_id")
+                assoc = persistent_by_source_id.get(str(source_object_id or ""))
+                if assoc is not None:
+                    event_item.update({
+                        "persistent_object_id": assoc.persistent_object_id,
+                        "association_score": assoc.association_score,
+                        "association_action": assoc.action,
+                    })
+                frame_objects.append(event_item)
+            node._write({
+                "event": "semantic_frame_objects_localized",
+                "frame_id": observation.rgbd_frame_id or semantic_frame_id,
+                "image_timestamp": observation.provenance.get("image_timestamp"),
+                "timestamp_quality": observation.provenance.get("timestamp_quality"),
+                "objects": frame_objects,
+                "host_s": node._host_s(),
+            })
 
             # Phase 3: publish spatial events for the WebUI, including the real
             # map_xyz on every localized object.
@@ -1695,6 +2017,8 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                     "source_object_id": assoc.source_object_id,
                     "association_score": assoc.association_score,
                     "association_action": assoc.action,
+                    # §10 取证：map_xyz 到底落在哪个 frame（pslam_map 还是 pslam_odom）。
+                    "map_frame": (obs_item.provenance or {}).get("map_frame", "unknown"),
                 })
                 node._write({
                     "event": "semantic_object_localized",
@@ -1721,6 +2045,10 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                     update_result=update_result,
                     relations=list(getattr(semantic, "relations", None) or []),
                 )
+            # One motion action is consumed by exactly one post-motion
+            # observation.  Leaving it pending would double-count a later
+            # stationary frame as a relocation.
+            motion_state["pending_motion_evidence"] = None
 
         profiler.record("blocking_decision_ms", "quick_start")
         profiler.record("cycle_total_ms", "capture_start")
@@ -1772,6 +2100,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             target_match_level=(
                 graph_match.state.value if graph_match is not None else "none"
             ),
+            target_state=observation.target_state,
             provenance={"source": "semantic_navigation_matcher"},
         )
         state["match"] = match
@@ -1846,6 +2175,20 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         observation = kwargs.get("observation")
         capabilities = kwargs.get("capabilities")
         current_yaw_deg = float(kwargs.get("current_yaw_deg") or 0.0)
+        # 计划书 §6.3：每次生成都记录真实的地图/frontier 证据，供探索器区分
+        # “等地图 / 规划缺陷 / 真穷尽”，不再让空列表自己去猜原因。
+        diagnostics: dict[str, Any] = {
+            "map_fresh": None,
+            "map_source": None,
+            "map_revision": 0,
+            "frontier_count": 0,
+            "reachable_frontier_count": 0,
+            "visited_frontier_count": 0,
+            "unreachable_frontier_count": 0,
+            "local_scan_quota_exhausted": False,
+            "empty_reason": "",
+        }
+        state["last_candidate_diagnostics"] = diagnostics
 
         # Continue an active local intent if it still has primitives.
         if local_executor is not None and local_executor.active:
@@ -1857,6 +2200,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             local_executor.finish()
 
         if place_graph is None or spatial_reasoner is None:
+            diagnostics["empty_reason"] = "spatial_provider_missing"
             return []
 
         match = state.get("match")
@@ -1892,6 +2236,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 state["local_scan_states"] = scan_states
                 if goal_fields is None:
                     if next_state.steps >= max_local_rotations > 0:
+                        diagnostics["local_scan_quota_exhausted"] = True
                         node._write({
                             "event": "local_scan_quota_exhausted",
                             "place_id": current_place.place_id,
@@ -1954,24 +2299,56 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         metric_map = None
         if camera_provider is not None and hasattr(camera_provider, "get_map"):
             metric_map = camera_provider.get_map()
+        diagnostics["map_fresh"] = bool(
+            metric_map is not None and metric_map.revision > 0
+        )
+        diagnostics["map_source"] = (
+            getattr(metric_map, "source", None) if metric_map is not None else None
+        )
+        diagnostics["map_revision"] = int(
+            getattr(metric_map, "revision", 0) if metric_map is not None else 0
+        )
+        diagnostics["frontier_count"] = len(frontiers)
+        # A frontier the route planner can reach is what makes further search
+        # possible; visited/unreachable ones are already spent (计划书 §6.3).
+        if spatial_memory is not None:
+            memory_status = {
+                key: str(getattr(value, "status", "OPEN")).upper()
+                for key, value in spatial_memory.frontiers.items()
+            }
+        else:
+            memory_status = {}
+        diagnostics["visited_frontier_count"] = sum(
+            1 for value in memory_status.values() if value == "VISITED"
+        )
+        diagnostics["unreachable_frontier_count"] = sum(
+            1 for value in memory_status.values()
+            if value in {"UNREACHABLE", "FAILED"}
+        )
+        diagnostics["reachable_frontier_count"] = sum(
+            1 for item in frontiers
+            if memory_status.get(item.frontier_id, "OPEN")
+            not in {"VISITED", "UNREACHABLE", "FAILED"}
+        )
         if metric_map is not None and metric_map.revision > 0:
+            pose_source = getattr(camera_provider.get_pose(), "source", "none")
             node.get_logger().info(
-                "map source = %s, map revision = %d, "
-                "pose source = %s, frontier count = %d",
-                metric_map.source,
-                metric_map.revision,
-                getattr(camera_provider.get_pose(), "source", "none"),
-                len(frontiers),
+                f"map source = {metric_map.source}, "
+                f"map revision = {metric_map.revision}, "
+                f"pose source = {pose_source}, "
+                f"frontier count = {len(frontiers)}"
             )
             node.get_logger().info(
-                "route planner consumes %s (revision %d)",
-                metric_map.source, metric_map.revision,
+                f"route planner consumes {metric_map.source} "
+                f"(revision {metric_map.revision})"
             )
         elif camera_provider is not None:
-            node.get_logger().warn(
-                "metric map not fresh; falling back (provider=%s, frontier count=%d)",
-                args.spatial_provider,
-                len(frontiers),
+            # ROS 2 Foxy rclpy loggers take a single message string; printf-style
+            # extra positional args raise TypeError (计划书 §6.1).
+            node.get_logger().warning(
+                f"metric map not fresh; falling back "
+                f"(provider={args.spatial_provider}, "
+                f"frontier count={len(frontiers)})"
             )
 
         semantic = state.get("semantic")
@@ -2090,6 +2467,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             common_sense=common_sense,
         )
         if scored is None:
+            diagnostics["empty_reason"] = "spatial_reasoner_no_intent"
             return []
         intent = scored.intent
         if intent.target_frontier_id and spatial_memory is not None:
@@ -2141,6 +2519,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             )
             if goal is None:
                 local_executor.finish()
+                diagnostics["empty_reason"] = "local_executor_no_primitive"
                 return []
         goal.semantic_relevance = max(0.0, min(1.0, scored.score))
         goal.expected_information_gain = intent.spatial_gain
@@ -2292,6 +2671,16 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             detail["non_retryable"] = True
         if ok:
             after = node._odom_snapshot()
+            wheel_delta_xy = math.hypot(after[0] - before[0], after[1] - before[1])
+            requested_dyaw = _requested_dyaw_deg(step)
+            motion_state["pending_motion_evidence"] = MotionEvidence(
+                command_type=("ROTATE" if abs(requested_dyaw) > 0.0 else "TRANSLATE"),
+                requested_turn_deg=requested_dyaw,
+                requested_forward_m=_requested_forward_m(step),
+                wheel_delta_xy_m=wheel_delta_xy,
+                wheel_delta_yaw_deg=math.degrees(_wrap_pi(after[2] - before[2])),
+                motion_completed_at=time.time(),
+            )
             motion_state["motion_end_timestamp"] = time.time()
             motion_state["last_frame_id_before_motion"] = str(
                 state.get("frame_id") or ""
@@ -2300,7 +2689,6 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
             # 计划书 §7.5：用运动后的真实 odom 计算 reached sector，绝不拿
             # “计划想去的 sector”冒充“实际到达 sector”。
             sectors = max(1, int(policy.candidates.heading_sectors))
-            requested_dyaw = _requested_dyaw_deg(step)
             observed_dyaw = math.degrees(_wrap_pi(after[2] - before[2]))
             sector_before = _navigation_sector(yaw_rad=before[2], sectors=sectors)
             sector_reached = _navigation_sector(yaw_rad=after[2], sectors=sectors)
@@ -2312,6 +2700,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                 "step": step,
                 "requested_dyaw_deg": round(requested_dyaw, 3),
                 "observed_dyaw_deg": round(observed_dyaw, 3),
+                "wheel_delta_xy_m": round(wheel_delta_xy, 4),
                 "sector_before": sector_before,
                 "sector_requested": _navigation_sector(
                     yaw_rad=before[2] + math.radians(requested_dyaw),
@@ -2432,10 +2821,113 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         events.append(event)
         node._write(event)
 
+    def exhaustion_probe() -> dict[str, Any]:
+        """Read-only map/frontier evidence for empty-candidate classification.
+
+        计划书 §6.3：复用已有 frontier_extractor / spatial_reasoner /
+        TopologyRoutePlanner 的结果，不建立第二套候选系统。
+        """
+        return dict(state.get("last_candidate_diagnostics") or {})
+
     explorer_kwargs: dict[str, Any] = {}
+
+    def local_safety_provider(observation: LiveObservation):
+        """Adapt the existing live LiDAR gate into the explorer safety view.
+
+        The runner already subscribes to the validated preprocessor outputs;
+        this adapter deliberately consumes only those values.  It does not
+        infer rear/side geometry, so unknown sectors remain fail-closed.
+        """
+        front = node._clearance
+        if front is None or not math.isfinite(float(front)):
+            front_status = "no_return" if front is not None else "unknown"
+            front_value = None
+        else:
+            front_status = "measured"
+            front_value = float(front)
+        clearance = {
+            "front_status": front_status,
+            "front_m": front_value,
+            "left_status": "unknown",
+            "right_status": "unknown",
+            "lidar_fresh": node._lidar_fresh is True,
+        }
+        return local_safety_from_clearance(
+            clearance,
+            timestamp=float(observation.timestamp or time.time()),
+            hard_clearance_m=search_policy.clearance_navigation.hard_clearance_m,
+            rotation_clearance_m=search_policy.clearance_navigation.hard_clearance_m,
+            geometry_validated=(
+                node._lidar_fresh is True and front is not None
+            ),
+            pose_quality="relative",
+            source_health={
+                "source": "go2w_lidar_preprocessor",
+                "rotation_clearance_valid": node._rotation_clearance_valid is True,
+            },
+        )
+
+    def perception_quality_provider(
+        observation: LiveObservation, information_gain: float
+    ):
+        target_item = next(
+            (
+                item for item in observation.scene_objects
+                if isinstance(item, dict)
+                and str(item.get("category") or "").lower() == "target"
+            ),
+            None,
+        )
+        target_depth = (
+            target_item.get("depth_m") if isinstance(target_item, dict) else None
+        )
+        target_depth_valid = isinstance(target_depth, (int, float)) and float(
+            target_depth
+        ) > 0.0
+        depth_count = sum(
+            1
+            for item in observation.scene_objects
+            if isinstance(item, dict)
+            and isinstance(item.get("depth_m"), (int, float))
+            and float(item["depth_m"]) > 0.0
+        )
+        return evaluate_perception_quality(
+            depth_valid_ratio=1.0 if depth_count else 0.0,
+            visual_feature_count=len(observation.scene_objects),
+            stable_object_count=len(observation.scene_objects),
+            estimated_information_gain=float(information_gain),
+            front_clearance_m=(
+                None
+                if node._clearance is None or not math.isfinite(float(node._clearance))
+                else float(node._clearance)
+            ),
+            target_visible=target_item is not None,
+            target_depth_valid=target_depth_valid,
+            camera_blocked_front_m=search_policy.camera_view.camera_blocked_front_m,
+            near_field_ratio_threshold=(
+                search_policy.camera_view.near_field_ratio_threshold
+            ),
+            low_information_threshold=search_policy.camera_view.low_information_threshold,
+            near_field_threshold_m=search_policy.camera_view.near_field_threshold_m,
+        )
+
+    explorer_kwargs["local_safety_provider"] = local_safety_provider
+    explorer_kwargs["perception_quality_provider"] = perception_quality_provider
     if args.spatial_v2:
         explorer_kwargs["candidate_generator"] = spatial_candidate_generator
         explorer_kwargs["planner"] = spatial_planner
+        explorer_kwargs["exhaustion_probe"] = exhaustion_probe
+        # 2026-09-09 P2 修复：AutonomousExplorer 默认自建 SemanticNavigationGraph
+        # （其 object_map 与 worker 的 semantic_map 是两套），于是 MAP_UPDATED 展示的
+        # 实体永远停在 CAMERA_LOCAL，而 worker 那套其实已收到 METRIC_LIDAR 观测。
+        # 这里把 worker 的 semantic_map 注入进去，让两者共用同一张对象表。
+        _spatial_state = state.get("spatial_v2") or {}
+        if _spatial_state.get("semantic_map") is not None:
+            from app.spatial.semantic_navigation_graph import SemanticNavigationGraph
+
+            explorer_kwargs["semantic_graph"] = SemanticNavigationGraph(
+                object_map=_spatial_state["semantic_map"]
+            )
     explorer = AutonomousExplorer(
         target=task_context.canonical_target,
         task_context=task_context,
@@ -2449,6 +2941,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         negative_target_key=profile.canonical_name_zh,
         on_event=on_event,
         finish_on_visual_confirmation=args.finish_on_visual_confirmation,
+        search_policy=search_policy,
         turn_only=bool(args.turn_only),
         session_id=graph.session_id,
         executor_id=args.executor_id or None,
@@ -2471,7 +2964,11 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         close = getattr(camera_provider, "close", None)
         if close is not None:
             close()
-    _write_session_artifacts(args, explorer, result, events)
+    # on_event 已经通过 node._write 把每条事件实时写进 args.output，这里再传
+    # events 会以 "a" 模式把同一批事件追加第二遍：实测
+    # search_20260902_211913 的 events.jsonl 里每条事件都出现两次，按事件计数
+    # 的取证（decision_recorded 8 条 vs decisions.jsonl 4 行）会直接翻倍。
+    _write_session_artifacts(args, explorer, result, [])
     if place_graph is not None:
         run_dir = Path(args.session_dir) / explorer.session_id
         run_dir.mkdir(parents=True, exist_ok=True)

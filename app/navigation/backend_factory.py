@@ -204,7 +204,10 @@ class MockMetricBackend(RobotBackend):
                 "yaw": round(goal.yaw or 0.0, 3),
             }
             if status == NavigationStatus.SUCCEEDED:
-                self._pose = [goal.position[0], goal.position[1], goal.yaw or 0.0]
+                # ExplorationGoal.yaw 是度，RobotPose.yaw 是弧度；直接赋值会把
+                # 度当弧度累积，几轮之后 mock 位姿彻底失控。
+                self._pose = [goal.position[0], goal.position[1],
+                              math.radians(float(goal.yaw or 0.0))]
         else:
             observed = _apply_mock_motion(self._pose, goal, MockBackendConfig())
         result = navigation_result(
@@ -268,12 +271,17 @@ def _apply_mock_motion(pose: list[float], goal: ExplorationGoal,
     before = (pose[0], pose[1], pose[2])
     if goal.goal_type in {"ROTATE_VIEW", "INSPECT_ANCHOR", "REVISIT_NODE"}:
         dyaw = float(goal.relative_dyaw if goal.relative_dyaw is not None else 0.0)
-        dyaw = max(
-            -abs(config.max_turn_deg_per_action),
-            min(abs(config.max_turn_deg_per_action), dyaw),
-        )
+        # 计划书 §5：a logical turn goal larger than one primitive is executed as
+        # several bounded primitives, so the mock completes the whole goal too.
+        limit = abs(config.max_turn_deg_per_action) or 30.0
+        segments = max(1, int(math.ceil(abs(dyaw) / limit))) if dyaw else 0
         pose[2] += math.radians(dyaw)
-        return {"yaw_delta_deg": round(dyaw, 3)}
+        return {
+            "yaw_delta_deg": round(dyaw, 3),
+            "observed_total_deg": round(dyaw, 3),
+            "remaining_deg": 0.0,
+            "segment_count": segments,
+        }
     if goal.goal_type == "RELATIVE_MOVE":
         dx = float(goal.relative_dx if goal.relative_dx is not None else 0.0)
         dx = max(0.0, min(config.forward_step_m, dx))

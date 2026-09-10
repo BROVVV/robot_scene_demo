@@ -1,11 +1,15 @@
 import unittest
+from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
 
 class StreamlitVideoModeTest(unittest.TestCase):
     def test_quadruped_reasoning_controls_and_tabs_render(self) -> None:
-        app = AppTest.from_file("streamlit_app.py", default_timeout=90).run()
+        app = AppTest.from_file(
+            str(Path(__file__).resolve().parents[1] / "streamlit_app.py"),
+            default_timeout=90,
+        ).run()
         self.assertEqual(len(app.exception), 0)
         toggle_labels = {item.label for item in app.toggle}
         self.assertTrue(
@@ -19,7 +23,8 @@ class StreamlitVideoModeTest(unittest.TestCase):
             <= toggle_labels
         )
 
-        app.button[0].click().run(timeout=90)
+        start_button = next(item for item in app.button if item.label == "开始分析")
+        start_button.click().run(timeout=90)
 
         self.assertEqual(len(app.exception), 0)
         tab_labels = {item.label for item in app.tabs}
@@ -36,7 +41,10 @@ class StreamlitVideoModeTest(unittest.TestCase):
         )
 
     def test_video_mode_renders_video_controls(self) -> None:
-        app = AppTest.from_file("streamlit_app.py", default_timeout=90).run()
+        app = AppTest.from_file(
+            str(Path(__file__).resolve().parents[1] / "streamlit_app.py"),
+            default_timeout=90,
+        ).run()
         self.assertEqual(len(app.exception), 0)
         self.assertIn("视频目标搜索", app.radio[0].options)
         self.assertNotIn("视频全场景建图", app.radio[0].options)

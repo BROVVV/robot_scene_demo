@@ -18,6 +18,7 @@
     task: {},
     decisions: [],
     nextMotionCommand: null,
+    turnProgress: null,
     candidates: [],
     map: {},
     events: [],
@@ -82,6 +83,7 @@
     stSemantic: document.getElementById("st-semantic"),
     stSemanticDetail: document.getElementById("st-semantic-detail"),
     stEvidence: document.getElementById("st-evidence"),
+    stEmbodiment: document.getElementById("st-embodiment"),
     taskUnderstanding: document.getElementById("task-understanding"),
     // observation
     obsCurrent: document.getElementById("obs-current"),
@@ -236,6 +238,7 @@
             state.session_id !== appState.search.session_id);
           if (!appState.search.session_id) appState.search.session_id = state.session_id;
           appState.spatial = mergeSpatialGraph(state.spatial || {}, sessionChanged);
+          if (state.embodiment) appState.embodiment = state.embodiment;
           renderAll();
         })
         .catch(function () { /* 后端暂时不可达时忽略，保持上次画面 */ });
@@ -268,6 +271,7 @@
     appState.nextMotionCommand = state.next_motion_command || null;
     appState.candidates = state.candidates || [];
     appState.map = state.map || {};
+    appState.embodiment = state.embodiment || {};
     appState.spatial = mergeSpatialGraph(state.spatial || {}, sessionChanged);
     if (sessionChanged) appState._lastSemanticGraph = null;
     state.timeline = state.timeline || [];
@@ -325,6 +329,7 @@
         }
         if (payload.startup) appState.search.startup = payload.startup;
         if (payload.warning) appState.search.last_warning = payload.warning;
+        if (payload.embodiment) mergeEmbodiment(payload.embodiment);
         break;
       case "OBSERVATION_UPDATED":
         appState.observation = {
@@ -333,6 +338,7 @@
           objects: payload.scene_objects || payload.objects || [],
           detections: payload.detections || [],
           target_present: payload.target_present,
+          target_state: payload.target_state || (payload.target_present ? "PRESENT" : "ABSENT"),
           heading_sector: payload.heading_sector,
           navigation_heading_sector: payload.navigation_heading_sector,
           semantic_status: payload.semantic_status,
@@ -356,6 +362,7 @@
       case "TARGET_MATCH_UPDATED":
         appState.targetMatch = {
           level: payload.target_match_level || "none",
+          target_state: payload.target_state || "ABSENT",
           target_score: payload.target_score,
           anchor_labels: payload.anchor_labels || [],
           explicit_anchor_found: payload.explicit_anchor_found,
@@ -396,6 +403,7 @@
         appState.search.phase = "EXECUTE";
         appState.search.phase_detail = payload.phase_detail || "正在等待动作服务器执行并回传结果";
         appState.robotAction = "EXECUTING";
+        appState.turnProgress = null;
         if (payload.next_motion_command) appState.nextMotionCommand = payload.next_motion_command;
         break;
       case "DECISION_RECORDED":
@@ -412,8 +420,12 @@
         appState.robotAction = payload.status === "succeeded" ? "SUCCEEDED" : "FAILED";
         appState.search.phase = "WAIT_RESULT";
         appState.search.phase_detail = payload.phase_detail || payload.message || "动作已结束";
+        appState.turnProgress = turnProgressText(payload) || null;
         if (payload.status !== "succeeded" && /MOTION_(ACCEPT|RESULT)_TIMEOUT/.test(payload.message || "")) {
           showBanner("动作响应超时，已取消并安全停止；搜索将重新规划。原因：" + payload.message, "error");
+        }
+        if (payload.status !== "succeeded" && /ROTATION_NOT_CONFIRMED/.test(payload.message || "")) {
+          showBanner("转向未被里程计确认，逻辑目标判定失败：" + payload.message, "error");
         }
         break;
       case "REPLAN":
@@ -667,11 +679,21 @@
   // ------------------------------------------------------------------ //
   // Rendering                                                           //
   // ------------------------------------------------------------------ //
+  // 计划书 §7.3：物体列表、计数和拓扑图共用同一个"只有对象"的投影，
+  // 保证界面上的节点数就是画出来的节点数，绝不退回导航图。
+  function objectTopology(spatial) {
+    var graph = (spatial || {}).semantic_graph || null;
+    var raw = graph && graph.object_topology ? graph.object_topology : null;
+    if (window.TopologyLayout && window.TopologyLayout.objectOnly) {
+      return window.TopologyLayout.objectOnly(raw);
+    }
+    return raw;
+  }
+
   function renderObjects() {
     // 识别物体列表：与语义拓扑同源（spatial.semantic_graph.object_topology），
     // 从第一次识别到物体就开始显示，并随每次 memory_update 实时刷新。
-    var spatial = appState.spatial || {};
-    var ot = ((spatial.semantic_graph || {}).object_topology) || null;
+    var ot = objectTopology(appState.spatial);
     var nodes = ot && Array.isArray(ot.nodes) ? ot.nodes : [];
     if (els.obsObjectsMeta) {
       els.obsObjectsMeta.textContent = nodes.length ? nodes.length + " 个" : "";
@@ -703,6 +725,7 @@
   function renderAll() {
     renderTaskUnderstanding();
     renderStatus();
+    renderEmbodiment();
     renderObservation();
     renderObjects();
     renderDecision();
@@ -720,7 +743,7 @@
       // Semantic topology projection: show only topology stats, never metric
       // map / place metrics (they belong to the spatial map view).
       var hasGraph = !!(spatial && spatial.semantic_graph && spatial.semantic_graph.object_topology);
-      var topology = (spatial && spatial.semantic_graph && spatial.semantic_graph.object_topology) || null;
+      var topology = objectTopology(spatial);
       var nodes = (topology && topology.nodes) || [];
       var edges = (topology && topology.edges) || [];
       var empty = (nodes.length === 0);
@@ -745,6 +768,7 @@
     var s = appState.search || {};
     els.stTarget.textContent = s.target || "--";
     var phaseText = s.phase || (s.status || "IDLE");
+    if (appState.turnProgress) phaseText += " · " + appState.turnProgress;
     if (s.phase_detail) phaseText += " · " + s.phase_detail;
     els.stPhase.textContent = phaseText;
     els.stCycle.textContent = String(s.cycle || 0);
@@ -774,7 +798,8 @@
       startBtn.disabled = activeStates.indexOf(s.status || "IDLE") >= 0;
     }
     var m = appState.targetMatch || {};
-    els.stMatch.textContent = m.level || "none";
+    els.stMatch.textContent = m.target_state && m.target_state !== "ABSENT"
+      ? m.target_state : (m.level || "none");
     els.stAnchor.textContent = (m.anchor_labels || []).length
       ? m.anchor_labels.join(", ") : (m.explicit_anchor_found ? "(found)" : "--");
     els.stAction.textContent = appState.robotAction || "IDLE";
@@ -839,6 +864,100 @@
     });
     html += "<div class='pend'>关系验证: " + (appState.verification ? esc(String(appState.verification.reason_zh || "")) : "pending") + "</div>";
     els.stEvidence.innerHTML = html;
+  }
+
+  // 计划书 §29/§30：目标接近跨多个事件累积，同名 dict 合并而不是整体覆盖。
+  function mergeEmbodiment(patch) {
+    var current = appState.embodiment || {};
+    Object.keys(patch).forEach(function (key) {
+      var value = patch[key];
+      var previous = current[key];
+      if (value && typeof value === "object" && !Array.isArray(value) &&
+          previous && typeof previous === "object" && !Array.isArray(previous)) {
+        var merged = {};
+        Object.keys(previous).forEach(function (k) { merged[k] = previous[k]; });
+        Object.keys(value).forEach(function (k) { merged[k] = value[k]; });
+        current[key] = merged;
+      } else {
+        current[key] = value;
+      }
+    });
+    appState.embodiment = current;
+  }
+
+  function fmtMeters(value) {
+    return (value === null || value === undefined) ? "--" : Number(value).toFixed(2) + "m";
+  }
+
+  // 计划书 §30：净空 / 卡住 / 选中视点 / 脱困原因 / 目标接近状态必须可见，
+  // 且接近中的状态绝不能显示成"已完成"。
+  function renderEmbodiment() {
+    if (!els.stEmbodiment) return;
+    var e = appState.embodiment || {};
+    var rows = [];
+    var safety = e.local_safety;
+    if (safety) {
+      rows.push("<div>净空 前 " + fmtMeters(safety.front_clearance_m) +
+        " · 左 " + fmtMeters(safety.left_clearance_m) +
+        " · 右 " + fmtMeters(safety.right_clearance_m) +
+        " · 后 " + fmtMeters(safety.rear_clearance_m) + "</div>");
+      rows.push('<div class="muted">前扇区 ' + esc(safety.front_state || "--") +
+        " · 可前进 " + (safety.forward_safe ? "是" : "否") +
+        " · LiDAR " + (safety.lidar_fresh ? "新鲜" : "不新鲜") +
+        " · 几何 " + (safety.geometry_validated ? "已校验" : "未校验") +
+        " · 安全转向 左" + Number(safety.safe_turn_left_deg || 0).toFixed(0) +
+        "° 右" + Number(safety.safe_turn_right_deg || 0).toFixed(0) + "°</div>");
+    }
+    var perception = e.perception_quality;
+    if (perception) {
+      rows.push('<div class="muted">相机 ' +
+        (perception.camera_blocked ? '<span class="no">贴障/死角</span>' : "正常") +
+        " · 信息量 " + Number(perception.estimated_information_gain || 0).toFixed(2) +
+        (perception.reason ? " · " + esc(perception.reason) : "") + "</div>");
+    }
+    if (e.stuck_state) {
+      rows.push("<div>卡住状态 <b>" + esc(e.stuck_state) + "</b></div>");
+    }
+    var viewpoint = e.selected_viewpoint;
+    if (viewpoint) {
+      rows.push("<div>选中视点 " + esc(viewpoint.viewpoint_id || "--") +
+        '<span class="muted"> ← ' + esc(viewpoint.frontier_id || "--") + "</span></div>");
+      rows.push('<div class="muted">路径最小净空 ' +
+        fmtMeters(viewpoint.path_min_clearance_m) + " · 站位净空 " +
+        fmtMeters(viewpoint.local_clearance_m) + " · 视野质量 " +
+        Number(viewpoint.view_quality || 0).toFixed(2) + "</div>");
+    }
+    if (Array.isArray(e.safety_rejections) && e.safety_rejections.length) {
+      rows.push('<div class="muted">安全拒绝 ' + e.safety_rejections.length +
+        " 个候选：" + esc((e.safety_rejections[0] || {}).reason || "") + "</div>");
+    }
+    var recovery = e.recovery;
+    if (recovery) {
+      rows.push("<div>脱困 " + esc(recovery.stage || "") + " · " +
+        esc(recovery.trigger || recovery.stuck_state || "") +
+        '<span class="muted"> ' + esc(recovery.reason || "") + "</span></div>");
+      rows.push('<div class="muted">后退 ' +
+        (recovery.backward_dx_m == null ? "不允许" : fmtMeters(recovery.backward_dx_m)) +
+        " · 脱困转向 " + (recovery.escape_rotation_deg == null ? "--" :
+          Number(recovery.escape_rotation_deg).toFixed(0) + "°") +
+        " · 已执行 " + esc(recovery.executed || "无") + "</div>");
+    }
+    var approach = e.target_approach;
+    if (approach) {
+      rows.push("<div>目标接近 <b>" + esc(approach.status || "--") + "</b>" +
+        (approach.reached ? ' <span class="ok">已到达</span>'
+                          : ' <span class="muted">未到达</span>') + "</div>");
+      rows.push('<div class="muted">距离 ' + fmtMeters(approach.depth_m) +
+        " · 方位 " + (approach.bearing_deg == null ? "--" :
+          Number(approach.bearing_deg).toFixed(1) + "°") +
+        " · 空间质量 " + esc(approach.spatial_quality || "--") +
+        " · 期望 standoff " + fmtMeters(approach.desired_standoff_m) + "</div>");
+      rows.push('<div class="muted">第 ' + (approach.steps || 0) + " 步 · " +
+        esc(approach.action || "") + " · " +
+        esc(approach.reason || approach.decision_reason || "") + "</div>");
+    }
+    els.stEmbodiment.innerHTML = rows.length ? rows.join("")
+      : '<span class="muted">等待局部安全证据…</span>';
   }
 
   function renderObservation() {
@@ -977,13 +1096,37 @@
     }).join("");
   }
 
+  // 计划书 §5.3: a logical turn goal is executed as several bounded primitives.
+  // Show the logical goal, the segment progress and the accumulated measured
+  // yaw as one line instead of mixing the logical goal with one primitive.
+  function turnProgressText(payload) {
+    var req = payload.requested_motion || {};
+    var obs = payload.observed_motion || {};
+    var total = req.requested_total_deg;
+    if (total === undefined || total === null) return "";
+    var count = Number(req.segment_count || 0);
+    var index = Number(req.segment_index || 0);
+    var done = obs.observed_total_deg;
+    var text = (Number(total) >= 0 ? "左转" : "右转") +
+      Math.abs(Number(total)).toFixed(0) + "°";
+    if (count > 0) text += "（" + index + "/" + count + "";
+    if (done !== undefined && done !== null) {
+      text += (count > 0 ? "，" : "（") + "已完成" +
+        Math.abs(Number(done)).toFixed(1) + "°";
+    }
+    if (count > 0 || (done !== undefined && done !== null)) text += "）";
+    return text;
+  }
+
   function goalDetailText(g) {
     if (g.semantic_reason) return g.semantic_reason;
     switch (g.goal_type) {
       case "ROTATE_VIEW": {
         var dyaw = g.relative_dyaw;
         if (dyaw === undefined || dyaw === null) return "旋转观察";
-        return "旋转观察 " + Math.abs(Number(dyaw)).toFixed(0) + "° " + (dyaw > 0 ? "右侧" : "左侧");
+        // Positive relative_dyaw increases yaw, i.e. a LEFT turn.
+        return "旋转观察 " + (Number(dyaw) >= 0 ? "左转" : "右转") +
+          Math.abs(Number(dyaw)).toFixed(0) + "°";
       }
       case "RELATIVE_MOVE": {
         var dx = g.relative_dx;

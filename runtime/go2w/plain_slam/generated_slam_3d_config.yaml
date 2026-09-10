@@ -10,3 +10,4 @@ slam_3d_node:
     loop_edges_topic: /go2w/slam/pose_graph_loop_edges
     graph_poses_topic: /go2w/slam/pose_graph_poses
     map_frame: pslam_map
+    odom_frame: pslam_odom

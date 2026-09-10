@@ -292,6 +292,11 @@ def build_slam_runtime(result: dict[str, Any]) -> dict[str, Any]:
                 "loop_edges_topic": topics.get("graph_loop_edges"),
                 "graph_poses_topic": topics.get("graph_poses"),
                 "map_frame": frames.get("map"),
+                # 计划书 §5.1：TF 树必须只有一套权威 frame。少了这一行，
+                # slam_3d_node 会用上游默认 "odom" 广播 pslam_map->odom，
+                # 而 plain_slam_odom_adapter 发布的 odom_base 在 pslam_odom，
+                # 两条链对不上，T_map_base 永远拼不出来（2026-09-08 实测）。
+                "odom_frame": frames.get("odom"),
             }
         }
     }

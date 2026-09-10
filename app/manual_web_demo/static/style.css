@@ -363,6 +363,8 @@ button.danger { background: var(--yellow) !important; color: #1a1200 !important;
 .slam3d-axis i { font-style: normal; font-weight: 800; }
 .axis-x { color: #fb7185; } .axis-y { color: #4ade80; } .axis-z { color: #60a5fa; }
 .slam3d-safety { margin-top: 6px; font-size: 10px; color: #94a3b8; text-align: right; }
+.slam3d-capacity { margin-top: 6px; font-size: 11px; color: #cbd5f5; line-height: 1.5; }
+.slam3d-capacity.degraded { color: #fca5a5; }
 .map-node-detail {
   position: absolute; right: 12px; top: 36px; z-index: 5;
   background: rgba(16, 20, 24, 0.95); border: 1px solid var(--accent);

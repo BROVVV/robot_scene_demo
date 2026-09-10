@@ -12,8 +12,9 @@ namespace go2w_motion_control {
 MotionStateMonitor::MotionStateMonitor(rclcpp::Node *node,
                                        const std::string &sport_topic,
                                        const std::string &low_topic,
-                                       bool require_low_state)
-    : require_low_state_(require_low_state) {
+                                       bool require_low_state,
+                                       double wheel_radius_m)
+    : wheel_radius_m_(wheel_radius_m), require_low_state_(require_low_state) {
   // Keep high-rate state subscriptions off the Action/Service executor.  The
   // latter is deliberately single-threaded to avoid a Foxy rclcpp_action
   // readiness race.  A dedicated state-only executor lets a blocking safety
@@ -119,6 +120,23 @@ void MotionStateMonitor::OnLowState(
   }
   state_.wheel_q = q;
   state_.wheel_dq = dq;
+  if (distance_active_) {
+    if (previous_wheel_q_valid_) {
+      double mean_delta = 0.0;
+      for (size_t index = 0; index < q.size(); ++index) {
+        mean_delta += q[index] - previous_wheel_q_[index];
+      }
+      mean_delta /= static_cast<double>(q.size());
+      // SportModeState.velocity is zero on this Go2-W firmware even while
+      // Move(1008) is active.  Once LowState is relayed locally, use the
+      // four-wheel encoder increment as the action's distance estimate.
+      if (std::isfinite(mean_delta)) {
+        estimated_distance_ += std::abs(mean_delta) * wheel_radius_m_;
+      }
+    }
+    previous_wheel_q_ = q;
+    previous_wheel_q_valid_ = true;
+  }
   if (evidence_active_) {
     evidence_q_.push_back(q);
     evidence_dq_.push_back(dq);
@@ -229,6 +247,8 @@ void MotionStateMonitor::ResetDistance() {
   estimated_distance_ = 0.0;
   previous_distance_time_ = {};
   previous_speed_ = 0.0;
+  previous_wheel_q_valid_ = false;
+  previous_wheel_q_.fill(0.0);
   distance_active_ = true;
 }
 

@@ -52,12 +52,14 @@ fi
 # intentional: CycloneDDS rejects a name+address pair when the NIC has
 # multiple addresses.
 if [[ -z "${GO2W_HOST_IP:-}" ]]; then
+  # 网卡不存在时 ip 会返回非零；调用方多半开了 pipefail，这里不能让整段静默退出，
+  # 必须走到下面那条明确的 ERROR。
   GO2W_HOST_IP="$(ip -4 -o address show dev "$GO2W_INTERFACE" 2>/dev/null \
-    | awk '$4 ~ /^192[.]168[.]123[.][0-9]+\// {sub("/.*", "", $4); print $4; exit}')"
+    | awk '$4 ~ /^192[.]168[.]123[.][0-9]+\// {sub("/.*", "", $4); print $4; exit}' || true)"
 fi
 if [[ -z "${GO2W_HOST_IP:-}" ]]; then
   GO2W_HOST_IP="$(ip route get 192.168.123.18 2>/dev/null \
-    | awk '{for (i=1; i<=NF; i++) if ($i == "src") {print $(i+1); exit}}')"
+    | awk '{for (i=1; i<=NF; i++) if ($i == "src") {print $(i+1); exit}}' || true)"
 fi
 if [[ ! "${GO2W_HOST_IP:-}" =~ ^192[.]168[.]123[.][0-9]+$ ]]; then
   printf 'ERROR: cannot resolve a 192.168.123.x host address on %s (got: %s)\n' \
@@ -67,9 +69,10 @@ fi
 
 if [[ -z "${GO2W_UNITREE_SETUP}" ]]; then
   for candidate in \
+    "$HOME/cyclonedds_ws/install/setup.bash" \
+    "$GO2W_UNITREE_ROOT/cyclonedds_ws/install/setup.bash" \
     "$GO2W_PROJECT_ROOT/external/unitree_ros2/cyclonedds_ws/install/setup.bash" \
     "$GO2W_PROJECT_ROOT/external/unitree_ros2/cyclonedds_ws/install_system/setup.bash" \
-    "$GO2W_UNITREE_ROOT/cyclonedds_ws/install/setup.bash" \
     "$HOME/robot/unitree_ros2/cyclonedds_ws/install/setup.bash" \
     "/home/brov/robot/unitree_ros2/cyclonedds_ws/install/setup.bash"; do
     if [[ -f "$candidate" ]]; then
