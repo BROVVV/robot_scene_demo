@@ -18,8 +18,13 @@
   var preview = [];
   var previewDrawable = false;
   var bounds = null;
+  var focusBounds = null;
   var yaw = -0.72;
-  var pitch = 0.63;
+  // 默认接近正俯视。原来的 0.63 rad（36°）斜视下，投影式
+  // vertical = cos(pitch)*dz - sin(pitch)*ry 里 sin(0.63)=0.59 把"远处的低点"
+  // 和"近处的高点"挤进同一片屏幕区域 —— 用户 2026-09-11 描述的"地图像把很多次
+  // 建的图重叠在一起、角度没对齐"就是这个，不是数据里有重影（分层渲染已证）。
+  var pitch = 1.35;
   var zoom = 1.0;
   var dragging = false;
   var lastX = 0;
@@ -41,8 +46,12 @@
   }
 
   function centerAndSpan() {
-    var min = bounds && bounds.min || [-5, -5, -1];
-    var max = bounds && bounds.max || [5, 5, 2];
+    // focus_bounds（轨迹 bbox + 边距，由 webui_map_snapshot_writer.py 给）是
+    // "狗真正建过图的区域"。用它定画幅，房间占约 60%；用点云 bbox 只有 26%，
+    // 剩下的画幅全被 12 m 内的走廊占掉，细节看不清。
+    var frame = focusBounds && focusBounds.min ? focusBounds : bounds;
+    var min = frame && frame.min || [-5, -5, -1];
+    var max = frame && frame.max || [5, 5, 2];
     var center = [
       (Number(min[0]) + Number(max[0])) / 2,
       (Number(min[1]) + Number(max[1])) / 2,
@@ -223,6 +232,7 @@
     points = snapshot.points;
     objects = Array.isArray(snapshot.objects) ? snapshot.objects : [];
     bounds = snapshot.bounds || bounds;
+    focusBounds = snapshot.focus_bounds || null;
     var scan = snapshot.preview || {};
     // §9.1：pslam_odom 的 scan 和 pslam_map 的地图没有带时间戳的变换之前不许
     // 画在同一个坐标系里，所以只有两个 frame 相同时才允许显示调试层。
