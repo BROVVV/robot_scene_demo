@@ -21,6 +21,7 @@ from collections import Counter
 
 import numpy as np
 import rclpy
+from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.qos import (DurabilityPolicy, HistoryPolicy, QoSProfile,
                        ReliabilityPolicy)
@@ -69,9 +70,49 @@ class WebuiSnapshotWriter(Node):
         #   max_range_m      —— 去掉远处噪声/窗外散点
         #   min_range_m      —— 去掉机身自遮挡的近点
         #   voxel_size_m     —— 体素降采样，压掉重复叠加的冗余点
+        #   min_z_m/max_z_m  —— 高度过滤。原点在雷达。2026-09-11 实测：
+        #     地面在 z≈-0.23（低层点拟合平面 z@原点=-0.234，倾角仅 0.08°，
+        #     说明不是整体倾斜；但它不是一张干净平面，而是 -0.336 / -0.097
+        #     两张相距 0.24 m 的平行面，残差 std 0.13 m）。
+        #     俯视投影时地面回波把房间内部填成一整团，z<0 的点占 30%，
+        #     完全不提供结构信息，只会糊住画面。默认取 0.15（在两张地面
+        #     之上、家具与墙之下）；要连地面一起看就设回 -0.45。
+        #     上限 2.80 去掉天花板与灯。
         self.declare_parameter("max_range_m", 25.0)
         self.declare_parameter("min_range_m", 1.0)
         self.declare_parameter("voxel_size_m", 0.05)
+        self.declare_parameter("min_z_m", 0.15)
+        self.declare_parameter("max_z_m", 2.80)
+        # 轨迹距离过滤 —— 这是唯一有物理依据的幽灵点判据。
+        # 2026-09-11 实测（用户遥控走完房间后）：
+        #   单帧 /go2w/slam/deskewed_scan 最远只到 9.9 m（半径 p50=1.9 p99=6.4），
+        #   而累积 /go2w/slam/map_3d 铺到 x[-60.9,27.6] y[-59.2,34.4]。
+        #   地图 = 45 个关键帧点云按优化位姿摆放的并集，其中的误回环会把整帧
+        #   点云扔到几十米外 —— 密度过滤分不掉它们（它们自己就是密云，
+        #   0.5 m 邻域 p50 有 68 个邻居），但"被观测到的点必在某个位姿的
+        #   雷达量程内"是硬约束。实测距轨迹 >12 m 的点占 3.9%（5803 个），
+        #   却把 WebUI 的自动缩放宽到 60 m，房间只占画幅 7%，这才是"发糊"。
+        # 不给 0 表示不启用；轨迹点不足 20 个时也不启用（避免半截轨迹误删真点）。
+        self.declare_parameter("odom_topic", "/go2w/slam/odom_base")
+        self.declare_parameter("trajectory_radius_m", 12.0)
+        # 2026-09-11 二次核验（分层渲染）修正了上面的判断：>12 m 的点只占
+        # 3.9%，砍掉后画幅 60 m→27 m，但房间仍只占 26%。分层画出来才看清：
+        # 5-12 m 那层是**空间上完全分离的走廊结构**（矩形边界、栏杆条纹），
+        # 不是与房间错位叠加的整帧幽灵；0-5 m 那层本身就是一张轮廓清晰的
+        # 房间图。所以"发糊"的主因不在数据，在渲染（见下面的 focus_bounds）。
+        # 过滤器保留：它挡的是真实的误回环离群帧，只是量没当初以为的大。
+        #
+        # 画幅聚焦边距（focus_bounds）。WebUI 用点的 bbox 自动定缩放，而地图
+        # 含 12 m 内的走廊，bbox 有 27×31 m，房间（8 m）只占画幅 26%，细节
+        # 全挤在一起。轨迹是"狗真正建过图的区域"，拿轨迹 bbox 加这个边距当
+        # 画幅，房间能占约 60%。给 0 表示不提供（前端退回用点云 bbox）；
+        # 轨迹不足 20 点时同样不提供。
+        self.declare_parameter("focus_margin_m", 3.0)
+        # 轨迹落盘：writer 重启后不至于丢掉整条轨迹（否则要么过滤器失效，
+        # 要么拿半截轨迹误删真点）。SLAM 会话重启后地图换系，旧轨迹会
+        # 让过滤比例飙到接近 100%，由下面的 50% 护栏自动停用。
+        self.declare_parameter("trajectory_path", os.path.join(
+            os.path.dirname(DEFAULT_SNAPSHOT), "slam_map_trajectory.json"))
         # Dataset D 的语义观测（events.jsonl）：把物体标注一并写进快照，
         # WebUI 的三维视图会把这些物体画在地图上（见 static/slam_map_3d.js）。
         self.declare_parameter("objects_events", "")
@@ -83,6 +124,13 @@ class WebuiSnapshotWriter(Node):
         self._max_range = float(self.get_parameter("max_range_m").value)
         self._min_range = float(self.get_parameter("min_range_m").value)
         self._voxel = float(self.get_parameter("voxel_size_m").value)
+        self._min_z = float(self.get_parameter("min_z_m").value)
+        self._max_z = float(self.get_parameter("max_z_m").value)
+        self._traj_radius = float(self.get_parameter("trajectory_radius_m").value)
+        self._trajectory_path = str(self.get_parameter("trajectory_path").value)
+        self._focus_margin = float(self.get_parameter("focus_margin_m").value)
+        self._trajectory_saved = 0
+        self._trajectory: list = self._load_trajectory()
         self._snapshot_path = str(self.get_parameter("snapshot_path").value)
         self._max_points = int(self.get_parameter("max_points").value)
         self._latest = None
@@ -98,8 +146,92 @@ class WebuiSnapshotWriter(Node):
         self.create_subscription(PointCloud2, topic, self._on_cloud, reliable(3))
         self.create_subscription(PointCloud2, topic, self._on_cloud, best_effort(3))
         self.create_subscription(PointCloud2, topic, self._on_cloud, latched(1))
+        odom_topic = str(self.get_parameter("odom_topic").value)
+        if odom_topic and self._traj_radius > 0.0:
+            # plain_slam_odom_adapter 以 BEST_EFFORT 发布；再挂一个 RELIABLE 订阅
+            # 以兼容换成其它发布端的情况（重复帧由 _on_odom 的距离去重吸收）。
+            self.create_subscription(Odometry, odom_topic, self._on_odom, best_effort(10))
+            self.create_subscription(Odometry, odom_topic, self._on_odom, reliable(10))
+        else:
+            odom_topic = ""
         self.create_timer(float(self.get_parameter("period_s").value), self._flush)
         self.get_logger().info(f"snapshot writer: {topic} -> {self._snapshot_path}")
+        if odom_topic:
+            self.get_logger().info(
+                f"trajectory filter: {odom_topic} (radius {self._traj_radius} m)")
+
+    def _focus_bounds(self):
+        """给 WebUI 定画幅的聚焦框（轨迹 bbox + 边距，见参数处说明）。"""
+        if self._focus_margin <= 0.0 or len(self._trajectory) < 20:
+            return None
+        trajectory = np.asarray(self._trajectory, dtype=np.float64)
+        low, high = trajectory.min(axis=0), trajectory.max(axis=0)
+        return {
+            "min": [float(low[0] - self._focus_margin),
+                    float(low[1] - self._focus_margin), self._min_z],
+            "max": [float(high[0] + self._focus_margin),
+                    float(high[1] + self._focus_margin), self._max_z],
+        }
+
+    def _load_trajectory(self) -> list:
+        try:
+            with open(self._trajectory_path, encoding="utf-8") as handle:
+                return [(float(x), float(y)) for x, y in json.load(handle)]
+        except (OSError, ValueError, TypeError):
+            return []
+
+    def _save_trajectory(self) -> None:
+        if len(self._trajectory) == self._trajectory_saved:
+            return
+        try:
+            os.makedirs(os.path.dirname(self._trajectory_path), exist_ok=True)
+            temporary = f"{self._trajectory_path}.tmp"
+            with open(temporary, "w", encoding="utf-8") as handle:
+                json.dump([[round(x, 3), round(y, 3)] for x, y in self._trajectory], handle)
+            os.replace(temporary, self._trajectory_path)
+            self._trajectory_saved = len(self._trajectory)
+        except OSError as error:
+            self.get_logger().warn(f"cannot persist trajectory: {error}")
+
+    def _on_odom(self, message: Odometry) -> None:
+        """记录轨迹（同 pslam_map 系）。0.25 m 去重，避免静止时堆积。"""
+        position = message.pose.pose.position
+        x, y = float(position.x), float(position.y)
+        if self._trajectory:
+            last_x, last_y = self._trajectory[-1]
+            if (x - last_x) ** 2 + (y - last_y) ** 2 < 0.0625:
+                return
+        self._trajectory.append((x, y))
+
+    def _drop_far_from_trajectory(self, points):
+        """丢掉离轨迹超过 _traj_radius 的点（幽灵点判据，见参数处说明）。"""
+        if self._traj_radius <= 0.0 or len(self._trajectory) < 20 or not len(points):
+            return points
+        trajectory = np.asarray(self._trajectory, dtype=np.float64)
+        keep = np.zeros(len(points), dtype=bool)
+        radius2 = self._traj_radius ** 2
+        # 双向分块，内存有界（2000×256 点对）
+        for start in range(0, len(points), 2000):
+            block = points[start:start + 2000, :2]
+            best = np.full(len(block), np.inf)
+            for t0 in range(0, len(trajectory), 256):
+                chunk = trajectory[t0:t0 + 256]
+                delta = block[:, None, :] - chunk[None, :, :]
+                best = np.minimum(best, (delta ** 2).sum(axis=-1).min(axis=1))
+            keep[start:start + 2000] = best <= radius2
+        if not keep.any():
+            return points
+        # 护栏：正常只滤掉个位数百分比；一旦超过一半，说明轨迹与当前地图不同系
+        # （SLAM 会话重启后地图换原点），此时过滤会删掉真地图，直接停用。
+        if (~keep).mean() > 0.5:
+            self.get_logger().warn(
+                f"trajectory filter would drop {100.0 * (~keep).mean():.0f}% of the map "
+                f"— trajectory likely from another SLAM session, filter disabled")
+            return points
+        self.get_logger().info(
+            f"trajectory filter dropped {int((~keep).sum())} ghost point(s) "
+            f"(>{self._traj_radius} m from any pose)")
+        return points[keep]
 
     def _on_cloud(self, message: PointCloud2) -> None:
         self._latest = message
@@ -198,6 +330,12 @@ class WebuiSnapshotWriter(Node):
         # range filter（去掉远处噪声与近处自遮挡）
         radius = np.linalg.norm(points, axis=1)
         points = points[(radius >= self._min_range) & (radius <= self._max_range)]
+        # 高度过滤（去掉地面回波层与天花板/灯，见参数处说明）
+        if len(points):
+            points = points[(points[:, 2] >= self._min_z)
+                            & (points[:, 2] <= self._max_z)]
+        # 轨迹距离过滤（去掉误回环扔到远处的整帧点云，见参数处说明）
+        points = self._drop_far_from_trajectory(points)
         # voxel 降采样（压掉"同一面墙重复叠加"的冗余点，让墙看着更薄更干净）
         if self._voxel > 0.0 and len(points):
             keys = np.floor(points / self._voxel).astype(np.int64)
@@ -232,6 +370,8 @@ class WebuiSnapshotWriter(Node):
             "map_updated_at": self._map_updated_at,
             "bounds": {"min": [float(v) for v in points.min(axis=0)],
                        "max": [float(v) for v in points.max(axis=0)]},
+            # 前端 centerAndSpan() 优先用这个定缩放；null 时退回 bounds。
+            "focus_bounds": self._focus_bounds(),
             "points": [[round(float(p[0]), 3), round(float(p[1]), 3), round(float(p[2]), 3)]
                        for p in points],
             "objects": self._load_objects(),
@@ -246,6 +386,7 @@ class WebuiSnapshotWriter(Node):
             "map_age_seconds": None,
             "preview_age_seconds": None,
         }
+        self._save_trajectory()
         os.makedirs(os.path.dirname(self._snapshot_path), exist_ok=True)
         temporary = f"{self._snapshot_path}.tmp"
         with open(temporary, "w", encoding="utf-8") as handle:

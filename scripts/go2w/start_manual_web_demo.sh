@@ -159,6 +159,10 @@ if [[ "${GO2W_WEBUI_SNAPSHOT_WRITER:-1}" == "1" ]]; then
     -p max_range_m:="${GO2W_WEBUI_SNAPSHOT_MAX_RANGE_M:-25.0}" \
     -p min_range_m:=1.0 \
     -p voxel_size_m:="${GO2W_WEBUI_SNAPSHOT_VOXEL_M:-0.05}" \
+    -p min_z_m:="${GO2W_WEBUI_SNAPSHOT_MIN_Z_M:-0.15}" \
+    -p max_z_m:="${GO2W_WEBUI_SNAPSHOT_MAX_Z_M:-2.80}" \
+    -p trajectory_radius_m:="${GO2W_WEBUI_SNAPSHOT_TRAJ_RADIUS_M:-12.0}" \
+    -p focus_margin_m:="${GO2W_WEBUI_SNAPSHOT_FOCUS_MARGIN_M:-3.0}" \
     -p objects_events:="${snapshot_events}" \
     > "${log_root}/webui_map_snapshot_writer.log" 2>&1 &
   printf '%s\n' "$!" > "${runtime_root}/snapshot_writer.pid"
