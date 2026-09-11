@@ -648,7 +648,7 @@ def run_go2w(args, event_hook=None) -> int:
     except ImportError as exc:
         print(json.dumps({"status": "failed", "error": f"rclpy unavailable: {exc}"}))
         return 2
-    from run_autonomous_loop import AutonomousLoop, PROMPT_MAP  # noqa: E402
+    from run_autonomous_loop import AutonomousLoop  # noqa: E402
     vision_model = str(args.llm_model or get_settings().vision_model)
 
     # Load the repository-owned operator-supervised profile at the real
@@ -742,7 +742,7 @@ def run_go2w(args, event_hook=None) -> int:
     )
 
     try:
-        return _run_go2w_explorer(args, node, policy, PROMPT_MAP, event_hook)
+        return _run_go2w_explorer(args, node, policy, event_hook)
     except Exception as exc:
         # Keep the worker protocol concise, but retain the complete traceback
         # in the ROS log.  A plain errno (especially from a relative runtime
@@ -796,8 +796,9 @@ def run_go2w(args, event_hook=None) -> int:
             rclpy.shutdown()
 
 
-def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
+def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
     import rclpy  # noqa: F401  (used by the observer closure; rclpy.init already done)
+    from run_autonomous_loop import target_prompt  # noqa: E402
     settings = get_settings()
     search_policy = load_search_policy()
     # The CLI/WebUI flag is the per-run authority for whether confirmation is
@@ -897,8 +898,7 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
         partial_threshold=settings.live_search_graph_match_partial_threshold,
         strong_threshold=settings.live_search_graph_match_strong_threshold,
     )
-    prompt = prompt_map.get(args.target.strip(),
-                            f"{args.target.strip()}. {args.target.strip()} object")
+    prompt = target_prompt(args.target)
 
     def analyze_semantic(
         image_path: object,
@@ -910,6 +910,34 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
     ) -> dict:
         if not isinstance(image_path, str):
             raise RuntimeError("semantic observation has no stable image")
+        if getattr(node, "_detector", "llm") == "grounded_sam":
+            # grounded_sam 路线：常驻 GroundedSAM 直接产出带真实 mask 的
+            # scene_objects。VLM 文本产不出 mask，走 VLM 则 box_size 恒为 None。
+            # 该路线不产出 relations（几何关系由 extract_geometric_relations 补）。
+            scene_objects = []
+            for index, obj in enumerate(
+                node._detect(image_path, prompt, env), start=1
+            ):
+                item = dict(obj)
+                item["id"] = f"gsam_obj_{index:03d}"
+                item["category"] = "object"
+                scene_objects.append(item)
+            frame_id_text = str(frame_id or state.get("frame_id", "semantic_live"))
+            return {
+                "image_path": image_path,
+                "frame_id": frame_id_text,
+                "robot_pose": robot_pose,
+                "scene_objects": scene_objects,
+                "scene_relations": [],
+                "source": "grounded_sam_subprocess",
+                "semantic_status": SEMANTIC_STATUS_FRESH_FULL,
+                "semantic_quality": "full",
+                "semantic_source_frame_id": frame_id_text,
+                "semantic_capture_timestamp": time.time(),
+                "semantic_completed_timestamp": time.time(),
+                "semantic_age_ms": 0.0,
+                "semantic_source_pose": robot_pose,
+            }
         # 每次请求使用独立 output 文件，避免并发 Full Semantic 互相覆盖。
         request_id = request_id or f"{time.time_ns()}_{os.getpid()}"
         request_dir = PROJECT_ROOT / "runtime/go2w/vlm_requests"
@@ -1806,11 +1834,14 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                     spatial_provenance = camera_provider.transform_provenance()
                 except Exception:  # noqa: BLE001
                     spatial_provenance = {}
+            # image_stamp 在下面的 map 投影和末尾的 enrich 两处都要用。投影块会
+            # 因 spatial_pose 缺失而整体跳过（运动后位姿校验失败时就是这样），
+            # 所以必须在这里先定值，否则 enrich 会撞 UnboundLocalError。
+            image_stamp = getattr(observation, "timestamp", None)
             # Phase 2: write map_xyz into each localized observation BEFORE
             # entity association so cross-view fusion can use world coords.
             if camera_provider is not None and spatial_pose is not None:
                 map_projector = getattr(camera_provider, "camera_point_to_map", None)
-                image_stamp = getattr(observation, "timestamp", None)
                 for obs_item in localized:
                     if getattr(obs_item, "camera_xyz", None) is None:
                         continue
@@ -1842,6 +1873,16 @@ def _run_go2w_explorer(args, node, policy, prompt_map, event_hook=None) -> int:
                     if mapped is not None:
                         obs_item.map_xyz = mapped
                         obs_item.spatial_quality = provider_quality
+                        if getattr(obs_item, "box_center_camera", None) is not None:
+                            try:
+                                box_center = map_projector(
+                                    obs_item.box_center_camera, image_stamp
+                                )
+                            except Exception:  # noqa: BLE001
+                                box_center = None
+                            obs_item.box_center_map = box_center
+                            # 平面 yaw 变换下 size 不变（计划书 §9.1）。
+                            obs_item.box_size_map = obs_item.box_size_camera
                         # 2026-09-09 P2 诊断：物体侧看到的 quality 到底是什么。
                         node.get_logger().info(
                             "object quality: label="

@@ -223,6 +223,8 @@ def _from_payload(payload: dict[str, Any], *, robot_pose: dict[str, Any] | None,
             attributes=list(item.get("attributes") or []) + ([str(item["color"])] if item.get("color") else []),
             navigation_role=str(item.get("navigation_role") or "landmark"),
             is_landmark=True,
+            mask_rle=_mask_rle(item.get("mask_rle")),
+            mask_size=_mask_size(item.get("mask_size")),
         ))
     relations: list[FrameRelation] = []
     for item in raw_relations:
@@ -387,6 +389,25 @@ def _bbox_horizontal(bbox: list[float] | None) -> str:
         return "unknown"
     center = (float(bbox[0]) + float(bbox[2])) / 2.0
     return "left" if center < 0.4 else "right" if center > 0.6 else "center"
+
+
+def _mask_rle(value: Any) -> list[list[int]] | None:
+    if not isinstance(value, list) or not value:
+        return None
+    runs: list[list[int]] = []
+    for run in value:
+        if isinstance(run, list) and len(run) == 3:
+            runs.append([int(run[0]), int(run[1]), int(run[2])])
+    return runs or None
+
+
+def _mask_size(value: Any) -> tuple[int, int] | None:
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        return None
+    try:
+        return (int(value[0]), int(value[1]))
+    except (TypeError, ValueError):
+        return None
 
 
 def _signature(observation: SemanticObservation) -> str:

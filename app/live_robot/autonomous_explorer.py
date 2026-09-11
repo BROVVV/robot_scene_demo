@@ -1067,7 +1067,20 @@ class AutonomousExplorer:
                        selected_goal_id=scored.goal.goal_id,
                        planning_cycles=planning_cycles)
             source = str(goal.provenance.get("source", "unknown"))
-            if source in {"semantic_navigation_directive", "semantic_anchor"}:
+            # --spatial-v2 下候选由 spatial_candidate_generator 产出，V1 的 source
+            # 白名单匹配不上：source 是 local_goal_executor，路由 goal 甚至没写
+            # source。语义与否要看长期意图 intent_type。
+            # 形态有两种：run_semantic_exploration.py 的 provenance 覆盖写的是
+            # intent.to_dict()，而 LocalGoalExecutor 早退分支保留的是裸字符串
+            # （local_goal_executor.py 的 "intent": intent.intent_type）。
+            intent = goal.provenance.get("intent")
+            intent_type = intent.get("intent_type") if isinstance(intent, dict) else str(intent or "")
+            # EXPLORE_FRONTIER 是前沿几何+代价打分，仍是兜底；其余三种（接近/复核
+            # 目标、检查语义锚点）都是语义驱动。
+            semantic_intent = intent_type in {
+                "APPROACH_TARGET", "VERIFY_TARGET", "INSPECT_ANCHOR_REGION"}
+            if (source in {"semantic_navigation_directive", "semantic_anchor"}
+                    or semantic_intent):
                 semantic_goal_selection_count += 1
             else:
                 fallback_goal_selection_count += 1

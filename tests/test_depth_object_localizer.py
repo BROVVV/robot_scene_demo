@@ -20,6 +20,11 @@ def _write_depth(path: Path, depth_mm: np.ndarray) -> None:
     cv2.imwrite(str(path), depth_mm.astype(np.uint16))
 
 
+def _rect_mask_rle(row0: int, col0: int, rows: int, cols: int) -> list[list[int]]:
+    """[row, start_x, length] 行游程编码一个实心矩形（计划书 §5）。"""
+    return [[row0 + i, col0, cols] for i in range(rows)]
+
+
 def _frame(tmp_path: Path, depth_mm: np.ndarray) -> RGBDFrame:
     depth_path = tmp_path / "depth.png"
     _write_depth(depth_path, depth_mm)
@@ -137,3 +142,66 @@ def test_dominant_far_background_does_not_override_inner_foreground(tmp_path: Pa
     )
 
     assert out[0].depth_m == pytest.approx(1.2, abs=0.02)
+
+
+# --- 计划书 §37：mask 深度采样 + 3D box + bbox fallback -----------------------
+
+
+def test_mask_depth_isolates_foreground_from_background(tmp_path: Path):
+    """§30 场景：1.5m 目标从 3.5m 背景中提取，mask 只采目标深度。"""
+    depth_mm = np.full((100, 100), 3500, dtype=np.uint16)
+    depth_mm[40:60, 40:60] = 1500
+    frame = _frame(tmp_path, depth_mm)
+    objects = [{
+        "label": "red fire extinguisher",
+        "label_zh": "灭火器",
+        # bbox 故意覆盖背景，验证 mask 能纠正 bbox 的背景污染。
+        "bbox_2d": [0.05, 0.05, 0.95, 0.95],
+        "mask_rle": _rect_mask_rle(40, 40, 20, 20),
+        "mask_size": [100, 100],
+        "confidence": 0.9,
+    }]
+    out = DepthObjectLocalizer().localize(objects, frame)
+    assert len(out) == 1
+    assert out[0].spatial_quality == SPATIAL_QUALITY_CAMERA_LOCAL
+    assert out[0].depth_m == pytest.approx(1.5, abs=0.02)
+    assert out[0].provenance["depth_source"] == "sam2_mask"
+
+
+def test_mask_missing_falls_back_to_bbox_and_contaminates(tmp_path: Path):
+    """无 mask 时退回 bbox 分支：dominant depth 被背景污染为 3.5m（对比基线）。"""
+    depth_mm = np.full((100, 100), 3500, dtype=np.uint16)
+    depth_mm[40:60, 40:60] = 1500
+    frame = _frame(tmp_path, depth_mm)
+    out = DepthObjectLocalizer().localize(
+        [{"label": "obj", "bbox_2d": [0.05, 0.05, 0.95, 0.95]}],
+        frame,
+    )
+    assert out[0].provenance["depth_source"] == "bbox"
+    assert out[0].box_center_camera is None
+    assert out[0].box_size_camera is None
+    assert out[0].depth_m == pytest.approx(3.5, abs=0.02)
+
+
+def test_mask_produces_3d_box_center_and_size(tmp_path: Path):
+    """mask 定位输出 box_center_camera / box_size_camera（§8.3 AABB）。"""
+    depth_mm = np.full((100, 100), 0, dtype=np.uint16)
+    depth_mm[40:60, 40:60] = 2000
+    frame = _frame(tmp_path, depth_mm)
+    objects = [{
+        "label": "box",
+        "bbox_2d": [0.35, 0.35, 0.65, 0.65],
+        "mask_rle": _rect_mask_rle(40, 40, 20, 20),
+        "mask_size": [100, 100],
+    }]
+    out = DepthObjectLocalizer().localize(objects, frame)
+    obs = out[0]
+    assert obs.box_center_camera is not None
+    assert obs.box_size_camera is not None
+    # fx=fy=50, cx=cy=50：中心像素 (49.5, 49.5) -> 3D ≈ (0, 0, 2.0)。
+    assert obs.box_center_camera[2] == pytest.approx(2.0, abs=0.02)
+    # 20px 宽 @ 2m 深 / 50 焦距 = 0.8m（p05/p95 略缩，给容差）。
+    assert obs.box_size_camera[0] == pytest.approx(0.76, abs=0.08)
+    assert obs.box_size_camera[1] == pytest.approx(0.76, abs=0.08)
+    # 深度均匀 → 高度接近 0。
+    assert obs.box_size_camera[2] == pytest.approx(0.0, abs=0.1)

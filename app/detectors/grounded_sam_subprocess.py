@@ -1,4 +1,4 @@
-"""Grounding DINO + SAM2 detector via an external Python environment."""
+"""Grounding DINO + SAM2 detector via one persistent external Python worker."""
 
 from __future__ import annotations
 
@@ -47,6 +47,8 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
         self.llm_client = llm_client
         self.grounding_prompt_plan: GroundingPromptPlan | None = None
         self.grounding_prompt_retry_plan: GroundingPromptPlan | None = None
+        self._worker: subprocess.Popen | None = None
+        self._worker_stderr: Any = None
 
     def detect(self, image_path: str, target_text: str) -> list[DetectedObject]:
         return self.detect_with_dynamic_terms(image_path, target_text, [])
@@ -61,56 +63,159 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
         if not image.is_file():
             raise FileNotFoundError(f"Image file not found: {image_path}")
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            output_path = Path(tmp_dir) / "detections.json"
-            env = os.environ.copy()
-            if self.settings.grounded_sam_pythonpath:
-                existing_pythonpath = env.get("PYTHONPATH")
-                env["PYTHONPATH"] = (
-                    self.settings.grounded_sam_pythonpath
-                    if not existing_pythonpath
-                    else f"{self.settings.grounded_sam_pythonpath}:{existing_pythonpath}"
-                )
+        self._ensure_worker()
 
-            prompt_text = " || ".join(self._build_prompts(target_text, dynamic_terms))
-            if self.settings.grounding_prompt_require_non_empty and not prompt_text.strip():
-                raise GroundingPromptError(
-                    "GroundingDINO prompt is empty. Detection was not executed."
-                )
-            payload = self._run_worker(
-                image=image,
-                output_path=output_path,
-                text_prompt=prompt_text,
-                env=env,
-                box_threshold=self.settings.grounding_dino_box_threshold,
-                text_threshold=self.settings.grounding_dino_text_threshold,
+        prompt_text = " || ".join(self._build_prompts(target_text, dynamic_terms))
+        if self.settings.grounding_prompt_require_non_empty and not prompt_text.strip():
+            raise GroundingPromptError(
+                "GroundingDINO prompt is empty. Detection was not executed."
             )
-            if not payload.get("objects"):
-                payload = self._maybe_retry_prompt_expansion(
-                    image=image,
-                    output_path=output_path,
-                    target_text=target_text,
-                    previous_prompt=prompt_text,
-                    previous_payload=payload,
-                    env=env,
-                )
-            if not payload.get("objects"):
-                payload = self._maybe_retry_high_recall_thresholds(
-                    image=image,
-                    output_path=output_path,
-                    text_prompt=(
-                        self.grounding_prompt_retry_plan.grounding_prompt
-                        if self.grounding_prompt_retry_plan is not None
-                        else prompt_text
-                    ),
-                    previous_payload=payload,
-                    env=env,
-                )
+        payload = self._request(
+            image=image,
+            text_prompt=prompt_text,
+            box_threshold=self.settings.grounding_dino_box_threshold,
+            text_threshold=self.settings.grounding_dino_text_threshold,
+        )
+        if not payload.get("objects"):
+            payload = self._maybe_retry_prompt_expansion(
+                image=image,
+                target_text=target_text,
+                previous_prompt=prompt_text,
+                previous_payload=payload,
+            )
+        if not payload.get("objects"):
+            payload = self._maybe_retry_high_recall_thresholds(
+                image=image,
+                text_prompt=(
+                    self.grounding_prompt_retry_plan.grounding_prompt
+                    if self.grounding_prompt_retry_plan is not None
+                    else prompt_text
+                ),
+                previous_payload=payload,
+            )
 
         return [
             _to_detected_object(item, self.target_profile)
             for item in payload.get("objects", [])
         ]
+
+    def close(self) -> None:
+        worker = self._worker
+        if worker is None:
+            return
+        self._worker = None
+        try:
+            if worker.stdin is not None:
+                worker.stdin.close()
+            worker.terminate()
+            worker.wait(timeout=5)
+        except Exception:
+            try:
+                worker.kill()
+            except Exception:
+                pass
+        if self._worker_stderr is not None:
+            try:
+                self._worker_stderr.close()
+            except Exception:
+                pass
+            self._worker_stderr = None
+
+    def _ensure_worker(self) -> None:
+        if self._worker is not None and self._worker.poll() is None:
+            return
+        self._worker = None
+        env = os.environ.copy()
+        if self.settings.grounded_sam_pythonpath:
+            existing_pythonpath = env.get("PYTHONPATH")
+            env["PYTHONPATH"] = (
+                self.settings.grounded_sam_pythonpath
+                if not existing_pythonpath
+                else f"{self.settings.grounded_sam_pythonpath}:{existing_pythonpath}"
+            )
+        command = [
+            self.settings.grounded_sam_python,
+            str(Path(__file__).with_name("grounded_sam_worker.py")),
+            "--serve",
+            "--root",
+            self.settings.grounded_sam_root,
+            "--grounding-config",
+            self.settings.grounding_dino_config,
+            "--grounding-checkpoint",
+            self.settings.grounding_dino_checkpoint,
+            "--sam2-config",
+            self.settings.sam2_config,
+            "--sam2-checkpoint",
+            self.settings.sam2_checkpoint,
+            "--device",
+            self.settings.detection_device,
+        ]
+        if not self.settings.enable_sam2:
+            command.append("--disable-sam2")
+        self._worker_stderr = tempfile.NamedTemporaryFile(
+            prefix="grounded_sam_worker_", suffix=".log", delete=False
+        )
+        self._worker = subprocess.Popen(
+            command,
+            cwd=self.settings.grounded_sam_root,
+            env=env,
+            text=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=self._worker_stderr,
+        )
+
+    def _request(
+        self,
+        *,
+        image: Path,
+        text_prompt: str,
+        box_threshold: float,
+        text_threshold: float,
+    ) -> dict[str, Any]:
+        self._ensure_worker()
+        request = {
+            "image": str(image),
+            "text_prompt": text_prompt,
+            "box_threshold": box_threshold,
+            "text_threshold": text_threshold,
+            "max_objects": self.settings.max_detected_objects,
+        }
+        assert self._worker is not None and self._worker.stdin is not None
+        self._worker.stdin.write(json.dumps(request, ensure_ascii=False) + "\n")
+        self._worker.stdin.flush()
+        return self._read_response()
+
+    def _read_response(self) -> dict[str, Any]:
+        assert self._worker is not None and self._worker.stdout is not None
+        while True:
+            line = self._worker.stdout.readline()
+            if line == "":
+                raise DetectorRuntimeError(self._worker_died_message())
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # library stdout noise, not a response
+            if "error" in payload:
+                raise DetectorRuntimeError(
+                    "Grounding DINO/SAM2 worker error: " + str(payload["error"])
+                )
+            return payload
+
+    def _worker_died_message(self) -> str:
+        tail = ""
+        if self._worker_stderr is not None:
+            try:
+                self._worker_stderr.seek(0)
+                tail = self._worker_stderr.read()[-2000:]
+            except Exception:
+                tail = ""
+            if isinstance(tail, bytes):
+                tail = tail.decode("utf-8", errors="replace")
+        return "Grounding DINO/SAM2 worker exited unexpectedly. stderr tail:\n" + tail
 
     def _build_prompts(self, target_text: str, dynamic_terms: list[str]) -> list[str]:
         if (
@@ -168,85 +273,13 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
             )
         return prompts
 
-    def _run_worker(
-        self,
-        *,
-        image: Path,
-        output_path: Path,
-        text_prompt: str,
-        env: dict[str, str],
-        box_threshold: float,
-        text_threshold: float,
-    ) -> dict[str, Any]:
-        command = [
-            self.settings.grounded_sam_python,
-            str(Path(__file__).with_name("grounded_sam_worker.py")),
-            "--image",
-            str(image),
-            "--output",
-            str(output_path),
-            "--root",
-            self.settings.grounded_sam_root,
-            "--text-prompt",
-            text_prompt,
-            "--grounding-config",
-            self.settings.grounding_dino_config,
-            "--grounding-checkpoint",
-            self.settings.grounding_dino_checkpoint,
-            "--box-threshold",
-            str(box_threshold),
-            "--text-threshold",
-            str(text_threshold),
-            "--sam2-config",
-            self.settings.sam2_config,
-            "--sam2-checkpoint",
-            self.settings.sam2_checkpoint,
-            "--max-objects",
-            str(self.settings.max_detected_objects),
-            "--device",
-            self.settings.detection_device,
-        ]
-        if not self.settings.enable_sam2:
-            command.append("--disable-sam2")
-        try:
-            completed = subprocess.run(
-                command,
-                cwd=self.settings.grounded_sam_root,
-                env=env,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=self.settings.detector_timeout_seconds,
-                check=False,
-            )
-        except subprocess.TimeoutExpired as exc:
-            raise DetectorRuntimeError(
-                "Grounding DINO/SAM2 detector timed out after "
-                f"{self.settings.detector_timeout_seconds:.1f}s. "
-                "建议减少开放词表、降低输入分辨率或暂时关闭 SAM2。"
-            ) from exc
-        if completed.returncode != 0:
-            raise DetectorRuntimeError(
-                "Grounding DINO/SAM2 detector failed.\n"
-                f"Command: {' '.join(command)}\n"
-                f"stdout:\n{completed.stdout}\n"
-                f"stderr:\n{completed.stderr}"
-            )
-        if not output_path.is_file():
-            raise DetectorRuntimeError(
-                "Grounding DINO/SAM2 detector finished but did not create output JSON."
-            )
-        return json.loads(output_path.read_text(encoding="utf-8"))
-
     def _maybe_retry_prompt_expansion(
         self,
         *,
         image: Path,
-        output_path: Path,
         target_text: str,
         previous_prompt: str,
         previous_payload: dict[str, Any],
-        env: dict[str, str],
     ) -> dict[str, Any]:
         if (
             self.grounding_prompt_plan is None
@@ -275,11 +308,9 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
             self.grounding_prompt_retry_plan,
             self.settings.grounding_prompt_retry_debug_output,
         )
-        return self._run_worker(
+        return self._request(
             image=image,
-            output_path=output_path,
             text_prompt=self.grounding_prompt_retry_plan.grounding_prompt,
-            env=env,
             box_threshold=self.settings.grounding_dino_box_threshold,
             text_threshold=self.settings.grounding_dino_text_threshold,
         )
@@ -288,10 +319,8 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
         self,
         *,
         image: Path,
-        output_path: Path,
         text_prompt: str,
         previous_payload: dict[str, Any],
-        env: dict[str, str],
     ) -> dict[str, Any]:
         if not (
             self.settings.enable_gdino_high_recall
@@ -304,11 +333,9 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
         ):
             return previous_payload
         try:
-            return self._run_worker(
+            return self._request(
                 image=image,
-                output_path=output_path,
                 text_prompt=text_prompt,
-                env=env,
                 box_threshold=self.settings.grounding_dino_high_recall_box_threshold,
                 text_threshold=self.settings.grounding_dino_high_recall_text_threshold,
             )
@@ -372,9 +399,30 @@ def _to_detected_object(
             if item.get("mask_area_ratio") is None
             else _clamp(float(item["mask_area_ratio"]))
         ),
+        mask_rle=_mask_rle(item.get("mask_rle")),
+        mask_size=_mask_size(item.get("mask_size")),
         source="grounding_dino_sam2",
         source_prompt_term=str(item.get("source_prompt_term") or label),
     )
+
+
+def _mask_rle(value: Any) -> list[list[int]] | None:
+    if not isinstance(value, list) or not value:
+        return None
+    runs: list[list[int]] = []
+    for run in value:
+        if isinstance(run, list) and len(run) == 3:
+            runs.append([int(run[0]), int(run[1]), int(run[2])])
+    return runs or None
+
+
+def _mask_size(value: Any) -> tuple[int, int] | None:
+    if not isinstance(value, list) or len(value) != 2:
+        return None
+    try:
+        return (int(value[0]), int(value[1]))
+    except (TypeError, ValueError):
+        return None
 
 
 def _clamp(value: float) -> float:
@@ -383,11 +431,11 @@ def _clamp(value: float) -> float:
 
 def _matches_any_term(label: str, terms: list[str]) -> bool:
     normalized_label = " ".join(
-        re.sub(r"[^a-z0-9\u4e00-\u9fff]+", " ", label.lower()).split()
+        re.sub(r"[^a-z0-9一-鿿]+", " ", label.lower()).split()
     )
     for term in terms:
         normalized_term = " ".join(
-            re.sub(r"[^a-z0-9\u4e00-\u9fff]+", " ", term.lower()).split()
+            re.sub(r"[^a-z0-9一-鿿]+", " ", term.lower()).split()
         )
         if normalized_term and normalized_term in normalized_label:
             return True

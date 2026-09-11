@@ -182,6 +182,8 @@ class SceneObject(StrictBaseModel):
     detector_score: Confidence | None = Field(default=None, ge=0.0, le=1.0)
     text_score: Confidence | None = Field(default=None, ge=0.0, le=1.0)
     mask_area_ratio: Confidence | None = Field(default=None, ge=0.0, le=1.0)
+    mask_rle: list[list[int]] | None = None
+    mask_size: tuple[int, int] | None = None
     crop_path: str | None = None
     crop_verify: dict[str, Any] | None = None
     final_score: Confidence | None = Field(default=None, ge=0.0, le=1.0)
