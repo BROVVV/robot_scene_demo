@@ -39,6 +39,12 @@ DEFAULT_SNAPSHOT = os.path.join(
 # 取证与融合链路不受影响。
 MIN_OBJECT_CONFIDENCE = 0.35
 
+# 轨迹点的绝对量级上限（米）。odom 发散时 x/y 会指数涨到 1e20 —— 2026-09-11 实测
+# 持久化轨迹 9332 个点里 9206 个是这种值。轨迹决定 WebUI 的画幅 focus_bounds，
+# 画幅被撑到 1e19 后前端 scale≈0（地图缩成一个像素 = 看不见），同时 drawGrid 的
+# 网格循环要从 -8.7e19 跑到 +8.7e19、步长 5，浏览器主线程永久卡死。
+MAX_TRAJECTORY_ABS_M = 1000.0
+
 
 def best_effort(depth: int = 5) -> QoSProfile:
     return QoSProfile(depth=depth, reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -197,6 +203,9 @@ class WebuiSnapshotWriter(Node):
         """记录轨迹（同 pslam_map 系）。0.25 m 去重，避免静止时堆积。"""
         position = message.pose.pose.position
         x, y = float(position.x), float(position.y)
+        # 发散点在这里就丢（NaN/Inf 也走这条路：abs(nan) < 上限 恒为假）。
+        if not (abs(x) < MAX_TRAJECTORY_ABS_M and abs(y) < MAX_TRAJECTORY_ABS_M):
+            return
         if self._trajectory:
             last_x, last_y = self._trajectory[-1]
             if (x - last_x) ** 2 + (y - last_y) ** 2 < 0.0625:

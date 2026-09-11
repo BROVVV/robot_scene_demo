@@ -1,0 +1,76 @@
+#!/usr/bin/env node
+"use strict";
+/*
+ * Headless unit test for the WebUI 3D map framing math (slam_map_3d.js).
+ *
+ * 回归背景（2026-09-11）：odom 发散把持久化轨迹污染成 ±1e20，写入器据此算出的
+ * focus_bounds 撑到 1e19，前端 span≈1.7e20 → scale≈0（地图缩成一个像素 = 看不见）
+ * 且 drawGrid 的网格循环要从 -8.7e19 跑到 +8.7e19、步长 5，且浏览器主线程永久卡死。
+ * saneFrame 必须挡住这种画幅并退回点云 bounds。
+ *
+ * 没有 DOM：document.getElementById 返回 null，模块在拿到画幅函数之后立刻 return。
+ */
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+
+const srcPath = path.join(__dirname, "..", "app", "manual_web_demo", "static", "slam_map_3d.js");
+const source = fs.readFileSync(srcPath, "utf8");
+
+let failures = 0;
+function ok(cond, msg) {
+  if (!cond) {
+    console.error("  FAIL: " + msg);
+    failures += 1;
+  } else {
+    console.log("  ok: " + msg);
+  }
+}
+
+const window = {};
+const sandbox = { window, console, document: { getElementById: function () { return null; } } };
+vm.createContext(sandbox);
+vm.runInContext(source, sandbox, { filename: srcPath });
+
+const F = window.Slam3dFrame;
+if (!F) { console.error("window.Slam3dFrame not exposed"); process.exit(1); }
+
+// 真实值：POISONED 是 2026-09-11 快照文件里被污染过的 focus_bounds 原文。
+const POISONED = {
+  min: [-7.391, -1.4165444806754435e+19, 0.15],
+  max: [1.7381901366971282e+20, 7.369829140240715, 2.8]
+};
+const BOUNDS = {
+  min: [-15.264734268188477, -3.4751272201538086, 0.15006108582019806],
+  max: [10.138838768005371, 8.800317764282227, 2.521256446838379]
+};
+const NORMAL_FOCUS = { min: [-7.391, -9.225, 0.15], max: [3.168, 7.37, 2.521] };
+
+console.log("saneFrame:");
+ok(F.saneFrame(POISONED) === null, "发散画幅被拒");
+ok(F.saneFrame(NORMAL_FOCUS) === NORMAL_FOCUS, "正常画幅通过");
+ok(F.saneFrame(null) === null, "null 被拒");
+ok(F.saneFrame({ min: [0, 0, 0], max: [1, 1, 1] }) !== null, "完全缺失才拒，零尺寸仍合法");
+ok(F.saneFrame({ min: [NaN, 0, 0], max: [1, 1, 1] }) === null, "NaN 被拒");
+ok(F.saneFrame({ min: [-Infinity, 0, 0], max: [1, 1, 1] }) === null, "Inf 被拒");
+
+console.log("centerAndSpan —— 污染画幅必须退回点云 bounds:");
+const poisonedView = F.centerAndSpan(POISONED, BOUNDS);
+ok(poisonedView.span < 100, "span 不再爆炸（实测 " + poisonedView.span.toFixed(2) + "）");
+ok(Math.abs(poisonedView.center[0] - (-2.562947750091553)) < 1e-6, "center 回到点云中心");
+// drawGrid 的实际迭代次数：这就是当初把浏览器卡死的那个循环
+const half = Math.max(2, Math.ceil(poisonedView.span / 2));
+const step = poisonedView.span > 25 ? 5 : (poisonedView.span > 10 ? 2 : 1);
+const iterations = (2 * Math.ceil(half / step) + 1) * 2;
+ok(iterations < 1000, "drawGrid 迭代有界（" + iterations + " 次）");
+
+console.log("centerAndSpan —— 正常画幅仍按 focus 取景（别把功能修没了）:");
+const normalView = F.centerAndSpan(NORMAL_FOCUS, BOUNDS);
+ok(Math.abs(normalView.span - 16.595) < 1e-6, "span 用 focus_bounds（" + normalView.span.toFixed(3) + "）");
+ok(Math.abs(normalView.center[0] - (-2.1115)) < 1e-6, "center 用 focus_bounds");
+
+console.log("centerAndSpan —— 没有 focus 时退回点云 bounds:");
+ok(Math.abs(F.centerAndSpan(null, BOUNDS).span - 25.403573036193848) < 1e-6, "span 用 bounds");
+
+console.log(failures === 0 ? "ALL SLAM3D FRAME TESTS PASSED" : failures + " FAILURES");
+process.exit(failures === 0 ? 0 : 1);

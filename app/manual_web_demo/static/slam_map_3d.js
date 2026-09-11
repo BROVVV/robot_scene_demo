@@ -5,6 +5,26 @@
 (function () {
   "use strict";
 
+  // 画幅合理性上限（米）。轨迹被发散的 odom 污染时 focus_bounds 会到 1e19
+  // （2026-09-11 实测：span≈1.7e20 → scale≈0 地图缩成一个像素 = 看不见，且
+  // drawGrid 的网格循环要迭代 3.5e19 次把浏览器主线程卡死）。这种画幅一律不认。
+  var FRAME_ABS_LIMIT_M = 1000;
+
+  function saneFrame(frame) {
+    if (!frame || !frame.min || !frame.max) return null;
+    for (var i = 0; i < 3; i++) {
+      var low = Number(frame.min[i]);
+      var high = Number(frame.max[i]);
+      if (!isFinite(low) || !isFinite(high)) return null;
+      if (Math.abs(low) > FRAME_ABS_LIMIT_M || Math.abs(high) > FRAME_ABS_LIMIT_M) return null;
+    }
+    return frame;
+  }
+
+  // 供 headless 单测加载（同 search_map.js 的 window.SvgViewport）。
+  // 放在这个位置是有意的：下面 canvas 取不到时会 return，之后的行不会执行。
+  window.Slam3dFrame = { saneFrame: saneFrame, centerAndSpan: centerAndSpan };
+
   var canvas = document.getElementById("slam-map-3d");
   if (!canvas) return;
   var context = canvas.getContext("2d", { alpha: false });
@@ -45,11 +65,11 @@
     }
   }
 
-  function centerAndSpan() {
+  function centerAndSpan(focus, fallback) {
     // focus_bounds（轨迹 bbox + 边距，由 webui_map_snapshot_writer.py 给）是
     // "狗真正建过图的区域"。用它定画幅，房间占约 60%；用点云 bbox 只有 26%，
     // 剩下的画幅全被 12 m 内的走廊占掉，细节看不清。
-    var frame = focusBounds && focusBounds.min ? focusBounds : bounds;
+    var frame = saneFrame(focus) || fallback;
     var min = frame && frame.min || [-5, -5, -1];
     var max = frame && frame.max || [5, 5, 2];
     var center = [
@@ -165,7 +185,7 @@
     resize();
     context.fillStyle = "#070b10";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    var view = centerAndSpan();
+    var view = centerAndSpan(focusBounds, bounds);
     var scale = Math.min(canvas.width, canvas.height) * 0.78 / view.span * zoom;
     drawGrid(view.center, scale, view.span);
     var size = Math.max(1.1, Math.min(3.2, canvas.width / 720));
