@@ -87,6 +87,12 @@ class WebuiSnapshotWriter(Node):
         self._max_points = int(self.get_parameter("max_points").value)
         self._latest = None
         self._received = 0
+        # 地图**数据**最后一次变化的墙钟时间（不是文件写入时间）。_flush 每
+        # period_s 秒重写一次快照，generated_at 会跟着刷新；拿它当地图年龄等于
+        # 恒报新鲜。前端"slam_map_3d.js"的"地图 X 前"读的是读取端算出的
+        # map_age_seconds，而读取端取的就是 map_updated_at 这个键。
+        self._map_updated_at = None
+        self._last_ros_stamp = None
         topic = str(self.get_parameter("map_topic").value)
         # map_3d 多为 RELIABLE 发布（transient_local），两个 QoS 都订阅以兼容。
         self.create_subscription(PointCloud2, topic, self._on_cloud, reliable(3))
@@ -98,6 +104,13 @@ class WebuiSnapshotWriter(Node):
     def _on_cloud(self, message: PointCloud2) -> None:
         self._latest = message
         self._received += 1
+        stamp = (float(message.header.stamp.sec)
+                 + float(message.header.stamp.nanosec) * 1e-9)
+        if stamp != self._last_ros_stamp:
+            # 只有地图数据真的换了一帧才更新，重复投递同一帧（latched/多 QoS）
+            # 不算"地图在长"。
+            self._last_ros_stamp = stamp
+            self._map_updated_at = time.time()
 
     def _load_objects(self) -> list:
         """从 Dataset D 的 events.jsonl 读语义物体（label + map_xyz）。
@@ -215,7 +228,8 @@ class WebuiSnapshotWriter(Node):
             "stationary": True,
             "pose": {"x": 0.0, "y": 0.0, "yaw": 0.0},
             "delta_yaw_rad": 0.0,
-            "voxel_size_m": 0.12,
+            "voxel_size_m": self._voxel,
+            "map_updated_at": self._map_updated_at,
             "bounds": {"min": [float(v) for v in points.min(axis=0)],
                        "max": [float(v) for v in points.max(axis=0)]},
             "points": [[round(float(p[0]), 3), round(float(p[1]), 3), round(float(p[2]), 3)]
@@ -224,6 +238,8 @@ class WebuiSnapshotWriter(Node):
             "mapping_mode": "mapping_assist",
             "motion_authorized": False,
             "safety_authorized": False,
+            # 这两个是占位：读取端 load_slam_map_snapshot() 会用 generated_at
+            # 重算并覆盖它们，改这里不影响前端。真正的地图年龄看 map_updated_at。
             "age_seconds": 0.0,
             "fresh": True,
             "web_display_points": int(len(points)),
