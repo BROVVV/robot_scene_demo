@@ -21,6 +21,22 @@ SPATIAL_QUALITY_RELATIVE_RGBD = "RELATIVE_RGBD"
 SPATIAL_QUALITY_METRIC_RGBD = "METRIC_RGBD"
 
 
+def decode_mask_runs(
+    runs: list[list[int]],
+    height: int,
+    width: int,
+) -> np.ndarray:
+    """把 [row, start_x, length] 行游程解码为 HxW bool mask（计划书 §5）。"""
+    mask = np.zeros((height, width), dtype=bool)
+    for row, start_x, length in runs:
+        if 0 <= row < height and length > 0:
+            x0 = max(0, int(start_x))
+            x1 = min(width, int(start_x) + int(length))
+            if x1 > x0:
+                mask[row, x0:x1] = True
+    return mask
+
+
 @dataclass
 class ObjectSpatialObservation:
     object_id: str | None
@@ -33,6 +49,10 @@ class ObjectSpatialObservation:
     map_xyz: tuple[float, float, float] | None = None
     spatial_quality: str = SPATIAL_QUALITY_RGB_ONLY
     confidence: float = 0.0
+    box_center_camera: tuple[float, float, float] | None = None
+    box_size_camera: tuple[float, float, float] | None = None
+    box_center_map: tuple[float, float, float] | None = None
+    box_size_map: tuple[float, float, float] | None = None
     provenance: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -47,6 +67,16 @@ class ObjectSpatialObservation:
             "map_xyz": list(self.map_xyz) if self.map_xyz else None,
             "spatial_quality": self.spatial_quality,
             "confidence": self.confidence,
+            "box_center_camera": (
+                list(self.box_center_camera) if self.box_center_camera else None
+            ),
+            "box_size_camera": (
+                list(self.box_size_camera) if self.box_size_camera else None
+            ),
+            "box_center_map": (
+                list(self.box_center_map) if self.box_center_map else None
+            ),
+            "box_size_map": list(self.box_size_map) if self.box_size_map else None,
             "provenance": self.provenance,
         }
 
@@ -98,6 +128,22 @@ def enrich_scene_objects_with_spatial(
                     list(spatial.camera_xyz) if spatial.camera_xyz is not None else None
                 ),
                 "map_xyz": list(spatial.map_xyz) if spatial.map_xyz is not None else None,
+                "box_center_camera": (
+                    list(spatial.box_center_camera)
+                    if spatial.box_center_camera is not None else None
+                ),
+                "box_size_camera": (
+                    list(spatial.box_size_camera)
+                    if spatial.box_size_camera is not None else None
+                ),
+                "box_center_map": (
+                    list(spatial.box_center_map)
+                    if spatial.box_center_map is not None else None
+                ),
+                "box_size_map": (
+                    list(spatial.box_size_map)
+                    if spatial.box_size_map is not None else None
+                ),
                 "map_frame": (spatial.provenance or {}).get("map_frame"),
                 "spatial_quality": spatial.spatial_quality,
                 "image_timestamp": float(image_timestamp),
@@ -139,12 +185,16 @@ class DepthObjectLocalizer:
         bbox_inner_ratio: float = 0.5,
         mad_multiplier: float = 3.5,
         depth_unit_m: float = 0.001,
+        max_mask_depth_points: int = 500,
+        mask_depth_tolerance_m: float = 0.30,
     ) -> None:
         self.min_depth_m = float(min_depth_m)
         self.max_depth_m = float(max_depth_m)
         self.bbox_inner_ratio = max(0.1, min(1.0, float(bbox_inner_ratio)))
         self.mad_multiplier = float(mad_multiplier)
         self.depth_unit_m = float(depth_unit_m)
+        self.max_mask_depth_points = max(16, int(max_mask_depth_points))
+        self.mask_depth_tolerance_m = float(mask_depth_tolerance_m)
         self._last_sample_count = 0
 
     def localize(
@@ -160,47 +210,169 @@ class DepthObjectLocalizer:
             ]
         result: list[ObjectSpatialObservation] = []
         for item in scene_objects:
-            bbox = item.get("bbox_2d") or item.get("bbox")
-            if not isinstance(bbox, list) or len(bbox) != 4:
-                result.append(self._rgb_only(item, frame))
-                continue
-            bbox_px = self._to_pixels(bbox, frame.width, frame.height)
-            if bbox_px is None:
-                result.append(self._rgb_only(item, frame))
-                continue
-            depth = self._sample_depth(depth_m, bbox_px)
-            if depth is None:
-                result.append(self._rgb_only(item, frame))
-                continue
-            u = (bbox_px[0] + bbox_px[2]) / 2.0
-            v = (bbox_px[1] + bbox_px[3]) / 2.0
-            xyz = self._camera_xyz(u, v, depth, frame)
-            bearing, elevation = self._angles(xyz)
-            result.append(
-                ObjectSpatialObservation(
-                    object_id=_source_object_id(item),
-                    label=str(
-                        item.get("label_zh")
-                        or item.get("label")
-                        or item.get("name")
-                        or "object"
-                    ),
-                    bbox=list(bbox),
-                    depth_m=round(depth, 4),
-                    camera_xyz=(round(xyz[0], 4), round(xyz[1], 4), round(xyz[2], 4)),
-                    bearing_deg=round(bearing, 3),
-                    elevation_deg=round(elevation, 3),
-                    spatial_quality=SPATIAL_QUALITY_CAMERA_LOCAL,
-                    confidence=float(item.get("confidence", item.get("score", 0.5))),
-                    provenance={
-                        "source": "depth_object_localizer",
-                        "depth_valid_pixels": self._last_sample_count,
-                        "frame_id": frame.frame_id,
-                        "source_object_id": _source_object_id(item),
-                    },
-                )
-            )
+            mask = self._decode_mask(item, frame)
+            if mask is not None:
+                result.append(self._localize_with_mask(item, frame, depth_m, mask))
+            else:
+                result.append(self._localize_with_bbox(item, frame, depth_m))
         return result
+
+    def _localize_with_bbox(
+        self,
+        item: dict[str, Any],
+        frame: RGBDFrame,
+        depth_m: np.ndarray,
+    ) -> ObjectSpatialObservation:
+        bbox = item.get("bbox_2d") or item.get("bbox")
+        if not isinstance(bbox, list) or len(bbox) != 4:
+            return self._rgb_only(item, frame)
+        bbox_px = self._to_pixels(bbox, frame.width, frame.height)
+        if bbox_px is None:
+            return self._rgb_only(item, frame)
+        depth = self._sample_depth(depth_m, bbox_px)
+        if depth is None:
+            return self._rgb_only(item, frame)
+        u = (bbox_px[0] + bbox_px[2]) / 2.0
+        v = (bbox_px[1] + bbox_px[3]) / 2.0
+        xyz = self._camera_xyz(u, v, depth, frame)
+        bearing, elevation = self._angles(xyz)
+        return ObjectSpatialObservation(
+            object_id=_source_object_id(item),
+            label=str(
+                item.get("label_zh")
+                or item.get("label")
+                or item.get("name")
+                or "object"
+            ),
+            bbox=list(bbox),
+            depth_m=round(depth, 4),
+            camera_xyz=(round(xyz[0], 4), round(xyz[1], 4), round(xyz[2], 4)),
+            bearing_deg=round(bearing, 3),
+            elevation_deg=round(elevation, 3),
+            spatial_quality=SPATIAL_QUALITY_CAMERA_LOCAL,
+            confidence=float(item.get("confidence", item.get("score", 0.5))),
+            provenance={
+                "source": "depth_object_localizer",
+                "depth_source": "bbox",
+                "depth_valid_pixels": self._last_sample_count,
+                "frame_id": frame.frame_id,
+                "source_object_id": _source_object_id(item),
+            },
+        )
+
+    def _localize_with_mask(
+        self,
+        item: dict[str, Any],
+        frame: RGBDFrame,
+        depth_m: np.ndarray,
+        mask: np.ndarray,
+    ) -> ObjectSpatialObservation:
+        if mask.shape != depth_m.shape:
+            return self._localize_with_bbox(item, frame, depth_m)
+        points = self._mask_camera_points(mask, depth_m, frame)
+        if points is None:
+            return self._localize_with_bbox(item, frame, depth_m)
+        center, size = self._aabb(points)
+        depth = float(np.median(points[:, 2]))
+        bearing, elevation = self._angles(center)
+        bbox = item.get("bbox_2d") or item.get("bbox")
+        return ObjectSpatialObservation(
+            object_id=_source_object_id(item),
+            label=str(
+                item.get("label_zh")
+                or item.get("label")
+                or item.get("name")
+                or "object"
+            ),
+            bbox=list(bbox) if isinstance(bbox, list) else None,
+            depth_m=round(depth, 4),
+            camera_xyz=(round(center[0], 4), round(center[1], 4), round(center[2], 4)),
+            bearing_deg=round(bearing, 3),
+            elevation_deg=round(elevation, 3),
+            spatial_quality=SPATIAL_QUALITY_CAMERA_LOCAL,
+            confidence=float(item.get("confidence", item.get("score", 0.5))),
+            box_center_camera=(
+                round(float(center[0]), 4),
+                round(float(center[1]), 4),
+                round(float(center[2]), 4),
+            ),
+            box_size_camera=(
+                round(float(size[0]), 4),
+                round(float(size[1]), 4),
+                round(float(size[2]), 4),
+            ),
+            provenance={
+                "source": "depth_object_localizer",
+                "depth_source": "sam2_mask",
+                "depth_valid_pixels": self._last_sample_count,
+                "frame_id": frame.frame_id,
+                "source_object_id": _source_object_id(item),
+            },
+        )
+
+    def _decode_mask(
+        self,
+        item: dict[str, Any],
+        frame: RGBDFrame,
+    ) -> np.ndarray | None:
+        mask_rle = item.get("mask_rle")
+        mask_size = item.get("mask_size")
+        if not isinstance(mask_rle, list) or not mask_rle:
+            return None
+        if not isinstance(mask_size, (list, tuple)) or len(mask_size) != 2:
+            return None
+        try:
+            height, width = int(mask_size[0]), int(mask_size[1])
+        except (TypeError, ValueError):
+            return None
+        if height <= 0 or width <= 0:
+            return None
+        return decode_mask_runs(mask_rle, height, width)
+
+    def _mask_camera_points(
+        self,
+        mask: np.ndarray,
+        depth_m: np.ndarray,
+        frame: RGBDFrame,
+    ) -> np.ndarray | None:
+        valid = (
+            mask
+            & (depth_m > self.min_depth_m)
+            & (depth_m < self.max_depth_m)
+            & np.isfinite(depth_m)
+        )
+        ys, xs = np.nonzero(valid)
+        if ys.size < 3:
+            self._last_sample_count = 0
+            return None
+        if ys.size > self.max_mask_depth_points:
+            indexes = np.linspace(0, ys.size - 1, self.max_mask_depth_points).astype(int)
+            ys, xs = ys[indexes], xs[indexes]
+        depths = depth_m[ys, xs]
+        median = float(np.median(depths))
+        keep = np.abs(depths - median) <= self.mask_depth_tolerance_m
+        ys, xs, depths = ys[keep], xs[keep], depths[keep]
+        if ys.size < 3:
+            self._last_sample_count = 0
+            return None
+        self._last_sample_count = int(ys.size)
+        if frame.fx <= 0 or frame.fy <= 0:
+            return np.stack([np.zeros_like(depths), np.zeros_like(depths), depths], axis=1)
+        x = (xs - frame.cx) / frame.fx * depths
+        y = (ys - frame.cy) / frame.fy * depths
+        return np.stack([x, y, depths], axis=1)
+
+    @staticmethod
+    def _aabb(points: np.ndarray) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+        """p05/p95 AABB：比 min/max 稳（计划书 §8.3）。"""
+        low = np.percentile(points, 5, axis=0)
+        high = np.percentile(points, 95, axis=0)
+        center = (low + high) / 2.0
+        size = high - low
+        return (
+            (float(center[0]), float(center[1]), float(center[2])),
+            (float(size[0]), float(size[1]), float(size[2])),
+        )
 
     def _rgb_only(self, item: dict[str, Any], frame: RGBDFrame) -> ObjectSpatialObservation:
         return ObjectSpatialObservation(

@@ -108,3 +108,4 @@ claude-sessions-backup-*/
 codex-diag/
 *.tar.gz
 outputs/**/*.log
+ccswitch-deepseek/

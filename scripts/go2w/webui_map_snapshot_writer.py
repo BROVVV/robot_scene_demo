@@ -30,6 +30,14 @@ DEFAULT_SNAPSHOT = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "outputs/autonomous_search/runtime/slam_map_3d.json")
 
+# 三维视图的置信度门限。检测端工作在 GroundingDINO box_threshold=0.12 这种偏召回
+# 的阈值上，上游没有任何一层按分数拦过，于是碎片框全落到画面上：2026-09-11 实测
+# 一次搜索出 17 个"垃圾桶"，只有 1 个 0.82，其余 16 个在 0.12~0.33 —— 里面有
+# 2.7cm 宽的、8cm 立方的、悬空 z=0.74 的，还有同一物体同帧分裂出的两个框
+# （相距 3mm 各自建了实体）。这里只做显示层过滤，不动 events.jsonl 里的原始记录，
+# 取证与融合链路不受影响。
+MIN_OBJECT_CONFIDENCE = 0.35
+
 
 def best_effort(depth: int = 5) -> QoSProfile:
     return QoSProfile(depth=depth, reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -124,7 +132,16 @@ class WebuiSnapshotWriter(Node):
                 xyz = obj.get("map_xyz")
                 if not xyz:
                     continue
+                if (obj.get("confidence") or 0.0) < MIN_OBJECT_CONFIDENCE:
+                    continue
                 key = obj.get("object_id") or f"{obj.get('label')}|{xyz[0]:.2f}|{xyz[1]:.2f}"
+                box_size = obj.get("box_size")
+                size = None
+                if isinstance(box_size, (list, tuple)) and len(box_size) == 3:
+                    try:
+                        size = [float(v) for v in box_size]
+                    except (TypeError, ValueError):
+                        size = None
                 deduped[key] = {
                     "label": obj.get("label"),
                     "x": round(float(xyz[0]), 3),
@@ -132,6 +149,7 @@ class WebuiSnapshotWriter(Node):
                     "z": round(float(xyz[2]), 3),
                     "confidence": obj.get("confidence"),
                     "observation_count": obj.get("observation_count"),
+                    "size": size,
                 }
         objects = list(deduped.values())
         return self._filter_by_map_bounds(objects)

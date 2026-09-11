@@ -77,6 +77,67 @@
     return "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
   }
 
+  function drawObjectDot(item, view, scale) {
+    var p = project([Number(item.x), Number(item.y),
+                     item.z == null ? 0.5 : Number(item.z)], view.center, scale);
+    if (p[0] < -40 || p[0] > canvas.width + 40 ||
+        p[1] < -40 || p[1] > canvas.height + 40) return;
+    context.beginPath();
+    context.arc(p[0], p[1], 5.5, 0, Math.PI * 2);
+    context.fillStyle = "rgba(239, 68, 68, 0.95)";
+    context.fill();
+    context.lineWidth = 1.3;
+    context.strokeStyle = "rgba(255, 255, 255, 0.9)";
+    context.stroke();
+    if (item.label) {
+      context.font = "12px system-ui, sans-serif";
+      context.fillStyle = "rgba(255, 243, 243, 0.96)";
+      context.fillText(item.label, p[0] + 9, p[1] - 7);
+    }
+  }
+
+  function drawObjectBox(item, view, scale) {
+    var cx = Number(item.x), cy = Number(item.y), cz = Number(item.z);
+    var hw = Number(item.size[0]) / 2;
+    var hd = Number(item.size[1]) / 2;
+    var hh = Number(item.size[2]) / 2;
+    if (hh <= 0) hh = 0.12;  // 同深度平面无高度时给一个最小可见厚度
+    var corners = [
+      [cx - hw, cy - hd, cz - hh], [cx + hw, cy - hd, cz - hh],
+      [cx + hw, cy + hd, cz - hh], [cx - hw, cy + hd, cz - hh],
+      [cx - hw, cy - hd, cz + hh], [cx + hw, cy - hd, cz + hh],
+      [cx + hw, cy + hd, cz + hh], [cx - hw, cy + hd, cz + hh]
+    ].map(function (c) { return project(c, view.center, scale); });
+    var edges = [
+      [0, 1], [1, 2], [2, 3], [3, 0],
+      [4, 5], [5, 6], [6, 7], [7, 4],
+      [0, 4], [1, 5], [2, 6], [3, 7]
+    ];
+    context.lineWidth = 1.5;
+    context.strokeStyle = "rgba(56, 189, 248, 0.92)";
+    context.beginPath();
+    edges.forEach(function (e) {
+      var a = corners[e[0]], b = corners[e[1]];
+      if (a[0] < -200 || a[0] > canvas.width + 200 ||
+          b[0] < -200 || b[0] > canvas.width + 200) return;
+      context.moveTo(a[0], a[1]);
+      context.lineTo(b[0], b[1]);
+    });
+    context.stroke();
+    // 顶部中心小标记点，便于定位。
+    var top = corners[5];
+    context.beginPath();
+    context.arc(top[0], top[1], 3, 0, Math.PI * 2);
+    context.fillStyle = "rgba(56, 189, 248, 0.95)";
+    context.fill();
+    if (item.label) {
+      var conf = item.confidence != null ? " " + Number(item.confidence).toFixed(2) : "";
+      context.font = "12px system-ui, sans-serif";
+      context.fillStyle = "rgba(224, 242, 254, 0.97)";
+      context.fillText(item.label + conf, top[0] + 7, top[1] - 6);
+    }
+  }
+
   function drawGrid(center, scale, span) {
     var half = Math.max(2, Math.ceil(span / 2));
     var step = span > 25 ? 5 : (span > 10 ? 2 : 1);
@@ -120,23 +181,14 @@
       });
     }
     // 语义物体标注层：来自 Dataset D 的三维定位结果（快照的 objects 字段）。
+    // 有 size（3D box）时画 AABB 线框 + 标签；否则退化为红点。
     if (objects.length) {
       objects.forEach(function (item) {
-        var p = project([Number(item.x), Number(item.y),
-                         item.z == null ? 0.5 : Number(item.z)], view.center, scale);
-        if (p[0] < -40 || p[0] > canvas.width + 40 ||
-            p[1] < -40 || p[1] > canvas.height + 40) return;
-        context.beginPath();
-        context.arc(p[0], p[1], 5.5, 0, Math.PI * 2);
-        context.fillStyle = "rgba(239, 68, 68, 0.95)";
-        context.fill();
-        context.lineWidth = 1.3;
-        context.strokeStyle = "rgba(255, 255, 255, 0.9)";
-        context.stroke();
-        if (item.label) {
-          context.font = "12px system-ui, sans-serif";
-          context.fillStyle = "rgba(255, 243, 243, 0.96)";
-          context.fillText(item.label, p[0] + 9, p[1] - 7);
+        var hasSize = Array.isArray(item.size) && item.size.length === 3;
+        if (hasSize) {
+          drawObjectBox(item, view, scale);
+        } else {
+          drawObjectDot(item, view, scale);
         }
       });
     }

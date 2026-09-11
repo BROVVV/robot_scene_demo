@@ -10,6 +10,7 @@ triple STOP plus disarm. No user commands are required while it runs.
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 from datetime import datetime, timezone
 import json
 import math
@@ -46,6 +47,7 @@ from app.live_robot.semantic_observer import (
     semantic_payload_from_quick_target_absence,
 )
 from app.config import get_settings
+from app.detectors.grounded_sam_subprocess import GroundedSAMSubprocessDetector
 from app.memory.observation_memory_store import ObservationMemoryStore
 from app.live_robot.motion_bounds import (
     MotionBoundaryDecision,
@@ -126,6 +128,23 @@ PROMPT_MAP = {
 }
 
 
+def target_prompt(target: str) -> str:
+    """把搜索目标转成 GroundingDINO 用的英文点分词表。
+
+    原先这里的兜底是 f"{target}. {target} object"。对不在 PROMPT_MAP 里的中文
+    目标会拼出"垃圾桶. 垃圾桶 object"这种中英混搭：其中 "object" 会被词表子串
+    匹配到（TERM_ZH["object"] == "物体"），于是一大批无关物体被统一标成"物体"，
+    标签雷同又让关联阶段的 semantic 分数恒为 1.0，不同物体被错误合并。改用目标
+    画像解析器给出的英文标签，中文目标都能落到视觉检测器认识的词上。
+    """
+    mapped = PROMPT_MAP.get(target.strip())
+    if mapped:
+        return mapped
+    terms = TargetProfileResolver().resolve(target.strip(), use_llm=False).detector_terms()
+    # 解析不出英文标签（生僻中文词）时退回原词，空 prompt 会被 GroundingDINO 拒绝。
+    return ". ".join(terms) if terms else target.strip()
+
+
 def strict_json_value(value):
     """Recursively replace non-finite telemetry with JSON ``null``."""
 
@@ -136,6 +155,22 @@ def strict_json_value(value):
     if isinstance(value, (list, tuple)):
         return [strict_json_value(item) for item in value]
     return value
+
+
+def _gsam_to_dict(obj) -> dict:
+    """把 DetectedObject 转回 _detect 消费方期望的 dict。
+
+    消费方只用 label/score/bbox_2d；mask_rle/mask_size 是 §44 目标 2 让 SAM2
+    真实 mask 透传出去，供后续 DepthObjectLocalizer / 语义标注使用。
+    """
+    return {
+        "label": obj.label,
+        "label_zh": obj.label_zh,
+        "score": obj.score,
+        "bbox_2d": list(obj.bbox_2d),
+        "mask_rle": obj.mask_rle,
+        "mask_size": list(obj.mask_size) if obj.mask_size else None,
+    }
 
 
 class BundleVideoRecorder:
@@ -441,6 +476,10 @@ class AutonomousLoop(Node):
         self._boundary_tolerance_m = 0.05
         self._max_motion_steps = 0
         self._min_rotation_clearance_m = 0.0
+        self._gsam_detector: GroundedSAMSubprocessDetector | None = None
+        # 常驻 worker 只有一条 stdin/stdout 管道；quick 快路径与后台 semantic
+        # 线程会并发调用 _detect，必须串行化，否则竞态创建两个 worker。
+        self._detect_lock = threading.Lock()
 
         self._client = ActionClient(self, MotionCommand, "/go2w/motion")
         self._arm_client = self.create_client(SetBool, "/go2w/arm")
@@ -1294,7 +1333,7 @@ class AutonomousLoop(Node):
         reach_area_ratio: float,
     ) -> None:
         env = self._load_detector_env()
-        prompt = PROMPT_MAP.get(target.strip(), f"{target.strip()}. {target.strip()} object")
+        prompt = target_prompt(target)
         self._write({"event": "camera_guided_start", "host_s": self._host_s(),
                      "target": target, "prompt": prompt})
         started = time.monotonic()
@@ -1418,9 +1457,7 @@ class AutonomousLoop(Node):
         reach_area_ratio: float,
     ) -> None:
         env = self._load_detector_env()
-        prompt = PROMPT_MAP.get(
-            target.strip(), f"{target.strip()}. {target.strip()} object"
-        )
+        prompt = target_prompt(target)
         origin = self._odom_snapshot()
         scan = self._scan_sequence()
         scan_index = 0
@@ -1637,9 +1674,7 @@ class AutonomousLoop(Node):
         reach_area_ratio: float,
     ) -> None:
         env = self._load_detector_env()
-        prompt = PROMPT_MAP.get(
-            target.strip(), f"{target.strip()}. {target.strip()} object"
-        )
+        prompt = target_prompt(target)
         origin = self._odom_snapshot()
         start_yaw = origin[2]
         started = time.monotonic()
@@ -1936,9 +1971,7 @@ class AutonomousLoop(Node):
     ) -> None:
         """Run the formal app-layer state machine with the LLM workers."""
         env = self._load_detector_env()
-        prompt = PROMPT_MAP.get(
-            target.strip(), f"{target.strip()}. {target.strip()} object"
-        )
+        prompt = target_prompt(target)
         state: dict[str, object] = {"image_path": None}
         step_index = [0]
         settings = get_settings()
@@ -2300,64 +2333,46 @@ class AutonomousLoop(Node):
     def _detect(self, image_path: str, prompt: str, env: dict[str, str]) -> list[dict]:
         if getattr(self, "_detector", "grounded_sam") == "llm":
             return self._detect_llm(image_path, env)
-        root = env["GROUNDED_SAM_ROOT"]
-        python = env.get(
-            "GROUNDED_SAM_PYTHON",
-            sys.executable,
-        )
-        worker = PROJECT_ROOT / "app/detectors/grounded_sam_worker.py"
-        command = [
-            python,
-            str(worker),
-            "--image", image_path,
-            "--output", str(PROJECT_ROOT / "runtime/go2w/detection_result.json"),
-            "--root", root,
-            "--text-prompt", prompt,
-            "--grounding-config",
-            env.get("GROUNDING_DINO_CONFIG",
-                    "grounding_dino/groundingdino/config/"
-                    "GroundingDINO_SwinT_OGC_local.py"),
-            "--grounding-checkpoint",
-            env.get("GROUNDING_DINO_CHECKPOINT",
-                    "gdino_checkpoints/groundingdino_swint_ogc.pth"),
-            "--box-threshold",
-            env.get("GROUNDING_DINO_BOX_THRESHOLD", "0.12"),
-            "--text-threshold",
-            env.get("GROUNDING_DINO_TEXT_THRESHOLD", "0.10"),
-            "--sam2-config", "configs/sam2.1/sam2.1_hiera_t.yaml",
-            "--sam2-checkpoint", "checkpoints/sam2.1_hiera_tiny.pt",
-            "--max-objects", "20",
-            "--device", "auto",
-            "--disable-sam2",
-        ]
-        try:
-            completed = subprocess.run(
-                command,
-                cwd=root,
-                env=env,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=150.0,
-                check=False,
-            )
-        except subprocess.TimeoutExpired as exc:
-            raise PerceptionFailure(
-                "grounded_sam detector timed out",
-                code="GROUNDED_SAM_TIMEOUT",
-                recoverable=True,
-                detail=str(exc),
-            ) from exc
-        if completed.returncode != 0:
-            raise PerceptionFailure(
-                f"detector failed rc={completed.returncode}: "
-                f"{completed.stderr[-400:]}",
-                code="DETECTOR_ERROR",
-                recoverable=True,
-            )
-        output_path = PROJECT_ROOT / "runtime/go2w/detection_result.json"
-        payload = json.loads(output_path.read_text(encoding="utf-8"))
-        return list(payload.get("objects", []))
+        # 常驻 GroundedSAM worker 只有一条 stdin/stdout 管道，而 quick 快路径与
+        # 后台 semantic 线程会并发调用这里；不串行化会竞态创建两个 worker 并
+        # 互相抢管道，表现为 pipe 写满死锁。
+        with self._detect_lock:
+            return self._detect_grounded_sam(image_path, prompt, env)
+
+    def _detect_grounded_sam(
+        self, image_path: str, prompt: str, env: dict[str, str]
+    ) -> list[dict]:
+        detector = self._ensure_gsam_detector(env)
+        # prompt 是 PROMPT_MAP 的点分英文词表（如 "phone. cellphone. mobile
+        # phone"）。拆成词表作为 dynamic_terms 传入，让常驻 worker 用同一份
+        # 词表做 grounding（§44 目标 1：模型常驻，不再每次 subprocess 重载）。
+        terms = [t.strip() for t in prompt.replace("。", ".").split(".") if t.strip()]
+        objects = detector.detect_with_dynamic_terms(image_path, prompt, terms)
+        return [_gsam_to_dict(obj) for obj in objects]
+
+    def _ensure_gsam_detector(self, env: dict[str, str]) -> GroundedSAMSubprocessDetector:
+        # 注意：方法名不能叫 _gsam_detector —— __init__ 里的同名实例属性会遮蔽
+        # 它，调用 self._gsam_detector(env) 会变成调用 None。
+        if self._gsam_detector is None:
+            settings = get_settings()
+            # 真机上复制的 .env 可能让 GROUNDED_SAM_PYTHON/GROUNDED_SAM_ROOT
+            # 指向不存在的宿主路径。复用 _load_detector_env 已清理的值兜底。
+            if env.get("GROUNDED_SAM_PYTHON"):
+                settings = replace(
+                    settings, grounded_sam_python=env["GROUNDED_SAM_PYTHON"]
+                )
+            if env.get("GROUNDED_SAM_ROOT"):
+                settings = replace(
+                    settings, grounded_sam_root=env["GROUNDED_SAM_ROOT"]
+                )
+            self._gsam_detector = GroundedSAMSubprocessDetector(settings=settings)
+        return self._gsam_detector
+
+    def _close_detector(self) -> None:
+        detector = self._gsam_detector
+        self._gsam_detector = None
+        if detector is not None:
+            detector.close()
 
     @staticmethod
     def _daemon_vlm_request(
@@ -3184,6 +3199,10 @@ def main() -> None:
         # Foxy ActionClient is not owned by Node.destroy_node(); explicitly
         # destroy it before the node handle to avoid a late InvalidHandle
         # destructor and to release all Action graph entities deterministically.
+        try:
+            node._close_detector()
+        except Exception:
+            pass
         try:
             node._client.destroy()
         except Exception:

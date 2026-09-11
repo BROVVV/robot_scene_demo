@@ -118,6 +118,7 @@ class SemanticObjectEntry:
     status: str = ENTITY_TENTATIVE
     position_mean_xyz: tuple[float, float, float] | None = None
     position_variance_xyz: tuple[float, float, float] | None = None
+    box_size: tuple[float, float, float] | None = None
     map_observation_count: int = 0
     observation_anchors: list[SemanticObservationAnchor] = field(default_factory=list)
 
@@ -143,6 +144,7 @@ class SemanticObjectEntry:
             "status": self.status,
             "position_mean_xyz": list(self.position_mean_xyz) if self.position_mean_xyz else None,
             "position_variance_xyz": list(self.position_variance_xyz) if self.position_variance_xyz else None,
+            "box_size": list(self.box_size) if self.box_size else None,
             "map_observation_count": self.map_observation_count,
             "observation_anchors": [item.to_dict() for item in self.observation_anchors],
         }
@@ -291,6 +293,7 @@ class SemanticObjectMap:
                     status=ENTITY_TENTATIVE,
                     position_mean_xyz=obs.map_xyz,
                     position_variance_xyz=(0.0, 0.0, 0.0),
+                    box_size=obs.box_size_camera or obs.box_size_map,
                     map_observation_count=1 if obs.map_xyz is not None else 0,
                     observation_anchors=_observation_anchors(obs),
                 )
@@ -524,6 +527,16 @@ class SemanticObjectMap:
         else:
             if entry.position_mean_xyz is None and obs.camera_xyz is not None:
                 entry.position_mean_xyz = None
+        # Box size EMA（计划书 §11.2 / §25：new = 0.7*old + 0.3*observed）。
+        observed_size = obs.box_size_camera or obs.box_size_map
+        if observed_size is not None:
+            if entry.box_size is None:
+                entry.box_size = tuple(float(v) for v in observed_size)
+            else:
+                entry.box_size = tuple(
+                    0.7 * float(old) + 0.3 * float(new)
+                    for old, new in zip(entry.box_size, observed_size)
+                )
         # Camera-local fields still update for the current view.
         if obs.camera_xyz is not None:
             entry.camera_xyz = obs.camera_xyz

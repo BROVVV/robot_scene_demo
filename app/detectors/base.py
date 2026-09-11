@@ -16,6 +16,8 @@ class DetectedObject:
     color: str | None = None
     attributes: list[str] = field(default_factory=list)
     mask_area_ratio: float | None = None
+    mask_rle: list[list[int]] | None = None
+    mask_size: tuple[int, int] | None = None
     source: str = "detector"
     source_prompt_term: str | None = None
 
