@@ -384,6 +384,20 @@ target_profile / crop_utils / frame_bundle 等），基线为 **2 failed / 51 pa
    2 项"新挂"排除掉的，见「最终回归」）。
    要变成可信门禁，得先给 LLM 打桩或固定快照 —— 那是另一件事，本轮没做。
 
+9. **那份"锁住两份 `TargetProfile`"的回归测试，保护范围比字面上窄 —— 别当成
+   合并的替代品。** `test_reasoning_profile_drives_the_video_crop_region` 构造的是
+   **`app.reasoning` 那份**，再传给 `app.video` 的 `_verification_region`，而
+   `_verification_region` 只读传入对象的属性（`target_profile: TargetProfile`
+   只是**类型标注，Python 运行时不校验**）。所以：
+   * 它锁得住：reasoning 那份**少了字段**（构造处直接 `TypeError`）、锚点裁剪行为。
+   * 它锁不住：**`app/video` 那份自己少了字段** —— 测试从不构造它。
+   也就是说，两份再分叉时，测试**只会在分叉发生在 reasoning 侧时报错**。
+   `app/video` 那份目前被 4 个生产模块引用（`semantic_verifier.py`、
+   `target_search.py`、`frame_analyzer.py`、`pipeline.py`，其中 `pipeline.py` 还会
+   用它的 resolver 构造实例）、3 个测试文件直接构造 —— 这就是合并的爆炸半径。
+   （另：这条用例包在 `unittest.TestCase` 里，node id 要带类名
+   `::VideoSemanticVerifierTests::`，只写函数名 pytest 会报 not found。）
+
 ---
 
 ## 本轮改动的文件
@@ -474,9 +488,43 @@ setsid 当上进程组组长时会 fork，`$!` 拿到的是 fork 完就退出的
 - 守护只在经 `start_plain_slam_mapping.sh` 启动时生效。绕过它直接
   `ros2 launch` 就没有这层保护。
 - **更根本的问题本轮没动**：47G 按每关键帧约 3 MB 反推是上万帧，正常建图不该
-  有这么多，怀疑长会话里关键帧判据退化（`ComputeLocalMapMatchingRate` 低于
-  `min_local_map_matching_rate_` 就加帧）。这属于三维建图参数，本轮按
-  「禁止改三维建图」没有碰，留待后续真机验证。
+  有这么多。**本轮只读代码把机理读清楚了（未改一行、未跑真机）**：
+
+  `slam_3d_interface.cpp:151-157` 的加帧判据是
+  ```cpp
+  ComputeLocalMapMatchingRate(filtered_cloud);       // 本帧有多少点能在局部地图 0.5 m 内找到邻居
+  if (local_map_matching_rate_ < min_local_map_matching_rate_) {
+      kf_detector_.AddKeyframe(slam_pose_);          // ← 匹配率不足，强制加帧
+  } else if (!kf_detector_.IsKeyframe(slam_pose_)) {
+      return;                                        // ← 否则才看「走够 distance_th 了吗」
+  }
+  ```
+  配置 `config/slam_3d_params.yaml:5-8` 是 `distance_th: 10.0`（米）、
+  `min_local_map_matching_rate: 0.95`。**两条阈值的关系是本条的关键**：
+  设计意图是「每 10 m 存一帧」，而 0.95 的匹配率是安全网（本意「扫描和地图
+  对不上了，出事了，赶紧记一帧」）。但 0.5 m 的对应半径 + 体素降采样后的稀疏
+  点云，狗只要走出去一两米，远处稀疏点就很容易有 5% 找不到邻居 ——
+  **安全网一直在触发，10 m 那条规则形同虚设**。
+  （`angle_th: 1000.0` 不会误触发：`slam_3d_interface.cpp:68` 有度→弧度换算，
+  1000° 即 17.45 rad，实际等于关掉角度判据。这一条**不是** bug。）
+  局部地图是**每个关键帧后重建**的（`slam_3d_interface.cpp:249`，在回环检测
+  收尾处），所以匹配率不会永久掉 0 —— 是「走一小段就掉到 0.95 以下」这个节奏。
+
+  算术佐证：47G ÷ 约 3 MB ≈ **1.5 万帧**；若真按 10 m 一帧，那是 **150 km**
+  的行走 —— 一个房间不可能。所以真实帧距是「几十厘米一帧」量级。
+
+  **可能与今天那个 odom 发散同源（推测，未证实）**：位姿图被上万帧撑大后，
+  一次错误的回环边就能把 `slam_pose_` 拽飞，`slam_pose_` 一飞，写出去的
+  `odom_base` 就指数发散 —— 正好是轨迹里看到的 ×1.66 那个形状。
+
+  **零成本现场诊断（不改代码、不动参数，只是数文件）**：建图跑起来后
+  ```bash
+  watch -n2 'ls /tmp/go2w_plain_slam/raw_cloud*.bin 2>/dev/null | wc -l'
+  ```
+  每秒涨几次 → 坐实「每帧都加」；几十秒才涨一个 → 上述判断错了，得另找原因。
+  改 `min_local_map_matching_rate` 属三维建图参数，**须单独授权**，
+  本轮按「禁止改三维建图」没有碰（连那行被注释掉的调试输出都没打开——
+  打开它要重新编译 §60 路径）。
 
 ---
 

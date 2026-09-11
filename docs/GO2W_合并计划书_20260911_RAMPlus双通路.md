@@ -3871,8 +3871,13 @@ A7（§61 Phase 4 复杂目标复核）连跑四次结论一致。期间修掉 6
 的 resolver 建画像，`:2170` 却把画像交给 `app.video` 的 verifier 裁图，
 而两个模块各有一份**逐字节相同**的 `TargetProfile`。本轮只补字段、**没有合并**
 （合并是重构），但加了跨模块回归测试
-`tests/test_video_semantic_verifier.py::test_reasoning_profile_drives_the_video_crop_region`
+`tests/test_video_semantic_verifier.py::VideoSemanticVerifierTests::test_reasoning_profile_drives_the_video_crop_region`
 锁住这个组合。再动这两份文件之前先跑它。
+
+⚠️ **它锁的范围比看起来窄**：用例构造的是 `app.reasoning` 那份、传给 `app.video`
+的函数，而那个函数只读传入对象的属性（类型标注 Python 运行时不校验）——
+所以它只能在**分叉发生在 reasoning 侧**时报错，`app/video` 那份自己少字段它抓不到。
+别把它当合并的替代品。详见验证报告「诚实记录」第 9 条。
 
 ## 5.3 磁盘写满事故（本轮新增处理，与 RAM++ 无关）
 
@@ -3912,11 +3917,22 @@ A0 复看请先 `Ctrl+Shift+R`。
 1. **B3/B4 真机端到端** —— 需要用户**重新给一次明确的批次授权**。
    既有授权不跨批次、不跨重启、不跨参数变更，每批之间要回到人。
    开跑前三件事见验证报告「下一步」。
-2. **关键帧爆炸** —— 47G 反推是上万帧，正常建图不该有这么多
-   （怀疑 `ComputeLocalMapMatchingRate` 低于 `min_local_map_matching_rate_`
-   就加帧）。这是三维建图参数，须单独授权才能碰。
+2. **关键帧爆炸** —— 47G 反推是上万帧，正常建图不该有这么多。
+   本轮**只读代码**（未改一行、未跑真机）把机理读清楚了：加帧判据
+   （`slam_3d_interface.cpp:151-157`）里，`min_local_map_matching_rate: 0.95`
+   这道"扫描对不上就加帧"的安全网，比 `distance_th: 10.0`（米）那条"每 10 m
+   一帧"的正常规则**更先触发**，于是 10 m 规则形同虚设、变成几十厘米一帧。
+   算术佐证：若真按 10 m 一帧，1.5 万帧 = 150 km 行走，一个房间不可能。
+   **可能与 odom 发散同源（推测未证实）**：位姿图被上万帧撑大后一次错误回环边
+   就能把 `slam_pose_` 拽飞 → odom 指数发散（正是轨迹里 ×1.66 的形状）。
+   零成本现场诊断与完整推理见验证报告「附：磁盘」的遗留段。
+   改 `min_local_map_matching_rate` 属三维建图参数，**须单独授权**。
 3. **两份 `TargetProfile` 要不要合并** —— 目前靠人工同步 + 一条回归测试兜着，
-   合并方法照 `app/vision/target_profile.py` 那个 shim 的既有做法。
+   合并方法照 `app/vision/target_profile.py` 那个 shim 的既有做法（把
+   `app/video/target_profile.py` 也改成 5 行转发壳）。爆炸半径：`app/video` 那份
+   被 4 个生产模块 + 3 个测试文件引用，见「诚实记录」第 9 条。
+   **本轮建议：不急着合** —— 合并没有行为变化，不会让 B4 更容易过，
+   而真机测试前夜动 import 结构不值当。
 4. **A0 肉眼确认** —— `http://127.0.0.1:8765` 的 WebUI 地图去糊效果，
    本轮唯一没关闭的无机器人交付项。用户首次复看时地图**根本看不见**，
    那是画幅被污染数据撑爆（见 §5.3.1），**不是去糊效果本身** —— A0 仍未验收。
