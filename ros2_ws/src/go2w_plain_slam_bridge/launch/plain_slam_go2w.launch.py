@@ -154,6 +154,13 @@ def generate_launch_description() -> LaunchDescription:
                     # scan_overlap_rmse 0.0815 → 0.0666（−18%）、inlier 0.888 → 0.926。
                     # 真机对照若无改善则删除此行回退。
                     "--stamp-offset-s", "-0.025",
+                    # 锁定后的时钟阶跃容忍度。2026-09-11：真实偏移从 790.621 跳到
+                    # 795.294（+4.673 s），旧默认 5.0 s 刚好把它盖住，imu_n 从此
+                    # 恒为 0、地图被纯几何配准污染。门限必须小于消费端容忍度：
+                    # LIO 只取落在扫描自身跨度内的 IMU（实测 p50 0.099 s），再减
+                    # 掉下面那行 -25 ms 戳偏置，预算只剩约 0.075 s。实测到达间隔
+                    # p50 4.482 ms / max 8.994 ms，0.05 s 有 5.5 倍余量。
+                    "--max-offset-step-s", "0.05",
                 ],
             ),
             DeclareLaunchArgument(

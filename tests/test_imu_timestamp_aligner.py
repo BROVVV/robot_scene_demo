@@ -110,12 +110,45 @@ def test_sensor_gap_drops_one_sample_and_then_keeps_feeding_lio() -> None:
     assert abs(float(resumed.corrected_sec) - 774.002) < 1e-6
 
 
-def test_sensor_gap_before_offset_lock_still_requires_restart() -> None:
-    aligner = ImuTimestampAligner(lock_after_samples=500)
+def test_sensor_gap_before_offset_lock_clears_the_window_instead_of_killing_the_session() -> None:
+    """窗口里出现空洞 → 清空重攒，不判死。
+
+    空洞前后跨着两个纪元，攒下的 offset 样本不可信，所以清空是对的；但判死是错的
+    —— offset 阶跃的重锁路径也会把 ``_locked_offset`` 置 None 并维持
+    ``lock_after_samples`` 个样本（248 Hz 下 2.0 s），判死等于建图中途任意一次
+    2 s 链路闪断都能永久废掉整轮建图（全仓没有生产代码调用 ``reset()``）。
+    """
+    aligner = ImuTimestampAligner(lock_after_samples=3)
     aligner.update(10.0, 756.0)
+    aligner.update(10.002, 756.002)
     gap = aligner.update(28.0, 774.0)
-    assert gap.restart_required
-    assert not aligner.update(28.002, 774.002).valid
+    assert not gap.restart_required
+    assert not aligner.restart_required
+    assert not gap.valid
+    # 恢复后重新攒窗口、重新锁定，IMU 继续喂 LIO。
+    values = [aligner.update(28.002 + i * 0.002, 774.002 + i * 0.002)
+              for i in range(3)]
+    assert aligner.offset_locked
+    assert values[-1].valid
+    assert abs(float(values[-1].corrected_sec) - 774.006) < 1e-6
+
+
+def test_sensor_gap_inside_a_relock_window_does_not_kill_the_session() -> None:
+    """重锁窗口（248 Hz 下 2.0 s）里撞上链路闪断，不能永久闭锁整轮建图。"""
+    aligner = ImuTimestampAligner(lock_after_samples=4, max_offset_step_s=0.05)
+    for index in range(4):
+        aligner.update(10.0 + index * 0.004, 800.0 + index * 0.004)
+    assert aligner.offset_locked
+    stepped = aligner.update(10.016, 804.283)          # drift 4.267 s → 重锁
+    assert not stepped.valid
+    assert not aligner.offset_locked
+    gap = aligner.update(13.5, 807.5)                  # 重锁窗口内闪断 3.484 s
+    assert not gap.restart_required
+    assert not aligner.restart_required
+    values = [aligner.update(13.504 + i * 0.004, 807.504 + i * 0.004)
+              for i in range(4)]
+    assert aligner.offset_locked
+    assert values[-1].valid
 
 
 def test_duplicate_stamp_requires_restart() -> None:
@@ -127,14 +160,72 @@ def test_duplicate_stamp_requires_restart() -> None:
     assert "duplicate" in duplicate.reason
 
 
-def test_clock_jump_after_lock_requires_restart() -> None:
-    aligner = ImuTimestampAligner(lock_after_samples=3, max_offset_step_s=1.0)
+def test_clock_jump_after_lock_relocks_instead_of_killing_the_session() -> None:
+    """真机回归（2026-09-11）：真实偏移从 790.621 阶跃到 795.294（+4.673 s）。
+
+    旧门限是 5.0 s，这一跳刚好被盖住：既不重锁也不报警，时间轴继续用旧 offset，
+    IMU 戳整体偏离扫描窗口，LIO 一帧样本都取不到（imu_n=0），退化成纯几何配准，
+    错误位姿被当成关键帧写进位姿图 —— WebUI 上就是同一面墙被几个不同角度的副本
+    叠在一起。跳变必须走重锁，不能判死、更不能静默沿用旧 offset。
+    """
+    lock_offset = 790.621305
+    step = 4.681533
+    aligner = ImuTimestampAligner(lock_after_samples=20)
+    for index in range(20):
+        aligner.update(1000.0 + index * 0.002, 1000.0 + index * 0.002 + lock_offset)
+    assert aligner.offset_locked
+    assert abs(aligner.estimated_offset_sec - lock_offset) < 1e-6
+
+    results = [
+        aligner.update(1000.0 + index * 0.002,
+                       1000.0 + index * 0.002 + lock_offset + step)
+        for index in range(20, 41)
+    ]
+
+    # 跳变当场被识别：既不判死，也不再用旧 offset 生成时间戳。
+    assert not any(item.restart_required for item in results)
+    assert not aligner.restart_required
+    assert not results[0].valid
+    assert results[0].mode == "OFFSET_ESTIMATING_SENSOR_STAMP"
+    # 重锁窗口攒满后重新锁定到新偏移。
+    assert aligner.offset_locked
+    assert abs(aligner.estimated_offset_sec - (lock_offset + step)) < 1e-5
+    fed = [float(item.corrected_sec) for item in results if item.valid]
+    assert fed and fed == sorted(fed) and len(set(fed)) == len(fed)
+
+
+def test_threshold_stays_below_the_consumers_scan_window() -> None:
+    """门限必须小于**消费端的容忍度**，否则 (容忍度, 门限] 之间的阶跃会静默冻死 IMU。
+
+    LIO 只取落在扫描自身点时间跨度内的 IMU（``lio_3d_interface.cpp:158-173``
+    的严格窗口匹配），该窗口实测 p50 0.099 s，再减去 launch 刻意施加的
+    ``--stamp-offset-s -0.025``，留给 offset 正漂移的预算只剩约 0.075 s。
+    门限一旦大过它，那一档阶跃既不重锁、又让 IMU 戳整体滑出窗口 —— imu_n
+    恒为 0，与 09-11 事故同型同签名。
+    """
+    assert ImuTimestampAligner().max_offset_step_s < 0.075
+
+
+def test_clock_step_under_the_old_threshold_is_no_longer_silently_swallowed() -> None:
+    """4.673 s 的跳变在旧默认 5.0 s 之下，会被静默放过并冻死整轮建图。"""
+    aligner = ImuTimestampAligner(lock_after_samples=3)
     for index in range(3):
-        aligner.update(10.0 + index * 0.002, 1010.0 + index * 0.002)
-    jumped = aligner.update(10.006, 1010.006 + 30.0)
+        aligner.update(10.0 + index * 0.002, 800.0 + index * 0.002)
+    jumped = aligner.update(10.006, 800.006 + 4.673)
+    assert not jumped.restart_required
     assert not jumped.valid
-    assert jumped.mode == "IMU_SOURCE_RESTART_REQUIRED"
-    assert jumped.restart_required
+    assert jumped.mode == "OFFSET_ESTIMATING_SENSOR_STAMP"
+
+
+def test_step_the_size_of_the_ntp_step_threshold_is_caught() -> None:
+    """0.15 s 的阶跃（ntpd 默认 step 阈值就是 128 ms）在旧门限 0.2 下会被静默放过。"""
+    aligner = ImuTimestampAligner(lock_after_samples=3)
+    for index in range(3):
+        aligner.update(10.0 + index * 0.002, 800.0 + index * 0.002)
+    jumped = aligner.update(10.006, 800.006 + 0.15)
+    assert not jumped.valid
+    assert not jumped.restart_required
+    assert jumped.mode == "OFFSET_ESTIMATING_SENSOR_STAMP"
 
 
 def test_invalid_stamp_is_never_published() -> None:
