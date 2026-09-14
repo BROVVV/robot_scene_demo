@@ -210,6 +210,55 @@ TARGET_TERM_RULES = {
 }
 
 
+RAM_SCENE_STOPLIST = {
+    # 场景/画幅词，不是可定位的独立物体
+    "indoor",
+    "outdoor",
+    "room",
+    "home",
+    "background",
+    "image",
+    "photo",
+    # 动作词
+    "sit",
+    "stand",
+    "lay",
+    "hang",
+    # 单独出现的纯颜色词（TargetProfile 里的颜色不受影响，只过滤 RAM scene tags）
+    "gray",
+    "grey",
+    "green",
+    "yellow",
+    "black",
+    "white",
+    "red",
+    "blue",
+    # 材质词
+    "wood",
+    "metal",
+    "plastic",
+}
+
+
+def filter_ram_scene_terms(tags: list[str], max_terms: int = 12) -> list[str]:
+    """把 RAM++ 的 scene tags 收敛成能喂给 GroundingDINO 的物体词。
+
+    只做规则过滤，不引入 NLP 模型、不做 embedding 相似度：
+    小 stoplist + 1~4 个英文单词 + 归一化去重 + 截断。
+    不在 `TERM_ZH` / `BASE_TERMS` 里的词**一律保留** —— RAM++ 的意义就是扩大
+    开放物体覆盖，按封闭词表过滤等于白装。
+    """
+    filtered: list[str] = []
+    for tag in tags:
+        normalized = " ".join(str(tag).lower().split()).strip(" .,;")
+        if not normalized or normalized in RAM_SCENE_STOPLIST:
+            continue
+        if not 1 <= len(normalized.split()) <= 4:
+            continue
+        filtered.append(normalized)
+    return _dedupe(filtered)[:max_terms]
+
+
 def build_detection_terms(
     target_text: str,
     max_terms: int = 36,

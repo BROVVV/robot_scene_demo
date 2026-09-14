@@ -17,7 +17,9 @@ from app.detectors.vocabulary import (
     build_detection_prompts,
     category_for_label,
     color_for_label,
+    filter_ram_scene_terms,
     label_zh,
+    terms_to_prompt,
 )
 from app.perception.grounding_prompt_planner import (
     GroundingPromptError,
@@ -58,6 +60,7 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
         image_path: str,
         target_text: str,
         dynamic_terms: list[str],
+        ram_scene_terms: list[str] | None = None,
     ) -> list[DetectedObject]:
         image = Path(image_path).resolve()
         if not image.is_file():
@@ -65,7 +68,9 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
 
         self._ensure_worker()
 
-        prompt_text = " || ".join(self._build_prompts(target_text, dynamic_terms))
+        prompt_text = " || ".join(
+            self._build_prompts(target_text, dynamic_terms, ram_scene_terms)
+        )
         if self.settings.grounding_prompt_require_non_empty and not prompt_text.strip():
             raise GroundingPromptError(
                 "GroundingDINO prompt is empty. Detection was not executed."
@@ -98,6 +103,21 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
             _to_detected_object(item, self.target_profile)
             for item in payload.get("objects", [])
         ]
+
+    def discover_scene_terms(self, image_path: str) -> list[str]:
+        """问 RAM++「这一帧大概有哪些类别」，返回过滤后的英文物体词。
+
+        只用于给 GroundingDINO 扩词，**不返回 embedding、不落库**。
+        """
+        image = Path(image_path).resolve()
+        if not image.is_file():
+            raise FileNotFoundError(f"Image file not found: {image_path}")
+        self._ensure_worker()
+        payload = self._request(image=image, operation="tag")
+        return filter_ram_scene_terms(
+            [str(tag) for tag in payload.get("tags_en", [])],
+            self.settings.ram_scene_max_terms,
+        )
 
     def close(self) -> None:
         worker = self._worker
@@ -152,6 +172,12 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
         ]
         if not self.settings.enable_sam2:
             command.append("--disable-sam2")
+        if self.settings.ram_plus_root:
+            command.extend(["--ram-root", self.settings.ram_plus_root])
+        if self.settings.ram_plus_checkpoint:
+            command.extend(["--ram-checkpoint", self.settings.ram_plus_checkpoint])
+        if not self.settings.enable_ram_plus:
+            command.append("--disable-ram-plus")
         self._worker_stderr = tempfile.NamedTemporaryFile(
             prefix="grounded_sam_worker_", suffix=".log", delete=False
         )
@@ -169,12 +195,14 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
         self,
         *,
         image: Path,
-        text_prompt: str,
-        box_threshold: float,
-        text_threshold: float,
+        text_prompt: str = "",
+        box_threshold: float = 0.0,
+        text_threshold: float = 0.0,
+        operation: str = "detect",
     ) -> dict[str, Any]:
         self._ensure_worker()
         request = {
+            "operation": operation,
             "image": str(image),
             "text_prompt": text_prompt,
             "box_threshold": box_threshold,
@@ -217,7 +245,14 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
                 tail = tail.decode("utf-8", errors="replace")
         return "Grounding DINO/SAM2 worker exited unexpectedly. stderr tail:\n" + tail
 
-    def _build_prompts(self, target_text: str, dynamic_terms: list[str]) -> list[str]:
+    def _build_prompts(
+        self,
+        target_text: str,
+        dynamic_terms: list[str],
+        ram_scene_terms: list[str] | None = None,
+    ) -> list[str]:
+        # 参数默认是 None（没跑 RAM++ 就是没有场景词），下面两个分支都按 list 用。
+        ram_scene_terms = ram_scene_terms or []
         if (
             self.settings.grounding_prompt_llm_expansion_enabled
             and self.parsed_task is not None
@@ -239,33 +274,49 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
             )
             terms = _prompt_to_terms(self.grounding_prompt_plan.grounding_prompt)
             terms.extend(dynamic_terms)
+            # RAM 词排在 planner 的目标词之后，目标词永远不会被截断。
+            terms.extend(
+                filter_ram_scene_terms(
+                    ram_scene_terms, self.settings.ram_scene_max_terms
+                )
+            )
             prompt = _terms_to_prompt(_dedupe_terms(terms))
             return [prompt] if prompt else []
 
+        target_terms = (
+            self.target_profile.detector_terms()
+            if self.target_profile is not None
+            else []
+        )
+        # §4.1：目标画像的上下文词（如「挂着书包的椅子」的 backpack）属于
+        # mandatory target terms，必须无条件进 prompt —— 它跟 static base 词表
+        # 是两回事，static_object_prompts_enabled 只该管后者。
+        # 少这一条，「挂着书包的椅子」就只搜 chair，搜不到单独的 backpack（§15）。
         prompts = build_detection_prompts(
             target_text,
-            dynamic_terms=(
-                [
-                    *(
-                        self.target_profile.detector_terms()
-                        if self.target_profile is not None
-                        else []
-                    ),
-                    *dynamic_terms,
-                ]
-            ),
+            dynamic_terms=[*target_terms, *dynamic_terms],
             context_terms=(
-                self.target_profile.context_labels_en
+                [
+                    *self.target_profile.context_labels_en,
+                    # §15：关系锚点是关系目标的一半，必须一起搜。
+                    *self.target_profile.relation_anchor_labels_en,
+                ]
                 if self.target_profile is not None
-                and self.settings.static_object_prompts_enabled
                 else None
             ),
             include_base_terms=(
-                self.settings.static_object_prompts_enabled
-                and self.target_profile is None
-                and not dynamic_terms
+                self.settings.static_object_prompts_enabled and not target_terms
             ),
         )
+        # RAM++ 的场景词单独占一个 prompt 槽位，不混进目标词那一槽。
+        # 否则 RAM 返回的 tag 一多，目标词就会被该槽位的 16 个名额挤掉。
+        ram_terms = filter_ram_scene_terms(
+            ram_scene_terms, self.settings.ram_scene_max_terms
+        )
+        if ram_terms:
+            ram_prompt = terms_to_prompt(ram_terms)
+            if ram_prompt not in prompts:
+                prompts.append(ram_prompt)
         if not prompts:
             prompts = build_detection_prompts(
                 target_text,

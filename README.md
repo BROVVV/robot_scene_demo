@@ -35,6 +35,22 @@ WebUI（默认端口 8765）提供：
 
 如果现场把所有 ROS 进程放在同一台机器上，也必须遵守“/go2w/odom/fused 只有一个 publisher、/go2w/motion 只有一个 action server、plain_slam 只有一个实例”的原则。
 
+### 2.1 视觉职责分工
+
+| 组件 | 职责 |
+| --- | --- |
+| RAM++ | 自动场景 tags（这一帧大致有哪些类别） |
+| GroundingDINO | 开放词汇定位 |
+| SAM2 | 实例 mask |
+| D435 | 3D localization |
+| VLM | 复杂属性/关系与漏检兜底 |
+
+**RAM++ 不决定任务目标是否存在。** 用户目标词由 TargetProfile（任务解析 + 颜色 +
+上下文 + 关系）独立产生，无论 RAM++ 这一帧给出什么 tag 都会进
+GroundingDINO 的 prompt；RAM++ 只负责扩大普通场景物体的覆盖面。
+RAM++ 漏词时，由低频的整帧 VLM 目标扫描兜底，而不是直接宣告目标不存在。
+普通场景物体不再走 VLM 全场景枚举 —— Grounded-SAM 模式的检测结果本身就是场景物体来源。
+
 ## 3. 硬件和现场前提
 
 新电脑只负责恢复软件，以下条件不能由 GitHub 或安装脚本替代：
@@ -202,6 +218,8 @@ bash scripts/go2w/start_plain_slam_mapping.sh
 ~~~
 
 该脚本会生成运行时 plain_slam 参数，检查 Pandar 和 IMU，启动 plain_slam，并启动只用于 WebUI 显示的 compact cloud relay。它不会启动运动，不会发布 /go2w/odom/fused，不会改变运动授权。
+
+建图期间每个关键帧会在 `/tmp/go2w_plain_slam` 留下两个 `.bin`，且**运行中不能删**（回环检测和出图都要读回它们）。这个目录只增不减，2026-09-11 曾把根文件系统写到 100%（约 47G）。所以启动时有两道保护：磁盘余量不足直接拒绝启动；起来后由 `scripts/go2w/guard_plain_slam_disk.sh` 盯着，缓存超过 `GO2W_SLAM_DISK_MAX_CACHE_GB`（默认 20）或磁盘剩余低于 `GO2W_SLAM_DISK_MIN_FREE_GB`（默认 20）时有序停掉建图栈保住磁盘——运动链不受影响。日志在 `runtime/go2w/sessions/plain_slam_disk_guard.log`。
 
 若现场已有 Hesai 驱动而脚本误判不到，可使用：
 

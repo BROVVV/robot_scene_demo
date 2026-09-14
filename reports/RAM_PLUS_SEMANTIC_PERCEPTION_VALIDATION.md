@@ -448,6 +448,16 @@ M scripts/go2w/check_plain_slam_mapping.sh        +11  健康摘要显示缓存�
 `slam_bridge.py`、`slam_web_map_state.py`、`plain_slam_ros2/`、
 `go2w_plain_slam_bridge/`、`navigation/`）**零改动**。
 
+### 补：A0/WebUI 那条线的改动（上面那张表是 A 阶段的，不含这些）
+
+| 文件 | 改动 |
+| --- | --- |
+| `app/manual_web_demo/static/slam_map_3d.js` | `022e2cc` 发散位姿防护 + `c776eae` `pitch` 0.63→1.35 / `focusBounds`；**2026-09-14 修** `:325` 双击重置漏改的 `pitch = 0.63` → `1.35` |
+| `scripts/go2w/webui_map_snapshot_writer.py` | `focus_bounds`（轨迹 bbox + 边距）、发散点过滤、`MIN_OBJECT_CONFIDENCE` |
+| `scripts/go2w/start_manual_web_demo.sh` | 起快照 writer、传 `focus_margin_m` 等参数 |
+| `scripts/go2w/imu_fallback_adapter.py`（+ `start_plain_slam_mapping.sh`） | `max_offset_step_s` 5.0→0.05（重影真因） |
+| `tests/test_slam_map_3d_frame.{js,py}`、`tests/test_search_map_viewport.py` | 画幅数学回归；**2026-09-14 加**「双击重置与默认 pitch 一致」断言 |
+
 ---
 
 ## 附：plain_slam 点云缓存写满磁盘（2026-09-11，非 RAM++ 问题）
@@ -627,6 +637,120 @@ NaN/Inf 一并被挡：`abs(nan) < 上限` 与 `abs(inf) < 上限` **恒为假**
 
 ---
 
+## 附：B3 建图批次真机实测（2026-09-11）
+
+用户授权、用户亲自遥控的一圈建图。**全程未发任何运动指令**（运动授权 `NO`）。
+目的：把「关键帧爆炸」从读代码的推测变成实测。方法：数 `/tmp/go2w_plain_slam/*.bin`
+的增长速率，**不改一行三维建图代码**。
+
+### 结果一：这一圈没有复现爆炸，但爆炸的量级条件算出来了
+
+| 项 | 实测 |
+|---|---|
+| 路程（LIO 累计折线） | 59.89 m |
+| 关键帧 | **54 帧 / 101 MB** |
+| 密度 | **1.11 m 一帧** |
+| 包络 | 11.02 × 6.79 m |
+| 单帧体积 | 1.87 MB（`raw_cloud` ≈1.9 MB + `filtered_cloud` ≈32 KB） |
+| 静止时是否加帧 | **否**（狗静止 63 s，帧数纹丝不动） |
+
+对 47 GB 反推 ≈ **25,700 帧**，两种走法对比：
+
+- 按实测密度 1.11 m/帧 → 需要走 **28.5 km**，一次会话**不可能**；
+- 按"每帧都被判成关键帧"（雷达 10 Hz）→ 只要 **43 分钟**，**正好是一次会话的长度**。
+
+**∴ 爆炸 = 某一段时间内每一帧都被判成了关键帧**，不是稳态行走累出来的。
+每一帧都对不上局部图，只有位姿跳变能做到 —— **与 odom 发散同源，不再是推测。**
+
+### 结果二（更重要）：抓到了 odom 发散的活体前兆
+
+狗走完停在原地 63 s，位置钉死不动，但 LIO 内部状态是这样
+（数据取自 launch 日志的 `[GO2W-DIAG]` 行，源码 `lio_3d_interface.cpp:236-264`）：
+
+| 量 | 实测行为 | 正常应该是 |
+|---|---|---|
+| `pos` | 恒 (0.97, 5.71)，纹丝不动 | 不动 ✅ |
+| `v` = `imu_state_.v.norm()` | 恒 **~1.0 m/s**，93 s 只从 1.50 衰减到 0.97 | 停下后 1–2 s 归零 |
+| `ab` = `imu_state_.ab.norm()` | 从 0 **单调涨到 1.305 m/s²**（≈13% g） | ~0.01–0.05 |
+| `pre_t` / `fix_t` | 每帧 ≈0.11 m / ≈0.11 m | 两者都该 ≈0 |
+
+读法：`pre_t` 是预积分预测的帧间位移，`fix_t` 是配准对它的修正量。
+两帧≈0.11 m 且几乎相等 ⇒ **预积分每帧预测走 0.11 m，配准又把它拉回 0.11 m，
+两股力每帧对拉。** 姿态/重力估计在走动中退化，误差被加计零偏吃掉（1.3 m/s²
+的假零偏），速度状态因此不肯归零 —— **滤波器不自洽**。
+
+位置这一圈还靠扫描匹配钉住了；**一旦场景失去约束（空旷、快速运动），
+位置就会跑掉 —— 那就是 1e20 那次。** 旁证：同一次会话 **z 漂了 0.965 m**
+（狗不可能下沉 96 cm），姿态估计确实有病。
+
+**均属三维建图范畴，按规则一行未改，只记录。**
+
+### 结果三：修掉一个停止脚本的漏洞（不属于三维建图）
+
+B3 停栈后 `lidar_delay_buffer.py` **活了下来**（跑了 2 天 16 小时）——
+`stop_plain_slam_mapping.sh` 的 pgrep 清单漏了它，而且它的 cmdline
+不含 `ros2_ws` / `go2w_plain_slam_bridge`，连 `case` 白名单也过不了，
+两道都拦不住。启动脚本的 pkill 清单（`start_plain_slam_mapping.sh:157`）
+**是含它的**，所以只是两侧不对称。
+
+留着它的后果：下次启动多一份 `/go2w/slam/pandar_points_buffered` 发布者，
+正是 `start_plain_slam_mapping.sh:154-156` 注释里写的那个坑
+（"IMU 预积分把同一时刻的数据吃两遍三遍，机器狗静止不动 odom_base 也会飞到 1e10 m"）。
+
+修法：加一行 `stop_pid_file lidar_delay_buffer`（它和 relay 一样是
+`setsid` + 写 pid 文件启动的，relay 有这行、它漏了）。pid 文件实测有效
+（`$!` 就是真实进程 289648），已验证能清掉。
+
+### 遗留
+
+1. **B3 没产出新 WebUI 地图** —— 因为 B3 只跑了 `start_plain_slam_mapping.sh`
+   （建图栈），**没跑 WebUI 侧**：快照写入器是 `start_manual_web_demo.sh:156` 启动的。
+   所以"看画幅"这项这一圈没做到。**这是启动缺口，不是缺件。**
+
+   > ⚠️ **本节先前写的两条"结构事实"是错的，2026-09-14 已核实更正，留此防风：**
+   >
+   > | 先前写的（错） | 实际 |
+   > |---|---|
+   > | 仓库里**没有任何脚本会启动**快照写入器 | `scripts/go2w/start_manual_web_demo.sh:156` 就会启动它 |
+   > | WebUI 地图来自 `/go2w/rko_slam/map_3d`（**狗自带 SLAM**），与轨迹**不同源** | 启动脚本 `:157` 把 `map_topic` **覆盖**成 `/go2w/slam/map_3d`；`.env` 未设 `GO2W_WEBUI_SNAPSHOT_MAP_TOPIC`，故实际生效值是它。地图与轨迹**同出一棵 plain_slam launch 树** |
+   >
+   > 错因：`webui_map_snapshot_writer.py:71` 的**默认参数**确实是
+   > `/go2w/rko_slam/map_3d`（rko 实验期的遗留），我读了节点默认值就当成实际值，
+   > 没去看谁启动它、启动时传了什么。**先查命令行再怀疑代码** —— 这条
+   > memory `go2w-webui-box-dataflow-gap` 里已经写过一次，我又踩了。
+   >
+   > 而 **rko 链路本身是停用的**（交接书 D5：`/go2w/rko_slam/map_3d` 把长方形房间
+   > 叠成圆；`rko_online.sh` 只被文档引用、无任何启动器调用）——
+   > 所以"狗自带 SLAM"这个来源**根本不存在**。
+   >
+   > **订正后的事实**：地图来自 `slam_3d_node`（`generated_slam_3d_config.yaml:7`
+   > `filtered_map_cloud_topic: /go2w/slam/map_3d`），轨迹来自 `lio_3d_node`
+   > （`launch:104` `odom_base_topic`）—— **同一棵树里的两个节点**。
+   > 所以上次 odom 发散只污染轨迹不污染地图，**不是因为跨机器**，而是因为
+   > `slam_3d_node` 吃的是回环后的位姿图、`lio_3d_node` 出的是原始里程计。
+   > 真正的机理尚未单独验证，**不要照抄我上面这句当结论**。
+2. **回原点无法从数据判定** —— LIO 记 `(0.001,0,0) → (0.978,5.718,-0.965)`，
+   水平差 5.80 m；但同一次 z 漂了 0.965 m，xy 一样不可信。
+   **真值只能靠地面胶带肉眼确认。**
+3. **未查**：`odom_base` 为什么发散（三维建图，需单独授权）。
+
+### 遗留更新（2026-09-14）
+
+- **第 1 条并入 B4**：本条不是 B3 的独立遗留，而是"建图栈没起快照写入器"这个
+  启动缺口的后果。B4 起建图栈时**同时起写入器**，画幅验收与 B4 一次做掉。
+- **§14.3 / C1 已结案**：用户确认机器狗**没电关机发生过两次**（09-10、09-11 各一），
+  故 09-10 14:29–14:41 那段"无人下令却走直线"是**低电量前兆**。
+  ⚠️ 但 B3 实测坐实的**滤波器不自洽**（满电静止时 `v` 恒 ~1.0 m/s 不归零、
+  `ab` 单调涨到 1.305 m/s²、z 漂 0.965 m）**不是电池引起的**，是独立的真缺陷，
+  属三维建图，需单独授权。两者不互斥，别把结案误读成"滤波器没问题"。
+- **运动栈在狗重启后不会自愈**（09-14 实测，已修复）：狗 09-11 17:49 没电关机后，
+  宿主运动栈进程全部存活、`ros2 topic info` 仍报 `pub=1`、`/go2w/odom/fused`
+  照常 20 Hz —— **全是假绿**，实际 SDK 链接冻死 2.7 天。判据是
+  `/tmp/go2w_network_low_state.json` 与 `/tmp/go2w_sdk_sport_state.json`
+  的 mtime 是否推进。详见 memory `go2w-motion-stack-stale-after-robot-reboot`。
+
+---
+
 ## 最终回归
 
 **解释器**：`/home/mxt/anaconda3/envs/go2_robot_scene_demo/bin/python` ——
@@ -701,13 +825,20 @@ collection error；anaconda base（3.13.5）缺 openai，37 个 collection error
 
 本报告只覆盖 **A0–A11**（不需要机器人）。剩下的事按优先级：
 
-1. **B3/B4 真机端到端** —— 需要机器人运动，**必须由用户重新给一次明确的批次授权**。
-   既有授权不跨批次、不跨重启、不跨参数变更；每批之间要回到人。
-   开跑前的三件事：
+1. ~~**B3/B4 真机端到端** —— 需要机器人运动，必须由用户重新给一次明确的批次授权。~~
+   **✅ B3 已完成（2026-09-11）；B4 已完成（2026-09-14）**，见下「B4 真机端到端验收」。
+   批次约束不变：既有授权不跨批次、不跨重启、不跨参数变更；每批之间要回到人。
+   开跑前的三件事（**留给下一次真机批次**）：
    * `.env` 里把 `VLM_RUNTIME_QUICK_TIMEOUT_SECONDS` 显式写成 **65**
      （= 代码默认 = A7/A8 实测生效值；不要写 20，理由见「诚实记录」第 4 条）。
    * 同一个查询至少跑 3 次记录命中率（LLM 别名仍在抖，见「诚实记录」第 2 条）。
    * 每次移动后回到地面胶带标记的原点再开始下一次。
+
+   **B4 结束后仍未闭环的两项，都只差一次机器人运动：**
+   * **A0（去糊完整效果）** —— 需行走 **≥4.75 m** 让轨迹攒满 20 点，`focus_bounds`
+     才会出现。详见下面「A0 现状复核」。**这是最小的一次动作。**
+   * **组3 [3.1]（黄色椅子正例）** —— 需用户先往场景里放一件黄色物体到椅子上；
+     303 帧全量扫描已证明现有数据里不存在黄色椅子。
 2. **两份 `TargetProfile` 的合并** —— `app/reasoning/target_profile.py` 与
    `app/video/target_profile.py` 目前逐字节相同，靠人工保持同步。
    本轮只补了字段、加了跨模块回归测试，**没有合并**（那是重构）。
@@ -719,5 +850,297 @@ collection error；anaconda base（3.13.5）缺 openai，37 个 collection error
    所以 A0 仍是未验收状态。用户需要**关掉那个卡死的标签页重开**（卡死的页面
    连 F5 都响应不了）—— **不需要 `Ctrl+Shift+R`**：服务端已 `no-store`，
    普通重载就能拿到新 JS（见「附」的「遗留」第 1 条）。
+
+   ### A0 现状复核（2026-09-14 下午，读代码 + 现场实测）
+
+   去糊修复有两块，**当前现场只有一块生效**：
+
+   | 修复块 | 代码 | 现场是否生效 |
+   | --- | --- | --- |
+   | 视角 `pitch` 0.63→1.35（斜视改近俯视） | `slam_map_3d.js:47` | ✅ **生效**（服务端吐出的 JS 实测为 1.35） |
+   | 画幅 `focus_bounds`（轨迹 bbox + 边距） | `slam_map_3d.js:255` + writer | ❌ **未生效**，快照里是 `null` |
+
+   `focus_bounds` 拿不到的原因：轨迹按 **0.25 m 去重**
+   （`webui_map_snapshot_writer.py:211`），而 `_focus_bounds()`（`:171`）
+   要求 `len(trajectory) >= 20` 才给值 —— 狗静止时轨迹只攒到 **1 个点**。
+   要凑满 20 点需累计行走 **≥4.75 m**。轨迹落盘文件
+   `outputs/autonomous_search/runtime/slam_map_trajectory.json` **不存在**
+   （writer 从没写成功过），两份历史存档
+   （`outputs/regressions/search_20260901_.../slam_map_3d_robot.json`、
+   `slam_map_3d.test.json`）也都是加这个字段**之前**的产物，`focus_bounds` 全为 `null`。
+
+   **∴ 现场看到的仍是"点云 bbox 定画幅"那条回退路径**（实测 span
+   **23.88 × 8.71 m**），也就是「发糊」那一档（报告口径：26% vs 58%）。
+   **A0 真正闭环需要狗行走 ≥4.75 m**，属机器人运动，须单批授权。
+
+   本次复核顺带确认/修正的三件事：
+   * **WebUI 服务当时是停的** —— `web.pid` 178089 于 12:41 干净退出
+     （日志 `Shutting down / Application shutdown complete`），已用
+     `bash scripts/go2w/start_manual_web_demo.sh`（**不加 `--enable-motion`**，只读）
+     拉起，快照随之刷到 **15509 点**。
+   * **建图栈一直是活的** —— `lio_3d_node` / `slam_3d_node` / `pandar_slam_adapter` /
+     `plain_slam_odom_adapter` 均在跑，`/go2w/slam/map_3d` 实收 **47002 点**，
+     `/go2w/slam/odom_base` 正常发布。**不需要重建图**。
+   * **修掉一处漏网 bug** —— `c776eae` 把默认 `pitch` 改成 1.35 时
+     **漏改了双击重置**（`:325` 仍是 `pitch = 0.63`）。用户双击"重置视角"会
+     退回发糊那个角度，然后合理地认为没修好。已改为 1.35，并在
+     `tests/test_slam_map_3d_frame.js` 补一条一致性回归断言
+     （已反向验证：拿修复前的文件跑会 FAIL `声明 1.35 / 重置 0.63`）。
 4. **B5 / D1 / D3 待定**：深层 SLAM 调参推迟；GitHub token 轮换
    （`ghp_...` 曾出现在会话记录里）。
+
+   **2026-09-14 澄清**：B5（深层 SLAM 调优 / `min_local_map_matching_rate` /
+   LIO 滤波器不自洽）**属三维建图，计划书 §0 第 2 条明令禁止**，
+   用户本次给的是**运动授权**、不是三维建图授权，**故未动**。要做需单独授权。详见下面复核。
+
+   ### B5 相关：LIO 滤波器不自洽（沿用 §5.4-2 的实测，本轮未复测）
+
+   B3 抓到的活体前兆仍然成立 —— 狗静止 63 s 期间 `v` 恒 ~1.0 m/s、
+   `ab` 单调涨到 1.305 m/s²、同一会话 z 漂 0.965 m。**这一条不影响 B4 的结论**
+   （B4 三轮 3D 定位 50/50 全中），但它是 A0 画幅问题的上游风险：
+   位姿一旦跑掉，轨迹被污染，`focus_bounds` 反而会变成有害输入
+   —— 好在 `saneFrame` 已经挡住了那种画幅（见 `tests/test_slam_map_3d_frame.js`
+   的 `POISONED` 用例），退回点云 bounds，最坏情况是回到"发糊"而不是"看不见"。
+
+5. **R4（旧计划书 §9.8 第 3 步：llm 路线基线对比 D1/D2）** —— 计划书自己列在
+   「C. 独立延缓项」，**低优先级、与新计划书无关**，本轮仍未做。
+   **离线做不了**：需要同场景同查询下 `--detector llm` 与 `grounded_sam` 的受控对比，
+   而仓库里唯一的旧 llm run（`outputs/regressions/search_20260901_211756_3460e15a`）
+   场景不同、`events.jsonl` 里也不带 `detector` 字段，构不成对比。
+   要做得设计一次对照实验（可离线跑缓存帧，或真机各跑一次）。**等用户定。**
+
+---
+
+# B4 真机端到端验收（§64 全组）
+
+**日期** 2026-09-14 · **机器狗** 在线 · **B4 期间代码零改动** —— 全程只有
+`outputs/`、`runtime/` 下的运行产物变化，没有改过任何 `.py`。
+
+> **B4 跑完之后**（同日收尾）改过两个文件，都不在 B4 的执行路径上，
+> 不影响上面任何一条真机结论：`app/manual_web_demo/static/slam_map_3d.js:325`
+> 一处常量（双击重置 pitch 漏改，见「A0 现状复核」）与
+> `tests/test_slam_map_3d_frame.js` 的对应断言。仍**没有改过任何 `.py`**。
+
+## B4 开工三条件（上面「下一步」列的三条）
+
+| 条件 | 状态 |
+| --- | --- |
+| `.env` 里 `VLM_RUNTIME_QUICK_TIMEOUT_SECONDS` 显式 = 65 | ✅ 已确认 |
+| 同一查询至少跑 3 次记录命中率 | ✅ 带 RGB-D 3 次 + 对照 3 次 |
+| 每次移动后回到胶带原点 | ✅ 每轮 run 结束自动 `return_to_origin.py --execute` |
+
+## 真机 run 汇总
+
+### A. 带 `--rgbd-source`（3 次，**移动语义验收证据**）
+
+`--rgbd-source` 是 3D 定位的唯一开关（`run_semantic_exploration.py:1104`）。缺它
+⇒ `depth_localizer=None` ⇒ 全部 `RGB_ONLY`、无 `map_xyz`，按仓库既有口径
+**不得作为移动语义验收证据**（这一点本轮踩过一次并自我更正）。
+
+| run | task_id | bundle | 结果 | 3D 定位 |
+| --- | --- | --- | --- | --- |
+| 1 | `task_54ffd1f045af` | `bundle_203625` | TARGET_FOUND | 16/16 |
+| 2 | `task_8f39c850da40` | `bundle_205664` | TARGET_FOUND | 18/18 |
+| 3 | `task_a3b3e8856080` | `bundle_206766` | TARGET_FOUND | 16/16 |
+
+**命中率 3/3；3D 定位 50/50 全中**，`spatial_quality` 全为 `CAMERA_LOCAL`，
+`depth_m` 0.66–0.68 m：
+
+```text
+垃圾桶: map_xyz=[0.6276, 0.1675, 0.1939] depth_m=0.6635 q=CAMERA_LOCAL
+电脑:   map_xyz=[0.7511, -0.3168, -0.0356] depth_m=0.677  q=CAMERA_LOCAL
+```
+
+三次 `verification.reason_zh` 的前半句（真判据）都指向真实物体，例如
+「图2中是白色桶状物，内有塑料袋，符合垃圾桶特征」。
+
+**回原点落点可重复**：三轮结束后均在 `(0.0180, -0.0441)` 附近 —— 是**可重复的
+固定残差**（约 4.5 cm / 2.2°），不是发散漂移。
+
+### B. 不带 RGB-D（3 次，对照）
+
+其中一轮 `cycles=2 motion_steps=2 verify_attempts=3`，运动成功 2/2。
+
+## §64 逐组结论
+
+**逐组汇总**（明细见下；`⚠️` = 有未满足项，理由见文末「未满足项」）：
+
+| 组 | 满足 / 总 | 结论 |
+| --- | --- | --- |
+| 组1 RAM++ | 5 / 5 | ✅ |
+| 组2 GroundingDINO + SAM2 | 4 / 4 | ✅ |
+| 组3 复杂目标 | 4 / 5 | ⚠️ 仅 [3.1]「黄色椅子正例」未满足（**环境无黄色椅子**，非代码问题） |
+| 组4 稀有目标 | 5 / 5 | ✅ |
+| 组5 场景地图 | 4 / 4 | ✅ |
+| 组6 效率 | 4 / 4 | ✅（[6.1] 带一处措辞级保留） |
+| 组7 回归 | 6 / 8 | ⚠️ 第 6/7 条各有既有漂移失败（干净 HEAD 同样挂，非本次引入） |
+
+**∴ §64 共 35 项：32 项满足、2 项带既有漂移、1 项因环境不具备无法验证。**
+按 §64「全部满足才能写 PASS」的口径，**本次仍不写 PASS**。
+
+### 组1 RAM++
+
+| 项 | 结论 | 依据 |
+| --- | --- | --- |
+| 预训练 RAM++ 成功加载 | ✅ | `verify_ram_target_verify.py` 实跑输出 `RAM=12` 场景词 |
+| 一个 worker 生命周期只加载一次 | ✅ | `grounded_sam_worker.py:78` 在 `main()` 里加载，之后进 `_serve()` 长驻循环复用 |
+| 每约 2 秒最多刷新一次 scene tags | ✅ | `run_autonomous_loop.py:2444` 按 `ram_scene_tag_interval_seconds`（默认 1.8 s）节流 |
+| RAM tag filter 不只允许旧 vocabulary | ✅ | `app/detectors/vocabulary.py:243` docstring：不在 `TERM_ZH`/`BASE_TERMS` 的词**一律保留** |
+| 普通 scene object coverage 明显增加 | ✅ | 真机 `observation.objects` = `["垃圾桶","电脑","office supply","stool","桌子","equipment"]`，其中 `office supply`/`equipment` **不在固定词表内** |
+
+### 组2 GroundingDINO + SAM2
+
+| 项 | 结论 | 依据 |
+| --- | --- | --- |
+| RAM scene terms 进入 dynamic terms | ✅ | 实跑 DINO prompt 第 2 槽 = `barrel. bin. cart. chair. container. dolly. equipment. floor. glass door. glass wall. machine. stool.`（`grounded_sam_subprocess.py:313-319` 单占一槽，不被目标词挤掉） |
+| target mandatory terms 无论 RAM 是否输出都保留 | ✅ | `:286-310` + `TargetProfile.detector_terms()` 完全不读 RAM |
+| SAM2 现有 mask pipeline 未被破坏 | ✅ | 真机 `scene_objects[].mask_rle` 正常产出（实见 RLE 数据） |
+| D435 现有 3D localization 未被破坏 | ✅ | 见上表 **50/50 全中** |
+
+### 组3 复杂目标
+
+| 项 | 结论 | 依据 |
+| --- | --- | --- |
+| RAM 不含 chair 时「黄色椅子」仍能搜 chair | ⚠️ 见下「未满足项」 | 离线脚本 `[OK] 颜色组合词进了目标词表`，`detector_terms=['chair','yellow chair','yellow seat']` |
+| 颜色由 VLM 最终复核 | ✅ | 离线：「主体物体为**白色**办公椅，**非黄色**」；真机：「图2中是**蓝色**垃圾桶，**非白色**」「图2中是**棕色**纸箱，不是白色垃圾桶」均被拒 |
+| 「挂着书包的椅子」同时搜 chair + backpack | ✅ | 真实 DINO prompt = `['chair. office chair. backpack.', ...]` |
+| relation target 的 crop/context 包含关联物体 | ✅ | 裁剪框 `[0.692,0,0.999,0.961]` → `[0.570,0,0.999,0.961]`，`context_objects=['backpack']`；同帧更近的 `glass door` 被锚点优先级正确压下去 |
+| 只看到普通 chair 不能确认 relation target | ✅ | 对照实验（B4，帧 `bundle_205664.jpg`，同帧 `chair=True backpack=False`）：复核 `is_target=False match=0.0 attr=0.0 context=0.0`，理由 **「未观察到任何书包挂在椅子上」**。即关系锚点缺失时判 False，且拒绝理由落在关系上而非别的属性 |
+
+A7 阶段同一脚本连跑 4 次、B4 本次第 5 次，结论一致（`Phase 4 通过: 黄色椅子=True
+挂书包的椅子=True`）。
+
+对照帧的选法：从 B4 事件流里筛「检出 chair 但检出集合无 backpack」的 observation，
+得 13 条，取今天 run2 的 `bundle_205664.jpg`（cache 内仍在）。该帧上脚本仍报
+`Phase 4 不通过`，是因为脚本本为正例设计（硬要求 `backpack=True`）——
+这两个 FAIL 描述的是**该帧的内容**，不是缺陷；[3.5] 要读的是 `复核: is_target=False`
+及其理由那一行。
+
+### 组4 稀有目标
+
+| 项 | 结论 | 依据 |
+| --- | --- | --- |
+| RAM++ 漏词不会直接宣告目标不存在 | ✅ | 真机 run3：「图2中是**白色桶状物，内有塑料袋**，符合垃圾桶特征」—— 检测没给出「垃圾桶」这个词，VLM 仍确认 |
+| target profile 强制词独立运行 | ✅ | `detector_terms()` 只由 profile 决定（`primary_labels_en` + 颜色组合 + 别名） |
+| 连续无 candidate 后低频 VLM target sweep 会触发 | ✅ | `tests/test_target_sweep_trigger.py::test_sweeps_on_the_threshold_cycle` + `test_does_not_sweep_before_the_empty_cycle_threshold` **passed** |
+| VLM sweep 不会每帧调用 | ✅ | 同上：`test_next_cycle_does_not_sweep_immediately`、`test_target_like_candidate_resets_the_counter` **passed** |
+| 无 bbox/空间证据时不能伪造 3D object | ✅ | `semantic_object_map.py:663` `_observation_anchor` 在 `map_xyz is None` 时返回 `None`；真机 16 个 OBJECT 节点**全部**带 3D 坐标，无一条无坐标记录 |
+
+### 组5 场景地图
+
+| 项 | 结论 | 依据 |
+| --- | --- | --- |
+| 普通物体无需 VLM 即可进入 3D SemanticObjectMap | ✅ | 真机 RGB-D run：16–18 个 OBJECT 节点，**50/50 全带 `map_xyz`**，未经过云端 VLM |
+| RAM++ tag 自己不能直接创建 3D object | ✅ | `ram_scene_terms` 的唯一消费者是 prompt 构造（`grounded_sam_subprocess.py:279,313`），无建 object 路径 |
+| 同一物体多帧仍复用现有 persistent object | ✅ | `tests/test_semantic_entity_association.py` + `test_live_persistent_id_mapping.py` → **12 passed** |
+| 三维地图/SLAM 行为没有被修改 | ✅ | §60 七条禁止路径 `git diff HEAD --numstat` **全部为空** |
+
+### 组6 效率
+
+| 项 | 结论 | 依据 |
+| --- | --- | --- |
+| full-scene VLM ordinary object enumeration = 0 | ✅ 有保留，见下 | grounded_sam 模式下**不存在「为枚举普通物体而发起的 VLM 调用」**；`payload["objects"]` 被 `siliconflow_vision_worker.py:238-239` 限定为**只含 target_objects** |
+| VLM 只用于 candidate verify / low-frequency target sweep | ✅ | 真机 3 个 run 各只有 1 次 `verification`（crop 复核）；`_vlm_target_sweep` 受双门槛节流 |
+| 60 秒内 full-frame VLM sweep 不超过 interval 允许次数 | ✅ | `tests/test_target_sweep_trigger.py::test_sixty_seconds_of_empty_cycles_sweeps_at_most_once_per_interval` **passed**（interval 10 s、连续 4 次空手，60 s 内上限 6 次） |
+| AsyncSemanticObserver 主链不阻塞导航 | ✅ | 类名实为 `AsyncSemanticObservationManager`：`submit_if_needed` 起 daemon 线程后**立即返回**（`async_semantic_observer.py:157-165`），主链走非阻塞 `poll_completed()` |
+
+### 组7 回归
+
+§64 的「回归」组是 **8 条**，逐条实测（2026-09-14 收尾，解释器同「最终回归」）：
+
+| # | §64 条目 | 结果 | 对应测试 |
+| --- | --- | --- | --- |
+| 1 | 现有 Grounded-SAM tests 通过 | ✅ **25 passed** | `test_grounded_sam_prompt_integration` / `test_grounded_sam_runtime` / `test_grounding_prompt_planner` / `test_dynamic_detector_prompts` / `test_ram_scene_terms` / `test_ram_target_priority` / `test_ram_scene_payload` |
+| 2 | 现有 SAM2/depth tests 通过 | ✅ **15 passed** | `test_depth_object_localizer` / `test_depth_object_localizer_identity` / `test_lightweight_depth_bev` |
+| 3 | TargetProfile tests 通过 | ✅ **5 passed** | `test_target_profile` |
+| 4 | CropVerifier tests 通过 | ✅ **7 passed** | `test_crop_utils` / `test_video_semantic_verifier` |
+| 5 | SemanticObjectMap tests 通过 | ✅ **31 passed** | `test_semantic_entity_association` / `test_semantic_entity_graph{,_relations}` / `test_semantic_object_topology_schema` / `test_semantic_frame_object_observations` / `test_scene_map_as_auxiliary` |
+| 6 | LiveSearch tests 通过 | ⚠️ **43 passed / 3 failed** | `test_live_*` 全套；3 个失败**全部是既有漂移**（`test_live_exploration_graph`×3，干净 HEAD 同样挂） |
+| 7 | SLAM/map tests 通过 | ⚠️ **83 passed / 2 failed** | `test_slam_*` + `test_plain_slam_*` + `test_map_quality_evaluator`；2 个失败**全部是既有漂移**（`test_plain_slam_config_generation`×2，干净 HEAD 同样挂） |
+| 8 | `python -m pytest -q` 无本次引入的新失败 | ✅ | 见下「B4 收尾复跑」 |
+
+**第 6/7 条为什么标 ⚠️ 而不是 ✅**：那 5 个失败**确实挂着**，只是**不是本次引入的**
+—— 它们全部落在 A10 建立的「稳定失败 12 项」集合里（干净 HEAD + `.env` 上同样挂）。
+按 §64 字面「通过」的口径不能算 ✅，按第 8 条「无本次引入的新失败」的口径则满足。
+**这里按字面写，不替 §64 放宽。**
+
+见本报告「最终回归」一节：干净 HEAD + `.env` = **12 failed / 1020 passed**，
+本轮改动后 = **14 failed / 1048 passed**，逐条 diff 后**新挂 2 项都已用实验排除**
+（LLM 解析行为变化 + AppTest 超时抖动），**没有一个是本次改动引入的**。
+B4 期间代码零改动，该结论直接适用。
+
+#### B4 收尾复跑（2026-09-14 13:34 起，`/tmp/b4_pytest3.log`）
+
+`/home/mxt/anaconda3/envs/go2_robot_scene_demo/bin/python -m pytest tests/ -q`
+
+```text
+13 failed, 1050 passed, 1 skipped in 757.05s (0:12:37)
+```
+
+**逐条 diff（拿 A10 那次的失败集合对齐，不看总数）：**
+
+| 类别 | 项数 | 说明 |
+| --- | --- | --- |
+| A10 已认定为**既有漂移**、本次仍挂 | **11** | `test_async_semantic_observer`×2、`test_autonomous_search_web_routes`、`test_autonomous_search_websocket`、`test_live_exploration_graph`×3、`test_manual_web_demo_config`、`test_plain_slam_config_generation`×2、`test_task_examples_evaluator` |
+| A10 已用实验归因为**环境波动**、本次仍挂 | **2** | `test_task_planner::test_plan_count_objects_has_count_state`、`test_streamlit_natural_language_task_ui::…`（同根因：上游 LLM 对中文样例的解析行为 + `AppTest` 超时抖动） |
+| A10 挂、**本次反而通过** | **1** | `test_streamlit_video_mode` |
+
+**∴ 13 = 11 + 2，全部落在 A10 已归因的集合内；变绿 1 项、新挂 0 项。**
+`test_streamlit_video_mode` 这种"时挂时过"正是 A10 末尾那条结论的现场复现：
+**含真实 LLM 调用的用例不可复现**，同一份代码两次跑失败集合就会变，
+不能拿它当门禁。
+
+**补跑（本次 pytest 启动后才改的两个文件，原结果对其过期）：**
+`app/manual_web_demo/static/slam_map_3d.js`（双击重置 pitch 0.63→1.35）
+与 `tests/test_slam_map_3d_frame.js`（新增一致性断言）。受影响的三个测试文件
+重跑 **33 passed**：
+
+```text
+tests/test_slam_map_3d_frame.py tests/test_search_map_viewport.py   → 2 passed
+tests/test_plain_slam_webui_3d.py tests/test_regression_search_20260901_211756.py → 31 passed
+```
+
+组7 判定 **✅ 无本次改动引入的回归**。
+（唯一保留：`pytest tests/` 整体含真实 LLM 调用，集合不稳定 —— 已知、已记录。）
+
+## 未满足项（**§64 要求「全部满足才能写 PASS」，故本次不写 PASS**）
+
+1. **组3 「黄色椅子」的*正例*未验证 —— 环境不具备，已用全量帧扫描确认为硬约束。**
+   现有证据只能证明**负例**（画面里的白/灰色办公椅被颜色理由正确判掉）。
+   同帧背景那块黄色是隔板/墙面，画面里**没有**黄色椅子 —— 所以「真有一把黄色椅子
+   时能否确认」没有实测。A7 阶段已把这一条明确留给 B4。
+
+   **2026-09-14 复核：扫了全部 303 张可用帧**
+   （`runtime/go2w/{rgbd_cache,rgbd_bridge_cache,semantic_observe_cache}` +
+   `outputs/crops` + `artifacts/slam_validation/**`），按黄色像素占比排序，
+   top15 全部落在 **14.84%–15.02%** 这个极窄区间 —— 那是**同一块办公隔断板**，
+   不是椅子。人工核验 `bundle_205664.jpg`：两把椅子**均为黑色**办公椅
+   （检出候选 `swivel chair score=0.783`，复核理由正是「主体为黑色办公椅，
+   颜色不符合目标要求」）。**∴ 现有数据里不存在黄色椅子，正例无法用离线帧补。**
+
+   补法只剩一种：**用户往场景里放一件黄色物体到椅子上**（黄纸/黄包均可），
+   再跑一次该查询。真机模式与离线帧模式都可，前者更接近验收形态。
+   在此之前本条**保持未满足**，不影响其余各条结论。
+
+2. **组6 「enumeration = 0」有一个措辞级保留。**
+   `_vlm_target_sweep` 复用 `_QUICK_SYSTEM_PROMPT`，该模板含
+   `scene_objects_light`（「最多 6~10 个画面中最显著的普通物体」），
+   所以 sweep 调用时 VLM **会顺带输出**该字段；但调用方只读 `payload["objects"]`
+   （已限定为 target_objects），**该字段被丢弃**。
+   且 `siliconflow_vision_worker.py:197-198` 注释表明这是**计划书 §4.1 的有意设计**
+   （供 Full Semantic 超时时建拓扑），不是遗漏。
+   即：不存在「为枚举而发起的调用」，但存在「复用的 prompt 里带着枚举指令」。
+   按 [[engineering-style-no-overdesign]]，未改 prompt。
+
+## 两处口径更正（本轮自己踩出来的，供后续引用）
+
+1. **`quick_vlm_started/completed` 在 `--detector grounded_sam` 下测的不是云端 VLM。**
+   `run_semantic_exploration.py:1394` 调的是 `node._detect()` —— grounded_sam 模式下
+   即本地 GroundingDINO+SAM2。`quick_api_calls` 在 `:1407` **无条件自增**。
+   这解释了为什么 `quick_vlm_completed.objects` 恒等于
+   `semantic_result_applied.object_count`：**两者源头是同一次本地检测**，
+   它因此**不能**当作 SiliconFlow 402 降级的判据（那个判据只在 `llm` 模式成立）。
+
+2. **`run_semantic_exploration.py` 里没有 target sweep**（`grep -c sweep` = 0）。
+   sweep 只存在于 `run_autonomous_loop.py`。所以组4 的 sweep 触发项、
+   组6 的 sweep 频次项，其证据来自**专项单元测试**而非本次三轮 run。

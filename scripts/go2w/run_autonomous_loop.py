@@ -43,9 +43,11 @@ from app.detectors.siliconflow_vision_protocol import (
     VLMRequest,
 )
 from app.live_robot.semantic_observer import (
+    SEMANTIC_STATUS_FRESH_QUICK,
     LiveSemanticObserver,
     semantic_payload_from_quick_target_absence,
 )
+from app.live_robot.target_sweep import decide_target_sweep
 from app.config import get_settings
 from app.detectors.grounded_sam_subprocess import GroundedSAMSubprocessDetector
 from app.memory.observation_memory_store import ObservationMemoryStore
@@ -90,7 +92,10 @@ from app.reasoning.semantic_navigation.auxiliary_hints import (
     build_precomputed_situated_prior_hints,
     build_psg_auxiliary_hints,
 )
-from app.reasoning.target_profile import TargetProfileResolver
+from app.reasoning.target_profile import TargetProfile, TargetProfileResolver
+# §15.2/§15.3 的 2D 关系几何（bbox 重叠 / 最近 context 物体 / 并集）在生产
+# video 链路里已经有了，这里直接复用，不重写一份。
+from app.video.semantic_verifier import _verification_region
 
 import rclpy
 from go2w_motion_interfaces.action import MotionCommand
@@ -155,6 +160,32 @@ def strict_json_value(value):
     if isinstance(value, (list, tuple)):
         return [strict_json_value(item) for item in value]
     return value
+
+
+def _detection_frame_objects(objects: list[dict]) -> list[dict]:
+    """把检测结果转成 _verification_region 认识的形状（它要 bbox / object_id）。"""
+    return [
+        {
+            "object_id": f"det_{index:03d}",
+            "label": item.get("label"),
+            "label_zh": item.get("label_zh"),
+            "bbox": item.get("bbox_2d"),
+        }
+        for index, item in enumerate(objects)
+    ]
+
+
+def _has_target_like(objects: list[dict], profile: TargetProfile) -> bool:
+    """检测结果里有没有「像目标」的候选 —— 只看 label 是否命中目标画像的词。
+
+    只用来决定「要不要启动 VLM 兜底扫描」，不参与任何目标判定。
+    """
+    terms = [str(term).lower() for term in profile.direct_terms() if str(term).strip()]
+    for item in objects:
+        label = str(item.get("label") or "").lower()
+        if any(term in label for term in terms):
+            return True
+    return False
 
 
 def _gsam_to_dict(obj) -> dict:
@@ -480,6 +511,14 @@ class AutonomousLoop(Node):
         # 常驻 worker 只有一条 stdin/stdout 管道；quick 快路径与后台 semantic
         # 线程会并发调用 _detect，必须串行化，否则竞态创建两个 worker。
         self._detect_lock = threading.Lock()
+        # RAM++ 场景词缓存。RAM++ 回答的是「当前视野大致有哪些类别」，
+        # 不是 tracking，所以按 ram_scene_tag_interval_seconds 限频，不每帧跑。
+        self._cached_ram_terms: list[str] = []
+        self._last_ram_tag_time: float = 0.0
+        # §20 VLM 目标扫描兜底的触发计数：连续多少次检测没出现 target-like 候选，
+        # 以及上一次整帧扫描的时刻。
+        self._target_sweep_empty_cycles = 0
+        self._last_target_sweep_time: float = 0.0
 
         self._client = ActionClient(self, MotionCommand, "/go2w/motion")
         self._arm_client = self.create_client(SetBool, "/go2w/arm")
@@ -1988,9 +2027,16 @@ class AutonomousLoop(Node):
         )
         observation_memory: list[dict] = []
         semantic_observer = None
+        # 目标画像：语义观察、VLM 目标扫描兜底（§18）、以及关系裁剪（§15.3）都要用，
+        # 所以提到 semantic_enabled 分支外面。
+        # 必须走 LLM 解析：§14/§15 要求画像里有颜色/上下文/关系（「挂着书包的椅子」
+        # → base=chair + context=backpack），确定性兜底解析不出这些词，
+        # GroundingDINO 就只会搜 chair、搜不到 backpack。解析失败时
+        # resolve() 内部自动退回确定性画像，等于维持原行为。
+        profile = TargetProfileResolver(settings=settings).resolve(target, use_llm=True)
+        self._target_profile = profile
 
         if semantic_enabled:
-            profile = TargetProfileResolver().resolve(target, use_llm=False)
             semantic_controller = SemanticSearchController(
                 profile,
                 backend=str(getattr(self, "_search_reasoner", "hybrid")),
@@ -2025,6 +2071,9 @@ class AutonomousLoop(Node):
                 )
                 if quick_reuse is not None:
                     return quick_reuse
+                scene_reuse = self._ram_scene_payload(image_path, state)
+                if scene_reuse is not None:
+                    return scene_reuse
                 python = env.get(
                     "SILICONFLOW_PYTHON",
                     env.get(
@@ -2071,6 +2120,11 @@ class AutonomousLoop(Node):
             self._write({"event": "camera_bundle", "frame_id": frame_id,
                          "host_s": self._host_s()})
             objects = self._detect(image_path, prompt, env)
+            # §17：这一帧的检测结果就是普通场景物体来源，留给语义观察复用。
+            state["detected_objects"] = objects
+            state["detected_image_path"] = image_path
+            # §18：GroundingDINO 连续空手时，低频问一次整帧 VLM 兜底。
+            objects = [*objects, *self._vlm_target_sweep(image_path, objects, profile)]
             detections = []
             for item in objects:
                 bbox = [
@@ -2096,7 +2150,31 @@ class AutonomousLoop(Node):
             image_path = state["image_path"]
             if not isinstance(image_path, str):
                 raise RuntimeError("no image available for verification")
-            result = self._verify_target(image_path, list(bbox), env)
+            # §15.3：关系目标（如「挂着书包的椅子」）不能只裁椅子紧边界，
+            # 要把同帧邻近的 context 物体（背包）并进裁剪框，VLM 才看得到关系证据。
+            # 非关系目标 _verification_region 原样返回，等于没变。
+            # 注意 object_id 必须给：_verification_region 靠
+            # `obj.object_id == candidate.object_id` 跳过候选自己，
+            # 两边都缺这个键就是 None == None，会把所有物体全跳过。
+            frame_objects = _detection_frame_objects(
+                state.get("detected_objects") or []
+            )
+            candidate_id = next(
+                (
+                    item["object_id"]
+                    for item in frame_objects
+                    if item["bbox"] == list(bbox)
+                ),
+                "",
+            )
+            verify_bbox, _context = _verification_region(
+                {"object_id": candidate_id, "bbox": list(bbox)},
+                frame_objects,
+                profile,
+            )
+            result = self._verify_target(
+                image_path, list(verify_bbox or bbox), env
+            )
             return VerificationResult(
                 object_name_zh=result.get("object_name_zh", ""),
                 is_target=bool(result.get("is_target", False)),
@@ -2347,8 +2425,120 @@ class AutonomousLoop(Node):
         # phone"）。拆成词表作为 dynamic_terms 传入，让常驻 worker 用同一份
         # 词表做 grounding（§44 目标 1：模型常驻，不再每次 subprocess 重载）。
         terms = [t.strip() for t in prompt.replace("。", ".").split(".") if t.strip()]
-        objects = detector.detect_with_dynamic_terms(image_path, prompt, terms)
+        objects = detector.detect_with_dynamic_terms(
+            image_path, prompt, terms, self._ram_scene_terms(detector, image_path)
+        )
         return [_gsam_to_dict(obj) for obj in objects]
+
+    def _ram_scene_terms(
+        self, detector: GroundedSAMSubprocessDetector, image_path: str
+    ) -> list[str]:
+        """低频问一次 RAM++「这一帧有哪些类别」，给 GroundingDINO 扩词。
+
+        目标词（PROMPT_MAP）走 dynamic_terms，RAM 词走独立槽位，两者不抢名额。
+        """
+        settings = get_settings()
+        if not settings.enable_ram_plus:
+            return []
+        now = time.monotonic()
+        if now - self._last_ram_tag_time < settings.ram_scene_tag_interval_seconds:
+            return self._cached_ram_terms
+        self._cached_ram_terms = detector.discover_scene_terms(image_path)
+        self._last_ram_tag_time = now
+        return self._cached_ram_terms
+
+    def _ram_scene_payload(self, image_path: str, state: dict) -> dict | None:
+        """§17：Grounded-SAM + RAM++ 模式下，普通场景物体由检测结果提供。
+
+        RAM++ 扩词 + GroundingDINO 已经在每一帧列出可见物体了，再花一次 VLM
+        去「列出画面所有东西」是白跑（§16 也要求普通物体不进 VLM）。
+        只要这一帧真的跑过检测就接管 —— 检测结果为空就是空场景，那也是
+        检测器的结论，不该再去问 VLM 一遍（§64：full-scene VLM enumeration = 0）。
+        只有「这一帧还没跑过检测」才返回 None 走原路径。
+        """
+        if getattr(self, "_detector", "grounded_sam") != "grounded_sam":
+            return None
+        if not get_settings().enable_ram_plus:
+            return None
+        if state.get("detected_image_path") != image_path:
+            return None
+        objects = state.get("detected_objects") or []
+        frame_id = str(state.get("frame_id", "semantic_live"))
+        return {
+            "scene_objects": objects,
+            "scene_relations": [],
+            "scene_summary_zh": (
+                "场景物体：" + "、".join(
+                    str(item.get("label_zh") or item.get("label") or "object")
+                    for item in objects[:12]
+                )
+            ) if objects else "本帧检测未发现物体。",
+            "image_path": image_path,
+            "frame_id": frame_id,
+            "source": "grounded_sam_ram_scene_objects",
+            "semantic_status": SEMANTIC_STATUS_FRESH_QUICK,
+            "semantic_quality": "grounded_sam_scene_objects",
+            "semantic_source_frame_id": frame_id,
+            "semantic_capture_timestamp": time.time(),
+            "semantic_completed_timestamp": time.time(),
+            "semantic_age_ms": 0.0,
+        }
+
+    def _vlm_target_sweep(
+        self, image_path: str, objects: list[dict], profile: TargetProfile
+    ) -> list[dict]:
+        """§18–§22：RAM++/GroundingDINO 连续空手时，低频问一次整帧 VLM 兜底。
+
+        问的不是「列出画面所有东西」，而是「整张图里有没有符合 TargetProfile
+        的目标（含稀有类别、颜色、属性、关系），有就指出候选区域」。
+        复用现有 quick 模式（§19 不新增 daemon、不新增 mode），VLM 只产生候选，
+        不宣布任务完成；候选带 bbox 回到现有 crop verification 链路。
+        """
+        settings = get_settings()
+        if getattr(self, "_detector", "grounded_sam") != "grounded_sam":
+            return []  # llm 模式每帧本来就在问 VLM，再扫一遍是重复
+        if not settings.enable_ram_plus:
+            return []  # §17 的降级只在 Grounded-SAM + RAM++ 模式下生效
+        run_sweep, self._target_sweep_empty_cycles, self._last_target_sweep_time = (
+            decide_target_sweep(
+                has_target_like=_has_target_like(objects, profile),
+                empty_cycles=self._target_sweep_empty_cycles,
+                last_sweep_time=self._last_target_sweep_time,
+                now=time.monotonic(),
+                empty_cycles_threshold=settings.vlm_target_sweep_empty_cycles,
+                interval_seconds=settings.vlm_target_sweep_interval_seconds,
+            )
+        )
+        if not run_sweep:
+            return []
+        payload = self._daemon_vlm_request(
+            "quick",
+            image_path,
+            self._target,
+            extra_instructions=(
+                profile.prompt_context()
+                + " 这是整帧兜底扫描：请特别留意稀有类别、颜色、属性与关系，"
+                "若可能存在目标，指出候选区域与可见证据；不要因为类别罕见就判不存在。"
+            ),
+            model=getattr(self, "_llm_model", ""),
+            frame_id=str(getattr(self, "_latest_frame_id", "")),
+            timeout=float(settings.vlm_runtime_quick_timeout_seconds),
+        )
+        if not payload:
+            return []
+        candidates = [
+            item
+            for item in payload.get("objects") or []
+            if isinstance(item, dict) and item.get("bbox_2d")
+        ]
+        if candidates:
+            self._write({
+                "event": "vlm_target_sweep_candidate",
+                "count": len(candidates),
+                "frame_id": str(getattr(self, "_latest_frame_id", "")),
+                "host_s": self._host_s(),
+            })
+        return candidates
 
     def _ensure_gsam_detector(self, env: dict[str, str]) -> GroundedSAMSubprocessDetector:
         # 注意：方法名不能叫 _gsam_detector —— __init__ 里的同名实例属性会遮蔽
@@ -2365,7 +2555,12 @@ class AutonomousLoop(Node):
                 settings = replace(
                     settings, grounded_sam_root=env["GROUNDED_SAM_ROOT"]
                 )
-            self._gsam_detector = GroundedSAMSubprocessDetector(settings=settings)
+            self._gsam_detector = GroundedSAMSubprocessDetector(
+                settings=settings,
+                # §2.2/§15：目标词表必须由 TargetProfile 决定（base + 颜色 + 上下文），
+                # 否则「挂着书包的椅子」只会搜 chair，backpack 永远进不了 prompt。
+                target_profile=getattr(self, "_target_profile", None),
+            )
         return self._gsam_detector
 
     def _close_detector(self) -> None:

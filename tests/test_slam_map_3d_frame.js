@@ -72,5 +72,16 @@ ok(Math.abs(normalView.center[0] - (-2.1115)) < 1e-6, "center 用 focus_bounds")
 console.log("centerAndSpan —— 没有 focus 时退回点云 bounds:");
 ok(Math.abs(F.centerAndSpan(null, BOUNDS).span - 25.403573036193848) < 1e-6, "span 用 bounds");
 
+console.log("默认视角 pitch —— 重置视角必须回到同一个角度:");
+// 2026-09-14：c776eae 把默认 pitch 0.63 改成 1.35（近俯视）时漏改了双击重置，
+// 双击会把视角退回"发糊"那个斜角。两处必须一致。
+const declared = /var pitch = ([\d.]+);/.exec(source);
+const reset = /dblclick[\s\S]{0,200}?pitch = ([\d.]+);/.exec(source);
+ok(declared !== null, "能找到 pitch 默认值声明");
+ok(reset !== null, "能找到双击重置");
+ok(declared && reset && declared[1] === reset[1],
+   "双击重置与默认值一致（声明 " + (declared && declared[1]) +
+   " / 重置 " + (reset && reset[1]) + "）");
+
 console.log(failures === 0 ? "ALL SLAM3D FRAME TESTS PASSED" : failures + " FAILURES");
 process.exit(failures === 0 ? 0 : 1);

@@ -60,6 +60,11 @@ DEFAULT_SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_t.yaml"
 DEFAULT_SAM2_CHECKPOINT = "checkpoints/sam2.1_hiera_tiny.pt"
 DEFAULT_MAX_DETECTED_OBJECTS = 100
 DEFAULT_DETECTION_DEVICE = "auto"
+DEFAULT_RAM_PLUS_ROOT = "/home/mxt/robotscene/external/recognize-anything"
+DEFAULT_RAM_PLUS_CHECKPOINT = "/home/mxt/robotscene/external/ram_plus_ckpt/ram_plus_swin_large_14m.pth"
+DEFAULT_ENABLE_RAM_PLUS = True
+DEFAULT_RAM_SCENE_TAG_INTERVAL_SECONDS = 1.8
+DEFAULT_RAM_SCENE_MAX_TERMS = 12
 DEFAULT_DETECTOR_TIMEOUT_SECONDS = 60.0
 DEFAULT_ENABLE_SAM2_MASK_FEATURES = True
 DEFAULT_ENABLE_CROP_VERIFY = True
@@ -152,6 +157,10 @@ DEFAULT_VLM_RUNTIME_SEMANTIC_VISUAL_CHANGE_ENABLED = True
 DEFAULT_VLM_RUNTIME_PLANNER_SEMANTIC_SOFT_STALE_SECONDS = 15.0
 DEFAULT_VLM_RUNTIME_PLANNER_SEMANTIC_HARD_STALE_SECONDS = 45.0
 DEFAULT_VLM_RUNTIME_VERIFY_SAME_FRAME_MAX_CALLS = 1
+# §20：RAM++/GroundingDINO 连续空手多少次、且距上次整帧 target sweep 多久，
+# 才允许再问一次 VLM「整张图里到底有没有目标」。只有这两个参数。
+DEFAULT_VLM_TARGET_SWEEP_INTERVAL_SECONDS = 10.0
+DEFAULT_VLM_TARGET_SWEEP_EMPTY_CYCLES = 4
 DEFAULT_LIVE_SEARCH_GRAPH_MATCH_PARTIAL_THRESHOLD = 0.30
 DEFAULT_LIVE_SEARCH_GRAPH_MATCH_STRONG_THRESHOLD = 0.72
 DEFAULT_LIVE_SEARCH_NEGATIVE_MEMORY_ENABLED = True
@@ -326,6 +335,11 @@ class Settings:
     sam2_checkpoint: str = DEFAULT_SAM2_CHECKPOINT
     max_detected_objects: int = DEFAULT_MAX_DETECTED_OBJECTS
     detection_device: str = DEFAULT_DETECTION_DEVICE
+    ram_plus_root: str = DEFAULT_RAM_PLUS_ROOT
+    ram_plus_checkpoint: str = DEFAULT_RAM_PLUS_CHECKPOINT
+    enable_ram_plus: bool = DEFAULT_ENABLE_RAM_PLUS
+    ram_scene_tag_interval_seconds: float = DEFAULT_RAM_SCENE_TAG_INTERVAL_SECONDS
+    ram_scene_max_terms: int = DEFAULT_RAM_SCENE_MAX_TERMS
     detector_timeout_seconds: float = DEFAULT_DETECTOR_TIMEOUT_SECONDS
     enable_crop_verify: bool = DEFAULT_ENABLE_CROP_VERIFY
     crop_verify_backend: str = DEFAULT_CROP_VERIFY_BACKEND
@@ -577,6 +591,8 @@ class Settings:
     vlm_runtime_planner_semantic_soft_stale_seconds: float = DEFAULT_VLM_RUNTIME_PLANNER_SEMANTIC_SOFT_STALE_SECONDS
     vlm_runtime_planner_semantic_hard_stale_seconds: float = DEFAULT_VLM_RUNTIME_PLANNER_SEMANTIC_HARD_STALE_SECONDS
     vlm_runtime_verify_same_frame_max_calls: int = DEFAULT_VLM_RUNTIME_VERIFY_SAME_FRAME_MAX_CALLS
+    vlm_target_sweep_interval_seconds: float = DEFAULT_VLM_TARGET_SWEEP_INTERVAL_SECONDS
+    vlm_target_sweep_empty_cycles: int = DEFAULT_VLM_TARGET_SWEEP_EMPTY_CYCLES
     live_search_graph_match_partial_threshold: float = (
         DEFAULT_LIVE_SEARCH_GRAPH_MATCH_PARTIAL_THRESHOLD
     )
@@ -799,6 +815,15 @@ def get_settings() -> Settings:
         sam2_checkpoint=_env_value("SAM2_CHECKPOINT", DEFAULT_SAM2_CHECKPOINT),
         max_detected_objects=_env_int("MAX_DETECTED_OBJECTS", DEFAULT_MAX_DETECTED_OBJECTS),
         detection_device=_env_value("DETECTION_DEVICE", DEFAULT_DETECTION_DEVICE),
+        ram_plus_root=_env_value("RAM_PLUS_ROOT", DEFAULT_RAM_PLUS_ROOT),
+        ram_plus_checkpoint=_env_value(
+            "RAM_PLUS_CHECKPOINT", DEFAULT_RAM_PLUS_CHECKPOINT
+        ),
+        enable_ram_plus=_env_bool("ENABLE_RAM_PLUS", DEFAULT_ENABLE_RAM_PLUS),
+        ram_scene_tag_interval_seconds=_env_float(
+            "RAM_SCENE_TAG_INTERVAL_SECONDS", DEFAULT_RAM_SCENE_TAG_INTERVAL_SECONDS
+        ),
+        ram_scene_max_terms=_env_int("RAM_SCENE_MAX_TERMS", DEFAULT_RAM_SCENE_MAX_TERMS),
         detector_timeout_seconds=_env_float(
             "DETECTOR_TIMEOUT_SECONDS", DEFAULT_DETECTOR_TIMEOUT_SECONDS
         ),
@@ -1441,6 +1466,14 @@ def get_settings() -> Settings:
         vlm_runtime_verify_same_frame_max_calls=_env_int(
             "VLM_RUNTIME_VERIFY_SAME_FRAME_MAX_CALLS",
             DEFAULT_VLM_RUNTIME_VERIFY_SAME_FRAME_MAX_CALLS,
+        ),
+        vlm_target_sweep_interval_seconds=_env_float(
+            "VLM_TARGET_SWEEP_INTERVAL_SECONDS",
+            DEFAULT_VLM_TARGET_SWEEP_INTERVAL_SECONDS,
+        ),
+        vlm_target_sweep_empty_cycles=_env_int(
+            "VLM_TARGET_SWEEP_EMPTY_CYCLES",
+            DEFAULT_VLM_TARGET_SWEEP_EMPTY_CYCLES,
         ),
         live_search_graph_match_partial_threshold=_env_float(
             "LIVE_SEARCH_GRAPH_MATCH_PARTIAL_THRESHOLD",
