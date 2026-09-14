@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""把当前权威 SLAM 地图写成 WebUI 的地图快照（go2w_slam_web_cloud_v1）。
+"""把当前权威 SLAM 地图写成 WebUI 的地图快照（go2w_slam_web_cloud_v2）。
 
 背景：manual_web_demo 的 ``/api/slam/map3d`` **不订阅实时话题**，而是直接读快照文件
 ``outputs/autonomous_search/runtime/slam_map_3d.json``。该文件在本机已停止更新
@@ -144,7 +144,8 @@ class WebuiSnapshotWriter(Node):
         # 地图**数据**最后一次变化的墙钟时间（不是文件写入时间）。_flush 每
         # period_s 秒重写一次快照，generated_at 会跟着刷新；拿它当地图年龄等于
         # 恒报新鲜。前端"slam_map_3d.js"的"地图 X 前"读的是读取端算出的
-        # map_age_seconds，而读取端取的就是 map_updated_at 这个键。
+        # map_age_seconds，而读取端优先取 ros_stamp（跟着数据走，写端重启后
+        # 重投 latched 那一帧也不会变），只在没有 ros_stamp 时才退回这个键。
         self._map_updated_at = None
         self._last_ros_stamp = None
         topic = str(self.get_parameter("map_topic").value)
@@ -350,40 +351,51 @@ class WebuiSnapshotWriter(Node):
             keys = np.floor(points / self._voxel).astype(np.int64)
             _, unique = np.unique(keys, axis=0, return_index=True)
             points = points[np.sort(unique)]
+        # 三级点数必须是真的三级：SLAM 源点(count) > 体素后(voxels) > 网页显示(step 后)。
+        # 2026-09-03 的 v2 门限明写"三个数不许相等冒充"，所以这里留中间量。
+        voxels = int(len(points))
         step = max(1, len(points) // self._max_points)
         points = points[::step]
-        self._latest_bounds = (
-            [float(v) for v in points.min(axis=0)],
-            [float(v) for v in points.max(axis=0)],
-        ) if len(points) else None
+        low = [float(v) for v in points.min(axis=0)] if len(points) else None
+        high = [float(v) for v in points.max(axis=0)] if len(points) else None
+        self._latest_bounds = (low, high) if low is not None else None
         stamp = float(message.header.stamp.sec) + float(message.header.stamp.nanosec) * 1e-9
+        frame = message.header.frame_id or "pslam_map"
+        # 字段名必须是前端 static/slam_map_3d.js 读的那套 v2 词表（§9/§10 的
+        # app/spatial/slam_web_map_state.py 定义），否则页脚全取到 undefined 显示 0。
+        # 本写端只订阅地图话题，§10 那些概念（建图健康、会话号、漂移门）拿不到的
+        # 一律不编 —— 缺字段时前端显示 "--"，好过一个假的 0 或者假的 HEALTHY。
         payload = {
-            "schema_version": "go2w_slam_web_cloud_v1",
+            "schema_version": "go2w_slam_web_cloud_v2",
             "available": bool(len(points)),
             "source": f"map_3d:{self.get_parameter('map_topic').value}",
-            "frame_id": message.header.frame_id or "pslam_map",
-            "target_map_frame": message.header.frame_id or "pslam_map",
+            "permanent_source": str(self.get_parameter("map_topic").value),
+            "canonical_frame": frame,
+            "frame_id": frame,
+            "target_map_frame": frame,
             "ros_stamp": stamp,
+            "last_good_map_stamp": stamp,
+            "map_updated_at": self._map_updated_at,
             "generated_at": time.time(),
             "point_count": int(len(points)),
-            "accumulated_voxels": int(len(points)),
-            "received_scans": self._received,
-            "accumulated_scans": self._received,
-            "dropped_scans": 0,
-            "dropped_reason_counts": {},
-            "last_dropped_reason": None,
-            "stationary": True,
-            "pose": {"x": 0.0, "y": 0.0, "yaw": 0.0},
-            "delta_yaw_rad": 0.0,
+            "source_map_points": count,
+            "global_cached_voxels": voxels,
+            "web_display_points": int(len(points)),
+            "max_web_points": self._max_points,
+            "map_revision": self._received,
+            "global_voxel_size_m": self._voxel,
             "voxel_size_m": self._voxel,
-            "map_updated_at": self._map_updated_at,
-            "bounds": {"min": [float(v) for v in points.min(axis=0)],
-                       "max": [float(v) for v in points.max(axis=0)]},
+            "map_extent_m": ([high[i] - low[i] for i in range(3)]
+                             if low is not None else [0.0, 0.0, 0.0]),
+            "bounds": {"min": low, "max": high},
             # 前端 centerAndSpan() 优先用这个定缩放；null 时退回 bounds。
             "focus_bounds": self._focus_bounds(),
             "points": [[round(float(p[0]), 3), round(float(p[1]), 3), round(float(p[2]), 3)]
                        for p in points],
             "objects": self._load_objects(),
+            # 本写端不订阅 scan 话题，给一个干净的空 preview；前端显示"未接入"。
+            "preview": {"frame_id": "", "ros_stamp": 0.0, "wall_time": 0.0,
+                        "point_count": 0, "points": []},
             "mapping_mode": "mapping_assist",
             "motion_authorized": False,
             "safety_authorized": False,
@@ -391,7 +403,6 @@ class WebuiSnapshotWriter(Node):
             # 重算并覆盖它们，改这里不影响前端。真正的地图年龄看 map_updated_at。
             "age_seconds": 0.0,
             "fresh": True,
-            "web_display_points": int(len(points)),
             "map_age_seconds": None,
             "preview_age_seconds": None,
         }

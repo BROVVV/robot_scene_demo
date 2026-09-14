@@ -417,7 +417,11 @@ def test_snapshot_reader_marks_fresh_and_preserves_safety_boundary(tmp_path: Pat
     path.write_text(json.dumps({
         "available": True,
         "generated_at": now,
-        "map_updated_at": now - 1.5,
+        # ros_stamp 是数据自己的时间，map_updated_at 是写端"收到"的时间。写端一重启
+        # 就会收到 transient_local 重投的那一帧，后者变成"刚刚"而前者不动 —— 所以
+        # 这两个必须给成不一样的值，否则测不出读取端到底取了哪个。
+        "ros_stamp": now - 1.5,
+        "map_updated_at": now - 0.2,
         "source": "/go2w/slam/map_3d",
         "canonical_frame": "pslam_map",
         "points": [[1.0, 2.0, 3.0]],
@@ -432,6 +436,8 @@ def test_snapshot_reader_marks_fresh_and_preserves_safety_boundary(tmp_path: Pat
     assert value["point_count"] == 1
     assert value["web_display_points"] == 1
     # 全局地图和当前 scan 是两个时间轴，网页要分别显示。
+    # 取的是 ros_stamp(1.5s) 而不是 map_updated_at(0.2s)：按后者算，写端重启后
+    # 页面会把 70 分钟前的地图报成"18 秒前"。
     assert 1.0 <= value["map_age_seconds"] <= 3.0
     assert value["preview_age_seconds"] < 1.0
     assert value["mapping_mode"] == "mapping_assist"

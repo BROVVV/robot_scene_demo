@@ -232,12 +232,17 @@
     }
   }
 
+  // 快照里没有的字段一律显示 "--"。原来的 `Number(value || 0)` 会把 undefined
+  // 编成 0，页脚于是出现"全局缓存体素 0/0""地图范围 0.0×0.0×0.0m"这种看着像故障
+  // 的假数 —— 2026-09-14 就是因为这个，写端发 v1 词表、前端按 v2 读，整条页脚全假。
   function count(value) {
-    return Number(value || 0).toLocaleString();
+    return value == null ? "--" : Number(value).toLocaleString();
   }
 
   function age(value) {
-    return value == null ? "--" : Number(value).toFixed(1) + "s";
+    if (value == null) return "--";
+    var seconds = Number(value);
+    return seconds >= 60 ? (seconds / 60).toFixed(1) + "分" : seconds.toFixed(1) + "s";
   }
 
   function applySnapshot(snapshot) {
@@ -275,15 +280,24 @@
       count(snapshot.mapping_session_id) + " · r" + count(snapshot.map_revision);
     var extent = snapshot.map_extent_m || [0, 0, 0];
     if (capacity) {
-      capacity.textContent = "SLAM 源点 " + count(snapshot.source_map_points) +
-        " → 全局缓存体素 " + count(snapshot.global_cached_voxels) + "/" +
-        count(snapshot.max_global_voxels) + " → 网页显示 " +
-        count(snapshot.web_display_points) + "/" + count(snapshot.max_web_points) +
+      // "全局缓存体素"那层只有 §10 的桥才有（GlobalVoxelCloud + 上限）。写端
+      // 没有这一层时整层不显示，而不是显示成 "N/--"。
+      var layers = ["SLAM 源点 " + count(snapshot.source_map_points)];
+      if (snapshot.max_global_voxels != null) {
+        layers.push("全局缓存体素 " + count(snapshot.global_cached_voxels) +
+          "/" + count(snapshot.max_global_voxels));
+      }
+      layers.push("网页显示 " + count(snapshot.web_display_points) +
+        "/" + count(snapshot.max_web_points));
+      capacity.textContent = layers.join(" → ") +
         " · 地图范围 " + Number(extent[0] || 0).toFixed(1) + "×" +
         Number(extent[1] || 0).toFixed(1) + "×" + Number(extent[2] || 0).toFixed(1) + "m" +
         (snapshot.capacity_limited ? " · 已整体降分辨率" : "") +
-        " · 当前 scan " + count(scan.point_count) + " 点(" + (scan.frame_id || "--") + ")" +
-        (previewDrawable ? "" : "，与地图坐标系不同故不叠加显示") +
+        // 没有 scan 时不能报"坐标系不同"—— 那是另一回事（写端根本没订阅 scan）。
+        " · 当前 scan " + (scan.frame_id
+          ? count(scan.point_count) + " 点(" + scan.frame_id + ")"
+          : "未接入") +
+        (previewDrawable || !scan.frame_id ? "" : "，与地图坐标系不同故不叠加显示") +
         (snapshot.last_rejected_reason ? " · 最近拒绝 " + snapshot.last_rejected_reason : "");
       capacity.className = "slam3d-capacity" +
         (health === "HEALTHY" ? "" : " degraded");
@@ -322,7 +336,7 @@
     zoom = Math.max(0.25, Math.min(8, zoom * (event.deltaY > 0 ? 0.88 : 1.14)));
     render();
   }, { passive: false });
-  canvas.addEventListener("dblclick", function () { yaw = -0.72; pitch = 0.63; zoom = 1; render(); });
+  canvas.addEventListener("dblclick", function () { yaw = -0.72; pitch = 1.35; zoom = 1; render(); });
   if (previewToggle) previewToggle.addEventListener("change", render);
   window.addEventListener("resize", render);
   render();
