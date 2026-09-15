@@ -212,7 +212,13 @@ def calibrate_multi_scene(scene_roots: list[Path]) -> dict:
             builtin,
             pandar,
             init_translation=np.array([0.13, 0.015, 0.014], dtype=np.float64),
-            init_yaw_rad=math.radians(11.357),
+            # 必须是 90.0，不是旧的 11.357：那个值来自一次被 20260813 报告
+            # 自己否决的双雷达配准（median NN 0.3516 m）。而 yaw 搜索范围是
+            # ±15°（见 estimate_scene_transform 默认参数），从 11.357 出发只能
+            # 覆盖 [-3.6°, 26.4°]，**永远搜不到正确值 90°**。
+            # 90° 是确定性轴向约定（Hesai 驱动 x=d·cos(el)·sin(azi)、
+            # y=d·cos(el)·cos(azi)），不是标定出来的量。
+            init_yaw_rad=math.radians(90.0),
         )
         scene_results.append(
             {
