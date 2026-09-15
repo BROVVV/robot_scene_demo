@@ -1509,8 +1509,14 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
         ):
             semantic = latest_semantic
             profiler.set_counter("semantic_cache_hit", True)
-        elif latest_semantic is not None and not quick_scene_objects:
-            # 旧帧 Full Semantic 仅在很短的新鲜度窗口内作为“历史记忆”兜底，
+        elif latest_semantic is not None:
+            # 旧帧 Full Semantic 在很短的新鲜度窗口内可用，这里**不要求 quick 没看见物体**。
+            # Full 是异步提交的，结果几乎总是晚一拍到达（真机实测 4.8~23.0 s），而
+            # observation 在 quick 返回后立刻装配——若仍要求 quick 为空，本分支永不进入
+            # （真机 6 个 run 里 full_older_frame 命中 0 次），Full 独有的 scene_relations
+            # 会被整批丢掉，物体拓扑只剩孤点。
+            # 目标存在性判定不受影响：target_present/target_state 由 quick 路径独立给出，
+            # 本分支不参与，绝不拿旧 Full 冒充当前帧“确认无物体”。
             # 明确标记 age/status，绝不假装是当前帧事实。
             age_s = max(
                 0.0,

@@ -101,6 +101,12 @@ class SubprocessSearchExecutor:
             stderr_target = self._log_path.open("ab")
         env = dict(os.environ)
         env["PYTHONUNBUFFERED"] = "1"
+        # 交互式 shell 若设了 PYTHONNOUSERSITE=1（本机在 ~/.bashrc），WebUI 会继承下来，
+        # 而上面选中的 ROS 解释器（/usr/bin/python3）的 pydantic / openai 只在
+        # ``~/.local/lib/python3.10/site-packages``。该变量会把它屏蔽掉，worker 收到 start
+        # 后才在懒加载 ``app.schemas`` 时炸成 WORKER_DEPENDENCY_MISSING——
+        # 而启动探测只 import 到模块层，照样放行。选这个解释器本来就是要它的 user site。
+        env.pop("PYTHONNOUSERSITE", None)
         self._proc = subprocess.Popen(
             self._cmd,
             cwd=self._cwd,
