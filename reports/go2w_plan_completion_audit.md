@@ -1,5 +1,28 @@
 # Go2-W implementation-plan completion audit
 
+> ## ⚠ SCOPE WARNING (added 2026-09-15)
+>
+> **This audit covers only the 2026-08 "robot movement is prohibited" plan**
+> (camera TF / RGB-LiDAR extrinsics / Level 0 / Nav2 / `/cmd_vel` lease).
+> It contains **no mention** of the seven September plan documents.
+>
+> **Its BLOCKED conclusions are superseded.** `Camera TF BLOCKED`,
+> `RGB-LiDAR physical extrinsics BLOCKED`, `Motion-validated LIO BLOCKED`,
+> `SLAM / map -> odom BLOCKED`, and `Current highest defensible level = Level 0`
+> were all overtaken by work landed in `3a47a08` (2026-09-01) and `740cd23`
+> (2026-09-10): fixed-world 3D mapping, object topology, Place graph,
+> tri-state target gating.
+>
+> **Do not use this file as an acceptance basis for the September plans** — it
+> will return a severely understated verdict. See instead:
+> - `reports/go2w_plan_completion_audit_20260915.md` (supersedes this)
+> - `reports/RAM_PLUS_SEMANTIC_PERCEPTION_VALIDATION.md`
+> - `docs/GO2W_总计划书_合并版_20260910.md`
+>
+> What remains valid here is only the implementation-independent process
+> material under "Safety and delivery" (no low-level control changes, no
+> firmware changes).
+
 Audit date: 2026-08-06 (Asia/Shanghai)  
 Constraint: robot movement is prohibited
 
