@@ -119,21 +119,13 @@
 
         <div class="cell cell-map">
           <div class="cell-title">地图
-            <span class="view-toggle" id="map-view-toggle">
-              <button class="vtab active" data-mode="semantic_topology" type="button">语义拓扑</button>
-              <button class="vtab" data-mode="spatial_map" type="button">空间地图</button>
+            <span class="view-toggle" id="topology-view-toggle"
+                  title="物体拓扑只画物体与物体之间的关系；导航拓扑额外显示地点中转站 P1 与“从何处看到”">
+              <button class="vtab active" data-topology-view="objects" type="button">物体拓扑</button>
+              <button class="vtab" data-topology-view="navigation" type="button">导航拓扑</button>
             </span>
             <span class="sub" id="map-meta"></span>
             <span class="viewport-hint" title="滚轮缩放 / 拖拽平移 / 双击复位">滚轮缩放 · 拖拽平移 · 双击复位</span>
-            <span class="legend" id="map-legend">
-              <i class="l-cur">▲</i><span>当前</span>
-              <i class="l-vis">●</i><span>已访问</span>
-              <i class="l-int">★</i><span>语义兴趣</span>
-              <i class="l-neg">◌</i><span>负证据</span>
-              <i class="l-unc">✕</i><span>不可达</span>
-              <i class="l-cand">◎</i><span>候选</span>
-              <i class="l-conf">✓</i><span>确认</span>
-            </span>
           </div>
           <svg id="search-map" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet"></svg>
           <div id="map-node-detail" class="map-node-detail hidden"></div>

@@ -100,8 +100,7 @@
     // map
     mapMeta: document.getElementById("map-meta"),
     mapNodeDetail: document.getElementById("map-node-detail"),
-    mapViewToggle: document.getElementById("map-view-toggle"),
-    mapLegend: document.getElementById("map-legend"),
+    topologyViewToggle: document.getElementById("topology-view-toggle"),
     // timeline
     timeline: document.getElementById("search-timeline"),
     tlWsState: document.getElementById("tl-ws-state"),
@@ -657,35 +656,39 @@
     }).catch(function () {});
   });
 
-  // Map view toggle: 语义拓扑 (default) / 空间地图 (plan §17).
-  if (els.mapViewToggle) {
-    els.mapViewToggle.addEventListener("click", function (event) {
+  // 语义拓扑页的投影视图：物体拓扑（默认）/ 导航拓扑。
+  // 计划1 §7.3 要"只有物体"，计划3 步骤 2.1 要保留 PLACE 中转站才连得成一张图，
+  // 计划2 §11.2 给过出路（"或至少提供 toggle"）——这里就是那个 toggle。
+  if (els.topologyViewToggle) {
+    els.topologyViewToggle.addEventListener("click", function (event) {
       var btn = event.target.closest ? event.target.closest("button") : null;
-      if (!btn || !btn.dataset || !btn.dataset.mode) return;
-      var mode = btn.dataset.mode === "spatial_map" ? "spatial_map" : "semantic_topology";
-      Array.prototype.forEach.call(els.mapViewToggle.querySelectorAll(".vtab"), function (b) {
-        b.classList.toggle("active", b.dataset.mode === mode);
-      });
-      mapRenderer.setMode(mode);
-      if (els.mapLegend) {
-        els.mapLegend.style.display = mode === "spatial_map" ? "" : "none";
-      }
+      if (!btn || !btn.dataset || !btn.dataset.topologyView) return;
+      var view = btn.dataset.topologyView === "navigation" ? "navigation" : "objects";
+      Array.prototype.forEach.call(
+        els.topologyViewToggle.querySelectorAll(".vtab"), function (b) {
+          b.classList.toggle("active", b.dataset.topologyView === view);
+        });
+      mapRenderer.setTopologyView(view);
       renderAll();
     });
   }
-  // Default: semantic topology; hide the metric legend by default.
-  if (els.mapLegend) els.mapLegend.style.display = "none";
 
   // ------------------------------------------------------------------ //
   // Rendering                                                           //
   // ------------------------------------------------------------------ //
-  // 计划书 §7.3：物体列表、计数和拓扑图共用同一个"只有对象"的投影，
+  // 计划书 §7.3：物体列表、计数和拓扑图共用同一个投影，
   // 保证界面上的节点数就是画出来的节点数，绝不退回导航图。
+  // 投影跟着当前视图走：物体拓扑下 P1 不计入"N 个物体"。
   function objectTopology(spatial) {
     var graph = (spatial || {}).semantic_graph || null;
     var raw = graph && graph.object_topology ? graph.object_topology : null;
-    if (window.TopologyLayout && window.TopologyLayout.objectOnly) {
-      return window.TopologyLayout.objectOnly(raw);
+    if (window.TopologyLayout) {
+      var view = mapRenderer && mapRenderer.getTopologyView
+        ? mapRenderer.getTopologyView() : "objects";
+      var project = view === "navigation"
+        ? window.TopologyLayout.objectOnly
+        : window.TopologyLayout.objectStrict;
+      if (project) return project(raw);
     }
     return raw;
   }
@@ -735,32 +738,19 @@
     renderDebug();
     renderErrorDetail();
     var spatial = appState.spatial || null;
-    var hasOldMap = appState.map && Array.isArray(appState.map.nodes) && appState.map.nodes.length;
-    var hasPlaces = spatial && spatial.place_graph &&
-      Array.isArray(spatial.place_graph.places) && spatial.place_graph.places.length;
-    var mode = mapRenderer.getMode();
-    if (mode === "semantic_topology") {
-      // Semantic topology projection: show only topology stats, never metric
-      // map / place metrics (they belong to the spatial map view).
-      var hasGraph = !!(spatial && spatial.semantic_graph && spatial.semantic_graph.object_topology);
-      var topology = objectTopology(spatial);
-      var nodes = (topology && topology.nodes) || [];
-      var edges = (topology && topology.edges) || [];
-      var empty = (nodes.length === 0);
-      els.mapMeta.textContent = empty
-        ? (hasGraph ? "已建图 0 节点 · 等待识别到物体" : "等待首次物体识别…识别后自动开始建拓扑")
-        : "拓扑节点 " + nodes.length + " · 关系 " + edges.length +
-          " · rev " + ((topology && topology.revision) || 0);
-      mapRenderer.render(appState.map || {}, spatial);
-    } else {
-      if (hasOldMap || hasPlaces) {
-        mapRenderer.render(appState.map || {}, spatial);
-        var placeCount = hasPlaces ? spatial.place_graph.places.length : 0;
-        els.mapMeta.textContent = "Map revision " + ((appState.map || {}).revision || 0) +
-          " · Place " + placeCount +
-          " · Frontier " + ((spatial && spatial.frontiers) || []).length;
-      }
-    }
+    // Semantic topology projection: show only topology stats, never metric
+    // map / place metrics. 计量"空间地图"视图已于 2026-08-26 移除，
+    // 2026-09-15 起连入口按钮和模式开关也一并删掉，这里不再分支。
+    var hasGraph = !!(spatial && spatial.semantic_graph && spatial.semantic_graph.object_topology);
+    var topology = objectTopology(spatial);
+    var nodes = (topology && topology.nodes) || [];
+    var edges = (topology && topology.edges) || [];
+    var empty = (nodes.length === 0);
+    els.mapMeta.textContent = empty
+      ? (hasGraph ? "已建图 0 节点 · 等待识别到物体" : "等待首次物体识别…识别后自动开始建拓扑")
+      : "拓扑节点 " + nodes.length + " · 关系 " + edges.length +
+        " · rev " + ((topology && topology.revision) || 0);
+    mapRenderer.render(appState.map || {}, spatial);
     drawOverlay();
   }
 

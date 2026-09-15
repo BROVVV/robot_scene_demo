@@ -1,6 +1,11 @@
-/* SearchMapRenderer: SVG map renderer with two display modes
- *   "semantic_topology" (default) - stable persistent OBJECT relation graph
- *   "spatial_map"                 - original metric exploration map
+/* SearchMapRenderer: SVG renderer for the semantic topology page.
+ *
+ * 只有一个显示模式：语义拓扑。计量"空间地图"模式已于 2026-08-26 移除，
+ * 其入口按钮 / 模式开关 / 图例于 2026-09-15 一并删除；文件末尾那段
+ * renderSpatialMap 及其专属辅助函数因此**不可达**，留着只是没清理。
+ * 页内可切换的是两个投影视图（见 this.topologyView）：
+ *   "objects"    默认 - 只有 OBJECT 节点与物体间关系
+ *   "navigation"      - 额外含 PLACE 中转站与 OBSERVED_FROM
  *
  * Semantic topology (plan §16-§24):
  *   - nodes are only persistent OBJECT ids (obj_xxx)
@@ -140,8 +145,13 @@
     this.data = null;
     this.spatial = null;
 
-    // View mode: "semantic_topology" (default) or "spatial_map".
-    this.mode = "semantic_topology";
+    // 语义拓扑页的投影视图。两份计划在这页画什么上冲突，裁决见
+    // docs/GO2W_三维建图重影_与_拓扑碎片化_修复计划书_20260903.md 步骤 2.1/2.2：
+    //   "objects"    = 只有 OBJECT 节点与物体间关系（默认；计划1 §7.4 的验收契约）
+    //   "navigation" = 再加上 PLACE 中转站与 OBSERVED_FROM（计划3 判据 T2 连通分量==1）
+    // 默认取 objects：物体关系没提出来时，界面呈现孤立点（难看但诚实），
+    // 而不是用 "都从 P1 看到" 把关系提取失败糊成一张连通的图。
+    this.topologyView = "objects";
 
     // Stable display layout cache for the semantic topology (pure display).
     this.topologyPositions = {};
@@ -271,17 +281,15 @@
   };
 
   // ------------------------------------------------------------------ //
-  // Mode switching                                                     //
+  // Topology view switching                                            //
   // ------------------------------------------------------------------ //
-  SearchMapRenderer.prototype.setMode = function (mode) {
-    // The 2026-08-26 plan removes the metric spatial-map mode entirely.
-    this.mode = "semantic_topology";
-    void mode;
+  SearchMapRenderer.prototype.setTopologyView = function (view) {
+    this.topologyView = view === "navigation" ? "navigation" : "objects";
     this.render(this.data, this.spatial);
   };
 
-  SearchMapRenderer.prototype.getMode = function () {
-    return this.mode;
+  SearchMapRenderer.prototype.getTopologyView = function () {
+    return this.topologyView;
   };
 
   // ------------------------------------------------------------------ //
@@ -296,8 +304,9 @@
     // 这些内部导航节点会漏到界面上。内部导航图仍然保留给规划器使用。
     var graph = this.spatial.semantic_graph || null;
     var topology = graph && graph.object_topology ? graph.object_topology : null;
+    var project = this.topologyView === "navigation" ? objectTopologyOnly : objectTopologyStrict;
     this.renderObjectTopology(
-      objectTopologyOnly(topology),
+      project(topology),
       this.spatial.semantic_objects || []
     );
   };
@@ -600,7 +609,13 @@
   };
 
   // ================================================================== //
-  // SPATIAL MAP VIEW (original metric map, unchanged behavior)        //
+  // ⚠ 不可达代码（2026-09-15 起）                                        //
+  //                                                                    //
+  // 计量"空间地图"视图已被 2026-08-26 计划整体移除，本轮又把入口按钮和  //
+  // 模式开关一并删掉，所以下面这一整段（renderSpatialMap 及其专属的     //
+  // drawSpatialOverlay / drawSemanticEdges / drawRoute）**没有任何调用点**。//
+  // 留着只是还没清理，别以为这是个能用的功能，也别去"修"它。           //
+  // 对应的界面图例 #map-legend 也已从 index.html 删除。                  //
   // ================================================================== //
   SearchMapRenderer.prototype.renderSpatialMap = function (mapData, spatialData) {
     this.data = mapData || this.data || {};
@@ -1069,6 +1084,31 @@
     };
   }
 
+  // 计划1 §7.3 的严格契约：节点只收 OBJECT，边只连接两个物体。
+  // OBSERVED_FROM / FRONTIER_TO / MOVED_TO 三类边都有一端是 PLACE 或 FRONTIER，
+  // 被"节点集合"这一步自然剔除——不需要再单列一张关系黑名单。
+  function objectTopologyStrict(topology) {
+    if (!topology || !Array.isArray(topology.nodes)) return null;
+    var nodes = topology.nodes.filter(function (node) {
+      return node && node.node_type === "OBJECT" && node.node_id;
+    });
+    var objectIds = {};
+    nodes.forEach(function (node) { objectIds[node.node_id] = true; });
+    var rawEdges = Array.isArray(topology.edges) ? topology.edges : [];
+    var edges = rawEdges.filter(function (edge) {
+      return edge && objectIds[edge.from] && objectIds[edge.to];
+    });
+    return {
+      schema_version: topology.schema_version || "semantic_object_topology_v1",
+      revision: topology.revision || 0,
+      nodes: nodes,
+      edges: edges,
+      // 按过滤后的集合重算：objectTopologyOnly 直接透传上层 stats，
+      // 会让 "N 个物体" 的数与画出来的节点数不一致（PLACE 被算成一个物体）。
+      stats: { node_count: nodes.length, edge_count: edges.length },
+    };
+  }
+
   function topologyFingerprint(nodes, edges) {
     var nodeIds = (nodes || []).map(function (n) { return n.node_id; }).sort();
     var edgeKeys = (edges || []).map(function (e) {
@@ -1421,6 +1461,7 @@
     components: findConnectedComponents,
     relationLabel: edgeLabelZh,
     objectOnly: objectTopologyOnly,
+    objectStrict: objectTopologyStrict,
   };
 
   // Pure SVG viewport math (wheel zoom / drag pan) for headless tests.
