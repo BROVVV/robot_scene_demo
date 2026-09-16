@@ -175,10 +175,17 @@ class WebuiSnapshotWriter(Node):
         # 重投 latched 那一帧也不会变），只在没有 ros_stamp 时才退回这个键。
         self._map_updated_at = None
         self._last_ros_stamp = None
-        # §13.4 健康门。判据自己会锁存，复位只有一条路：观察到 LIO 栈重启
-        # （launch 日志被截断），见 _poll_lio_diag。
+        # §13.4 健康门。两条独立的降级路径，复位方式不同：
+        #   发散 latch —— 复位只有一条路：观察到 LIO 栈重启（launch 日志被截断）；
+        #   饿死       —— 自清：DIAG 行重新出现即解除。理由见判据模块的 docstring。
         self._lio_diag_log = str(self.get_parameter("lio_diag_log").value)
-        self._judge = LioNofixJudge()
+        self._period_s = float(self.get_parameter("period_s").value)
+        # 饿死阈值取 2 × poll 周期，语义是「至少连续 3 轮 poll 没读到新 DIAG 行」
+        # ⇒ 至少 10 秒没有 DIAG 行。**不能取 1 × 周期**：_poll_lio_diag 是每
+        # period_s 秒批量跑一次，这个周期本身就把 (now - last_feed) 量化了，
+        # 取 1 × 周期时单轮 timer 抖动就能误报。标定数字见
+        # app/spatial/lio_nofix_judge.py 的模块 docstring。
+        self._judge = LioNofixJudge(starve_timeout_s=2.0 * self._period_s)
         self._lio_fh = None
         self._session_id = 0
         # §13.5 的 last-good 地图本体，元素见 _flush 里 body 那个 dict。
@@ -197,7 +204,7 @@ class WebuiSnapshotWriter(Node):
             self.create_subscription(Odometry, odom_topic, self._on_odom, reliable(10))
         else:
             odom_topic = ""
-        self.create_timer(float(self.get_parameter("period_s").value), self._flush)
+        self.create_timer(self._period_s, self._flush)
         self.get_logger().info(f"snapshot writer: {topic} -> {self._snapshot_path}")
         if odom_topic:
             self.get_logger().info(
@@ -376,14 +383,20 @@ class WebuiSnapshotWriter(Node):
     def _poll_lio_diag(self) -> None:
         """tail LIO 的 launch 日志，喂判据，维护 mapping_health。
 
-        这里是锁存的**唯一**复位路径：日志变短 == 被截断 == LIO 换会话
+        这里是**发散锁存**的唯一复位路径：日志变短 == 被截断 == LIO 换会话
         （start_plain_slam_mapping.sh:201 用 ``>`` 重定向）。不许改成"前兆消失
         即复位" —— 判据触发后会自己闭嘴（实测其后几千帧 run 跌回 0 且只再触发
         1 次），那样做会把闸门重新打开，制造出比改动前更糟的假绿。
 
+        饿死（DIAG 行停够 starve_timeout_s）走的是另一条路、且是自清的：
+        这里读不到新行时 ``feed()`` 不被调用，判据自己按注入的时钟发现饿死；
+        新行一出现即自解。所以本方法**不需要**为饿死做任何事。
+
         文件打不开（路径不对 / LIO 没起）时直接返回，判据保持不表态 ——
         调用方因此**不写** mapping_health 字段。这是有意为之的第三态，
         不是 bug：见 app/spatial/lio_nofix_judge.py 的 docstring。
+        注意它和饿死是两件事：``_last_feed is None``（从没喂过）不表态，
+        ``_last_feed`` 过期（喂过又停了）才报 DEGRADED。
         """
         try:
             size = os.path.getsize(self._lio_diag_log)
