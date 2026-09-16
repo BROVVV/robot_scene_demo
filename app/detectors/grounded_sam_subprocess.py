@@ -208,6 +208,12 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
             "box_threshold": box_threshold,
             "text_threshold": text_threshold,
             "max_objects": self.settings.max_detected_objects,
+            # 轻量化计划 §20。**只走请求、不加命令行参数**：四个阈值里其余三个
+            # 两边都传，但 worker 的 `request.get(key, args.key)` 永远优先取请求值
+            # —— 命令行那份对 --serve 路径是够不着的死路径（看着像生效、其实从不
+            # 生效）。worker 的 argparse 默认值已经等于这里的默认值，手动跑
+            # --image 那条路照样有门，所以少传一份不丢能力。
+            "sam2_min_box_score": self.settings.sam2_min_box_score,
         }
         assert self._worker is not None and self._worker.stdin is not None
         self._worker.stdin.write(json.dumps(request, ensure_ascii=False) + "\n")

@@ -95,6 +95,7 @@ from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemo
 from app.reasoning.target_profile import TargetProfileResolver
 from app.spatial.models import SpatialFrameMismatch
 from app.perception.target_state import TARGET_PRESENT
+from app.spatial.dynamic_labels import drop_dynamic_objects
 from app.spatial.geometric_relation_extractor import extract_geometric_relations
 from app.spatial.spatial_pose_validator import MotionEvidence, SpatialPoseValidator
 
@@ -142,17 +143,44 @@ def _wrap_pi(value: float) -> float:
 
 
 def _classify_perception_error(exc: Exception) -> str:
-    """计划书 §8.2：把底层异常映射成结构化错误码（Quick/RGB-D 感知链）。"""
+    """计划书 §8.2：把底层异常映射成结构化错误码（Quick/RGB-D 感知链）。
+
+    **顺序即语义，先认"哪一段"再认"什么毛病"。** 旧写法把 ``timeout`` 判在最
+    前面，于是 ``RGB-D capture failed: ... timed out`` 会被记成
+    ``QUICK_VLM_TIMEOUT`` —— 审计报告点名的正是这类"现场定位走弯路"：拿着
+    QUICK_VLM_TIMEOUT 去查 VLM，实际是相机那条链断的。
+
+    ``RGB_IMAGE_ERROR`` 只对**非超时**的取帧失败（相机断流、解码失败）。注意
+    取帧失败的文本一律以 ``RGB-D capture failed: `` 开头，所以"是图像还是深度"
+    必须在 ``rgb-d`` 这个分支**内部**再判一次，放到外面判永远够不着。
+
+    **诚实边界**：真机上到 2026-09-16 为止只出现过两类失败 ——
+    ``SiliconFlow vision API timed out``（22 次，→ QUICK_VLM_TIMEOUT，分类正确）
+    与 ``UnboundLocalError: image_stamp``（1 次，→ UNKNOWN，分类正确）。
+    ``RGB_IMAGE_ERROR`` / ``DEPTH_ERROR`` **一次都没在真机上出现过**，下面的关键词
+    没有被真机数据校准过 —— 这次补的是**可达性**（此前它们除了 docstring 之外
+    根本产生不出来），不是精度。
+
+    关键词刻意收得**窄**：只用 ``rgb-d``/``rgbd``/``camera``，不用裸的 ``image``。
+    原因是真机数据当场否掉了宽版本 —— ``image_stamp`` 那个变量名会让
+    ``UnboundLocalError: local variable 'image_stamp' ``（一个代码 bug，真机上出现过）
+    被误判成 ``RGB_IMAGE_ERROR``，于是现场去查相机。窄版本下它正确落到 UNKNOWN。
+    """
     code = str(getattr(exc, "code", "") or "").strip()
     if code:
         return code
     text = f"{type(exc).__name__}: {exc}".lower()
-    if "timed out" in text or "timeout" in text:
-        return "QUICK_VLM_TIMEOUT"
-    if "rgbd" in text or "depth" in text:
-        if "stale" in text or "unavailable" in text:
+    timed_out = "timed out" in text or "timeout" in text
+    if "rgb-d" in text or "rgbd" in text or "camera" in text:
+        if timed_out or "stale" in text or "unavailable" in text:
             return "RGBD_TIMEOUT"
+        if "depth" in text:
+            return "DEPTH_ERROR"
+        return "RGB_IMAGE_ERROR"
+    if "depth" in text:
         return "DEPTH_ERROR"
+    if timed_out:
+        return "QUICK_VLM_TIMEOUT"
     if "stale" in text:
         return "FRAME_STALE"
     if "tf" in text or "transform" in text:
@@ -800,6 +828,34 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
     import rclpy  # noqa: F401  (used by the observer closure; rclpy.init already done)
     from run_autonomous_loop import target_prompt  # noqa: E402
     settings = get_settings()
+    # §15 第四条：启动时把 12 个阈值的**生效值**打出来。这是范围校验的唯一
+    # 出口 —— 越界时 app.config 会在 stderr 上出声并回落默认值，但只有把这
+    # 一行和 .env 对着看，才知道自己设的数到底有没有生效。
+    print(
+        "[GO2W-CONFIG] "
+        + " ".join(
+            f"{name}={getattr(settings, attr)}"
+            for name, attr in (
+                ("LIO_ROTATION_WHEEL_MAX_TRANSLATION_M",
+                 "go2w_lio_rotation_wheel_max_translation_m"),
+                ("LIO_ROTATION_PSLAM_MAX_TRANSLATION_M",
+                 "go2w_lio_rotation_pslam_max_translation_m"),
+                ("LIO_MAX_POSE_SPEED_MPS", "go2w_lio_max_pose_speed_mps"),
+                ("LIO_RECOVERY_VALID_SAMPLES", "go2w_lio_recovery_valid_samples"),
+                ("PLACE_MERGE_DISTANCE_M", "go2w_place_merge_distance_m"),
+                ("PLACE_RELOCATION_MIN_M", "go2w_place_relocation_min_m"),
+                ("PERCEPTION_SETTLE_SECONDS", "go2w_perception_settle_seconds"),
+                ("TARGET_POSSIBLE_VERIFY_ATTEMPTS",
+                 "go2w_target_possible_verify_attempts"),
+                ("TARGET_POSSIBLE_REOBSERVE_DELAY_SECONDS",
+                 "go2w_target_possible_reobserve_delay_seconds"),
+                ("RELATION_LEFT_RIGHT_MIN_NORM", "go2w_relation_left_right_min_norm"),
+                ("RELATION_DEPTH_ORDER_MIN_M", "go2w_relation_depth_order_min_m"),
+                ("RELATION_NEAR_MAX_M", "go2w_relation_near_max_m"),
+            )
+        ),
+        flush=True,
+    )
     search_policy = load_search_policy()
     # The CLI/WebUI flag is the per-run authority for whether confirmation is
     # legacy-terminal. Keep the typed approach policy's observable contract in
@@ -1142,11 +1198,24 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
         from app.spatial.semantic_object_map import SemanticObjectMap
         from app.spatial.spatial_memory import SpatialMemory
 
+        # §15：这几个阈值以前是写死在这里的字面量，而 PlaceGraph /
+        # SpatialPoseValidator 的模块默认值是另一套数（0.6 / 0.10）
+        # 从来没生效过 —— 典型的"默认值 ≠ 生效值"。现在统一由 settings 出，
+        # 不设环境变量时取的就是这里原来的字面量，行为不变。
         place_graph = PlaceGraph(
-            merge_distance_m=0.35,
-            relocation_min_displacement_m=0.50,
+            merge_distance_m=settings.go2w_place_merge_distance_m,
+            relocation_min_displacement_m=settings.go2w_place_relocation_min_m,
         )
-        pose_validator = SpatialPoseValidator()
+        pose_validator = SpatialPoseValidator(
+            rotation_wheel_translation_max_m=(
+                settings.go2w_lio_rotation_wheel_max_translation_m
+            ),
+            rotation_pslam_translation_max_m=(
+                settings.go2w_lio_rotation_pslam_max_translation_m
+            ),
+            max_pslam_speed_mps=settings.go2w_lio_max_pose_speed_mps,
+            recovery_valid_samples=settings.go2w_lio_recovery_valid_samples,
+        )
         semantic_map = SemanticObjectMap(
             merge_distance_m=0.4,
             confirm_min_observations=2,
@@ -1267,6 +1336,33 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
             except OSError:
                 pass
         return str(target)
+
+    def _note_quick_vlm_failure(frame_id: Any, elapsed_s: float,
+                                failure: PerceptionFailure) -> None:
+        """§16 ``quick_vlm_failed``：记下失败，并留给下一次调用发 retry。
+
+        **为什么 retry 判定用 worker 自己的 state，而不是 explorer 手里的
+        ``exc.code``。** 重试循环在 explorer（另一个进程）里，它只拿到一个
+        ``PerceptionFailure``；而 ``_classify_perception_error`` 把任何带
+        "timeout" 的文本都归成 ``QUICK_VLM_TIMEOUT`` —— RGB-D 取帧超时也算 ——
+        所以按 code 判"这是不是 quick VLM 的重试"会误判。给 ``PerceptionFailure``
+        加 stage 字段能解决，但那要动一个搜索状态存储也在消费的错误契约；worker
+        本来就知道自己是哪一段失败的，所以标记留在这里，契约不动。
+        """
+        state["quick_vlm_last_failure"] = {
+            "frame_id": str(frame_id),
+            "code": str(failure.code),
+            "error": str(failure),
+        }
+        node._write({
+            "event": "quick_vlm_failed",
+            "frame_id": str(frame_id),
+            "latency_ms": round(float(elapsed_s) * 1000.0, 3),
+            "code": str(failure.code),
+            "recoverable": bool(failure.recoverable),
+            "error": str(failure),
+            "host_s": node._host_s(),
+        })
 
     def observe() -> LiveObservation:
         state["planning_cycle"] = int(state.get("planning_cycle", 0)) + 1
@@ -1390,24 +1486,43 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
             scene_signature=compute_scene_signature(stable_image),
         )
         profiler.mark("quick_start")
+        # §16 quick_vlm_retry：上一次 quick VLM 失败过 ⇒ 本次调用是在补它。
+        # 带上失败那一次的 frame_id/code，光有一个 retry 记号查不出补的是哪一帧。
+        previous_quick_failure = state.get("quick_vlm_last_failure")
+        if previous_quick_failure:
+            node._write({
+                "event": "quick_vlm_retry",
+                "frame_id": str(frame_id),
+                "previous_frame_id": str(previous_quick_failure.get("frame_id", "")),
+                "previous_code": str(previous_quick_failure.get("code", "")),
+                "previous_error": str(previous_quick_failure.get("error", "")),
+                "host_s": node._host_s(),
+            })
         node._write({"event": "quick_vlm_started", "frame_id": str(frame_id),
                      "host_s": node._host_s()})
         quick_start_perf = time.perf_counter()
         try:
             objects = node._detect(stable_image, prompt, env)
-        except PerceptionFailure:
+        except PerceptionFailure as exc:
+            _note_quick_vlm_failure(frame_id,
+                                    time.perf_counter() - quick_start_perf, exc)
             raise
         except Exception as exc:  # noqa: BLE001 - 结构化错误交给 explorer retry
-            raise PerceptionFailure(
+            failure = PerceptionFailure(
                 f"Quick VLM failed: {type(exc).__name__}: {exc}",
                 code=_classify_perception_error(exc),
                 recoverable=True,
                 detail=str(exc),
                 last_success_age_s=_last_success_age_s(),
-            ) from exc
+            )
+            _note_quick_vlm_failure(frame_id,
+                                    time.perf_counter() - quick_start_perf, failure)
+            raise failure from exc
         quick_latency_ms = (time.perf_counter() - quick_start_perf) * 1000.0
         profiler.record("quick_vlm_ms", "quick_start")
         profiler.incr("quick_api_calls")
+        # 成功才清。留着它，下一次调用会平白发一条 quick_vlm_retry。
+        state["quick_vlm_last_failure"] = None
         node._write({"event": "quick_vlm_completed", "frame_id": str(frame_id),
                      "latency_ms": round(float(quick_latency_ms), 3),
                      "objects": len(objects),
@@ -1683,7 +1798,15 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
         # Quick and Full are both allowed to omit basic geometric relations.
         # Derive conservative same-frame edges after RGB-D enrichment and
         # before persistent association; endpoint ids remain frame-local here.
-        geometric_relations = extract_geometric_relations(semantic.objects)
+        # §15：三个关系阈值走 settings。比的是 bbox_2d 的中心差，而 bbox_2d
+        # 是归一化到 0~1 的图像坐标（app/prompts.py:47,103），所以 _MIN_NORM
+        # 里的 NORM 名副其实，单位不是米。
+        geometric_relations = extract_geometric_relations(
+            semantic.objects,
+            min_horizontal_separation=settings.go2w_relation_left_right_min_norm,
+            min_depth_separation_m=settings.go2w_relation_depth_order_min_m,
+            near_distance_m=settings.go2w_relation_near_max_m,
+        )
         if geometric_relations:
             existing_relation_keys = {
                 (
@@ -1782,8 +1905,15 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
                     )
                 except Exception:  # noqa: BLE001
                     pass
-                if spatial_pose is None and isinstance(camera_provider, CameraLocalSpatialProvider):
+                if isinstance(camera_provider, CameraLocalSpatialProvider):
                     # 仅 camera-local 提供者接受 wheel odom 相对位姿（无全局地图）。
+                    # ⚠ 必须每轮都注入，不能加"只在 _pose is None 时注入一次"的条件：
+                    # 这个 provider 没有别的位姿源（_pose 只由 set_pose 写、get_pose
+                    # 读，见 camera_local_spatial_provider.py:38-42），一旦注入过一次，
+                    # get_pose() 就恒返回注入那一刻的快照 —— 位姿冻结会让
+                    # pslam_delta_xy 恒 0，使 LIO_DRIFT_DURING_ROTATION 判据永不触发。
+                    # 2026-09-16 §22 实测：同段旋转 73°，外部 /go2w/slam/odom_base 漂
+                    # 0.204 m，worker 内 raw_pose 16 位小数逐帧完全相同、delta 报 0.0。
                     spatial_pose = SpatialPose(
                         x=float(pose["x"]),
                         y=float(pose["y"]),
@@ -1803,12 +1933,15 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
                     })
             raw_spatial_pose = spatial_pose
             motion_evidence = motion_state.get("pending_motion_evidence")
+            # 不传 timestamp：validator 算的是"两次校验之间位姿变了多少"，
+            # 时间基准必须是校验发生的时刻（其默认 time.monotonic()）。
+            # 曾传 observation.timestamp，而那是**语义帧**的时间戳
+            # （semantic_observer.py:319 的 semantic.timestamp_sec）—— 语义结果
+            # 常常是缓存旧帧（semantic_status=stale），于是 elapsed 变成负值，
+            # 位姿被误判成 POSE_TIMESTAMP_NONMONOTONIC 而拒掉。
+            # 2026-09-16 §22 实测：4 次校验中 1 次这样被拒。
             validation = (
-                pose_validator.validate(
-                    spatial_pose,
-                    motion_evidence,
-                    timestamp=observation.timestamp,
-                )
+                pose_validator.validate(spatial_pose, motion_evidence)
                 if pose_validator is not None else None
             )
             if validation is not None:
@@ -2028,6 +2161,13 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
                         for o in localized
                     ])
                 )
+                # §26：人/狗/猫这类动态物体不写进持久地图（否则下次走到同一
+                # 地点，地图上还站着一个早就不在的人）。就地重置 localized，
+                # 让下游 :2161 的 enumerate(localized) 用的是同一张表 ——
+                # association_by_index 的下标就是这张表里的位置，两张表一旦
+                # 分叉，persistent_object_id 会串到别的物体上。
+                # 显示不受影响：WebUI 的当前检测走 observation.scene_objects。
+                localized = drop_dynamic_objects(localized)
                 update_result = semantic_map.update_with_associations(
                     localized,
                     place_id=place_id,

@@ -23,6 +23,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
+from app.config import get_settings
 from app.navigation.approach_controller import (
     ACTION_APPROACH_BLOCKED,
     ACTION_APPROACH_COMPLETE,
@@ -238,9 +239,16 @@ class PerceptionFailure(RuntimeError):
 
     * ``code``: machine-readable cause (QUICK_VLM_TIMEOUT, RGBD_TIMEOUT,
       RGB_IMAGE_ERROR, DEPTH_ERROR, VLM_PARSE_ERROR, TF_UNAVAILABLE,
-      FRAME_MISMATCH, FULL_SEMANTIC_TIMEOUT, UNKNOWN_PERCEPTION_ERROR, ...)
+      FRAME_STALE, FULL_SEMANTIC_TIMEOUT, UNKNOWN_PERCEPTION_ERROR, ...)
     * ``recoverable``: transient errors may be retried with a fresh
       observation; non-recoverable ones fail the session immediately.
+
+    ``FRAME_MISMATCH`` 曾经列在这里，2026-09-16 删掉：**语义/深度帧对不上不是一种
+    失败**。计划书 §5.2 规定找不到同一 frame 时"不做 3D localization、不用 current
+    depth 顶替，只保留 2D semantic" —— 那是一次**降级**（``spatial_quality=
+    SEMANTIC_2D_ONLY``），运行照常继续，记录走 ``semantic_depth_frame_mismatch``
+    事件（``run_semantic_exploration.py`` 里那条），不该抛成 PerceptionFailure。
+    留一个永远不会被 raise 的码在这里，只会让人以为"帧不匹配会自动重试"。
     """
 
     def __init__(
@@ -747,7 +755,11 @@ class AutonomousExplorer:
                     # bounded fresh-frame budget is spent, downgrade this
                     # candidate to ABSENT for this planning cycle so no stale
                     # uncertainty can authorize a motion command.
-                    if self._possible_reobserve_count < 2:
+                    # §15：重观测上限与间隔走 settings（现值就是原来的 2 / 0.2）。
+                    _max_possible_reobserve = (
+                        get_settings().go2w_target_possible_verify_attempts
+                    )
+                    if self._possible_reobserve_count < _max_possible_reobserve:
                         self._possible_reobserve_count += 1
                         try:
                             self._backend.stop()
@@ -756,10 +768,12 @@ class AutonomousExplorer:
                         self._emit(
                             "target_possible_reobserve",
                             attempt=self._possible_reobserve_count,
-                            max_attempts=2,
+                            max_attempts=_max_possible_reobserve,
                             reason="POSSIBLE requires a fresh stopped frame before motion",
                         )
-                        time.sleep(0.2)
+                        time.sleep(
+                            get_settings().go2w_target_possible_reobserve_delay_seconds
+                        )
                         continue
                     observation.target_match = {
                         **dict(observation.target_match or {}),

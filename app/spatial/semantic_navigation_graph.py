@@ -11,6 +11,7 @@ import time
 from typing import Any
 
 from app.perception.depth_object_localizer import ObjectSpatialObservation
+from app.spatial.dynamic_labels import drop_dynamic_objects
 from app.spatial.models import SpatialPose
 from app.spatial.object_relation_store import ObjectRelationStore
 from app.spatial.place_graph import PlaceGraph
@@ -100,6 +101,11 @@ class SemanticNavigationGraph:
             spatial_objects
             or self._object_observations(scene_objects, pose, observation_id)
         )
+        # §26：动态物体（人/狗/猫）不进持久地图。这是**第二个**持久化入口 ——
+        # explorer 自建的 SemanticNavigationGraph 与 worker 共用同一张
+        # object_map（run_semantic_exploration.py:3098-3100 注入），只在 worker
+        # 侧过滤会从这条路漏进去。
+        objects = drop_dynamic_objects(objects)
         update_result = self.object_map.update_with_associations(
             objects,
             place_id=place_id,

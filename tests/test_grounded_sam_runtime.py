@@ -171,6 +171,38 @@ class GroundedSAMRuntimeTest(unittest.TestCase):
         self.assertNotIn("office chair", prompt)
         self.assertEqual(objects[0].label_zh, "灭火器")
 
+    def test_request_carries_sam2_min_box_score_from_settings(self) -> None:
+        """轻量化计划 §20：门槛要从 settings 走到 worker 的**请求体**里。
+
+        行为级断言 —— 用的是真 ``Settings()`` 默认值，不是手写的常量，所以它还
+        顺带证明了「默认值确实落在了请求那一行上」。worker 侧是
+        ``request.get("sam2_min_box_score", args.sam2_min_box_score)``，请求优先；
+        请求里没这一项时 worker 会用自己的 argparse 默认值，settings 改了不生效。
+        """
+        detector = GroundedSAMSubprocessDetector(
+            Settings(
+                siliconflow_api_key="",
+                grounded_sam_root="/tmp",
+                grounded_sam_python="python",
+                enable_sam2=True,
+            ),
+            target_profile=TargetProfile(
+                raw_query="找灭火器",
+                canonical_name_zh="灭火器",
+                primary_labels_en=["fire extinguisher"],
+            ),
+        )
+        worker = _FakeWorker([_response([])])
+        with tempfile.TemporaryDirectory() as tmpdir:
+            image = Path(tmpdir) / "image.jpg"
+            image.write_bytes(b"mock")
+            with patch(
+                "app.detectors.grounded_sam_subprocess.subprocess.Popen",
+                return_value=worker,
+            ):
+                detector.detect(str(image), "找灭火器")
+        self.assertEqual(worker.stdin.requests[0]["sam2_min_box_score"], 0.35)
+
     def test_worker_death_is_wrapped_as_detector_runtime_error(self) -> None:
         detector = GroundedSAMSubprocessDetector(
             Settings(

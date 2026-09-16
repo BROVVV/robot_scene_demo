@@ -33,6 +33,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sam2-config", required=True)
     parser.add_argument("--sam2-checkpoint", required=True)
     parser.add_argument("--max-objects", type=int, required=False)
+    # 轻量化计划 §20。「只有通过 GroundingDINO 基础门槛的 bbox 才跑 SAM2」——
+    # 用的就是这里的 score（confidences），不是另算一个量。
+    #
+    # 这里给 **default 而不是像上面几个阈值那样靠调用点 `or 0.35` 兜底**：
+    # 0.0 是合法且有意义的值（关掉这道门 = 所有框都跑 SAM2，即旧行为），
+    # `or` 会把它顶成 0.35，于是"关掉"变成"开到 0.35"。字面量与
+    # ``app/config.py: DEFAULT_SAM2_MIN_BOX_SCORE`` 同值 —— worker 跑在另一个
+    # 解释器里、import 不到 app，这是本文件既有的约定（0.35/0.25/20 同理）。
+    parser.add_argument("--sam2-min-box-score", type=float, default=0.35)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--disable-sam2", action="store_true")
     parser.add_argument("--ram-root", default="")
@@ -92,6 +101,7 @@ def main() -> int:
     objects = _detect(
         args, args.image, args.text_prompt,
         args.box_threshold, args.text_threshold, args.max_objects,
+        args.sam2_min_box_score,
         grounding_model, sam2_predictor, device, torch, np,
         load_image, predict, box_convert, nms,
     )
@@ -125,6 +135,9 @@ def _serve(args, grounding_model, sam2_predictor, ram_model, ram_transform,
                 float(request.get("box_threshold", args.box_threshold or 0.35)),
                 float(request.get("text_threshold", args.text_threshold or 0.25)),
                 int(request.get("max_objects", args.max_objects or 20)),
+                # 不用 `or`：--sam2-min-box-score 有 default(0.35)，args 永不为
+                # None，而 0.0 是有意义的取值（关掉这道门），`or` 会顶掉它。
+                float(request.get("sam2_min_box_score", args.sam2_min_box_score)),
                 grounding_model, sam2_predictor, device, torch, np,
                 load_image, predict, box_convert, nms,
             )
@@ -134,7 +147,8 @@ def _serve(args, grounding_model, sam2_predictor, ram_model, ram_transform,
 
 
 def _detect(args, image_path, text_prompt, box_threshold, text_threshold,
-            max_objects, grounding_model, sam2_predictor, device, torch, np,
+            max_objects, sam2_min_box_score,
+            grounding_model, sam2_predictor, device, torch, np,
             load_image, predict, box_convert, nms) -> list[dict]:
     image_source, image = load_image(image_path)
     height, width, _ = image_source.shape
@@ -166,7 +180,31 @@ def _detect(args, image_path, text_prompt, box_threshold, text_threshold,
     confidences_list = confidences[keep].detach().cpu().numpy().tolist()
     labels_list = [labels[index] for index in keep.detach().cpu().numpy().tolist()]
 
-    masks = _predict_masks(sam2_predictor, image_source, xyxy, device, torch, np)
+    # 轻量化计划 §20：**只给过了分的框跑 SAM2**。此前是 NMS 之后每个框都跑，
+    # 而 SAM2 正是这条链上最贵的一段。
+    #
+    # 保住下标对齐：下面的组装循环是 `masks[index]`，所以先铺一个和 xyxy 等长的
+    # 槽位表，只往过关的槽里填。直接 `_predict_masks(..., xyxy[passing], ...)` 会
+    # 让第 k 个 mask 落到第 k 个**框**上 —— 低分框一多，掩码就整体错位，而错位的
+    # 掩码不会报错，只会把 bbox 悄悄精修到别人身上。
+    #
+    # 没过关的框**不被丢弃**：mask 留 None，组装循环对 None 已有分支（refined_box
+    # 用原框、mask_rle/mask_area_ratio 留空），它们仍是带 2D bbox 的物体。
+    #
+    # 门槛取值 0.35 来自 §20 原文，与真机数据校准过：`data/memory/
+    # observational_memory.jsonl` 等产出里 39 个非空 detector_score 中有 3 个低于
+    # 0.35（0.136 / 0.141 / 0.248），而过关的最低分是 0.800 —— 门槛坐在 3.2 倍的
+    # 空隙里，所以选值不敏感，不是拿精度换速度。
+    mask_slots: list = [None] * len(xyxy)
+    scored = [index for index, score in enumerate(confidences_list)
+              if float(score) >= float(sam2_min_box_score)]
+    if scored:
+        predicted = _predict_masks(sam2_predictor, image_source, xyxy[scored],
+                                   device, torch, np)
+        if predicted is not None:
+            for slot, mask in zip(scored, predicted):
+                mask_slots[slot] = mask
+    masks = mask_slots
 
     objects = []
     for index, (label, score, box) in enumerate(zip(labels_list, confidences_list, xyxy.tolist())):

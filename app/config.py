@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -59,6 +60,11 @@ DEFAULT_ENABLE_SAM2 = True
 DEFAULT_SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_t.yaml"
 DEFAULT_SAM2_CHECKPOINT = "checkpoints/sam2.1_hiera_tiny.pt"
 DEFAULT_MAX_DETECTED_OBJECTS = 100
+# 轻量化改造计划 §20：只有过了 GroundingDINO 基础门槛的 bbox 才跑 SAM2。
+# 注意它**高于** DEFAULT_GROUNDING_DINO_BOX_THRESHOLD(0.10)：0.10~0.35 的框仍是
+# 物体（保留 2D 语义），只是不做 mask 精修 —— worker 侧对 mask=None 已有分支
+# （refined_box 用原框、mask_rle/mask_area_ratio 留空），不需要额外处理。
+DEFAULT_SAM2_MIN_BOX_SCORE = 0.35
 DEFAULT_DETECTION_DEVICE = "auto"
 DEFAULT_RAM_PLUS_ROOT = "/home/mxt/robotscene/external/recognize-anything"
 DEFAULT_RAM_PLUS_CHECKPOINT = "/home/mxt/robotscene/external/ram_plus_ckpt/ram_plus_swin_large_14m.pth"
@@ -283,6 +289,28 @@ DEFAULT_GO2W_CURRENT_GEOMETRY_CONFIG = "configs/go2w/current_hardware_geometry.y
 DEFAULT_GO2W_CURRENT_STATE_CONFIG = "configs/go2w/current_hardware_state.yaml"
 DEFAULT_GO2W_PANDAR_PREPROCESS_CONFIG = "configs/go2w/hesai_pandarxt16_preprocess.yaml"
 
+# §15 配置项统一化：把散落在调用点的阈值收进 settings。
+# ⚠ 默认值一律取**代码当前真正生效的值**，不是计划书 §15 那张例表里的值 ——
+# 后者的表头写的是"建议 / 例如"，且其中 4 项与现网实测值不符（逐项注明在下）。
+# 这样接线的行为变化严格为零：不设环境变量时，狗怎么跑还是怎么跑。
+DEFAULT_GO2W_LIO_ROTATION_WHEEL_MAX_TRANSLATION_M = 0.08
+DEFAULT_GO2W_LIO_ROTATION_PSLAM_MAX_TRANSLATION_M = 0.20
+DEFAULT_GO2W_LIO_MAX_POSE_SPEED_MPS = 2.0
+DEFAULT_GO2W_LIO_RECOVERY_VALID_SAMPLES = 4
+DEFAULT_GO2W_PLACE_MERGE_DISTANCE_M = 0.35
+DEFAULT_GO2W_PLACE_RELOCATION_MIN_M = 0.50
+DEFAULT_GO2W_PERCEPTION_SETTLE_SECONDS = 0.8
+DEFAULT_GO2W_TARGET_POSSIBLE_VERIFY_ATTEMPTS = 2
+# 计划书写 0.3，autonomous_explorer.py 实际 sleep 0.2 —— 取现值。
+DEFAULT_GO2W_TARGET_POSSIBLE_REOBSERVE_DELAY_SECONDS = 0.2
+# 计划书写 0.12 / 0.35 / 0.80，geometric_relation_extractor.py:78-81 实际
+# 是 0.10 / 0.25 / 0.90 —— 取现值。这三个量比的是 bbox_2d 的中心差，而
+# bbox_2d 是**归一化到 0~1 的图像坐标**（app/prompts.py:47,103），所以
+# NORM 这个名字是对的，单位不是米。
+DEFAULT_GO2W_RELATION_LEFT_RIGHT_MIN_NORM = 0.10
+DEFAULT_GO2W_RELATION_DEPTH_ORDER_MIN_M = 0.25
+DEFAULT_GO2W_RELATION_NEAR_MAX_M = 0.90
+
 
 class SettingsError(RuntimeError):
     """Raised when required runtime configuration is missing."""
@@ -334,6 +362,7 @@ class Settings:
     sam2_config: str = DEFAULT_SAM2_CONFIG
     sam2_checkpoint: str = DEFAULT_SAM2_CHECKPOINT
     max_detected_objects: int = DEFAULT_MAX_DETECTED_OBJECTS
+    sam2_min_box_score: float = DEFAULT_SAM2_MIN_BOX_SCORE
     detection_device: str = DEFAULT_DETECTION_DEVICE
     ram_plus_root: str = DEFAULT_RAM_PLUS_ROOT
     ram_plus_checkpoint: str = DEFAULT_RAM_PLUS_CHECKPOINT
@@ -639,6 +668,28 @@ class Settings:
     go2w_current_state_config: str = DEFAULT_GO2W_CURRENT_STATE_CONFIG
     go2w_pandar_preprocess_config: str = DEFAULT_GO2W_PANDAR_PREPROCESS_CONFIG
 
+    # §15 的 12 个阈值旋钮。逐个都有默认值与范围校验（见 _env_*_ranged）。
+    go2w_lio_rotation_wheel_max_translation_m: float = (
+        DEFAULT_GO2W_LIO_ROTATION_WHEEL_MAX_TRANSLATION_M
+    )
+    go2w_lio_rotation_pslam_max_translation_m: float = (
+        DEFAULT_GO2W_LIO_ROTATION_PSLAM_MAX_TRANSLATION_M
+    )
+    go2w_lio_max_pose_speed_mps: float = DEFAULT_GO2W_LIO_MAX_POSE_SPEED_MPS
+    go2w_lio_recovery_valid_samples: int = DEFAULT_GO2W_LIO_RECOVERY_VALID_SAMPLES
+    go2w_place_merge_distance_m: float = DEFAULT_GO2W_PLACE_MERGE_DISTANCE_M
+    go2w_place_relocation_min_m: float = DEFAULT_GO2W_PLACE_RELOCATION_MIN_M
+    go2w_perception_settle_seconds: float = DEFAULT_GO2W_PERCEPTION_SETTLE_SECONDS
+    go2w_target_possible_verify_attempts: int = (
+        DEFAULT_GO2W_TARGET_POSSIBLE_VERIFY_ATTEMPTS
+    )
+    go2w_target_possible_reobserve_delay_seconds: float = (
+        DEFAULT_GO2W_TARGET_POSSIBLE_REOBSERVE_DELAY_SECONDS
+    )
+    go2w_relation_left_right_min_norm: float = DEFAULT_GO2W_RELATION_LEFT_RIGHT_MIN_NORM
+    go2w_relation_depth_order_min_m: float = DEFAULT_GO2W_RELATION_DEPTH_ORDER_MIN_M
+    go2w_relation_near_max_m: float = DEFAULT_GO2W_RELATION_NEAR_MAX_M
+
     @property
     def vision_model(self) -> str:
         """The model used for image/scene understanding.
@@ -699,6 +750,36 @@ def _env_bool(name: str, default: bool) -> bool:
 
 def _env_bool_alias(primary: str, legacy: str, default: bool) -> bool:
     return _env_bool(primary, _env_bool(legacy, default))
+
+
+def _env_float_ranged(name: str, default: float, low: float, high: float) -> float:
+    """§15 的范围校验：越界回落默认值，并把回落这件事打到 stderr。
+
+    刻意不夹到最近的边界值：那会悄悄改掉操作员设的数，人只会看到一个
+    不等于自己输入的有效值 —— 这正是"默认值 ≠ 生效值"那类假绿的来源。
+    回落 + 出声，至少让启动日志里能看出来。
+    """
+    value = _env_float(name, default)
+    if not (low <= value <= high):
+        print(
+            f"[config] {name}={value} 超出允许范围 [{low}, {high}]，"
+            f"已回落到默认值 {default}",
+            file=sys.stderr,
+        )
+        return default
+    return value
+
+
+def _env_int_ranged(name: str, default: int, low: int, high: int) -> int:
+    value = _env_int(name, default)
+    if not (low <= value <= high):
+        print(
+            f"[config] {name}={value} 超出允许范围 [{low}, {high}]，"
+            f"已回落到默认值 {default}",
+            file=sys.stderr,
+        )
+        return default
+    return value
 
 
 @lru_cache(maxsize=1)
@@ -813,6 +894,9 @@ def get_settings() -> Settings:
         ),
         sam2_config=_env_value("SAM2_CONFIG", DEFAULT_SAM2_CONFIG),
         sam2_checkpoint=_env_value("SAM2_CHECKPOINT", DEFAULT_SAM2_CHECKPOINT),
+        sam2_min_box_score=_env_float(
+            "SAM2_MIN_BOX_SCORE", DEFAULT_SAM2_MIN_BOX_SCORE
+        ),
         max_detected_objects=_env_int("MAX_DETECTED_OBJECTS", DEFAULT_MAX_DETECTED_OBJECTS),
         detection_device=_env_value("DETECTION_DEVICE", DEFAULT_DETECTION_DEVICE),
         ram_plus_root=_env_value("RAM_PLUS_ROOT", DEFAULT_RAM_PLUS_ROOT),
@@ -1554,5 +1638,76 @@ def get_settings() -> Settings:
         ),
         go2w_pandar_preprocess_config=_env_value(
             "GO2W_PANDAR_PREPROCESS_CONFIG", DEFAULT_GO2W_PANDAR_PREPROCESS_CONFIG
+        ),
+        # §15 的 12 个阈值旋钮。范围取"物理上讲得通"的宽区间，不当调参门限用：
+        # 它的职责是拦住手滑写错的量级（比如把 0.35 写成 35），不是替操作员定策略。
+        go2w_lio_rotation_wheel_max_translation_m=_env_float_ranged(
+            "GO2W_LIO_ROTATION_WHEEL_MAX_TRANSLATION_M",
+            DEFAULT_GO2W_LIO_ROTATION_WHEEL_MAX_TRANSLATION_M,
+            0.0,
+            1.0,
+        ),
+        go2w_lio_rotation_pslam_max_translation_m=_env_float_ranged(
+            "GO2W_LIO_ROTATION_PSLAM_MAX_TRANSLATION_M",
+            DEFAULT_GO2W_LIO_ROTATION_PSLAM_MAX_TRANSLATION_M,
+            0.0,
+            2.0,
+        ),
+        go2w_lio_max_pose_speed_mps=_env_float_ranged(
+            "GO2W_LIO_MAX_POSE_SPEED_MPS", DEFAULT_GO2W_LIO_MAX_POSE_SPEED_MPS, 0.1, 10.0
+        ),
+        go2w_lio_recovery_valid_samples=_env_int_ranged(
+            "GO2W_LIO_RECOVERY_VALID_SAMPLES",
+            DEFAULT_GO2W_LIO_RECOVERY_VALID_SAMPLES,
+            1,
+            100,
+        ),
+        go2w_place_merge_distance_m=_env_float_ranged(
+            "GO2W_PLACE_MERGE_DISTANCE_M",
+            DEFAULT_GO2W_PLACE_MERGE_DISTANCE_M,
+            0.01,
+            5.0,
+        ),
+        go2w_place_relocation_min_m=_env_float_ranged(
+            "GO2W_PLACE_RELOCATION_MIN_M",
+            DEFAULT_GO2W_PLACE_RELOCATION_MIN_M,
+            0.0,
+            5.0,
+        ),
+        go2w_perception_settle_seconds=_env_float_ranged(
+            "GO2W_PERCEPTION_SETTLE_SECONDS",
+            DEFAULT_GO2W_PERCEPTION_SETTLE_SECONDS,
+            0.0,
+            30.0,
+        ),
+        go2w_target_possible_verify_attempts=_env_int_ranged(
+            "GO2W_TARGET_POSSIBLE_VERIFY_ATTEMPTS",
+            DEFAULT_GO2W_TARGET_POSSIBLE_VERIFY_ATTEMPTS,
+            1,
+            20,
+        ),
+        go2w_target_possible_reobserve_delay_seconds=_env_float_ranged(
+            "GO2W_TARGET_POSSIBLE_REOBSERVE_DELAY_SECONDS",
+            DEFAULT_GO2W_TARGET_POSSIBLE_REOBSERVE_DELAY_SECONDS,
+            0.0,
+            10.0,
+        ),
+        go2w_relation_left_right_min_norm=_env_float_ranged(
+            "GO2W_RELATION_LEFT_RIGHT_MIN_NORM",
+            DEFAULT_GO2W_RELATION_LEFT_RIGHT_MIN_NORM,
+            0.0,
+            2.0,
+        ),
+        go2w_relation_depth_order_min_m=_env_float_ranged(
+            "GO2W_RELATION_DEPTH_ORDER_MIN_M",
+            DEFAULT_GO2W_RELATION_DEPTH_ORDER_MIN_M,
+            0.0,
+            5.0,
+        ),
+        go2w_relation_near_max_m=_env_float_ranged(
+            "GO2W_RELATION_NEAR_MAX_M",
+            DEFAULT_GO2W_RELATION_NEAR_MAX_M,
+            0.0,
+            10.0,
         ),
     )

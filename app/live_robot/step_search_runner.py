@@ -11,8 +11,10 @@ from __future__ import annotations
 
 from copy import deepcopy
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
+
+from app.config import get_settings
 
 from app.live_robot.search_state_machine import (
     SearchMode,
@@ -67,7 +69,12 @@ class StepSearchConfig:
     reach_area_ratio: float = 0.15
     scan_turn_deg: float = 30.0
     scan_span: int = 3
-    stop_settle_seconds: float = 0.8
+    # §15：默认值改为从 settings 取（默认仍是 0.8）。用 default_factory 而不是
+    # 直接写 get_settings() 当默认值 —— 后者在 import 期就把配置冻住，
+    # 测试里改环境变量再也影响不到它。
+    stop_settle_seconds: float = field(
+        default_factory=lambda: get_settings().go2w_perception_settle_seconds
+    )
     forward_estimate_m: float = 0.15
     verify_rejection_turn_deg: float = 15.0
     semantic_reasoning_enabled: bool = False
