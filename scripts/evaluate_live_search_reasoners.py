@@ -58,8 +58,9 @@ def _session_root(path: Path) -> Path:
     return path if path.is_dir() else path.parent
 
 
-def _graph_from_exploration(root: Path, node_index: int) -> dict[str, Any]:
-    """从真机会话的 exploration_graph.json 取一次观测内嵌的 SceneGraph。
+def _exploration_view(root: Path, node_index: int) -> tuple[dict[str, Any], float, list[int]]:
+    """从真机会话的 exploration_graph.json 取一次观测 —— 连当时的机器人朝向和
+    已观测扇区一起取。
 
     `run_semantic_exploration.py`（§22 验收走的就是它）**不写**独立的
     scene_graph.json —— 每次观测的 SceneGraph 嵌在 exploration_graph.json 的
@@ -67,6 +68,14 @@ def _graph_from_exploration(root: Path, node_index: int) -> dict[str, Any]:
     2026-09-16 实测：outputs/live_runs 下 128 个真机会话里有 102 个可这样回放，
     而带独立 scene_graph.json 的是 **0 个**。没有这条回退，本评估器就只能吃
     手工构造的 fixture，吃不到任何一次真机跑批。
+
+    后两个返回值不是装饰：真机调用点 `run_semantic_exploration.py:2318-2322`
+    会传 `robot_yaw_deg` 与 `observed_heading_sectors`，而
+    `search_reasoner.py:_best_unseen_heading` 的候选打分里 `visited_cost` 依赖
+    后者。回放时若不传（空集），六个候选方向全部平局、退化成恒选 −30 ——
+    那会造出一个**看起来像发现**的假结论。node 的 `heading` 就是当时的机器人
+    yaw：用 §22 那次核对过，三个观测的 heading −3.48/28.93/−31.83 与
+    `heading_sector` 0/1/11 自洽，且正好对上 +30/−60 两次转向。
     """
     path = root / "exploration_graph.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -83,19 +92,34 @@ def _graph_from_exploration(root: Path, node_index: int) -> dict[str, Any]:
             f"--node-index {node_index} 越界：{path} 只有 "
             f"{len(observations)} 个可回放观测节点"
         ) from None
-    return chosen["scene_graph"]
+    # 扇区取"到这次观测为止"，不取整场结束后的终值 —— 否则早期观测会被
+    # 喂进它当时还看不到的扇区。
+    upto = observations[: node_index + 1] if node_index >= 0 else observations
+    sectors = sorted({
+        int(node["heading_sector"]) for node in upto
+        if isinstance(node.get("heading_sector"), int)
+    })
+    heading = chosen.get("heading")
+    yaw = float(heading) if isinstance(heading, (int, float)) else 0.0
+    return chosen["scene_graph"], yaw, sectors
 
 
-def _load_graph(path: Path, node_index: int = -1) -> SceneGraph:
+def _load_session(
+    path: Path, node_index: int = -1
+) -> tuple[SceneGraph, float, list[int], str]:
+    """返回 (图, robot_yaw_deg, observed_heading_sectors, 图是从哪读的)。"""
     graph_path = path / "scene_graph.json" if path.is_dir() else path
     if graph_path.is_file():
-        source = graph_path
+        source = str(graph_path)
         payload = json.loads(graph_path.read_text(encoding="utf-8"))
+        # 视频管线只落图，不落当时的朝向与扇区 —— 报 0.0/[] 并在报告里
+        # 用 replay_context 挑明，不假装知道。
+        yaw, sectors = 0.0, []
     else:
-        source = _session_root(path) / "exploration_graph.json"
-        payload = _graph_from_exploration(_session_root(path), node_index)
+        source = str(_session_root(path) / "exploration_graph.json")
+        payload, yaw, sectors = _exploration_view(_session_root(path), node_index)
     try:
-        return SceneGraph(
+        graph = SceneGraph(
             nodes=[SceneGraphNode(**item) for item in payload.get("nodes", [])],
             edges=[SceneGraphEdge(**item) for item in payload.get("edges", [])],
         )
@@ -108,13 +132,14 @@ def _load_graph(path: Path, node_index: int = -1) -> SceneGraph:
             f"{source} 的 SceneGraph 字段不全（{exc}）—— 多半是 mock 或早期会话，"
             f"不是真机感知产物，无法回放"
         ) from None
+    return graph, yaw, sectors, source
 
 
-def _scene_graph_source(root: Path) -> str:
+def _scene_graph_source(source: str) -> str:
     """报告里标明这张图是从哪读来的 —— 免得把回退读到的图当成独立工件。"""
-    if (root / "scene_graph.json").is_file():
+    if source.endswith("/scene_graph.json"):
         return "scene_graph.json"
-    if (root / "exploration_graph.json").is_file():
+    if source.endswith("/exploration_graph.json"):
         return "exploration_graph.json:nodes[].scene_graph"
     return "unknown"
 
@@ -265,7 +290,9 @@ def evaluate(
 ) -> dict:
     session_path = Path(session)
     root = _session_root(session_path)
-    graph = _load_graph(session_path, node_index)
+    graph, robot_yaw_deg, observed_sectors, graph_source = _load_session(
+        session_path, node_index
+    )
     profile = _load_profile(root, target)
     config = StepSearchConfig(target=target)
     legacy = plan_scan_step(
@@ -279,11 +306,15 @@ def evaluate(
     rows = []
     for backend in ("legacy", "semantic_navigation", "hybrid"):
         controller = SemanticSearchController(profile, backend=backend)
+        # target_profile / goal_graph 由 controller.propose 填（router.py:49-50），
+        # 与真机调用点一致，这里不重复。
         context = SearchReasoningContext(
             scene_graph=graph,
             negative_memory=SemanticSearchMemory(),
             scan_index=scan_index,
             legacy_scan_candidate=legacy,
+            robot_yaw_deg=robot_yaw_deg,
+            observed_heading_sectors=observed_sectors,
             safety_context={"allow_forward": False, "offline_replay": True},
         )
         directive = controller.propose(context)
@@ -340,10 +371,18 @@ def evaluate(
         "target": target,
         "source_session": str(session_path),
         "source_event_log": str(event_path) if event_path else None,
-        "scene_graph_source": _scene_graph_source(root),
+        "scene_graph_source": _scene_graph_source(graph_source),
         "scene_node_index": node_index,
         "scene_nodes": len(graph.nodes),
         "scene_edges": len(graph.edges),
+        # 回放喂给推理器的输入，明写出来 —— 「语义词条方向是常量」这类结论
+        # 高度依赖这两个量，不写出来读者没法判断回放是不是空手跑。
+        "replay_context": {
+            "robot_yaw_deg": robot_yaw_deg,
+            "observed_heading_sectors": observed_sectors,
+            "scan_index": scan_index,
+            "note": "视频管线会话（scene_graph.json）不落这两项，报 0.0/[] 表示未知",
+        },
         "detector_calls": recorded["detector_calls"],
         "semantic_observer_calls": recorded["semantic_observer_calls"],
         "reasoner_calls": len(rows),

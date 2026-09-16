@@ -52,6 +52,15 @@ def _observation(node_id: str, object_labels: list[str]) -> dict:
     }
 
 
+def _aimed_observation(node_id: str, sector: int, heading: float) -> dict:
+    """一个只有地点、没有任何目标物体的观测 —— 让图匹配落到 ZERO，
+    从而走 `_best_unseen_heading` 那条会看 `observed_heading_sectors` 的分支。"""
+    observation = _observation(node_id, ["办公椅"])
+    observation["heading"] = heading
+    observation["heading_sector"] = sector
+    return observation
+
+
 def _exploration_session(root: Path, observations: list[dict]) -> Path:
     session = root / "exploration_session"
     session.mkdir()
@@ -187,6 +196,68 @@ class ReasonerReplayEvaluatorTests(unittest.TestCase):
             self.assertEqual(report["scene_edges"], 2)
             self.assertEqual(len(report["results"]), 3)  # 三个 backend 都跑到了
             self.assertEqual(report["llm_calls"], 0)
+
+    def test_observed_sectors_are_fed_into_the_replay_context(self) -> None:
+        """回放必须把当时的 yaw 与已观测扇区喂进 SearchReasoningContext。
+
+        不喂的后果不是"略有偏差"：`_best_unseen_heading` 的六个候选会全部平局、
+        退化成恒选 −30，于是报告会给出一个**看起来像发现**的假结论。
+        这里用 yaw=0、已观测扇区=[−1]（即 −30° 那个方向已经看过）：
+        喂进去了 ⇒ 避开 −30 选 +30；没喂 ⇒ 平局选 −30。
+        """
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            session = _exploration_session(
+                root, [_aimed_observation("node_a", sector=-1, heading=0.0)]
+            )
+            report = evaluate(session=str(session), target="垃圾桶",
+                              output_dir=str(root / "report"))
+            self.assertEqual(report["replay_context"]["robot_yaw_deg"], 0.0)
+            self.assertEqual(
+                report["replay_context"]["observed_heading_sectors"], [-1]
+            )
+            semantic = [r for r in report["results"]
+                        if r["backend"] == "semantic_navigation"][0]
+            self.assertEqual(semantic["directive"]["kind"], "explore_unseen")
+            self.assertEqual(
+                semantic["directive"]["preferred_heading_delta_deg"], 30.0
+            )
+            self.assertEqual(semantic["proposed_step"], "l30")
+
+    def test_a_different_observed_sector_flips_the_chosen_heading(self) -> None:
+        """反面对照：同一张图，只把"已观测扇区"从 −1 换成 0（没有任何候选
+        方向落在扇区 0）⇒ 不再有惩罚、回到平局，选回 −30。"""
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            session = _exploration_session(
+                root, [_aimed_observation("node_a", sector=0, heading=0.0)]
+            )
+            report = evaluate(session=str(session), target="垃圾桶",
+                              output_dir=str(root / "report"))
+            self.assertEqual(report["replay_context"]["observed_heading_sectors"], [0])
+            semantic = [r for r in report["results"]
+                        if r["backend"] == "semantic_navigation"][0]
+            self.assertEqual(
+                semantic["directive"]["preferred_heading_delta_deg"], -30
+            )
+
+    def test_yaw_comes_from_the_selected_observation(self) -> None:
+        """yaw 必须取"被选中的那次观测"，不是整场最后一次。"""
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            session = _exploration_session(root, [
+                _aimed_observation("node_early", sector=0, heading=12.5),
+                _aimed_observation("node_late", sector=4, heading=123.5),
+            ])
+            early = evaluate(session=str(session), target="垃圾桶",
+                             output_dir=str(root / "early"), node_index=0)
+            late = evaluate(session=str(session), target="垃圾桶",
+                            output_dir=str(root / "late"), node_index=-1)
+            self.assertEqual(early["replay_context"]["robot_yaw_deg"], 12.5)
+            self.assertEqual(late["replay_context"]["robot_yaw_deg"], 123.5)
+            # 扇区取"到这次观测为止"，早期观测不该看到后面才走过的扇区。
+            self.assertEqual(early["replay_context"]["observed_heading_sectors"], [0])
+            self.assertEqual(late["replay_context"]["observed_heading_sectors"], [0, 4])
 
     def test_node_index_picks_the_requested_observation(self) -> None:
         """不同观测看到的物体数不同；--node-index 必须真的换一张图。"""
