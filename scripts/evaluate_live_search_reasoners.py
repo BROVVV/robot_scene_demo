@@ -43,6 +43,14 @@ def _parse_args(argv=None):
         default="",
         help="optional runner JSONL used for executed-step metrics",
     )
+    parser.add_argument(
+        "--node-index",
+        type=int,
+        default=-1,
+        help="当会话没有 scene_graph.json 时，从 exploration_graph.json 的"
+             "第几个可回放观测节点取图（默认 -1 = 最后一个，即搜索结束时"
+             "看到的最全的一帧；按时间顺序，0 是最早那次观测）",
+    )
     return parser.parse_args(argv)
 
 
@@ -50,13 +58,65 @@ def _session_root(path: Path) -> Path:
     return path if path.is_dir() else path.parent
 
 
-def _load_graph(path: Path) -> SceneGraph:
+def _graph_from_exploration(root: Path, node_index: int) -> dict[str, Any]:
+    """从真机会话的 exploration_graph.json 取一次观测内嵌的 SceneGraph。
+
+    `run_semantic_exploration.py`（§22 验收走的就是它）**不写**独立的
+    scene_graph.json —— 每次观测的 SceneGraph 嵌在 exploration_graph.json 的
+    `nodes[i].scene_graph` 里，schema 与 SceneGraphNode/SceneGraphEdge 逐字段一致。
+    2026-09-16 实测：outputs/live_runs 下 128 个真机会话里有 102 个可这样回放，
+    而带独立 scene_graph.json 的是 **0 个**。没有这条回退，本评估器就只能吃
+    手工构造的 fixture，吃不到任何一次真机跑批。
+    """
+    path = root / "exploration_graph.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    observations = [
+        node for node in (payload.get("nodes") or [])
+        if (node.get("scene_graph") or {}).get("nodes")
+    ]
+    if not observations:
+        raise ValueError(f"{path} 里没有带 scene_graph 的观测节点，无法离线回放")
+    try:
+        chosen = observations[node_index]
+    except IndexError:
+        raise ValueError(
+            f"--node-index {node_index} 越界：{path} 只有 "
+            f"{len(observations)} 个可回放观测节点"
+        ) from None
+    return chosen["scene_graph"]
+
+
+def _load_graph(path: Path, node_index: int = -1) -> SceneGraph:
     graph_path = path / "scene_graph.json" if path.is_dir() else path
-    payload = json.loads(graph_path.read_text(encoding="utf-8"))
-    return SceneGraph(
-        nodes=[SceneGraphNode(**item) for item in payload.get("nodes", [])],
-        edges=[SceneGraphEdge(**item) for item in payload.get("edges", [])],
-    )
+    if graph_path.is_file():
+        source = graph_path
+        payload = json.loads(graph_path.read_text(encoding="utf-8"))
+    else:
+        source = _session_root(path) / "exploration_graph.json"
+        payload = _graph_from_exploration(_session_root(path), node_index)
+    try:
+        return SceneGraph(
+            nodes=[SceneGraphNode(**item) for item in payload.get("nodes", [])],
+            edges=[SceneGraphEdge(**item) for item in payload.get("edges", [])],
+        )
+    except TypeError as exc:
+        # 实测 outputs/live_runs 的 102 个可回放会话里有 45 个是 mock/早期会话，
+        # 内嵌 scene_graph 只写了 node_id/label/label_zh/attributes 四个键，装不下
+        # SceneGraphNode。直接抛 TypeError 会看起来像评估器自己的 bug，所以说清
+        # 是**这份录制本身**不是真机感知产物。
+        raise ValueError(
+            f"{source} 的 SceneGraph 字段不全（{exc}）—— 多半是 mock 或早期会话，"
+            f"不是真机感知产物，无法回放"
+        ) from None
+
+
+def _scene_graph_source(root: Path) -> str:
+    """报告里标明这张图是从哪读来的 —— 免得把回退读到的图当成独立工件。"""
+    if (root / "scene_graph.json").is_file():
+        return "scene_graph.json"
+    if (root / "exploration_graph.json").is_file():
+        return "exploration_graph.json:nodes[].scene_graph"
+    return "unknown"
 
 
 def _load_profile(root: Path, target: str) -> TargetProfile:
@@ -201,10 +261,11 @@ def evaluate(
     output_dir: str,
     scan_index: int = 0,
     event_log: str = "",
+    node_index: int = -1,
 ) -> dict:
     session_path = Path(session)
     root = _session_root(session_path)
-    graph = _load_graph(session_path)
+    graph = _load_graph(session_path, node_index)
     profile = _load_profile(root, target)
     config = StepSearchConfig(target=target)
     legacy = plan_scan_step(
@@ -252,6 +313,24 @@ def evaluate(
 
     event_path = Path(event_log) if event_log else None
     recorded = _recorded_metrics(root, event_path)
+    limitations = [
+        "offline graph-policy replay only; no claim of real-robot success",
+        "success_proxy is candidate evidence, never target confirmation",
+        "repeat/revisit metrics require event traces when physical steps exist",
+        "recorded LLM calls are inferred from persisted frame/profile/crop artifacts",
+    ]
+    if not (root / "frame_observations.json").is_file():
+        # 真机会话（run_semantic_exploration.py）不产视频管线的这几份产物。
+        # 不说清楚的话，报告里 detector_calls=0 / success_proxy=false /
+        # target_confirmed=false 会被读成"实测为 0 / 没找到目标"，
+        # 而真相是**这几个量在本会话里根本没有被测过**。
+        limitations.append(
+            "本会话缺视频管线产物（frame_observations / target_search / "
+            "evidence_gating_report / crop_verify_results / search_directive）："
+            "detector_calls、semantic_observer_calls、time_to_candidate_s、"
+            "time_to_target_s、verify_reject_count、success_proxy、target_confirmed "
+            "是**缺席**，不是实测为 0/False —— 不要拿它们做结论"
+        )
     fallback_count = sum(bool(row["directive"]["fallback_to_legacy"]) for row in rows)
     disagreement_count = sum(bool(row["disagrees_with_legacy"]) for row in rows)
     dangerous_forward_count = sum(bool(row["dangerous_forward_request"]) for row in rows)
@@ -261,6 +340,8 @@ def evaluate(
         "target": target,
         "source_session": str(session_path),
         "source_event_log": str(event_path) if event_path else None,
+        "scene_graph_source": _scene_graph_source(root),
+        "scene_node_index": node_index,
         "scene_nodes": len(graph.nodes),
         "scene_edges": len(graph.edges),
         "detector_calls": recorded["detector_calls"],
@@ -287,12 +368,7 @@ def evaluate(
         ),
         "recorded_metrics": recorded,
         "results": rows,
-        "limitations": [
-            "offline graph-policy replay only; no claim of real-robot success",
-            "success_proxy is candidate evidence, never target confirmation",
-            "repeat/revisit metrics require event traces when physical steps exist",
-            "recorded LLM calls are inferred from persisted frame/profile/crop artifacts",
-        ],
+        "limitations": limitations,
     }
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -354,6 +430,7 @@ def main(argv=None) -> int:
         output_dir=args.output_dir,
         scan_index=args.scan_index,
         event_log=args.event_log,
+        node_index=args.node_index,
     )
     print(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False))
     return 0
