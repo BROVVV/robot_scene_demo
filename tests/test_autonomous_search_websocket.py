@@ -81,6 +81,12 @@ def test_ws_initial_snapshot_then_events(tmp_path) -> None:
 
             client.post("/api/search/start", json={
                 "target": "蓝色垃圾桶", "backend": "mock",
+                # 本用例查的是 WS 的事件骨架（snapshot / 递增 id / 顺序），不是
+                # 目标接近闭环，所以走计划书 §18.2 允许保留的 legacy 分支：看见
+                # 即收工。默认值 2026-09-10（740cd23）已按 §18.2 翻成 False，不显式
+                # 指定就进接近状态机，TARGET_CONFIRMED 在 30 秒窗口里不会发出来。
+                # 同 test_search_session_service.py:52-55 的理由。
+                "finish_on_visual_confirmation": True,
             })
 
             types = []
