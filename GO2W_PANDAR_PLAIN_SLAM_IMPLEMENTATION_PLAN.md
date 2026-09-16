@@ -260,8 +260,17 @@ translation_m:
 rotation_rpy_deg:
   roll: 0.385
   pitch: 0.905
-  yaw: 11.357
+  yaw: 90.0
 ```
+
+> **`yaw` 是 90.0，不是 20260813 静态配准给出的 11.357。** 那个值出自一次被
+> `reports/go2w_pandarxt16_mount_candidate_20260813.md` **自己否决**的测量
+> （中位最近邻 0.3516 m、仅 13.54% 落在 0.10 m 内），是失败的测量而不是标定结果。
+> 90.0 是**确定性约定、不是标定值**：Hesai 驱动的 `azi=0` 在电缆出口、`azi=180`
+> 为车头方向，故点云 `−y` 轴即雷达 front，传感器系需 `Rz(+90)` 才成为 ROS 系
+> （`transform_flag: false`，驱动不做任何修正）。独立验算：`azi=180°` 的点经
+> `Rz(+90)` 后落在 ROS `+x`。**本次未改 `roll` / `pitch`（仍是 20260813 的地面
+> 拟合）也未改 `translation`，`calibration_status` 仍是 `candidate_unconfirmed`。**
 
 本次**直接使用，不要求重新标定。**
 
@@ -300,12 +309,20 @@ T_imu_pandar = inverse(T_base_imu) * T_base_pandar
 translation ≈ [-0.13042, 0.02966, 0.09357] m
 
 rotation matrix ≈
-[ 0.942376, -0.188276,  0.276548,
-  0.196897,  0.980418, -0.003478,
- -0.270478,  0.057729,  0.960994 ]
+[ -0.004112, -0.963741,  0.266807,
+   0.999875,  0.000106,  0.015794,
+  -0.015250,  0.266839,  0.963621 ]
 ```
 
 这是**单元测试 sanity reference**，不是让人手动填参数。
+
+> **2026-09-16 重算**：上面这组旋转数字是**独立重算**的结果，不是从
+> `scripts/go2w/generate_plain_slam_pandar_config.py::derive_imu_to_pandar()`
+> 的输出里抄的 —— 抄了就退化成同义反复，`test_derived_rotation_matches_plan_reference`
+> 会永远绿且毫无分辨力。独立重算用 numpy 显式构造 `Rz @ Ry @ Rx` 三个基本旋转
+> 再相乘，走的是与该函数展开式不同的实现路径，两条路径相差 `4.5e-09`（浮点噪声）。
+> 旧值（首元素 `0.942376`）是 `yaw = 11.357` 时代的产物，`yaw` 改成 `90.0` 之后
+> 就与推导结果不再相符。生成器里的 `REFERENCE_IMU_TO_PANDAR_ROTATION` 与本节**逐字一致**。
 
 配置生成器必须每次从 YAML 源文件自动算，避免未来候选值更新后产生两套真相。
 

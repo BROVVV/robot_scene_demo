@@ -57,13 +57,28 @@ SOURCES = {
 PANDAR_EXTRINSIC_STATUS = "candidate_unconfirmed"
 MODE = "mapping_assist_only"
 
-# Sanity reference from the implementation plan §2.2 (unit-test only; the
-# generator itself never trusts these constants).
+# Sanity reference, mirrored verbatim into the implementation plan §2.2
+# (unit-test only; the generator itself never trusts these constants).
+#
+# 2026-09-16 重算。旧旋转矩阵是 ``yaw = 11.357`` 时代的产物，而
+# ``hesai_pandarxt16_extrinsics.yaml::transform_candidate.rotation_rpy_deg.yaw``
+# 早已改成 90.0（依据见该文件的 note），于是
+# ``test_derived_rotation_matches_plan_reference`` 转红且无人认领。
+#
+# 这组数字**不是**从 ``derive_imu_to_pandar()`` 自己的输出里抄的 —— 抄了就退化成
+# 同义反复，那条断言永远绿且毫无分辨力。它是**独立重算**：用 numpy 显式构造
+# ``Rz @ Ry @ Rx`` 三个基本旋转再相乘，走的是与该函数展开式不同的实现路径，
+# 两条路径相差 4.5e-09（浮点噪声）。源数据同为 ``official_reference.yaml`` 的
+# ``base_to_lidar`` / ``lidar_to_lidar_imu`` 与上面那个候选外参。
+#
+# 如实记账：``check_mode()``（``--check``）**只比平移**，旋转在这条自检路径上
+# 没有覆盖 —— 所以 ``--check`` 一直是绿的，红的是单测。本次未扩大 ``--check``
+# 的职责范围。
 REFERENCE_IMU_TO_PANDAR_TRANSLATION = (-0.13042, 0.02966, 0.09357)
 REFERENCE_IMU_TO_PANDAR_ROTATION = (
-    0.942376, -0.188276, 0.276548,
-    0.196897, 0.980418, -0.003478,
-    -0.270478, 0.057729, 0.960994,
+    -0.004112, -0.963741, 0.266807,
+    0.999875, 0.000106, 0.015794,
+    -0.015250, 0.266839, 0.963621,
 )
 
 
