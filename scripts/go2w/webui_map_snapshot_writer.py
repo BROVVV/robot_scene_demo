@@ -37,6 +37,7 @@ if _PROJECT_ROOT not in sys.path:
 
 from app.spatial.lio_nofix_judge import (  # noqa: E402
     DEGRADED_LIO_DRIFT,
+    HEALTHY,
     LioNofixJudge,
 )
 
@@ -180,6 +181,9 @@ class WebuiSnapshotWriter(Node):
         self._judge = LioNofixJudge()
         self._lio_fh = None
         self._session_id = 0
+        # §13.5 的 last-good 地图本体，元素见 _flush 里 body 那个 dict。
+        # None = 还没攒到过一帧健康地图。
+        self._last_good_map = None
         topic = str(self.get_parameter("map_topic").value)
         # map_3d 多为 RELIABLE 发布（transient_local），两个 QoS 都订阅以兼容。
         self.create_subscription(PointCloud2, topic, self._on_cloud, reliable(3))
@@ -433,11 +437,32 @@ class WebuiSnapshotWriter(Node):
         voxels = int(len(points))
         step = max(1, len(points) // self._max_points)
         points = points[::step]
-        low = [float(v) for v in points.min(axis=0)] if len(points) else None
-        high = [float(v) for v in points.max(axis=0)] if len(points) else None
-        self._latest_bounds = (low, high) if low is not None else None
         stamp = float(message.header.stamp.sec) + float(message.header.stamp.nanosec) * 1e-9
-        frame = message.header.frame_id or "pslam_map"
+        body = {
+            "points": points,
+            "voxels": voxels,
+            "low": [float(v) for v in points.min(axis=0)] if len(points) else None,
+            "high": [float(v) for v in points.max(axis=0)] if len(points) else None,
+            "stamp": stamp,
+            "frame": message.header.frame_id or "pslam_map",
+            "revision": self._received,
+            "source_points": count,
+        }
+        # §13.4/§13.5 健康门：判据已锁存 DEGRADED 时，这一帧点云大概率已被发散
+        # 的 LIO 污染，不许它顶掉 last-good。冻的是**地图本体**（点云 / 包围盒 /
+        # 体素数 / revision / ros_stamp 一律沿用 last-good 那一帧），而
+        # generated_at 照常前进 —— 所以前端算出的 fresh 仍为真，"故意冻结"与
+        # "写端死了"不会在页面上塌成同一个显示（这正是当初不做冻结的理由）。
+        # 判据不表态（health is None）时照常更新，第三态不冻结。
+        health = self._judge.health
+        frozen = health == DEGRADED_LIO_DRIFT and self._last_good_map is not None
+        if frozen:
+            body = self._last_good_map
+        elif health != DEGRADED_LIO_DRIFT:
+            self._last_good_map = body
+        points, voxels = body["points"], body["voxels"]
+        low, high, stamp, frame = body["low"], body["high"], body["stamp"], body["frame"]
+        self._latest_bounds = (low, high) if low is not None else None
         # 字段名必须是前端 static/slam_map_3d.js 读的那套 v2 词表（§9/§10 的
         # app/spatial/slam_web_map_state.py 定义），否则页脚全取到 undefined 显示 0。
         # 本写端只订阅地图话题，§10 那些概念拿不到的一律不编 —— 缺字段时前端显示
@@ -458,11 +483,11 @@ class WebuiSnapshotWriter(Node):
             "map_updated_at": self._map_updated_at,
             "generated_at": time.time(),
             "point_count": int(len(points)),
-            "source_map_points": count,
+            "source_map_points": body["source_points"],
             "global_cached_voxels": voxels,
             "web_display_points": int(len(points)),
             "max_web_points": self._max_points,
-            "map_revision": self._received,
+            "map_revision": body["revision"],
             "global_voxel_size_m": self._voxel,
             "voxel_size_m": self._voxel,
             "map_extent_m": ([high[i] - low[i] for i in range(3)]
@@ -496,10 +521,17 @@ class WebuiSnapshotWriter(Node):
         #                         "LIO 的 iter/fix_t 判据未触发"，不断言地图质量、
         #                         不断言 act、不断言 ab。
         #   键不写（判据不表态） -> 判据没在跑，前端显示 "--"、闸门放行
-        health = self._judge.health
         if health is not None:
             payload["mapping_health"] = health
             payload["lio_pose_valid"] = health != DEGRADED_LIO_DRIFT
+            # §16.3 状态栏要的 LIVE / FROZEN_LAST_GOOD。第三个值 SUSPECT 不在
+            # 计划书名单里，但那种情形是真实存在的：writer 起来时 backfill 就
+            # 已经判了 DEGRADED，此时 _last_good_map 是 None，冻不了、只能照发
+            # 这一帧可疑点云。此时报 LIVE 是假绿，报 FROZEN_LAST_GOOD 是撒谎。
+            payload["map_status"] = (
+                "FROZEN_LAST_GOOD" if frozen
+                else "LIVE" if health == HEALTHY
+                else "SUSPECT")
             if health == DEGRADED_LIO_DRIFT:
                 payload["health_reason"] = self._judge.reason
         self._save_trajectory()

@@ -254,6 +254,10 @@
     }
     var health = snapshot.mapping_health || "UNKNOWN";
     var reason = snapshot.health_reason || snapshot.reason || "";
+    // §16.3：地图那一格要的是 LIVE / FROZEN_LAST_GOOD。后端在 §13.5 冻结时写
+    // map_status（还有第三种 SUSPECT：判据说已发散、但没有 last-good 可退）。
+    // 后端一个都不写时（判据没在跑）退回原来的 fresh 判断。
+    var mapStatus = snapshot.map_status || (snapshot.fresh ? "LIVE" : "STALE");
     points = snapshot.points;
     objects = Array.isArray(snapshot.objects) ? snapshot.objects : [];
     bounds = snapshot.bounds || bounds;
@@ -268,7 +272,7 @@
       state.className = "slam3d-state error";
       setLight("red");
     } else {
-      state.textContent = (snapshot.fresh ? "LIVE" : "STALE") + " · " + health +
+      state.textContent = mapStatus + " · " + health +
         " · 地图 " + age(snapshot.map_age_seconds) + "前 · scan " +
         age(snapshot.preview_age_seconds) + "前" + (reason ? " · " + reason : "");
       state.className = "slam3d-state" + (snapshot.fresh && health === "HEALTHY" ? "" : " stale");
