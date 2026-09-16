@@ -59,6 +59,51 @@ class RamTargetPriorityTest(unittest.TestCase):
         self.assertEqual(len(ram_prompts), 1)
         self.assertEqual(ram_prompts[0].count("scene object"), 5)
 
+    def test_a_hundred_ram_terms_cannot_evict_any_target_term(self) -> None:
+        """§44.4：RAM 灌 100 个 term，截断之后目标词必须**一个不少**。
+
+        既有那条 cap 测试用的是 30 个词、只断言 RAM 被截成 5 个，**从没断言过
+        目标词还在**。这两件事必须分开测：把 RAM 截断写对了、同时把目标词一起
+        截掉，是完全可能的（比如把两个槽位合成一个列表再切 `[:max_terms]`），
+        而那正是 §44.4 要防的回归。
+        """
+        detector = self._detector()
+
+        prompts = detector._build_prompts(
+            "找黄色椅子", [], [f"scene object {index}" for index in range(100)]
+        )
+
+        # `detector_terms()` 的全量：primary + 颜色组合 + aliases，一个都不许掉。
+        for term in ("chair", "yellow chair", "yellow seat"):
+            self.assertIn(term, prompts[0])
+        ram_prompts = [prompt for prompt in prompts if "scene object" in prompt]
+        self.assertEqual(len(ram_prompts), 1)
+        self.assertEqual(
+            ram_prompts[0].count("scene object"),
+            detector.settings.ram_scene_max_terms,
+        )
+
+    def test_the_tightest_ram_cap_does_not_shrink_the_target_slot(self) -> None:
+        """把 RAM 槽位压到只剩 1 个名额，目标槽位也不许跟着缩。
+
+        从另一头验同一件事：上一条问「输入再多」，这条问「cap 再小」。而
+        `ram_scene_max_terms` 若被当成了整条 prompt 的全局上限（而不是只管 RAM
+        那一槽），目标词就会被 `[:1]` 切到只剩 `chair` —— `yellow chair` 和
+        alias `yellow seat` 静默消失，搜索退化成「找椅子」，而所有日志都正常。
+        """
+        detector = self._detector(ram_scene_max_terms=1)
+
+        prompts = detector._build_prompts(
+            "找黄色椅子", [], ["stool", "plant", "monitor"]
+        )
+
+        for term in ("chair", "yellow chair", "yellow seat"):
+            self.assertIn(term, prompts[0])
+        # cap 必须真的生效，否则这条在「完全忽略 cap」的实现下也会假绿。
+        ram_prompts = [prompt for prompt in prompts if "stool" in prompt]
+        self.assertEqual(len(ram_prompts), 1)
+        self.assertEqual(ram_prompts[0], "stool.")
+
     def test_ram_terms_do_not_enter_the_target_slot(self) -> None:
         detector = self._detector()
 
