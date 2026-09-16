@@ -132,6 +132,11 @@ def test_search_end_to_end_state_and_summary(tmp_path) -> None:
     with client:
         client.post("/api/search/start", json={
             "target": "蓝色垃圾桶", "backend": "mock", "reasoner": "semantic_navigation",
+            # 本用例查的是 WebUI 会话骨架（state/summary/map/objects/events/
+            # history），不是目标接近闭环，所以走计划书 §18.2 允许保留的 legacy
+            # 分支：看见即收工。接近闭环由 test_autonomous_explorer_target_approach
+            # 与 E2E 用例负责（同 test_search_session_service.py:52-55 的理由）。
+            "finish_on_visual_confirmation": True,
         })
         _wait_status(client, {"TARGET_FOUND"})
         state = client.get("/api/search/state").json()
