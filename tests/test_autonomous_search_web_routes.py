@@ -76,6 +76,28 @@ def _wait_status(client: TestClient, statuses: set[str], timeout: float = 60.0) 
     raise AssertionError(f"timed out waiting for {statuses}, last={last}")
 
 
+def _wait_event(client: TestClient, event_type: str, timeout: float = 30.0) -> list[str]:
+    """等到 `event_type` 出现在事件流里，返回当时全部事件类型。
+
+    ⚠ **不能**在 `_wait_status(TARGET_FOUND)` 之后直接取事件：状态机置位与事件
+    落盘不是同一个原子步骤。实测（2026-09-16，12 次）**4 次**会读到"状态已是
+    TARGET_FOUND、`SEARCH_FINISHED` 还没追加"的中间窗口，通过率只有 8/12。
+
+    这不是产品漏发：同一进程里再等 1 秒 `SEARCH_FINISHED` 就出现了（而且出现两次）。
+    是**测试没等**。所以这里加等待，**断言一个字不改**——超时返回最后一次读到的
+    列表，断言照样会因为缺事件而红。
+    """
+    deadline = time.time() + timeout
+    types: list[str] = []
+    while time.time() < deadline:
+        events = client.get("/api/search/events?limit=100").json()["events"]
+        types = [item["event_type"] for item in events]
+        if event_type in types:
+            return types
+        time.sleep(0.05)
+    return types
+
+
 def test_idle_state_map_objects_events(tmp_path) -> None:
     client, _ = make_app(tmp_path)
     with client:
@@ -146,8 +168,7 @@ def test_search_end_to_end_state_and_summary(tmp_path) -> None:
         map_data = client.get("/api/search/map").json()
         assert map_data["revision"] >= 1
         assert client.get("/api/search/objects").json()["session_seen"]
-        events = client.get("/api/search/events?limit=100").json()["events"]
-        types = [item["event_type"] for item in events]
+        types = _wait_event(client, "SEARCH_FINISHED")
         assert "TARGET_CONFIRMED" in types
         assert "SEARCH_FINISHED" in types
         history = client.get("/api/search/history?limit=50").json()

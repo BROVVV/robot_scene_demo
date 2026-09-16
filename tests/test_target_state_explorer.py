@@ -38,8 +38,17 @@ def test_possible_target_is_reobserved_before_any_motion() -> None:
     )
     result = explorer.run()
     events = [item["event"] for item in explorer.events]
-    assert result.motion_steps >= 0
-    first_action = events.index("action_start") if "action_start" in events else len(events)
     possible_events = [index for index, event in enumerate(events) if event == "target_possible_reobserve"]
     assert len(possible_events) == 2
+    # 必须真的出现 action_start，否则下面那条 all(index < first_action) 在
+    # ``first_action = len(events)`` 的兜底下**恒真** —— 一条恒真断言会让本用例
+    # 在"explorer 压根没走到 planner"时也报绿，等于没测排序。
+    assert "action_start" in events, (
+        "本用例要求 POSSIBLE 耗尽（转 ABSENT）后 planner 恢复动作："
+        "没有 action_start 就没有可比的边界，排序断言会退化成恒真"
+    )
+    first_action = events.index("action_start")
     assert all(index < first_action for index in possible_events)
+    # 三次观察全部 POSSIBLE、verifier 恒否决 -> 每一次复核都必须排在那唯一一次
+    # 真实动作之前。motion_steps 由 EXECUTE 成功自增，所以它这里必然 <= 1。
+    assert result.motion_steps <= 1
