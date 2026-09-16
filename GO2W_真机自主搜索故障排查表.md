@@ -454,8 +454,18 @@ app/spatial/semantic_navigation_graph.py
 文件：
 
 ```text
-scripts/go2w/start_rgbd_spatial_stack.sh  （未找到该脚本；实际由 start_plain_slam_mapping.sh / start_live_perception.sh / go2w_description 发布）
+scripts/go2w/start_rgbd_spatial_stack.sh
 ```
+
+> ⚠ **2026-09-16 更正**：此处原写"未找到该脚本"，**那是错的** —— 脚本确实存在
+> （5319 字节，2026-08-20 12:05）。它起的是 D435 RGB-D bridge + static TF +
+> RTAB-Map 这一套，**只在 `run_semantic_exploration.py --rtabmap` 这条路上用**
+> （见脚本头注释）。
+>
+> 本次调查走的是 **plain_slam** 路径，所以那个栈本来就没起 ——
+> **结论（本次的 TF/帧不是它发的）仍然成立，但理由是"本次没走 rtabmap 这条路"，
+> 不是"脚本不存在"。** 实际发 TF/帧的是：
+> `start_plain_slam_mapping.sh` / `start_live_perception.sh` / `go2w_description`。
 
 ### AI 搜索
 
@@ -1210,7 +1220,7 @@ while observation is None:
 3. ✅ `d435_rgbd_bridge.log`：本次无 timeout（bridge 源码时间戳/frame_id 分析见 §3.3/§5.5）
 4. ✅ 单次左转 30° 前后的 `/go2w/odom/fused`（6 轮 odom yaw 变化 0→151° 实测）；`tf2_echo odom_fused base_link` = frame 不存在 —— 见 §5.2
 5. ✅ 当前 TF tree：/tf 与 /tf_static 各 1 个 publisher（go2w_official_sensor_frame_publisher）；无 odom_fused、无 base_link↔d435 —— 见 §5.3
-6. ✅ `start_rgbd_spatial_stack.sh`：该脚本不存在；实际 TF/帧由 start_live_perception.sh + go2w_description + plain_slam launch 发布（代码见 §5.1）
+6. ⚠️ `start_rgbd_spatial_stack.sh`：该脚本**存在**（2026-09-16 更正，原写"不存在"是事实错误，见 §5.1）；本次未启用该栈 —— 它属 `--rtabmap` 路径；实际 TF/帧由 start_live_perception.sh + go2w_description + plain_slam launch 发布（代码见 §5.1）
 7. ✅ RGB/Depth/CameraInfo topic、frame_id、timestamp、resolution、intrinsics —— 见 §3.3/§5.5/§5.6
 8. ✅ Full Semantic：成功 0 次；失败/fallback 2 次（75s 超时日志）；frame_id=358695 冻结、semantic_result_age_ms≈111000 —— 见 §4.1/§4.3/§6.5
 9. ✅ 连续左转 6 个 cycle 决策时间线 —— 见 §6.1/§6.3

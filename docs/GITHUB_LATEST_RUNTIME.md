@@ -1,10 +1,106 @@
 # Go2-W 项目 GitHub 运行上下文
 
-更新时间：2026-09-01（Asia/Shanghai）
+更新时间：**2026-09-16 18:10**（Asia/Shanghai）
 
-## 项目边界
+> **阅读顺序**：先读下面「2026-09-16 现状」，再读交接书
+> `docs/GO2W_断电中断与验收A完成交接_20260916.md`。
+> `## 2026-09-01 20:51 接管复核` 及其之后的全部内容**保留为 historical regression evidence，一字未删**
+> （§34 原话：「不要把旧异常记录删掉；标记为 historical regression evidence」）。
+> 若与最新一节冲突，以最新一节为准。
 
-## 2026-09-01 20:51 接管复核
+---
+
+## 2026-09-16 现状（最新）
+
+### 新 commit / 部署版本
+
+| 项 | 值 |
+|---|---|
+| 主机 HEAD | `c376fac0926611294d11fe3c61030b3dfbbb7bce`（2026-09-16） |
+| 分支 | `fix/go2w-autonomous-search-lio-topology-target` |
+| 主机工作树 | **大量未提交**（含本批新增的 17 个 test 文件与 6 个新模块） |
+| 机器狗 `/home/unitree/robotscene` | HEAD `0de647e`（**2026-09-04**），工作树 94 项修改 |
+
+⚠ **两侧历史已分叉，这是 2026-09-16 新查出来的事实。** 狗上 HEAD `0de647e`
+在本机仓库里**不存在**（`git cat-file -t` → `fatal: Not a valid object name`）。
+主机 09-14/15/16 的六笔提交（Hesai 外参 90.0、关系边帧竞争、拓扑两视图、LIO nofix 闸门、
+Place 身份、4 个事件）**狗上都没有**。**上真机运动之前必须先解决这一条。**
+
+### 最新 session id
+
+| 用途 | session |
+|---|---|
+| 探索（15:55，含真实原地旋转） | `explore_go2w_20260916_155531` → `TARGET_FOUND`（白色垃圾桶），2 步，Place=1 |
+| 搜索（11:08） | `search_20260916_110826_3f7ac850` → `MAX_PLANNING_CYCLES_REACHED`，12 步，57 objects，Place=1，`navigation_failures=0` |
+| §21 验收 A 静止取证 | `artifacts/slam_validation/level_a_static_20260916/` |
+
+### LIO timestamp mode
+
+`configs/go2w/plain_slam_bridge.yaml:17` → **`timestamp_mode: auto`**（未改）。
+§21 判的 "IMU corrected stamp" 只对 `/go2w/slam/imu` 成立（戳超前 `/utlidar/imu` **830.8 s**）。
+
+### extrinsic status
+
+| 外参 | 状态 |
+|---|---|
+| **Hesai PandarXT-16（LIO 输入）** | **已修并验收**：`init_yaw_rad` **11.357° → 90.0°**，实测 pslam 朝向偏角 **−77.4° → +0.38°**（`7976a1d`）。附带拆除了 `calibrate_pandarxt16_extrinsics.py` 里从 11.357 出发的 ±15° 搜索窗（那颗定时炸弹永远搜不到 90°） |
+| **D435（RGB-D）** | **仍 `candidate_unconfirmed`**（计划书红线，不许标 UNKNOWN→高质量）。**未动。** |
+
+### rotation drift 指标
+
+| 项 | 值 |
+|---|---|
+| §21 静止 60 s pslam XY drift | **0.0135 m / 0.0035 m**（两轮独立取样，目标 <0.10 m） |
+| 一次 ~33° 原地旋转（非 §22 协议） | wheel Δxy **0.0035 m**，Place 仍 **1**；pslam Δxy **本批未采** |
+| §22（3×30° 同向）/ §23（360°） | **NOT RUN —— 需要运动授权** |
+
+### Place count / 3D map result
+
+```
+Place count       = 1（current_place = P1）
+heading_coverage  = {"0":1,"1":2,"2":1}   ← 未达 §22 要求的 ⊇{0,1,2,3}
+```
+
+`GET :8765/api/slam/map3d`（2026-09-16 18:08 实测）：
+
+```
+available=true          point_count=7184        source_map_points=17626
+mapping_health=HEALTHY  lio_pose_valid=true     map_status=LIVE
+fresh=true              mapping_session_id=1    canonical_frame=pslam_map
+ros_stamp=1789545394    generated_at=1789553278  ← ros_stamp 比 generated_at 冻 7884 s
+```
+
+`GET :8765/api/search/readiness`：`ready=true`、`blocking=[]`、
+`degraded=["search_worker_available"]`、`owner=NONE`。
+
+⚠ **上面 `ros_stamp` 冻 2.2 小时而 `mapping_health` 仍报 `HEALTHY` —— 这是交接书 §6 那个
+闸门盲区的现场复现，不是新 bug。** 同一时刻 `[GO2W-DIAG]` 的实测是
+`imu_n=26 pt=0.1030 iter=1 fix_t=0.0039 pos=(0.616,0.224,-0.012)`（**LIO 完全健康且在流**），
+所以这 2.2 小时冻的是「机器人静止 ⇒ 没有新关键帧 ⇒ 地图不重发」，
+**`ros_stamp` 冻住与 LIO 死亡同形**。盲区本身仍是**未修**状态（等你定 `N`）。
+
+### target preemption result
+
+**真机未触发。** 代码侧 `target_sweep`（§44.7/§44.8）的单测全覆盖
+（`tests/test_target_sweep_trigger.py`，6 tests），但"连续空 candidate 达阈值 ⇒
+VLM full-frame sweep 触发 / 有 candidate 时不 sweep"这条链**在真机上还没有一次被观察到**。
+本批未做（需要真机连续空帧场景）。
+
+### 仍未解决风险
+
+| # | 风险 | 状态 |
+|---|---|---|
+| 1 | **§13.5 闸门对「LIO 输入消失」不表态** | **未修，且在等你拍板**（`N` 取多少、要不要"现场手动清"出口）。见上文实测复现 |
+| 2 | **机器狗/主机历史分叉** | **未处理**。运动验收前必须解决，否则验收对象不是同一份代码 |
+| 3 | **§22 / §23 / §24–§28 全部未执行** | 需要运动授权。§23 计划书明写「只有 §22 通过才允许执行」 |
+| 4 | D435 外参 `candidate_unconfirmed` | 计划书红线，未动 |
+| 5 | 仓库根 3 份未跟踪计划书 + `reports/cc_switch_codex_takeover_report_3.20.1.md` | 等表态 |
+| 6 | 两条计划-代码不一致：§44.1 的 `living room`/`wood floor` 删不掉、§44.6 的 `_verification_region` 无距离门 | **已如实记录，未擅自"修好"**。见 `outputs/go2w_autonomous_search_fix_report.md` §33.4 |
+| 7 | `outputs/autonomous_search/logs/*.log` 被 git 跟踪且体积巨大（单个 91 万行） | 未处理。会让每次 `git status` 都很难看 |
+
+---
+
+## 2026-09-01 20:51 接管复核（historical regression evidence）
 
 - 清理主机遗留的第二个 `plain_slam_web_cloud_relay`；`/go2w/slam/web_scan` 当前仅 1 个
   publisher，远端 3D bridge 仍正常接收。
@@ -15,7 +111,7 @@
 - 启动自检返回码 0；`lidar_fresh`、`spool_bundle` 仍是明确降级项。`rotation_clearance_valid`
   为 false，故 `motion_authorized/safety_authorized` 继续为 false。
 
-## 2026-09-01 整改后现场状态（最新）
+## 2026-09-01 整改后现场状态（historical regression evidence —— 标题里的"最新"已失效，保留原文）
 
 - 整改代码已部署到机器狗 `/home/unitree/robotscene`；覆盖前的 20 个远端源码文件已保存到
   `/home/unitree/robotscene/.codex_backups/20260901/`。
