@@ -162,20 +162,46 @@ run_semantic_exploration.py:2324   controller.propose(context)
 
 ## 5. 已知病根（第一个任务，可直接开工）
 
-### 5.1 症状
+### 5.1 先分清两条候选路径（**本节最容易读错，先读这里**）
 
-用**不含关系的裸目标**（如「白色垃圾桶」）跑自主搜索时，
-**语义思维链产出的候选一次都进不了候选表**，搜索全程退化成 `local_scan`。
+自主搜索有**两套**候选生成器，由 `--spatial-v2` 切换
+（`run_semantic_exploration.py:3161-3163`）：
 
-真机实证（`outputs/live_runs/*/decisions.jsonl`，不依赖代码阅读）：
+| | V1（默认，不加开关） | V2（`--spatial-v2`；WebUI 起搜索与 **§22 走的都是这条**） |
+|---|---|---|
+| 候选生成器 | `generate_live_exploration_candidates`（`app/navigation/candidate_goal_generator.py`） | `spatial_candidate_generator`（`run_semantic_exploration.py:2417`） |
+| 读不读语义指令 | **读** —— `autonomous_explorer.py:897-899` 用 `directive=` 传进去，`candidate_goal_generator.py:126` 起消费它的 kind / heading / anchor | **完全不读** —— 整个函数体（2417–2870）里 `directive` 出现 **0** 次 |
+| 拿它干什么 | 建 `GOAL_INSPECT_ANCHOR` / `GOAL_ROTATE_VIEW` 候选 | 只取 `state["match"].graph_match.state`（zero/partial/strong），决定"要不要做一轮 bounded local scan" |
 
-| | |
-|---|---|
-| 92 个会话 / 932 条决策里语义候选出现 | 98 条（**全是 `INSPECT_ANCHOR`**） |
-| 其中 20260915 / 20260916 | **各 0 条** |
-| §22 验收 B（`explore_go2w_20260916_200905`） | 6 条决策**各只有 1 个 `local_scan` 候选**，其中 2 条已到 `partial_match` 仍无语义候选 |
+真机实证（`outputs/live_runs/*/decisions.jsonl`，106 个会话 / 932 条决策）：
 
-### 5.2 因果链（已逐行核对）
+| 候选的 `provenance.source` | 条数 | 出自 |
+|---|---|---|
+| `semantic_navigation_directive`（**新语义思维链**） | **8**，全是 `ROTATE_VIEW` | 只有 2026-09-14 的 2 个会话（V1） |
+| `semantic_anchor`（**老的视频管线**，锚点名是英文如 `water dispenser`） | 90 | `search_20260820_*` 那批 |
+| `local_scan` | —— | **§22 那次 6 条决策，100% 是这个** |
+
+⚠ **本文件上一版把这两件事混成了一件**，写成"92 会话 / 932 决策里语义候选 98 条、
+全是 `INSPECT_ANCHOR`"。复核后：98 条里 90 条是**老的视频管线**，
+其 `semantic_reason` 里根本不含 `semantic_navigation`；真正来自新语义思维链的只有 8 条。
+两套的 `goal_type` 同名，**只看类型分不出来，必须看 `provenance.source`**。
+
+### 5.2 在 §22 这条路上，思维链的"往哪看"从未被消费
+
+`run_semantic_exploration.py` 全文里 `directive` 只出现两次：
+`:2324` 由 `controller.propose(context)` 产出、`:2341` 塞进 `SemanticMatch`。
+**此后没有任何一行读它。**
+
+真正决定狗往哪转的是 `select_local_scan_goal`（`app/navigation/local_scan.py:45`，
+**在 §10.2 冻结清单内**）：
+
+- 候选只有四个：当前朝向 `+30 / −30 / +60 / −60`（`deltas = (1, -1, 2, -2)`）；
+- 打分只看"这个扇区看过没有" + "上一步是不是同方向"（防单向打转）；
+- **完全不看场景里有什么** —— `scene_graph`、锚点、目标可见性都进不了这个函数。
+
+### 5.3 裸目标的空指令缺陷（真缺陷，但后果要按路径分开说）
+
+对**不含关系的裸目标**（如「白色垃圾桶」）：
 
 1. 锚点节点来自 `goal_graph_builder.py:54` 的 `_explicit_anchors(profile)` ——
    即**目标短语里写出来的关系**。裸目标 ⇒ `GoalGraph` 里**只有 `goal_target` 一个节点**。
@@ -194,14 +220,20 @@ run_semantic_exploration.py:2324   controller.propose(context)
    此时 `anchor=None`、`anchor_label=None`、heading 走
    `_anchor_heading(None, …)` 硬编码 `30.0`，而 `reason_zh` 却写
    「**已匹配到任务锚点**」—— 自相矛盾。
-4. ⇒ `candidate_goal_generator.py:133` 的
-   `if kind_value in {"inspect_anchor"} and anchor_label:` 把它们**整条丢掉**。
-   **这一层是正确防御**（没有锚点就不该建"检查锚点"的目标），**错在上游第 3 步**。
-5. ⇒ 净效果：搜索退回 `local_scan`。
+4. 后果**分路径**：
+   - **V1 路**：`candidate_goal_generator.py:133` 的
+     `if kind_value in {"inspect_anchor"} and anchor_label:` 把它整条丢掉 ——
+     **这一层是正确防御**（没有锚点就不该建"检查锚点"的目标），**错在上游第 3 步**
+     ⇒ 语义候选消失、搜索退回 `local_scan`。
+   - **V2 路（§22 走的就是它）**：状态被判成 `partial_match` 而不是 `zero_match`，
+     但这两者在 V2 里**都**进同一个 bounded local scan 分支
+     （`run_semantic_exploration.py:2460` 的 `if match_state in {"zero_match", "partial_match"}`）
+     ⇒ **走法一模一样**，受损的只是报告的可信度（`reason_zh` 说"已匹配到锚点"，
+     而根本没有锚点）。
 
-**这不是回归。** 09-15 只是"09-14 之后没再跑过带关系的目标"而已，是设计的必然后果。
+**这不是回归。** 09-15 之后没再跑过带关系的目标而已，是设计的必然后果。
 
-### 5.3 ⚠ 上一轮踩过的坑（不要再踩）
+### 5.4 ⚠ 上一轮踩过的坑（不要再踩）
 
 排查时第一版回放**漏喂** `robot_yaw_deg` 与 `observed_heading_sectors`
 （真机调用点 `run_semantic_exploration.py:2318-2322` 是喂的）。后果不是"略有偏差"：
@@ -218,18 +250,26 @@ run_semantic_exploration.py:2324   controller.propose(context)
 **纪律**：判断"某侧输出是常量"之前，先确认喂给它的输入不是空集。
 常量输出最常见的成因是空输入平局，不是代码里写死了常量。
 
-### 5.4 待定：改哪一条（**这是需要人拍板的，不要自行决定**）
+### 5.5 待拍板：三个层次完全不同的选择（**需要人拍板，不要自行决定**）
 
-对裸目标，`inspect_anchor` 这个 kind 在语义上就是空的，不该发。候选改法：
+先说清一件最容易搞错的事：**改 `search_reasoner.py` / `graph_matcher.py`
+（换 kind、拆 PARTIAL 判定、让 `_best_unseen_heading` 用上场景图）在 §22 这条路上
+对狗没有任何影响** —— 因为 §5.2，那条路根本不读 directive。
+改完只会让报告自洽，狗的走法一模一样。
 
-1. `search_reasoner.py` 的 `PARTIAL` 分支在 `anchor is None` 时改发 `reobserve_sector`
-   （它不需要锚点，且 `candidate_goal_generator` 认这个 kind）。
-   ⚠ **但它仍会发 `_anchor_heading(None,…)` 那个硬编码 `30.0`** —— 只治标。
-2. `graph_matcher.py` 把"匹配到 target"与"匹配到锚点"拆开，别让 `matched_ids` 非空独自撑起 `PARTIAL`。
+于是真正要选的是：
 
-**更值得动的是 `explore_unseen`**（49/57 例走它）：`_best_unseen_heading` 只在
-**硬编码的六个方向**里按"这个扇区看过没有"挑，**它的入参里明明有 `scene_graph`，只是没用**。
-要让思维链"更好地判断下一步怎么走"，这一支才是主战场。
+| | 做什么 | 改哪里 | 对狗的走法 | 代价 |
+|---|---|---|---|---|
+| **丙 只收拾思维链** | 修 §5.3 的空指令（`anchor is None` 时不发 `inspect_anchor`），让报告不再自相矛盾；不接线 | `app/reasoning/`（**可改**） | **无影响** | 零风险 |
+| **甲 接线** | 让 V2 的候选生成器也读语义指令（把 directive 的 kind / heading 变成真候选） | `scripts/go2w/run_semantic_exploration.py`（**不在冻结清单**） | **有影响** | 真机行为会变，要重跑验收 |
+| **乙 改手脚** | 让 `select_local_scan_goal` 用上场景信息（现在只会在 ±30/±60 里挑"没看过的"） | `app/navigation/local_scan.py`（**在冻结清单内，需解除**） | **有影响** | 要动 §10.2 冻结层 |
+
+推荐顺序 **丙 → 甲 → 乙**：丙是把话说对；甲才是"让思维链真的有用"的前提
+——**不接线的话，把 `app/reasoning/` 改得再好，狗一步都不会变**；乙要动冻结层，
+留到最后。
+
+⚠ 无论选哪个，**离线只能证明"决策变了、且变得有依据"，不能证明"狗走得更好了"**（见 §7）。
 
 ---
 
