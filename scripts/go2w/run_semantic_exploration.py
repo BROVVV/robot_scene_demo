@@ -3026,12 +3026,19 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
         # （其 object_map 与 worker 的 semantic_map 是两套），于是 MAP_UPDATED 展示的
         # 实体永远停在 CAMERA_LOCAL，而 worker 那套其实已收到 METRIC_LIDAR 观测。
         # 这里把 worker 的 semantic_map 注入进去，让两者共用同一张对象表。
+        # 2026-09-16 补上 place_graph（计划书 §7 的 P0）：当时只注入了 object_map，
+        # 于是 Place 仍然是两套 —— explorer 自建的那张用 place_graph.py:49-50 的
+        # 默认值（merge 0.6 / relocation 0.10，比 worker 的 0.35 / 0.50 松 5 倍）
+        # 且拿不到 observed_displacement_m，而 WebUI 展示的 Place 正是从 explorer
+        # 这张图来的（memory_update 的 semantic_navigation_graph 字段），planner 读的
+        # 却是 worker 那张。同一个"当前所在的地点"因此有两个身份。
         _spatial_state = state.get("spatial_v2") or {}
         if _spatial_state.get("semantic_map") is not None:
             from app.spatial.semantic_navigation_graph import SemanticNavigationGraph
 
             explorer_kwargs["semantic_graph"] = SemanticNavigationGraph(
-                object_map=_spatial_state["semantic_map"]
+                object_map=_spatial_state["semantic_map"],
+                place_graph=_spatial_state["place_graph"],
             )
     explorer = AutonomousExplorer(
         target=task_context.canonical_target,

@@ -68,16 +68,34 @@ class SemanticNavigationGraph:
         observation_time = timestamp if timestamp is not None else time.time()
         spatial_pose = _pose_from_dict(pose)
         labels = [_label(item) for item in scene_objects if _label(item)]
-        place_id, created = self.place_graph.register_observation(
-            observation_id=observation_id,
-            heading_sector=heading_sector,
-            objects=labels,
-            rgbd_frame_id=None,
-            pose=spatial_pose,
-            observed_displacement_m=observed_displacement_m,
-            timestamp=observation_time,
-            target_candidate=target_candidate,
-        )
+        existing = self.place_graph.observations.get(observation_id)
+        if existing is not None:
+            # 这一帧的 Place 已经登记过了。worker 的 observe() 跑在本循环的
+            # self._observer() 里（autonomous_explorer.py:536），比这里早，而且
+            # 它才是拿得到位移证据的那一方（observed_displacement_m 来自轮式
+            # 里程计）。2026-09-16 起两边共用同一张 PlaceGraph（见
+            # run_semantic_exploration.py 的注入处），所以这里再登记一次会：
+            #   ① place.observation_ids 出现重复、visit_count 翻倍；
+            #   ② 在**没有位移证据**的情况下重跑 _resolve_place —— 本路径传不进
+            #      observed_displacement_m，place_graph.py:138 的旋转保护整段跳过，
+            #      于是刚站定的地方可能被解析成另一个 place，current_place 被挪走。
+            #      planner 读的正是 current_place()。
+            # 复用已解析的结果。下面的 object_map 与 relation_store 照常更新：
+            # 物体与关系边是 explorer 侧拓扑视图的来源（to_dict 的
+            # object_topology），跟着一起跳过就等于把那张视图清空。
+            place_id = str(existing.provenance["place_id"])
+            created = False
+        else:
+            place_id, created = self.place_graph.register_observation(
+                observation_id=observation_id,
+                heading_sector=heading_sector,
+                objects=labels,
+                rgbd_frame_id=None,
+                pose=spatial_pose,
+                observed_displacement_m=observed_displacement_m,
+                timestamp=observation_time,
+                target_candidate=target_candidate,
+            )
         objects = list(
             spatial_objects
             or self._object_observations(scene_objects, pose, observation_id)
