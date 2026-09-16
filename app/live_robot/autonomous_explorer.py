@@ -1090,6 +1090,18 @@ class AutonomousExplorer:
                        reasons=scored.reasons,
                        planning_cycles=planning_cycles)
             goal_provenance = goal.provenance if isinstance(goal.provenance, dict) else {}
+            # 计划书 §16.1 的 place_identity_mismatch。两侧来源本来就不同：
+            # scan_place_id 是**目标锚点**记录在 provenance 里的观测地，而
+            # _current_place_id 是本周期决策侧算出来的当前 place。不一致意味着
+            # 目标锚在另一个 Place 上，先只记录、不停栈 —— 没有真机触发频率就
+            # 定阈值，会让搜索被频繁打断（§7.3 后半本次不做）。
+            scan_place_id = goal_provenance.get("place_id")
+            if (scan_place_id and self._current_place_id
+                    and str(scan_place_id) != str(self._current_place_id)):
+                self._emit("place_identity_mismatch",
+                           decision_place_id=self._current_place_id,
+                           local_scan_place_id=scan_place_id,
+                           goal_id=goal.goal_id)
             if goal_provenance.get("source") == "frontier_viewpoint":
                 self._emit("viewpoint_selected",
                            frontier_id=goal_provenance.get("frontier_id"),

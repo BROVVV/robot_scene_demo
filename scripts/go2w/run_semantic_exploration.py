@@ -840,6 +840,9 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
         "last_frame_id_before_motion": None,
         "last_yaw_before": None,
         "pending_motion_evidence": None,
+        # 计划书 §16.1 的 mapping_health_changed 要的是"变化"，不是每帧一条。
+        # 放这里而不是闭包外，是为了跟 pending_motion_evidence 同一个生命周期。
+        "last_mapping_health": None,
     }
 
     def _last_success_age_s() -> float | None:
@@ -1834,6 +1837,61 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
                     "spatial_pose_reason": validation.reason_code,
                     "spatial_pose_accepted": validation.accepted,
                 })
+                # 计划书 §16.2：每次 motion 后一条统一记录，事后排查主要靠它。
+                # motion_evidence 只在 :2723 一处被赋值、:2098 一处被清空，而
+                # 这两处和本块同属 `if place_graph is not None and pose is not None`，
+                # 所以一次运动恰好消费一条、不会重复发。字段名照抄 §16.2 的样例，
+                # analyze_search_run.py:141 已经在读 wheel.delta_xy_m/pslam.delta_xy_m。
+                if motion_evidence is not None:
+                    node._write({
+                        "event": "motion_observation_summary",
+                        "frame_id": str(frame_id),
+                        "requested": {
+                            "turn_deg": motion_evidence.requested_turn_deg,
+                            "forward_m": motion_evidence.requested_forward_m,
+                        },
+                        "wheel": {
+                            "delta_xy_m": motion_evidence.wheel_delta_xy_m,
+                            "delta_yaw_deg": motion_evidence.wheel_delta_yaw_deg,
+                        },
+                        "pslam": {
+                            "delta_xy_m": validation.pslam_delta_xy_m,
+                            "delta_yaw_deg": validation.pslam_delta_yaw_deg,
+                            "accepted": validation.accepted,
+                            "reason": validation.reason_code,
+                        },
+                        "host_s": node._host_s(),
+                    })
+                # ⚠ 这是 SpatialPoseValidator 的命名空间（HEALTHY/DEGRADED/
+                # RECOVERING/REJECTED，见 spatial_pose_validator.py 顶部），
+                # **不是**建图写端 webui_map_snapshot_writer.py 那道"激光修正
+                # 停摆"闸门的词表（HEALTHY/DEGRADED_LIO_DRIFT）。两个健康概念
+                # 数据源不同，不要为了好看统一它们。键名用 mapping_health 是
+                # 因为 analyze_search_run.py:138 先读它。
+                if validation.health != motion_state["last_mapping_health"]:
+                    node._write({
+                        "event": "mapping_health_changed",
+                        "frame_id": str(frame_id),
+                        "previous_mapping_health": motion_state["last_mapping_health"],
+                        "mapping_health": validation.health,
+                        "reason_code": validation.reason_code,
+                        "host_s": node._host_s(),
+                    })
+                    motion_state["last_mapping_health"] = validation.health
+                # 只发 LIO 漂移这一种拒绝。四种 reason_code 里
+                # POSE_INVALID / POSE_TIMESTAMP_NONMONOTONIC / PSLAM_POSE_JUMP /
+                # PSLAM_YAW_JUMP 都不是 LIO 漂移，套这个名字会说谎；它们本来
+                # 就带在同帧的 spatial_pose_validation 里，没有信息损失。
+                if validation.reason_code == "LIO_DRIFT_DURING_ROTATION":
+                    node._write({
+                        "event": "scan_rejected_lio_drift",
+                        "frame_id": str(frame_id),
+                        "reason_code": validation.reason_code,
+                        "pslam_delta_xy_m": validation.pslam_delta_xy_m,
+                        "pslam_delta_yaw_deg": validation.pslam_delta_yaw_deg,
+                        "wheel_delta_xy_m": validation.wheel_delta_xy_m,
+                        "host_s": node._host_s(),
+                    })
             spatial_provenance = {}
             if camera_provider is not None and hasattr(camera_provider, "transform_provenance"):
                 try:
