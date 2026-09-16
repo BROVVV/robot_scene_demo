@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 from collections import Counter
 
@@ -27,9 +28,28 @@ from rclpy.qos import (DurabilityPolicy, HistoryPolicy, QoSProfile,
                        ReliabilityPolicy)
 from sensor_msgs.msg import PointCloud2
 
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))
+# 判据住在 app/ 下，理由见那个模块的 docstring：它必须能被没有 rclpy 的 pytest
+# 直接 import。本节点的启动环境只保证 scripts/go2w 在 sys.path 上。
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from app.spatial.lio_nofix_judge import (  # noqa: E402
+    DEGRADED_LIO_DRIFT,
+    LioNofixJudge,
+)
+
 DEFAULT_SNAPSHOT = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "outputs/autonomous_search/runtime/slam_map_3d.json")
+    _PROJECT_ROOT, "outputs/autonomous_search/runtime/slam_map_3d.json")
+
+DEFAULT_LIO_DIAG_LOG = os.path.join(
+    _PROJECT_ROOT, "runtime/go2w/sessions/plain_slam_go2w.launch.log")
+
+# 回填窗口。DIAG 行实测均长 265 字节、速率 10 Hz ⇒ 1 MB ≈ 6 分钟历史。
+# 必须回填：LIO 先发散、writer 后启动（launcher 每次都会重启 writer）时，
+# 只 tail 新内容必然假绿。
+LIO_DIAG_BACKFILL_BYTES = 1 << 20
 
 # 三维视图的置信度门限。检测端工作在 GroundingDINO box_threshold=0.12 这种偏召回
 # 的阈值上，上游没有任何一层按分数拦过，于是碎片框全落到画面上：2026-09-11 实测
@@ -126,6 +146,12 @@ class WebuiSnapshotWriter(Node):
             "objects_glob",
             os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.abspath(__file__)))), "artifacts/slam_validation/semanticD_*/events.jsonl"))
+        # LIO 的 launch 日志：§13.4 健康门的判据源。`[GO2W-DIAG]` 那些量
+        # （ros2_ws/src/plain_slam_ros2/src/lio_3d_interface.cpp:250-263）没有任何
+        # 非日志出口，而那个文件在 §10.2 禁改清单里、且重启 LIO 栈会作废当前建图
+        # 会话 —— 所以判据从日志读。判据本身已在该日志的逐帧转录上做过注入校准，
+        # 见 tests/test_lio_nofix_gate_calibration.py。
+        self.declare_parameter("lio_diag_log", DEFAULT_LIO_DIAG_LOG)
         self._latest_bounds = None
         self._max_range = float(self.get_parameter("max_range_m").value)
         self._min_range = float(self.get_parameter("min_range_m").value)
@@ -148,6 +174,12 @@ class WebuiSnapshotWriter(Node):
         # 重投 latched 那一帧也不会变），只在没有 ros_stamp 时才退回这个键。
         self._map_updated_at = None
         self._last_ros_stamp = None
+        # §13.4 健康门。判据自己会锁存，复位只有一条路：观察到 LIO 栈重启
+        # （launch 日志被截断），见 _poll_lio_diag。
+        self._lio_diag_log = str(self.get_parameter("lio_diag_log").value)
+        self._judge = LioNofixJudge()
+        self._lio_fh = None
+        self._session_id = 0
         topic = str(self.get_parameter("map_topic").value)
         # map_3d 多为 RELIABLE 发布（transient_local），两个 QoS 都订阅以兼容。
         self.create_subscription(PointCloud2, topic, self._on_cloud, reliable(3))
@@ -327,7 +359,52 @@ class WebuiSnapshotWriter(Node):
                 f"(stale SLAM session coordinates?)")
         return kept
 
+    def _open_lio_diag(self, start: int):
+        try:
+            handle = open(self._lio_diag_log, "r", errors="replace")
+        except OSError:
+            return None
+        handle.seek(start)
+        if start > 0:
+            handle.readline()   # seek 到中间时丢掉半行
+        return handle
+
+    def _poll_lio_diag(self) -> None:
+        """tail LIO 的 launch 日志，喂判据，维护 mapping_health。
+
+        这里是锁存的**唯一**复位路径：日志变短 == 被截断 == LIO 换会话
+        （start_plain_slam_mapping.sh:201 用 ``>`` 重定向）。不许改成"前兆消失
+        即复位" —— 判据触发后会自己闭嘴（实测其后几千帧 run 跌回 0 且只再触发
+        1 次），那样做会把闸门重新打开，制造出比改动前更糟的假绿。
+
+        文件打不开（路径不对 / LIO 没起）时直接返回，判据保持不表态 ——
+        调用方因此**不写** mapping_health 字段。这是有意为之的第三态，
+        不是 bug：见 app/spatial/lio_nofix_judge.py 的 docstring。
+        """
+        try:
+            size = os.path.getsize(self._lio_diag_log)
+        except OSError:
+            return
+        if self._lio_fh is None:
+            self._lio_fh = self._open_lio_diag(
+                max(0, size - LIO_DIAG_BACKFILL_BYTES))
+        elif self._lio_fh.tell() > size:
+            self._session_id += 1
+            self._judge.note_session_restart()
+            self._lio_fh.close()
+            self._lio_fh = self._open_lio_diag(0)   # 文件可能被删了重建
+        if self._lio_fh is None:
+            return
+        while True:
+            line = self._lio_fh.readline()
+            if not line:
+                break
+            if "GO2W-DIAG" in line:
+                self._judge.feed(line)
+
     def _flush(self) -> None:
+        # 放在 early return 之前：地图还没来时判据也要继续跟，否则状态会冻结。
+        self._poll_lio_diag()
         if self._latest is None:
             return
         message = self._latest
@@ -363,8 +440,11 @@ class WebuiSnapshotWriter(Node):
         frame = message.header.frame_id or "pslam_map"
         # 字段名必须是前端 static/slam_map_3d.js 读的那套 v2 词表（§9/§10 的
         # app/spatial/slam_web_map_state.py 定义），否则页脚全取到 undefined 显示 0。
-        # 本写端只订阅地图话题，§10 那些概念（建图健康、会话号、漂移门）拿不到的
-        # 一律不编 —— 缺字段时前端显示 "--"，好过一个假的 0 或者假的 HEALTHY。
+        # 本写端只订阅地图话题，§10 那些概念拿不到的一律不编 —— 缺字段时前端显示
+        # "--"，好过一个假的 0 或者假的 HEALTHY。
+        # 例外是 mapping_health / lio_pose_valid / mapping_session_id 三个：
+        # 2026-09-16 起它们有了真信号源（LIO 的 launch 日志判据 + 会话重启计数），
+        # 见 _poll_lio_diag。判据不表态时仍然一个都不写。
         payload = {
             "schema_version": "go2w_slam_web_cloud_v2",
             "available": bool(len(points)),
@@ -405,7 +485,23 @@ class WebuiSnapshotWriter(Node):
             "fresh": True,
             "map_age_seconds": None,
             "preview_age_seconds": None,
+            # 这个计数是上面唯一复位路径（日志截断）的仪表，也是
+            # reset_plain_slam_session.sh 第 [2/6] 步要读的字段。
+            "mapping_session_id": self._session_id,
         }
+        # §13.4 健康门（衔接 web_server.py:377 的 slam_map_not_drifting 与
+        # :405 的 mapping_health）。严格三态，只有前两态写字段：
+        #   DEGRADED_LIO_DRIFT -> 就绪页拦下 /api/search/start，3D 页转黄
+        #   HEALTHY            -> 3D 页转绿。这个绿是**有边界的**：它只断言
+        #                         "LIO 的 iter/fix_t 判据未触发"，不断言地图质量、
+        #                         不断言 act、不断言 ab。
+        #   键不写（判据不表态） -> 判据没在跑，前端显示 "--"、闸门放行
+        health = self._judge.health
+        if health is not None:
+            payload["mapping_health"] = health
+            payload["lio_pose_valid"] = health != DEGRADED_LIO_DRIFT
+            if health == DEGRADED_LIO_DRIFT:
+                payload["health_reason"] = self._judge.reason
         self._save_trajectory()
         os.makedirs(os.path.dirname(self._snapshot_path), exist_ok=True)
         temporary = f"{self._snapshot_path}.tmp"
