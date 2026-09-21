@@ -19,6 +19,7 @@ from app.navigation.corridor_analyzer import (
     center_score,
     classify_path_clearance,
     measure_path_clearance,
+    path_center_score,
     speed_limit_from_clearance,
 )
 
@@ -202,6 +203,36 @@ def test_center_score_is_one_in_the_middle_and_stays_in_range() -> None:
     assert center_score(1.0, 1.0) == pytest.approx(1.0)
     assert center_score(2.0, 0.0) == pytest.approx(0.0)
     assert 0.0 <= center_score(0.05, 4.0) <= 1.0
+
+
+def test_path_center_score_matches_the_binding_sample_of_classify() -> None:
+    """§7.5 的候选打分必须和 §7.4 的判定看同一个约束点，不能各算各的。"""
+    grid = _corridor_along_x(1.20)
+    path = _straight_path(0.20)
+    decision = classify_path_clearance(measure_path_clearance(path, grid))
+    assert path_center_score(path, grid) == pytest.approx(decision.center_score)
+
+
+def test_path_center_score_is_none_when_there_is_nothing_to_measure() -> None:
+    grid = _corridor_along_x(1.20)
+    # 整段落在地图外：量不到就是量不到，不能当成「居中」。
+    assert path_center_score([(50.0, 50.0), (50.5, 50.0)], grid) is None
+    assert path_center_score([], grid) is None
+
+
+def test_path_center_score_refuses_to_score_a_path_that_does_not_fit() -> None:
+    """被堵死的地方没有「居中」可言 —— 这里必须给 None 而不是满分。
+
+    左右光线都在第一格撞墙时两侧距离相等，照对称公式算出来是 1.0；候选排序
+    一旦拿到这个 1.0，就会把一条过不去的路当成「走得最正」的那条。
+    """
+    grid = _corridor_along_x(0.55)
+    path = _straight_path(0.0)
+    # §7.4 的判定照旧给一个 center_score（那是给人看的证据）。
+    assert classify_path_clearance(measure_path_clearance(path, grid)).decision == (
+        DECISION_TOO_NARROW
+    )
+    assert path_center_score(path, grid) is None
 
 
 # ---------------------------------------------------------------------------

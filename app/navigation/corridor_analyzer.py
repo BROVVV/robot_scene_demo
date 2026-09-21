@@ -153,6 +153,34 @@ def center_score(left_body_gap_m: float, right_body_gap_m: float) -> float:
     return max(0.0, 1.0 - error / max(width, 0.01))
 
 
+def path_center_score(
+    path: Sequence[Any], occupancy_grid: CorridorGrid
+) -> float | None:
+    """计划书 §7.5：候选路径的对称净空分，用来在多个**已经安全**的候选之间排序。
+
+    取整条路径上最窄的那个采样点算对称性 —— 与 ``classify_path_clearance``
+    取最小单侧净空是同一个约束点，两处不会各说各话。
+
+    两种情况返回 ``None``，都按「没有这条证据」处理，绝不编造一个数：
+
+    * 采不到点（路径退化，或整段落在地图外）；
+    * 最窄处的单侧机身净空低于硬值 —— 过不去的地方没有「居中」可言。这条特别
+      要命：完全被堵死时左右光线在第一格就被挡住，两侧"距离"相等，照公式算出
+      来会是满分 1.0。§7.5 写明 center_score 只用于在多个**已经安全**的候选之间
+      排序、不允许覆盖「路径过窄」判定，所以这里直接不给分。
+
+    注意这**不是** ``classify_path_clearance`` 的行为：决策记录里对过窄路径照样
+    记一个 center_score（那是给人看的证据），只有候选排序这一路才需要 None。
+    """
+    samples = measure_path_clearance(path, occupancy_grid)
+    if not samples:
+        return None
+    binding = min(samples, key=lambda item: item.min_side_gap_m)
+    if binding.min_side_gap_m < HARD_SIDE_GAP_M:
+        return None
+    return center_score(binding.left_body_gap_m, binding.right_body_gap_m)
+
+
 def measure_path_clearance(
     path: Sequence[Any],
     occupancy_grid: CorridorGrid,
@@ -333,5 +361,6 @@ __all__ = [
     "center_score",
     "classify_path_clearance",
     "measure_path_clearance",
+    "path_center_score",
     "speed_limit_from_clearance",
 ]

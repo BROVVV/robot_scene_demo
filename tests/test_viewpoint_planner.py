@@ -8,7 +8,11 @@ from __future__ import annotations
 
 import math
 
+import pytest
+
 from app.navigation.clearance_map import clearance_map_from_points
+from app.navigation.corridor_analyzer import CENTER_SCORE_WEIGHT, CorridorGrid
+from app.navigation.view_quality import clamp01
 from app.navigation.viewpoint_models import (
     VIEWPOINT_APPROACH_TARGET,
     VIEWPOINT_EXPLORE_FRONTIER,
@@ -135,3 +139,97 @@ def test_higher_clearance_route_scores_higher() -> None:
     for other in safe[1:]:
         if abs(other.pose[1]) > 0.05:
             assert best.score >= other.score
+
+
+# ---------------------------------------------------------------------------
+# §7.5 对称净空分：算得出来才算，且只给已经安全的候选排序用
+# ---------------------------------------------------------------------------
+
+_GRID_RESOLUTION = 0.05
+_GRID_WALL = 100
+
+
+def _corridor_grid(half_width: float = 1.2) -> CorridorGrid:
+    """上面那条走廊的占据栅格视图 —— §7.5 要量的就是这份数据。"""
+    width = int(round(6.0 / _GRID_RESOLUTION))
+    height = int(round(4.0 / _GRID_RESOLUTION))
+    data = [0] * (width * height)
+    for row in range(height):
+        if abs(-2.0 + (row + 0.5) * _GRID_RESOLUTION) >= half_width:
+            for column in range(width):
+                data[row * width + column] = _GRID_WALL
+    return CorridorGrid(
+        resolution=_GRID_RESOLUTION, origin_x=-2.0, origin_y=-2.0,
+        width=width, height=height, data=tuple(data))
+
+
+def _corridor_request() -> ViewpointRequest:
+    return ViewpointRequest(
+        mode=VIEWPOINT_EXPLORE_FRONTIER, subject_id="f_end",
+        subject_position=(2.0, 0.0))
+
+
+def _corridor_candidates(*, occupancy_grid=None):
+    corridor = _wall(_horizontal_wall_at_y(1.2) + _horizontal_wall_at_y(-1.2))
+    return _planner().generate_and_rank(
+        _corridor_request(), robot_pose=(0.0, 0.0, 0.0), clearance_map=corridor,
+        frontiers=[("f_end", (2.0, 0.0))], occupancy_grid=occupancy_grid)
+
+
+def test_center_score_term_is_zero_without_an_occupancy_grid() -> None:
+    """没有栅格就没有这条证据，记 0 分 —— 不能当成「很居中」白送分。"""
+    candidates = _corridor_candidates()
+    safe = [item for item in candidates if item.hard_safe]
+    assert safe
+    assert all(item.center_score is None for item in safe)
+    assert all(item.components["center_score"] == 0.0 for item in safe)
+
+
+def test_center_score_term_is_the_weighted_measure_of_the_candidate_route() -> None:
+    """打分项必须是**这条候选路径**量出来的 0.25 倍，不是别的什么东西。
+
+    期望值在这里写死成计划书 §7.5 的 0.25，不从被测模块里取 —— 从被测模块取
+    权重的话，把它改成 0 两边一起变，断言照样绿，等于什么都没测。
+    """
+    assert CENTER_SCORE_WEIGHT == 0.25  # 常量本身也是合同的一部分
+    candidates = _corridor_candidates(occupancy_grid=_corridor_grid())
+    safe = [item for item in candidates if item.hard_safe]
+    assert safe
+    measured = [item for item in safe if item.center_score is not None]
+    assert measured, "走廊里的候选应该能量出对称净空分"
+    for item in safe:
+        expected = 0.25 * clamp01(item.center_score or 0.0)
+        assert item.components["center_score"] == pytest.approx(expected, abs=1e-4)
+    # 被拒候选不参与打分，这一项自然也不该出现。
+    for item in candidates:
+        if not item.hard_safe:
+            assert item.components == {"rejected": True}
+
+
+def test_centred_route_outscores_an_off_centre_one_on_this_term() -> None:
+    """同一条走廊里，越靠中线的候选这一项越高，且差值正好是 0.25×Δcenter。
+
+    这条走廊里其余各项本来就已经偏向中线，所以这里**不**声称这一项翻转了排序 ——
+    它只是把已有的倾向按 §7.5 的固定权重记账。要断言的就只有这一项的量。
+    """
+    candidates = _corridor_candidates(occupancy_grid=_corridor_grid())
+    safe = [item for item in candidates if item.hard_safe and item.center_score is not None]
+    centre = min(safe, key=lambda item: abs(item.pose[1]))
+    off_centre = max(safe, key=lambda item: abs(item.pose[1]))
+    assert abs(off_centre.pose[1]) > abs(centre.pose[1])
+    assert centre.center_score > off_centre.center_score
+    assert centre.components["center_score"] > off_centre.components["center_score"]
+    delta = centre.components["center_score"] - off_centre.components["center_score"]
+    # 0.25 写死（同上一处）：差值必须正好是这个固定权重乘上两个 center 之差。
+    assert delta == pytest.approx(
+        0.25 * (centre.center_score - off_centre.center_score), abs=1e-4
+    )
+
+
+def test_center_score_never_rescues_a_candidate_that_failed_hard_safety() -> None:
+    """§7.5 明确这一项不允许覆盖「路径过窄」判定：被拒的仍是零分。"""
+    candidates = _corridor_candidates(occupancy_grid=_corridor_grid())
+    rejected = [item for item in candidates if not item.hard_safe]
+    if rejected:
+        assert all(item.score == 0.0 for item in rejected)
+        assert all("center_score" not in item.components for item in rejected)

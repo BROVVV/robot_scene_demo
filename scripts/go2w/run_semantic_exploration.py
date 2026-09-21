@@ -132,6 +132,11 @@ class _Nav2MotionEvidenceRecorder:
     def capabilities(self) -> Any:
         return self._inner.capabilities()
 
+    @property
+    def occupancy_grid(self) -> Any:
+        # 计划书 §7.5：候选评分要用后端订阅到的占据栅格。这层只观测，原样透传。
+        return getattr(self._inner, "occupancy_grid", None)
+
     def get_pose(self) -> Any:
         return self._inner.get_pose()
 

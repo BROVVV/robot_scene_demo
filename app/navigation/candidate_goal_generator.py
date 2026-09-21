@@ -84,6 +84,7 @@ def generate_live_exploration_candidates(
     frontiers: Sequence[Mapping[str, Any]] = (),
     robot_pose: Sequence[float] | None = None,
     traversal_failures: Mapping[str, int] | None = None,
+    occupancy_grid: Any = None,
     forward_step_m: float = 0.20,
     safety_rejections: list[dict[str, Any]] | None = None,
 ) -> list[ExplorationGoal]:
@@ -198,6 +199,7 @@ def generate_live_exploration_candidates(
                 clearance_map=clearance_map,
                 frontiers=[(frontier_id, subject)],
                 traversal_failures=traversal_failures,
+                occupancy_grid=occupancy_grid,
             )
             best = next((item for item in ranked if item.hard_safe), None)
             if best is None:

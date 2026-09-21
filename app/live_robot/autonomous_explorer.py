@@ -1710,6 +1710,10 @@ class AutonomousExplorer:
             viewpoint_planner=self._viewpoint_planner,
             frontiers=frontiers,
             robot_pose=_pose_xy_yaw(observation.pose),
+            # 计划书 §7.5：候选的对称净空分要沿候选路径量左右机身净空，需要
+            # 后端订阅到的那份占据栅格。只有 nav2 后端有；没有就传 None，
+            # 那一条证据为空、不影响其它打分项。
+            occupancy_grid=getattr(self._backend, "occupancy_grid", None),
             traversal_failures={
                 str(entry.get("frontier_id")): int(entry.get("failure_count") or 0)
                 for entry in frontiers

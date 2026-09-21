@@ -438,6 +438,15 @@ class Nav2SearchBackend:
         self._active: _ActiveGoal | None = None
         self._last_decision: dict[str, Any] | None = None
 
+    @property
+    def occupancy_grid(self) -> CorridorGrid | None:
+        """后端订阅到的最新占据栅格（计划书 §7.5）。
+
+        候选排序要沿候选路径量左右机身净空，那份数据只有这里持有；没有地图时
+        返回 ``None``，调用方按「这条证据为空」处理，不编造。
+        """
+        return self._grid_provider() if self._grid_provider is not None else None
+
     # ------------------------------------------------------------ RobotBackend
     def capabilities(self) -> RobotCapabilities:
         """支撑能力只暴露地图系导航：相对平移/旋转一律不声明。
