@@ -483,7 +483,13 @@ PY
 
 `candidate_decision.reject_reason` 只会是 `NO_MAP / NO_LOCALIZATION / NO_PATH /
 GOAL_OCCUPIED / TOO_NARROW / NAV2_NOT_READY` 里的一个。看到别的值说明有代码路径
-绕过了这套判定。
+绕过了这套判定（`nav2_search_backend._candidate_reject_reason`）。
+
+一个**会让现场读错**的细节：走廊分析器内部的原因串比这个枚举细，收口时枚举外的
+一律记成 `TOO_NARROW` —— 所以 `NO_PATH_SAMPLES`（路径一个采样点都取不到）在候选
+记录里长的就是 `TOO_NARROW`，而它和「真的窄」处置不同。**原始串不丢，它在同一事件
+的 `message` 里**（`corridor rejected the path: <原始串>`）。看到 `TOO_NARROW`
+先去 `message` 里核对，别直接按「走廊太窄」处置。
 
 另有一类**在规划之前就被挡下**的目标（顶层 `reject_reason` 为 `NOT_MAP_FRAME`
 或 `INVALID_GOAL`），它们根本不生成 `candidate_decision`：`NOT_MAP_FRAME` 意味着

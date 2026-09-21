@@ -10,6 +10,7 @@ from __future__ import annotations
 import threading
 import time
 import unittest
+from dataclasses import replace
 
 from app.live_robot.autonomous_explorer import (
     AutonomousExplorer,
@@ -276,3 +277,88 @@ class TestConfirmedTargetObjectId(unittest.TestCase):
         self.assertTrue(objects[object_id].provenance.get("target_confirmed"))
         self.assertNotIn(
             "target_confirmed", objects[mapping["scene_obj_001"]].provenance)
+
+
+class _ProvenanceBackend(MockBackend):
+    """MockBackend + 一份可控的 provenance。
+
+    用来钉住「后端 provenance → ``navigation_result`` 事件顶层」这一跳。
+    """
+
+    def __init__(self, provenance, **kwargs):
+        super().__init__(**kwargs)
+        self._provenance = provenance
+
+    def execute_goal(self, goal):
+        handle = super().execute_goal(goal)
+        if handle.result is not None:
+            handle.result = replace(handle.result,
+                                    provenance=dict(self._provenance))
+        return handle
+
+
+class TestNavigationResultCarriesCandidateDecision(unittest.TestCase):
+    """§13.2 第 7 项：候选决策记录必须落在 ``navigation_result`` 事件的**顶层**。
+
+    这条链有三跳，此前只有两跳有测试：后端把 §14 的候选记录塞进
+    ``provenance``（``test_nav2_search_backend``）、WebUI 快照读
+    ``robot.last_motion_result.candidate_decision``（``test_search_state_store``）。
+    中间这一跳 —— explorer 把它抬到事件顶层、写进 ``events.jsonl`` —— 没有任何
+    用例守着，而 §13.2 第 7 项要现场人员去 ``events.jsonl`` 里翻的正是它。
+    改坏了只有实机跑才现形，所以在这里钉死。
+    """
+
+    RECORD = {
+        "candidate_id": "g1",
+        "goal_x": 1.0,
+        "goal_y": 0.0,
+        "goal_yaw": 0.0,
+        "path_length_m": 1.2,
+        "min_left_body_gap_m": 0.62,
+        "min_right_body_gap_m": 0.55,
+        "min_side_gap_m": 0.55,
+        "corridor_decision": "OK",
+        "speed_limit_mps": 0.2,
+        "center_score": 0.91,
+        "accepted": True,
+        "reject_reason": "",
+    }
+
+    def test_candidate_decision_reaches_the_event_top_level(self) -> None:
+        policy = load_exploration_policy()
+        policy.budget = ExplorationBudget(max_motion_steps=3, max_planning_cycles=3)
+        explorer = _explorer(
+            scenario_no_target(empty_scenes=6),
+            backend=_ProvenanceBackend({"candidate_decision": dict(self.RECORD)}),
+            policy=policy,
+        )
+        explorer.run()
+
+        results = [e for e in explorer.events if e.get("event") == "navigation_result"]
+        self.assertTrue(results, "这个场景一条 navigation_result 都没发，断言前提已变")
+        for event in results:
+            # 顶层，不是嵌在 provenance / graph / message 里的。
+            self.assertEqual(event.get("candidate_decision"), self.RECORD)
+
+    def test_missing_candidate_decision_is_null_not_absent(self) -> None:
+        """后端没给候选记录时，字段必须存在且为 null。
+
+        ``jq 'select(.event=="navigation_result" and .candidate_decision != null)'``
+        是现场查法；字段整个缺席与值为 null 在 jq 下都是 false，但在
+        ``json.loads`` 之后 ``row["candidate_decision"]`` 会 KeyError。
+        §13.2 的脚本按后者读，所以缺席和 null 不能混。
+        """
+        policy = load_exploration_policy()
+        policy.budget = ExplorationBudget(max_motion_steps=3, max_planning_cycles=3)
+        explorer = _explorer(
+            scenario_no_target(empty_scenes=6),
+            backend=_ProvenanceBackend({"backend": "mock"}),
+            policy=policy,
+        )
+        explorer.run()
+
+        results = [e for e in explorer.events if e.get("event") == "navigation_result"]
+        self.assertTrue(results, "这个场景一条 navigation_result 都没发，断言前提已变")
+        for event in results:
+            self.assertIn("candidate_decision", event)
+            self.assertIsNone(event["candidate_decision"])
