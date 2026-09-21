@@ -36,7 +36,6 @@ done
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "${script_dir}/../.." && pwd)"
-ros_ws="${project_root}/ros2_ws"
 runtime_root="${project_root}/outputs/autonomous_search/runtime"
 log_root="${project_root}/outputs/autonomous_search/logs"
 mkdir -p "${runtime_root}" "${log_root}" "${runtime_root}/nav2"
@@ -95,14 +94,16 @@ fi
 
 source "${script_dir}/setup_environment.sh"
 
-# ROS 2 工作区：先 source 已构建的 install，再用 ros2 launch。
-if [[ -f "${ros_ws}/install/setup.bash" ]]; then
-  # shellcheck disable=SC1091
-  source "${ros_ws}/install/setup.bash"
-else
-  printf 'ERROR: %s/install/setup.bash 不存在；先运行 scripts/go2w/build_ros2.sh。\n' "${ros_ws}" >&2
-  exit 2
-fi
+# 不要再 source ros2_ws/install/setup.bash —— setup_environment.sh 已经装好了 ROS
+# 与整个工作区，而且它是**故意绕开 setup.bash** 的：这个工作区的 setup.bash 里记着
+# 两个链式前缀（/opt/ros/noetic 与 /opt/ros/humble），直接 source 会把 ROS 1 的
+# dist-packages 顶到 PYTHONPATH 最前面，之后任何 rclpy 节点
+# `from nav_msgs.msg import Odometry` 拿到的是 ROS 1 的消息类。
+# setup_environment.sh 的 source_overlay_safely() 检测到这种「记录了别的 distro」
+# 的 setup.bash 时会改 source local_setup.bash，正是为此。
+# 顺带：那一遍裸 source 还没被 `set +u` 包住，会在 colcon 那段无引号保护的
+# `[ -n "$COLCON_TRACE" ]` 上以 "unbound variable" 直接终止本脚本——症状看着像
+# 缺环境变量，真因是这里多 source 了一遍。
 
 owns_pidfile() {
   # 只认本项目自己起的进程：pidfile + cmdline 双重核对，避免误杀。
