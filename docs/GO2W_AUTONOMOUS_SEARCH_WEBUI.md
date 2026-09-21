@@ -240,8 +240,12 @@ Web 日志：`outputs/autonomous_search/logs/web_server.log`。
 `--enable-motion`；机器人应保持完全静止，可以随时按遥控器急停。
 
 ```bash
-# 1) 只规划启动：控制器/平滑器/碰撞监视器都不会起，速度到不了机器人。
+# 1) 只规划启动：起坐标桥、planner_server 和 bt_navigator，控制器/平滑器/碰撞
+#    监视器都不会起，速度到不了机器人。bt_navigator 不带速度链路，但少了它
+#    /navigate_to_pose 就不存在，搜索后端连 ComputePathToPose 都不会发。
 bash scripts/go2w/start_nav2_autonomous_search.sh
+ros2 node list | grep -E 'planner_server|bt_navigator|controller_server'
+# 期望：前两个在，controller_server 不在。
 
 # 2) /map 的 frame_id 必须是 map，且只有 1 个发布者。
 ros2 topic echo /map --field header.frame_id --once        # 期望：map
@@ -281,6 +285,13 @@ jq -c 'select(.event=="navigation_result" and .candidate_decision != null)
 # （取值只有 NO_MAP / NO_LOCALIZATION / NO_PATH / GOAL_OCCUPIED / TOO_NARROW /
 # NAV2_NOT_READY 六种）。
 ```
+
+第 7 项在默认（只规划）模式下的预期形态要说清楚：`accepted` 一定是 `false`，
+`reject_reason` 一定是 `NAV2_NOT_READY` —— 路径本身能规划出来、走廊四项也都算得
+出来，卡在最后那道「速度上限设不进去」（`controller_server` 没起，速度上限参数
+服务不可用）上。这是正确的行为，不是故障：只规划模式本来就只到规划为止。若
+`corridor_decision` 缺失而只有 `reject_reason`，那才是问题 —— 说明 `ComputePathToPose`
+压根没发出去（先查 `bt_navigator` 与 `planner_server` 的 lifecycle 是否 active）。
 
 以上 7 项全绿之前不要进入 §13.3 的低速现场验收。
 

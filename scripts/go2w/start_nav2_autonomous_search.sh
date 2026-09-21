@@ -4,9 +4,9 @@ set -euo pipefail
 # GO2-W Nav2 自主搜索唯一入口（计划书 §9）。
 #
 #   bash scripts/go2w/start_nav2_autonomous_search.sh
-#       # 默认：只规划、不执行。坐标桥 + planner_server 起来，地图、TF、
-#       # /go2w/nav/localization_valid 都在，但控制器/平滑器/碰撞监视器一个
-#       # 都不起，任何速度都不可能进入机器人。
+#       # 默认：只规划、不执行。坐标桥 + planner_server + bt_navigator 起来，
+#       # 地图、TF、/go2w/nav/localization_valid 都在，规划链路可查；但控制器/
+#       # 平滑器/碰撞监视器一个都不起，任何速度都不可能进入机器人。
 #
 #   bash scripts/go2w/start_nav2_autonomous_search.sh --enable-motion
 #       # 现场验收通过后才用。即便传了它，真正的运动仍要再过
@@ -16,7 +16,7 @@ set -euo pipefail
 #
 # 本脚本不重复实现已有的启动逻辑：感知、plain_slam、运动控制由既有脚本负责，
 # WebUI 与 ROS 侧车交给 start_autonomous_search_web.sh。这里只补齐 Nav2 这
-# 一层，并负责按顺序等齐 6 项就绪证据。
+# 一层，并负责按顺序等齐 4 项就绪证据。
 
 ENABLE_MOTION=0
 for arg in "$@"; do

@@ -254,23 +254,51 @@ def test_velocity_smoother_parameters_are_not_duplicated() -> None:
 def test_execution_is_off_by_default() -> None:
     launch = NAV2_LAUNCH.read_text(encoding="utf-8")
     assert 'DeclareLaunchArgument("execution_enabled", default_value="false")' in launch
-    # 只有 planner_server 在「只规划」模式下启动。
-    assert 'PLAN_ONLY_NODES = ["planner_server"]' in launch
+    # 「只规划」模式起 planner_server 和 bt_navigator。bt_navigator 不含速度链路，
+    # 但后端 _readiness() 要求 /navigate_to_pose 在线才肯发 ComputePathToPose，
+    # 少了它「只规划」就一次规划都不做（§9-6）。
+    assert 'PLAN_ONLY_NODES = ["planner_server", "bt_navigator"]' in launch
+
+
+def _node_block(source: str, name: str) -> str:
+    """截出 ``name="<name>"`` 所在的那个 ``Node(...)`` 文本块。
+
+    Node 的参数行缩进 16 空格、收尾的 ``),`` 缩进 12 空格，按这个边界切。
+    数 ``IfCondition`` 的总数会把 LogInfo 和 IncludeLaunchDescription 一起算进来，
+    所以必须按块判。
+    """
+    start = source.index(f'name="{name}"')
+    return source[start:source.index("\n            ),", start)]
 
 
 def test_the_execute_only_nodes_are_gated_on_execution_enabled() -> None:
     """每个能产生速度的节点都必须挂 IfCondition，否则只规划模式会漏速度。"""
     launch = NAV2_LAUNCH.read_text(encoding="utf-8")
-    for node in (
-        "controller_server",
-        "velocity_smoother",
-        "bt_navigator",
-        "behavior_server",
-        "collision_monitor",
-    ):
-        assert node in launch
-    assert launch.count("condition=IfCondition(execution_enabled)") >= 5
+    for node in ("controller_server", "velocity_smoother", "behavior_server",
+                 "lifecycle_manager_navigation"):
+        assert "IfCondition(execution_enabled)" in _node_block(launch, node), node
+    # collision_monitor 是 IncludeLaunchDescription，不是 Node（它自己的 launch
+    # 文件里刻意不带条件，见 test_collision_monitor_launch_is_a_plain_includable），
+    # 所以按 include 块判：路径名往后紧跟着的几行里必须有 IfCondition。
+    # 刻意不数全文出现次数——LogInfo 也挂着同一个条件，数总数会把它算进来。
+    include_at = launch.index("collision_monitor.launch.py")
+    assert "condition=IfCondition(execution_enabled)" in launch[include_at:include_at + 200]
     assert "condition=UnlessCondition(execution_enabled)" in launch
+
+
+def test_bt_navigator_starts_in_both_modes() -> None:
+    """bt_navigator 不产生速度，但只规划模式少了它就连规划都做不了。
+
+    后端 ``_readiness()`` 要求 ``/navigate_to_pose`` 在线才肯发
+    ``ComputePathToPose``（nav2_search_backend 里两个 client 都必须 ready）。
+    它一旦被挂上 IfCondition，只规划模式就静默退化成"连规划都不做"，
+    §14 的候选记录也就一行为空 —— 这种回归必须在这里挡住。
+    """
+    launch = NAV2_LAUNCH.read_text(encoding="utf-8")
+    block = _node_block(launch, "bt_navigator")
+    assert "IfCondition" not in block and "UnlessCondition" not in block
+    # 只规划模式的 lifecycle_manager 必须把它一起拉起来。
+    assert 'PLAN_ONLY_NODES = ["planner_server", "bt_navigator"]' in launch
 
 
 def test_collision_monitor_launch_is_a_plain_includable() -> None:

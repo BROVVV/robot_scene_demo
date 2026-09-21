@@ -420,7 +420,9 @@ timeout 60 ros2 topic echo /go2w/cmd_vel_bridge/status                  # 应持
 **7. 走廊分析日志：每个候选一行**
 
 计划书 §14 要求的结构化记录（方位、路径长度、左右最小侧向净空、走廊判定、速度
-上限、拒因）随 `ACTION_FINISHED` 事件落到该次 WebUI 会话的 `events.jsonl`：
+上限、拒因）随 `navigation_result` 事件落到该次 WebUI 会话的 `events.jsonl`，
+字段在事件的**顶层**（`AutonomousExplorer._emit` 把关键字参数平铺进事件，
+不套 `payload`）：
 
 ~~~bash
 python3 - <<'PY'
@@ -430,11 +432,19 @@ if not paths:
     raise SystemExit("还没有 WebUI 会话的 events.jsonl")
 for line in open(paths[-1], encoding="utf-8"):
     row = json.loads(line)
-    record = (row.get("payload") or {}).get("candidate_decision")
+    if row.get("event") != "navigation_result":
+        continue
+    record = row.get("candidate_decision")
     if record:
         print(json.dumps(record, ensure_ascii=False))
 PY
 ~~~
+
+同样的记录在网页上也能直接翻：`explorer_search_adapter` 把 `navigation_result`
+转写成 `ACTION_FINISHED` 交给 WebUI 状态存储，落在快照的
+`robot.last_motion_result.candidate_decision`。注意这两处**不在同一个文件里** ——
+`ACTION_FINISHED` 不进 `outputs/live_runs/*/events.jsonl`，按它去 grep 那个目录
+一行都搜不到。
 
 `candidate_decision.reject_reason` 只会是 `NO_MAP / NO_LOCALIZATION / NO_PATH /
 GOAL_OCCUPIED / TOO_NARROW / NAV2_NOT_READY` 里的一个。看到别的值说明有代码路径

@@ -4,9 +4,12 @@
 ``plain_slam_nav_frame_bridge.py`` 独家发布（``/map`` 也是它发；旧的地图 relay
 不再启动，避免 ``/map`` 出现两个发布者）。
 
-``execution_enabled`` 默认 ``false``：此时只起坐标桥和规划器，地图、TF、
-``/go2w/nav/localization_valid`` 都在，但控制器、平滑器、碰撞监视器一个都不起，
-任何速度都不可能进入机器人。用户现场验收后才由用户自己改为 ``true``。
+``execution_enabled`` 默认 ``false``：此时起坐标桥、规划器和 ``bt_navigator``，
+地图、TF、``/go2w/nav/localization_valid`` 都在，规划链路完整可查（后端在发
+``ComputePathToPose`` 之前会先确认 ``NavigateToPose`` 的 action server 在，
+少了 ``bt_navigator`` 就一次规划都不会发 —— 计划书 §9-6）；但控制器、平滑器、
+碰撞监视器一个都不起，**没有任何节点会把路径变成速度**，``/go2w/nav2_cmd_vel``
+连发布者都没有。用户现场验收后才由用户自己改为 ``true``。
 
 速度话题链是明确的，且 ``/go2w/nav2_cmd_vel`` 只有 collision_monitor 一个发布者：
 
@@ -32,7 +35,10 @@ EXECUTE_NODES = [
     "velocity_smoother",
     "collision_monitor",
 ]
-PLAN_ONLY_NODES = ["planner_server"]
+# bt_navigator 不产生速度（它只把目标派给 controller_server），但它是
+# /navigate_to_pose 的宿主。后端 _readiness() 要求它在线才肯发 ComputePathToPose，
+# 所以只规划模式也必须起它，否则「只规划」退化成「什么都不做」。
+PLAN_ONLY_NODES = ["planner_server", "bt_navigator"]
 
 
 def generate_launch_description():
@@ -64,8 +70,9 @@ def generate_launch_description():
             ),
             LogInfo(
                 condition=UnlessCondition(execution_enabled),
-                msg="GO2-W Nav2 只规划：execution_enabled=false。坐标桥与规划器已启动，"
-                    "控制器/平滑器/碰撞监视器未启动，不会有速度进入机器人。",
+                msg="GO2-W Nav2 只规划：execution_enabled=false。坐标桥、规划器与"
+                    "bt_navigator 已启动（规划链路可查），控制器/平滑器/碰撞监视器"
+                    "未启动，不会有速度进入机器人。",
             ),
             LogInfo(
                 condition=IfCondition(execution_enabled),
@@ -114,7 +121,8 @@ def generate_launch_description():
                 executable="bt_navigator",
                 name="bt_navigator",
                 output="screen",
-                condition=IfCondition(execution_enabled),
+                # 刻意不挂 execution_enabled：bt_navigator 自身不产生速度，
+                # 只提供 /navigate_to_pose，两种模式都要在（见 PLAN_ONLY_NODES）。
                 parameters=[
                     params_file,
                     common,
