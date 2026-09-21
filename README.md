@@ -417,6 +417,36 @@ grep -c "Message Filter dropping message" outputs/autonomous_search/logs/nav2_br
 # 0，或只有启动瞬间那一两条（那时 map 帧还没出现）。持续增长就是时间轴偏了。
 ~~~
 
+但**这个 `0` 单独不能当结论**：障碍层根本没 activate 时它同样一帧都不丢，两种情况的
+grep 输出一模一样。所以必须再要一个正面证据 —— 代价地图里得真有障碍格：
+
+~~~bash
+/usr/bin/python3 - <<'PY'
+import rclpy
+from rclpy.node import Node
+from nav2_msgs.srv import GetCostmap
+rclpy.init(); n = Node("costmap_hist")
+c = n.create_client(GetCostmap, "/global_costmap/get_costmap")
+assert c.wait_for_service(timeout_sec=10), "拿不到 get_costmap，代价地图没在跑"
+f = c.call_async(GetCostmap.Request())
+rclpy.spin_until_future_complete(n, f, timeout_sec=20)
+m = f.result().map                      # Foxy 上字段是 .metadata，不是 .info
+h = {}
+for v in m.data:
+    h[v] = h.get(v, 0) + 1
+print("%dx%d res=%.3f" % (m.metadata.size_x, m.metadata.size_y, m.metadata.resolution))
+print("254(致命)=%d 253(内切)=%d 其它非零=%d 空闲(0)=%d" % (
+    h.get(254, 0), h.get(253, 0),
+    sum(v for k, v in h.items() if k not in (0, 253, 254)), h.get(0, 0)))
+assert h.get(254, 0) + h.get(253, 0) > 0, "整张地图没有一个障碍格：障碍层没在打标，第 5 项是空过"
+n.destroy_node(); rclpy.shutdown()
+PY
+~~~
+
+实测（2026-09-21，时间对齐修好之后）：`254=196 253=838 其它非零=3068 空闲=636932`。
+**一个 254/253 都没有就说明这一项空过了**，此时上面那条 grep 很可能也是 0 —— 千万别
+把它读成"正常"。全 `0`（整张 `FREE`）正是障碍层没有输入时代价地图退化的样子。
+
 **机器狗的钟一跳变，`configs/go2w/time_sync.yaml` 就作废**（RTC 没电，每次重启都要
 从宿主推钟，见 `scripts/go2w/sync_robot_clock.sh`）。失效后障碍层丢 100% 的帧，代价
 地图退化成整张 `FREE`。重启过机器狗或跑过 `sync_robot_clock.sh apply` 之后，**必须
