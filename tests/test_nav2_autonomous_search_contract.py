@@ -697,6 +697,61 @@ def test_no_path_never_falls_back_to_a_forward_step() -> None:
     assert backend.goal_types, "后端一条目标都没收到"
 
 
+def test_target_approach_never_emits_a_relative_step_under_nav2() -> None:
+    """计划书 §12.4 后半句：**目标接近**也不生成 ``RELATIVE_MOVE``。
+
+    上面两条盯的是搜索循环；确认目标之后一步步走近的那条链（§6.7）是另一个
+    生成点，此前一条测试都没有。这里直接量那一层的产物：转向要表达成「站在原地
+    转到新朝向」、前进要表达成 standoff 候选的地图系位姿，表达不出来（没有候选）
+    就返回 ``None`` 让调用方停车 —— 而不是退回相对位移。
+    """
+    from app.live_robot.autonomous_explorer import AutonomousExplorer
+    from app.navigation.approach_controller import (
+        ACTION_APPROACH_FORWARD,
+        ACTION_ROTATE_SMALL,
+        ApproachDecision,
+    )
+    from app.navigation.models import LiveObservation
+    from app.navigation.viewpoint_models import ViewpointCandidate
+
+    observation = LiveObservation(
+        bundle_id="obs_approach",
+        timestamp=1_700_000_000.0,
+        scene_objects=[],
+        pose={"x": 2.0, "y": -1.5, "yaw_rad": 0.0},
+    )
+
+    def _goal(decision, best):
+        return AutonomousExplorer._metric_approach_goal(
+            decision, observation, best, object_id="o1", steps=1
+        )
+
+    turn = _goal(ApproachDecision(action=ACTION_ROTATE_SMALL, relative_dyaw_deg=25.0), None)
+    assert turn is not None and turn.goal_type == "NAVIGATE_POSE", turn
+    # 原地转：位置就是机器人自己，只有 yaw 变。
+    assert (turn.position[0], turn.position[1]) == (2.0, -1.5), turn.position
+    assert turn.frame == "map" and abs(turn.yaw - 25.0) < 1e-6, turn.yaw
+
+    viewpoint = ViewpointCandidate(
+        viewpoint_id="vp1", pose=(3.25, -1.5, 0.0), hard_safe=True
+    )
+    forward = _goal(ApproachDecision(action=ACTION_APPROACH_FORWARD, relative_dx=0.2), viewpoint)
+    assert forward is not None and forward.goal_type == "NAVIGATE_POSE", forward
+    # 前进的终点是候选位姿，不是「当前位姿 + 0.2m」。
+    assert (forward.position[0], forward.position[1]) == (3.25, -1.5), forward.position
+    assert forward.frame == "map", forward.frame
+
+    # 没有可用 standoff 候选时必须拒答，让调用方停车——这里最容易被写成
+    # 「那就按 bearing 向前走 0.2m」。
+    assert _goal(ApproachDecision(action=ACTION_APPROACH_FORWARD, relative_dx=0.2), None) is None
+    for decision in (
+        ApproachDecision(action=ACTION_ROTATE_SMALL, relative_dyaw_deg=-10.0),
+        ApproachDecision(action=ACTION_APPROACH_FORWARD, relative_dx=0.2),
+    ):
+        goal = _goal(decision, viewpoint)
+        assert goal is None or goal.goal_type == "NAVIGATE_POSE", (decision.action, goal)
+
+
 def test_nav2_bootstrap_goal_is_relative_to_the_robot_not_the_map_origin() -> None:
     """``frame="map"`` 的目标必须落在机器人前方，而不是地图原点旁边。
 
