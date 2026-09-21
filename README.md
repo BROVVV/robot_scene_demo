@@ -317,8 +317,15 @@ http://192.168.123.18:8765/
 
 ~~~bash
 cd /home/unitree/robotscene
+source scripts/go2w/setup_environment.sh     # 七项复核都在这个终端里做
 bash scripts/go2w/start_nav2_autonomous_search.sh
 ~~~
+
+启动脚本**只在自己进程里**装环境，不回传给父 shell，所以这一行必须自己敲。
+**别图省事只 source `/opt/ros/foxy/setup.bash`**：那样 `ros2` 命令都能跑，但
+`/usr/bin/python3` 没有 `RMW_IMPLEMENTATION=rmw_cyclonedds_cpp`，第 4 项那段内联
+Python 里每个 rclpy 节点建图都会 `std::bad_alloc` —— 看着像内存不够，真因是 DDS
+实现不对。
 
 启动脚本自己已经等齐了 `/map` 唯一发布者、`map -> base_link` TF 和
 `planner_server` active。下面七项是给现场人员的复核，任何一项不对就先停下来，
