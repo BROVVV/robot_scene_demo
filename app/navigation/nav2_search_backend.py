@@ -31,6 +31,7 @@ from typing import Any, Callable, Protocol, Sequence
 
 from .corridor_analyzer import (
     DECISION_OK,
+    OCCUPIED_THRESHOLD,
     CorridorDecision,
     CorridorGrid,
     classify_path_clearance,
@@ -526,6 +527,26 @@ class Nav2SearchBackend:
                     },
                 ),
             )
+
+        # 计划书 §3.2：目标点本身落在占据栅格里就直接拒，别指望规划器兜底。
+        # NavFn 对占据终点通常返回空路径，结果是同一个「不发 NavigateToPose」，
+        # 但拒因会被记成 NO_PATH —— 现场看不出是「过不去」还是「目标就在墙里」，
+        # 而 GOAL_OCCUPIED 这个枚举此前没有任何产生点（§14 只允许这六个拒因）。
+        # 未知栅格不在这里拦：拦住会把正常的 frontier 目标一起误杀，交给
+        # costmap 的 allow_unknown=false 处理。
+        grid = self._grid_provider() if self._grid_provider is not None else None
+        if grid is not None:
+            cell = grid.value_at(request.x, request.y)
+            if cell is not None and cell >= OCCUPIED_THRESHOLD:
+                return NavigationHandle(
+                    goal_id=goal.goal_id,
+                    result=self._rejected(
+                        goal,
+                        REJECT_GOAL_OCCUPIED,
+                        f"goal ({request.x:.2f}, {request.y:.2f}) is in an occupied cell "
+                        f"(cost={cell})",
+                    ),
+                )
 
         handle = NavigationHandle(goal_id=goal.goal_id)
         started = float(self._now())

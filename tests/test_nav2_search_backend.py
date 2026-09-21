@@ -19,6 +19,7 @@ from app.navigation.nav2_search_backend import (
     ACTION_EXECUTING,
     ACTION_SUCCEEDED,
     CANDIDATE_REJECT_REASONS,
+    REJECT_GOAL_OCCUPIED,
     REJECT_NAV2_NOT_READY,
     REJECT_NO_LOCALIZATION,
     REJECT_NO_MAP,
@@ -283,6 +284,38 @@ def test_empty_path_never_calls_navigate_to_pose() -> None:
     assert result.status == NavigationStatus.REJECTED
     assert result.provenance["reject_reason"] == REJECT_NO_PATH
     assert navigate_client.sent == []
+
+
+def test_occupied_goal_is_rejected_before_planning() -> None:
+    """计划书 §3.2 / §14：目标落在占据栅格里 → ``GOAL_OCCUPIED``。
+
+    不在这里拦的话，NavFn 对占据终点多半返回空路径，拒因会被记成 ``NO_PATH``
+    —— 结果是同一个「不发 NavigateToPose」，但现场分不清是「过不去」还是
+    「目标点本身就在墙里」。这个枚举此前没有任何产生点。
+    """
+    # (2.0, 2.0) 落在 _corridor_grid 画出来的上侧墙里。
+    backend, path_client, navigate_client = _backend(grid=_corridor_grid(1.25))
+    handle = backend.execute_goal(_goal(position=(2.0, 2.0)))
+
+    result = backend.get_navigation_status(handle)
+    assert result.status == NavigationStatus.REJECTED
+    assert result.provenance["reject_reason"] == REJECT_GOAL_OCCUPIED
+    assert path_client.sent == []
+    assert navigate_client.sent == []
+
+
+def test_unknown_goal_cell_is_left_to_the_planner() -> None:
+    """未知栅格不在这里拦 —— 拦了会把正常的 frontier 目标一起误杀。
+
+    未知区域的处理归 costmap（``allow_unknown: false``）与走廊分析器
+    （§7.3），本处只判「已探明是障碍」这一种。
+    """
+    grid = _paint(_free_grid(), -1.0, 1.0, -1.0, 1.0, -1)
+    backend, path_client, _ = _backend(grid=grid)
+    path_client.queue(ActionPoll(status=ACTION_SUCCEEDED, path=_straight_path()))
+    backend.execute_goal(_goal(position=(0.0, 0.0)))
+
+    assert len(path_client.sent) == 1, "未知目标点必须照常送去规划"
 
 
 def test_too_narrow_never_calls_navigate_to_pose() -> None:
