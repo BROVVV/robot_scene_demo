@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
-# §13.2：只把本次整改计划涉及的文件同步到机器狗，并在远端保留定向备份。
+# 只把整改计划涉及的文件同步到机器狗，并在远端保留定向备份。
 #
 #   bash scripts/go2w/deploy_plan_to_robot.sh --dry-run   # 只看会改哪些文件
 #   bash scripts/go2w/deploy_plan_to_robot.sh             # 真正同步
 #
+# 覆盖两份计划：20260901 的「对象拓扑 / 固定世界三维建图」，以及
+# docs/GO2W_Nav2自主搜索单链路改造计划.md 的「Nav2 单链路」。后者新增的
+# `nav2_search_backend.py`、`navigation_gate.py`、`corridor_analyzer.py` 和
+# 整个 `robot_scene_nav_bringup` 必须一起走，否则会装出一个自相矛盾的树——
+# 例如 `backend_factory.py`（老清单里就有）会 `import nav2_search_backend`，
+# 而那个模块不在老清单里，机器狗上生产搜索入口直接 ImportError。
+#
 # 不同步 build/ install/ outputs/ .venv/ data/，不动机器狗上的运动控制固件、
 # 标定结果和历史运行产物。被覆盖的旧文件原样存进 .deploy_backup/<时间戳>/。
+#
+# 注意 rsync 不带 --delete：本地删掉的文件（如
+# robot_scene_nav2_plan_only.launch.py）在机器狗上不会被删，需要人工清理。
 set -euo pipefail
 
 robot_host="${GO2W_ROBOT_HOST:-192.168.123.18}"
@@ -128,6 +138,47 @@ files=(
   tests/test_webui_object_topology_contract.js
   tests/test_webui_object_topology_contract.py
   GO2W_自主搜索_对象拓扑_固定世界三维建图_整改计划_20260901.md
+
+  # --- docs/GO2W_Nav2自主搜索单链路改造计划.md（§11 新增与修改）-----------
+  # 该计划 git diff c4412f4..HEAD 共 59 个文件；上面老清单只覆盖到 22 个，
+  # 缺的 37 个（除本地已删除的 nav2_plan_only launch 外）全部列在这里。
+  README.md
+  docs/GO2W_AUTONOMOUS_SEARCH_WEBUI.md
+  docs/GO2W_Nav2自主搜索单链路改造计划.md
+  app/live_robot/experiment_readiness.py
+  app/live_robot/navigation_gate.py
+  app/navigation/corridor_analyzer.py
+  app/navigation/local_goal_executor.py
+  app/navigation/nav2_search_backend.py
+  configs/go2w/control.yaml
+  configs/go2w/high_level_experiment.yaml
+  configs/go2w/navigation_gate.yaml
+  ros2_ws/src/go2w_cmd_vel_bridge/go2w_cmd_vel_bridge/bridge_core.py
+  ros2_ws/src/go2w_cmd_vel_bridge/go2w_cmd_vel_bridge/bridge_node.py
+  ros2_ws/src/go2w_cmd_vel_bridge/test/test_bridge_core.py
+  ros2_ws/src/robot_scene_nav_bringup/CMakeLists.txt
+  ros2_ws/src/robot_scene_nav_bringup/package.xml
+  ros2_ws/src/robot_scene_nav_bringup/config/collision_monitor.yaml
+  ros2_ws/src/robot_scene_nav_bringup/config/nav2_params_humble.yaml
+  ros2_ws/src/robot_scene_nav_bringup/config/velocity_smoother.yaml
+  ros2_ws/src/robot_scene_nav_bringup/launch/collision_monitor.launch.py
+  ros2_ws/src/robot_scene_nav_bringup/launch/robot_scene_nav2.launch.py
+  ros2_ws/src/robot_scene_nav_bringup/scripts/plain_slam_nav_frame_bridge.py
+  scripts/go2w/cmd_vel_gate.py
+  scripts/go2w/start_nav2_autonomous_search.sh
+  scripts/nav2_bridge_worker.py
+  tests/test_autonomous_search_web_routes.py
+  tests/test_autonomous_search_websocket.py
+  tests/test_cmd_vel_gate_wiring.py
+  tests/test_corridor_analyzer.py
+  tests/test_experiment_readiness.py
+  tests/test_live_exploration_graph.py
+  tests/test_manual_web_demo_config.py
+  tests/test_nav2_autonomous_search_contract.py
+  tests/test_nav2_search_backend.py
+  tests/test_plain_slam_nav_frame_bridge.py
+  tests/test_search_session_recovery.py
+  tests/test_search_state_store.py
 )
 
 missing=()
@@ -184,15 +235,24 @@ remote "cd ${robot_root} && python3 -m py_compile \
   app/spatial/spatial_pose_validator.py app/manual_web_demo/web_server.py \
   app/manual_web_demo/search_routes.py app/manual_web_demo/search_errors.py \
   app/manual_web_demo/slam_map_snapshot.py app/live_robot/autonomous_explorer.py \
+  app/navigation/nav2_search_backend.py app/navigation/corridor_analyzer.py \
+  app/navigation/local_goal_executor.py app/live_robot/navigation_gate.py \
+  app/live_robot/experiment_readiness.py scripts/go2w/cmd_vel_gate.py \
+  scripts/nav2_bridge_worker.py \
+  ros2_ws/src/robot_scene_nav_bringup/scripts/plain_slam_nav_frame_bridge.py \
   scripts/go2w/plain_slam_web_bridge.py scripts/go2w/plain_slam_web_cloud_relay.py \
+  && bash -n scripts/go2w/start_nav2_autonomous_search.sh \
   && bash -n scripts/go2w/start_autonomous_search_web.sh \
   && bash -n scripts/go2w/start_plain_slam_mapping.sh \
   && bash -n scripts/go2w/setup_environment.sh \
   && bash -n scripts/go2w/reset_plain_slam_session.sh \
   && echo REMOTE_SYNTAX_OK"
 
-printf '\n下一步（§13 步骤 4-10，需要现场有人扶着遥控急停）：\n'
-printf '  1. 停旧栈：bash scripts/go2w/stop_plain_slam_mapping.sh\n'
-printf '  2. 起建图：bash scripts/go2w/start_plain_slam_mapping.sh\n'
-printf '  3. 起网页：bash scripts/go2w/start_autonomous_search_web.sh --with-plain-slam\n'
-printf '  4. 打开：http://%s:8765/\n' "${robot_host}"
+printf '\n同步完成。下一步是计划书 §13.2「静止上电验证，只规划不运动」——\n'
+printf '由现场人员执行，七项复核的完整命令见仓库 README.md 第 6.4 节。首条：\n'
+printf '  ssh %s@%s\n' "${robot_user}" "${robot_host}"
+printf '  cd %s && bash scripts/go2w/start_nav2_autonomous_search.sh   # 不带 --enable-motion\n' \
+  "${robot_root}"
+printf '\nconfigs/go2w/navigation_gate.yaml 的 nav2_allow_execute 在此之前必须保持 false；\n'
+printf '§13.3 需要两人（一人监控、一人持急停），§13.4 之后才轮到 --enable-motion。\n'
+printf '本节只同步代码，不启动任何东西，也不碰运动控制固件。\n'
