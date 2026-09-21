@@ -304,6 +304,50 @@ def test_bt_navigator_starts_in_both_modes() -> None:
     assert 'PLAN_ONLY_NODES = ["planner_server", "bt_navigator"]' in launch
 
 
+def test_bt_navigator_gets_the_repo_bt_and_a_loadable_plugin_list() -> None:
+    """两个「只在真机 Foxy 上暴露、且都不报错就静默退化」的坑。
+
+    1. BT XML 的参数名在两个 distro 之间改过：Foxy 0.4.x 认
+       ``default_bt_xml_filename``，Humble 1.x 认 ``default_nav_to_pose_bt_xml``。
+       传错名字**不会报错**，节点静默回落到内建的
+       ``navigate_to_pose_w_replanning_and_recovery.xml`` —— 那份带 BackUp / Spin
+       恢复分支，正是 §3.1 要避开的。所以两个名字都得在，各自认自己那个。
+    2. Foxy 0.4.7 的 ``nav2_bt_navigator`` 内置默认 ``plugin_lib_names`` 里有
+       ``nav2_change_goal_node_bt_node``，而同一版本的 ``ros-foxy-nav2-behavior-tree``
+       只装了 24 个库、没有 change_goal（``dpkg -V`` 干净，不是装坏了）。不显式
+       覆盖就在 configure 阶段 ``Could not load library``，lifecycle_manager 跟着
+       ``Aborting bringup`` —— bt_navigator 永远起不来，而 planner_server 照常
+       active，看日志很容易以为是别的问题。
+    """
+    launch = NAV2_LAUNCH.read_text(encoding="utf-8")
+    assert '"default_bt_xml_filename": navigation_bt' in launch
+    assert '"default_nav_to_pose_bt_xml": navigation_bt' in launch
+
+    xml = BRINGUP / "behavior_trees/navigate_to_pose_robot_scene.xml"
+    assert xml.is_file(), "launch 指向的 BT XML 必须真的在仓库里"
+    body = xml.read_text(encoding="utf-8")
+    for node in ("ComputePathToPose", "FollowPath"):
+        assert node in body
+    for forbidden in ("BackUp", "Spin", "DriveOnHeading"):
+        assert forbidden not in body, f"BT XML 不该出现恢复动作 {forbidden}"
+
+    names = _yaml(NAV2_PARAMS)["bt_navigator"]["ros__parameters"]["plugin_lib_names"]
+    assert isinstance(names, list) and names, "必须显式给 plugin_lib_names（见上）"
+    # XML 用到的每个 Nav2 节点都得在表里；漏一个会在 configure 阶段直接失败。
+    for lib in (
+        "nav2_clear_costmap_service_bt_node",
+        "nav2_compute_path_to_pose_action_bt_node",
+        "nav2_follow_path_action_bt_node",
+        "nav2_goal_updated_condition_bt_node",
+        "nav2_pipeline_sequence_bt_node",
+        "nav2_rate_controller_bt_node",
+        "nav2_recovery_node_bt_node",
+        "nav2_round_robin_node_bt_node",
+        "nav2_wait_action_bt_node",
+    ):
+        assert lib in names
+
+
 def test_collision_monitor_launch_is_a_plain_includable() -> None:
     """碰撞监视器只做「起一个节点」，是否启动交给主 launch 的 condition 决定。"""
     source = COLLISION_LAUNCH.read_text(encoding="utf-8")

@@ -15,9 +15,27 @@ bt_navigator:
     odom_topic: /go2w/odom/fused
     bt_loop_duration: 10
     default_server_timeout: 20
-    # default_nav_to_pose_bt_xml 必须给绝对路径，由 launch 填成仓库自带的
-    # behavior_trees/navigate_to_pose_robot_scene.xml：只有 ComputePathToPose +
-    # FollowPath，恢复分支只清代价地图和等待，不会 backup / drive_on_heading。
+    # plugin_lib_names 必须显式给。Foxy 0.4.7 的 nav2_bt_navigator 二进制内置默认值
+    # 里有 nav2_change_goal_node_bt_node，而同版本的 ros-foxy-nav2-behavior-tree
+    # 只装了 24 个库、里面没有 change_goal（dpkg -V 干净，不是这台机器装坏了）。
+    # 于是 bt_navigator 在 configure 阶段 "Could not load library" 失败，
+    # lifecycle_manager 跟着 "Failed to bring up all requested nodes. Aborting bringup."
+    # 这里只列 behavior_trees/navigate_to_pose_robot_scene.xml 用到的节点。该 XML 的
+    # 节点类型是固定的，将来若改了 XML 而漏列，configure 阶段会立刻报出来。
+    # ReactiveFallback 是 BT.CPP 内建控制节点，不需要库，所以不在表里。
+    plugin_lib_names:
+      - nav2_clear_costmap_service_bt_node          # ClearEntireCostmap
+      - nav2_compute_path_to_pose_action_bt_node    # ComputePathToPose
+      - nav2_follow_path_action_bt_node             # FollowPath
+      - nav2_goal_updated_condition_bt_node         # GoalUpdated
+      - nav2_pipeline_sequence_bt_node              # PipelineSequence
+      - nav2_rate_controller_bt_node                # RateController
+      - nav2_recovery_node_bt_node                  # RecoveryNode
+      - nav2_round_robin_node_bt_node               # RoundRobin
+      - nav2_wait_action_bt_node                    # Wait
+    # BT XML 的绝对路径由 launch 填成仓库自带的 navigate_to_pose_robot_scene.xml
+    # （只有 ComputePathToPose + FollowPath，恢复分支只清代价地图和等待，不会
+    # backup / drive_on_heading）。参数名在两个 distro 上不同，见 launch。
 
 planner_server:
   ros__parameters:

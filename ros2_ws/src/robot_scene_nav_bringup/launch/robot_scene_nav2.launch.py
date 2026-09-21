@@ -126,7 +126,16 @@ def generate_launch_description():
                 parameters=[
                     params_file,
                     common,
-                    {"default_nav_to_pose_bt_xml": navigation_bt},
+                    # BT XML 的绝对路径。这个参数在 Foxy 0.4.x 和 Humble 1.x 之间
+                    # 改过名，两个都传：节点不认的那个只会成为一条未被声明的
+                    # override 被忽略，各自认自己那一个。
+                    # 传不中的后果不是报错，而是**静默回落到内建的
+                    # navigate_to_pose_w_replanning_and_recovery.xml**——那份带
+                    # BackUp / Spin 恢复分支，正是计划书 §3.1 要避开的。
+                    {
+                        "default_bt_xml_filename": navigation_bt,       # Foxy 0.4.7
+                        "default_nav_to_pose_bt_xml": navigation_bt,    # Humble 1.x
+                    },
                 ],
             ),
             Node(
