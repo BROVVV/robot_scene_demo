@@ -13,6 +13,9 @@ from pathlib import Path
 import pytest
 import yaml
 
+from app.navigation.backend_factory import MockBackend
+from app.navigation.robot_backend import NavigationStatus
+
 REPO = Path(__file__).resolve().parents[1]
 BRINGUP = REPO / "ros2_ws/src/robot_scene_nav_bringup"
 NAV2_PARAMS = BRINGUP / "config/nav2_params_humble.yaml"
@@ -602,6 +605,96 @@ def test_candidate_generator_has_no_relative_goals_under_nav2() -> None:
     nav2_types = _types(_nav2_capabilities())
     assert nav2_types, "候选为空，这条断言就没有分辨力"
     assert nav2_types <= {"NAVIGATE_POSE", "STOP"}, nav2_types
+
+
+class _ScriptedBackend(MockBackend):
+    """能力表可换、每步都拒答的假后端，并记下真正收到过的目标类型。
+
+    继承 ``MockBackend`` 只为了复用它的 ``execute_goal`` 与结果封装；能力表必须
+    由调用方给，否则这里量的就不是「nav2 模式下会不会退回相对前进」。
+    """
+
+    def __init__(self, capabilities, **kwargs) -> None:
+        super().__init__(outcome_sequence=[NavigationStatus.REJECTED], **kwargs)
+        self._capabilities = capabilities
+        self.goal_types: list[str] = []
+
+    def capabilities(self):
+        return self._capabilities
+
+    def execute_goal(self, goal):
+        self.goal_types.append(str(goal.goal_type))
+        return super().execute_goal(goal)
+
+
+def _relative_capabilities():
+    """候选生成器会给出 ``RELATIVE_MOVE`` 的那份相对能力表。
+
+    与 ``test_candidate_generator_has_no_relative_goals_under_nav2`` 的对照组
+    同一份。注意不能直接用 ``MockBackend`` 自带的那份：它带 heading control，
+    候选生成器会改出 ``ROTATE_VIEW``，对照组就验不到「会向前走」这件事。
+    """
+    from app.navigation.robot_backend import RobotCapabilities
+
+    return RobotCapabilities(
+        supports_relative_translation=True,
+        supports_relative_rotation=True,
+        allowed_motion_primitives=("FORWARD", "ROTATE"),
+    )
+
+
+def test_no_path_never_falls_back_to_a_forward_step() -> None:
+    """计划书 §12.4：路径不可达时不许改按 bearing 直接向前走。
+
+    两遍跑同一个场景、同样每步都拒答，只换能力表：相对那遍必须真的选中
+    ``RELATIVE_MOVE``，nav2 那遍一个相对目标都不许有。少了前半句，一个恒不选
+    目标的搜索器也能让这条测试变绿。
+
+    分辨力是注错校过的：把候选生成器 ``add()`` 里的原语合同闸、F 段的
+    ``supports_metric_navigation`` 闸和兜底前进闸一起拆掉，nav2 那遍的选中序列
+    立刻变成 ``['NAVIGATE_POSE', 'RELATIVE_MOVE', ...]``，这条断言随之变红；
+    还原后 sha256 一致、测试复绿。
+    """
+    from app.live_robot.autonomous_explorer import AutonomousExplorer
+    from app.live_robot.mock_observation_scene import scenario_no_target
+    from app.navigation.exploration_config import ExplorationBudget, load_exploration_policy
+    from app.navigation.exploration_graph import ExplorationGraph
+
+    def _selected_types(backend) -> list[str]:
+        scene = scenario_no_target(empty_scenes=3)
+        policy = load_exploration_policy()
+        policy.budget = ExplorationBudget(
+            max_motion_steps=12, max_planning_cycles=8, max_search_seconds=60.0
+        )
+        explorer = AutonomousExplorer(
+            target="蓝色垃圾桶",
+            observer=scene.observer(),
+            matcher=scene.matcher(),
+            verifier=scene.verifier(),
+            backend=backend,
+            policy=policy,
+            graph=ExplorationGraph(session_id="contract_no_path"),
+            session_id="contract_no_path",
+            negative_target_key="蓝色垃圾桶",
+        )
+        explorer.run()
+        return [
+            event["goal"]["goal_type"]
+            for event in explorer.events
+            if event.get("event") == "selected_goal"
+        ]
+
+    relative_backend = _ScriptedBackend(_relative_capabilities())
+    relative_types = _selected_types(relative_backend)
+    assert "RELATIVE_MOVE" in relative_types, relative_types
+
+    backend = _ScriptedBackend(_nav2_capabilities())
+    nav2_types = _selected_types(backend)
+    assert nav2_types, "一个目标都没选中，这条断言就没有分辨力"
+    assert "RELATIVE_MOVE" not in nav2_types, nav2_types
+    assert set(nav2_types) <= {"NAVIGATE_POSE", "STOP"}, nav2_types
+    # 拒答的每一条都真的走到了后端（不是被前端过滤掉了）。
+    assert backend.goal_types, "后端一条目标都没收到"
 
 
 def test_nav2_bootstrap_goal_is_relative_to_the_robot_not_the_map_origin() -> None:
