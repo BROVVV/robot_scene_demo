@@ -68,6 +68,7 @@ from app.live_robot.semantic_observer import (
 )
 from app.memory.observation_memory_store import ObservationMemoryStore
 from app.navigation.backend_factory import create_backend
+from app.navigation.robot_backend import TERMINAL_NAVIGATION_STATUSES
 from app.navigation.topology_route_executor import (
     TopologyRouteExecutor,
     TopologyRoutePlanner,
@@ -90,14 +91,111 @@ from app.navigation.safety_models import (
     local_safety_from_clearance,
 )
 from app.reasoning.semantic_navigation.models import SearchReasoningContext
+from app.reasoning.semantic_navigation.task_agent import (
+    attach_trace,
+    enrich_context,
+    retrieve_knowledge,
+    summarize_topology,
+)
 from app.reasoning.semantic_navigation.router import SemanticSearchController
 from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
 from app.reasoning.target_profile import TargetProfileResolver
 from app.spatial.models import SpatialFrameMismatch
 from app.perception.target_state import TARGET_PRESENT
 from app.spatial.dynamic_labels import drop_dynamic_objects
+from app.spatial.semantic_object_gate import filter_persistent_observations
 from app.spatial.geometric_relation_extractor import extract_geometric_relations
 from app.spatial.spatial_pose_validator import MotionEvidence, SpatialPoseValidator
+
+
+class _Nav2MotionEvidenceRecorder:
+    """给 Nav2 后端补上「这条指令要求了多少位移」的运动证据。
+
+    pose validator 用 ``MotionEvidence`` 判断位姿变化是否与指令相称。实验后端是在
+    ``execute_step`` 里逐条记账的，Nav2 没有那个入口，所以在后端边界上补一次。
+
+    它只记账：所有调用原样委派，不改任何一条指令的内容，也不改拒绝行为。这不是
+    第二个后端，是包在唯一后端外面的一层观测。
+    """
+
+    def __init__(self, inner: Any, *, node: Any, motion_state: dict[str, Any]) -> None:
+        self._inner = inner
+        self._node = node
+        self._motion_state = motion_state
+        self._odom_before: tuple[float, float, float] | None = None
+
+    # ---- RobotBackend 接口：逐条委派 ----
+    def capabilities(self) -> Any:
+        return self._inner.capabilities()
+
+    def get_pose(self) -> Any:
+        return self._inner.get_pose()
+
+    def health(self) -> Any:
+        return self._inner.health()
+
+    def cancel(self, handle: Any = None) -> bool:
+        return self._inner.cancel(handle)
+
+    def stop(self) -> None:
+        self._inner.stop()
+
+    def execute_goal(self, goal: Any) -> Any:
+        if str(getattr(goal, "goal_type", "")).upper() == "NAVIGATE_POSE":
+            self._odom_before = self._odom()
+            self._note_requested(goal)
+        return self._inner.execute_goal(goal)
+
+    def get_navigation_status(self, handle: Any) -> Any:
+        result = self._inner.get_navigation_status(handle)
+        if result.status in TERMINAL_NAVIGATION_STATUSES:
+            self._note_completed()
+        return result
+
+    # ---- 记账 ----
+    def _odom(self) -> tuple[float, float, float] | None:
+        try:
+            snapshot = self._node._odom_snapshot()
+        except Exception:  # noqa: BLE001 - 记不上账不能让搜索停下来
+            return None
+        return (float(snapshot[0]), float(snapshot[1]), float(snapshot[2]))
+
+    def _note_requested(self, goal: Any) -> None:
+        if goal.position is None or self._odom_before is None:
+            return
+        try:
+            target_yaw = math.radians(float(goal.yaw or 0.0))
+            turn_deg = math.degrees(_wrap_pi(target_yaw - self._odom_before[2]))
+            forward_m = math.hypot(
+                float(goal.position[0]) - self._odom_before[0],
+                float(goal.position[1]) - self._odom_before[1],
+            )
+        except Exception:  # noqa: BLE001
+            return
+        self._motion_state["pending_motion_evidence"] = MotionEvidence(
+            command_type="ROTATE" if forward_m <= 0.03 else "TRANSLATE",
+            requested_turn_deg=turn_deg,
+            requested_forward_m=forward_m,
+        )
+
+    def _note_completed(self) -> None:
+        before = self._odom_before
+        self._odom_before = None
+        evidence = self._motion_state.get("pending_motion_evidence")
+        if before is None or not isinstance(evidence, MotionEvidence):
+            return
+        after = self._odom()
+        if after is None:
+            return
+        # 重建而不是原地改字段：MotionEvidence 是不是 frozen 不该由这里决定。
+        self._motion_state["pending_motion_evidence"] = MotionEvidence(
+            command_type=evidence.command_type,
+            requested_turn_deg=evidence.requested_turn_deg,
+            requested_forward_m=evidence.requested_forward_m,
+            wheel_delta_xy_m=math.hypot(after[0] - before[0], after[1] - before[1]),
+            wheel_delta_yaw_deg=math.degrees(_wrap_pi(after[2] - before[2])),
+            motion_completed_at=time.time(),
+        )
 
 
 def _navigation_sector(*, yaw_rad: float, sectors: int) -> int:
@@ -290,9 +388,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--executor-id", default="")
     parser.add_argument("--worker-generation", type=int, default=None)
     parser.add_argument(
-        "--backend", choices=("go2w_experimental", "mock", "mock_metric"),
-        default="go2w_experimental",
-        help="robot backend: real Go2-W / offline mocks",
+        "--backend", choices=("nav2", "go2w_experimental", "mock", "mock_metric"),
+        default="nav2",
+        help=(
+            "robot backend: nav2 (real Go2-W, the only production backend) / "
+            "go2w_experimental (legacy relative motion, not for autonomous search) / "
+            "offline mocks"
+        ),
     )
     parser.add_argument(
         "--reasoner", choices=("legacy", "semantic", "semantic_navigation", "hybrid"),
@@ -770,7 +872,8 @@ def run_go2w(args, event_hook=None) -> int:
     )
 
     try:
-        return _run_go2w_explorer(args, node, policy, event_hook)
+        return _run_go2w_explorer(args, node, policy, event_hook,
+                                  task_context=_task_context_from_args(args))
     except Exception as exc:
         # Keep the worker protocol concise, but retain the complete traceback
         # in the ROS log.  A plain errno (especially from a relative runtime
@@ -824,7 +927,8 @@ def run_go2w(args, event_hook=None) -> int:
             rclpy.shutdown()
 
 
-def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
+def _run_go2w_explorer(args, node, policy, event_hook=None,
+                     task_context=None) -> int:
     import rclpy  # noqa: F401  (used by the observer closure; rclpy.init already done)
     from run_autonomous_loop import target_prompt  # noqa: E402
     settings = get_settings()
@@ -852,6 +956,10 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
                 ("RELATION_LEFT_RIGHT_MIN_NORM", "go2w_relation_left_right_min_norm"),
                 ("RELATION_DEPTH_ORDER_MIN_M", "go2w_relation_depth_order_min_m"),
                 ("RELATION_NEAR_MAX_M", "go2w_relation_near_max_m"),
+                # 2026-09-17：持久对象图的入口门。它决定"哪些观测能变成实体"，
+                # 调错了在页面上看不出来（少几个框），所以必须和 .env 对着看。
+                ("SEMANTIC_MAP_MIN_OBJECT_CONFIDENCE",
+                 "semantic_map_min_object_confidence"),
             )
         ),
         flush=True,
@@ -979,7 +1087,13 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
             ):
                 item = dict(obj)
                 item["id"] = f"gsam_obj_{index:03d}"
-                item["category"] = "object"
+                # 只在检测器没给类别时才补默认值。此前这里是无条件硬赋值，
+                # 把 detector 已经算好的 container / furniture / electronics
+                # 一律抹成 "object"，下游再也分不出「地面」和「垃圾桶」
+                # （计划书 §2.2 第 5 条）。
+                item.setdefault("category", "object")
+                if not item.get("category"):
+                    item["category"] = "object"
                 scene_objects.append(item)
             frame_id_text = str(frame_id or state.get("frame_id", "semantic_live"))
             return {
@@ -2168,6 +2282,26 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
                 # 分叉，persistent_object_id 会串到别的物体上。
                 # 显示不受影响：WebUI 的当前检测走 observation.scene_objects。
                 localized = drop_dynamic_objects(localized)
+                # 2026-09-17 整改 §5.1：持久地图入口门。检测端跑在
+                # box_threshold=0.12 这种偏召回的阈值上，碎片框（0.12~0.33、
+                # 2.7cm 宽、悬空、同帧分裂）全部会建出持久实体 —— 实测 41 个
+                # 持久 ID 里 30 个分数低于 0.35。这道门只挡"入图"，逐帧原始
+                # 事件（上面的 semantic_frame_objects_localized）一条不少。
+                # `localized` 从此是**入口门之后**的那张表：update_with_
+                # associations、association_by_index、semantic_object_localized
+                # 的 enumerate 全部共用它，下标不会错位。
+                localized, ingest_dropped = filter_persistent_observations(
+                    localized,
+                    min_confidence=settings.semantic_map_min_object_confidence,
+                )
+                node._write({
+                    "event": "semantic_object_ingest_filter",
+                    "input": len(localized) + sum(ingest_dropped.values()),
+                    "kept": len(localized),
+                    "dropped": ingest_dropped,
+                    "min_confidence": settings.semantic_map_min_object_confidence,
+                    "host_s": node._host_s(),
+                })
                 update_result = semantic_map.update_with_associations(
                     localized,
                     place_id=place_id,
@@ -2310,6 +2444,17 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
         return observation
 
     # ---- matcher -------------------------------------------------------------
+    # 计划书 §4.1：把已有任务、本地知识和只读拓扑摘要送进推理上下文。
+    # 这三项只在解释与审计里出现，**不参与方向排序**（§4.4 / §4.5）。
+    # 任务与知识是整个会话的常量，所以在闭包外算一次 —— matcher 每帧都跑，
+    # 每次进去读一遍知识库文件是纯浪费。拓扑摘要**不在此列**，见下面 matcher 内。
+    agent_task_context = (
+        task_context.to_dict() if hasattr(task_context, "to_dict") else task_context
+    )
+    agent_knowledge_items = retrieve_knowledge(
+        str(getattr(task_context, "canonical_target", "") or "")
+    )
+
     def matcher(observation: LiveObservation) -> SemanticMatch:
         semantic = state.get("semantic")
         scene_graph = getattr(semantic, "scene_graph", None)
@@ -2321,7 +2466,18 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
             robot_yaw_deg=float((observation.pose or {}).get("yaw_deg", 0.0)),
             observed_heading_sectors=sorted(observed_sectors),
         )
-        directive = controller.propose(context)
+        # 拓扑摘要在**闭包内逐帧**算：place_graph 要到 explorer.run() 之后才开始
+        # 装观测，在外面只算一次，就会把一张刚 new 出来的空图冻结成整个会话的
+        # "当前拓扑"，而离线评估器读的是收尾才写的终局图 —— 两条路口径不一致。
+        # 逐帧读它是 O(1)（只读 places/edges 的长度，不走 to_dict()），没有成本问题。
+        enrich_context(
+            context,
+            task_context=agent_task_context,
+            knowledge_items=agent_knowledge_items,
+            topology_summary=summarize_topology(place_graph),
+            run_mode="live",
+        )
+        directive = attach_trace(context, controller.propose(context))
         graph_match = context.graph_match
         anchor_labels: list[str] = []
         if graph_match is not None:
@@ -2420,6 +2576,12 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
         observation = kwargs.get("observation")
         capabilities = kwargs.get("capabilities")
         current_yaw_deg = float(kwargs.get("current_yaw_deg") or 0.0)
+        # 计划书 §6.7：地图系后端要有当前位置才能把「观察转向」表达成
+        # NAVIGATE_POSE(x, y, yaw)。拿不到位姿时保持 None，让下游显式放弃。
+        raw_pose = kwargs.get("robot_pose")
+        current_position: tuple[float, float] | None = None
+        if raw_pose is not None and len(raw_pose) >= 2:
+            current_position = (float(raw_pose[0]), float(raw_pose[1]))
         # 计划书 §6.3：每次生成都记录真实的地图/frontier 证据，供探索器区分
         # “等地图 / 规划缺陷 / 真穷尽”，不再让空列表自己去猜原因。
         diagnostics: dict[str, Any] = {
@@ -2438,7 +2600,9 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
         # Continue an active local intent if it still has primitives.
         if local_executor is not None and local_executor.active:
             goal = local_executor.next_goal(
-                current_yaw_deg=current_yaw_deg, capabilities=capabilities
+                current_yaw_deg=current_yaw_deg,
+                current_position=current_position,
+                capabilities=capabilities,
             )
             if goal is not None:
                 return [goal]
@@ -2508,17 +2672,44 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
                                "place_id": current_place.place_id,
                            }},
                     )
-                    node._write({
-                        "event": "local_scan_selected",
-                        "goal_id": goal.goal_id,
-                        "relative_dyaw": goal.relative_dyaw,
-                        "heading_sector": goal.heading_sector,
-                        "steps": next_state.steps,
-                        "max_local_rotations": max_local_rotations,
-                        "same_direction_count": next_state.same_direction_count,
-                        "host_s": node._host_s(),
-                    })
-                    return [goal]
+                    # 计划书 §6.7 / §12.4：Nav2 模式下 LOCAL_SCAN 的观察转向
+                    # 也必须是「当前位置 + 目标朝向」的地图系 NAVIGATE_POSE。
+                    # 拿不到当前位置就放弃这个候选，落到下面的长期目标分支。
+                    if not bool(getattr(capabilities, "supports_metric_navigation", False)):
+                        scanned_goal = goal
+                    elif current_position is None:
+                        diagnostics["empty_reason"] = "local_scan_no_current_position"
+                        scanned_goal = None
+                    else:
+                        scanned_goal = ExplorationGoal(
+                            goal_id=goal.goal_id,
+                            goal_type="NAVIGATE_POSE",
+                            position=current_position,
+                            yaw=current_yaw_deg + float(goal.relative_dyaw or 0.0),
+                            frame="map",
+                            semantic_reason=goal.semantic_reason,
+                            heading_sector=goal.heading_sector,
+                            expected_information_gain=goal.expected_information_gain,
+                            provenance=goal.provenance,
+                        )
+                    if scanned_goal is not None:
+                        node._write({
+                            "event": "local_scan_selected",
+                            "goal_id": scanned_goal.goal_id,
+                            "goal_type": scanned_goal.goal_type,
+                            "relative_dyaw": goal.relative_dyaw,
+                            "goal_yaw_deg": scanned_goal.yaw,
+                            "position": (
+                                list(scanned_goal.position)
+                                if scanned_goal.position is not None else None
+                            ),
+                            "heading_sector": goal.heading_sector,
+                            "steps": next_state.steps,
+                            "max_local_rotations": max_local_rotations,
+                            "same_direction_count": next_state.same_direction_count,
+                            "host_s": node._host_s(),
+                        })
+                        return [scanned_goal]
 
         # Metric map first (plain_slam / RTAB-Map), then BEV fallback,
         # otherwise relative frontier.
@@ -2756,11 +2947,14 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
                     current_yaw_deg=current_yaw_deg,
                     capabilities=capabilities,
                     frontier=tf,
+                    current_position=current_position,
                 )
         if goal is None:
             local_executor.begin(intent)
             goal = local_executor.next_goal(
-                current_yaw_deg=current_yaw_deg, capabilities=capabilities
+                current_yaw_deg=current_yaw_deg,
+                current_position=current_position,
+                capabilities=capabilities,
             )
             if goal is None:
                 local_executor.finish()
@@ -3016,28 +3210,52 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
             ],
         }
 
-    backend = Go2WExperimentalBackend(
-        execute_step=execute_step,
-        odometry=node._odom_snapshot,
-        stop=stop,
-        cancel=cancel,
-        health_probe=health_probe,
-        config=Go2WBackendConfig(
-            dry_run=bool(args.dry_run_motion),
-            max_turn_deg_per_action=getattr(
-                node, "_experiment_max_turn_deg", args.max_turn_deg
+    if args.backend == "nav2":
+        from app.navigation.nav2_search_backend import (
+            REJECT_NO_LOCALIZATION,
+            REJECT_NO_MAP,
+            REJECT_NAV2_NOT_READY,
+            create_nav2_search_backend,
+        )
+
+        # 计划书 §6.1 / §6.6：真机自主搜索的唯一后端。运动全部由 Nav2 的
+        # ComputePathToPose + NavigateToPose 产生，本脚本不再自己拼前进/转向。
+        backend = _Nav2MotionEvidenceRecorder(
+            create_nav2_search_backend(node), node=node, motion_state=motion_state
+        )
+        node._write({
+            "event": "nav2_backend_selected",
+            "detail": "自主搜索后端为 nav2；相对前进与实验后端不在本路径上",
+            "reject_reasons": [
+                REJECT_NAV2_NOT_READY,
+                REJECT_NO_MAP,
+                REJECT_NO_LOCALIZATION,
+            ],
+            "host_s": node._host_s(),
+        })
+    else:
+        backend = Go2WExperimentalBackend(
+            execute_step=execute_step,
+            odometry=node._odom_snapshot,
+            stop=stop,
+            cancel=cancel,
+            health_probe=health_probe,
+            config=Go2WBackendConfig(
+                dry_run=bool(args.dry_run_motion),
+                max_turn_deg_per_action=getattr(
+                    node, "_experiment_max_turn_deg", args.max_turn_deg
+                ),
+                forward_step_m=getattr(
+                    node, "_experiment_forward_segment_m", 0.30
+                ),
+                max_forward_step_m=max(
+                    0.01,
+                    float(getattr(
+                        node, "_experiment_forward_step_m", args.forward_step_m
+                    )),
+                ),
             ),
-            forward_step_m=getattr(
-                node, "_experiment_forward_segment_m", 0.30
-            ),
-            max_forward_step_m=max(
-                0.01,
-                float(getattr(
-                    node, "_experiment_forward_step_m", args.forward_step_m
-                )),
-            ),
-        ),
-    )
+        )
 
     if args.record_video:
         try:
@@ -3195,6 +3413,8 @@ def _run_go2w_explorer(args, node, policy, event_hook=None) -> int:
         finish_on_visual_confirmation=args.finish_on_visual_confirmation,
         search_policy=search_policy,
         turn_only=bool(args.turn_only),
+        # 干跑整场不发运动指令，motion_steps 必须如实为 0（计划书 §60）。
+        dry_run=bool(args.dry_run_motion),
         session_id=graph.session_id,
         executor_id=args.executor_id or None,
         worker_generation=args.worker_generation,

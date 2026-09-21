@@ -68,6 +68,6 @@ def test_siliconflow_is_not_redefined() -> None:
 def test_hold_mode_params() -> None:
     settings = ManualDemoSettings()
     assert settings.hold_duration_sec == 30.0
-    assert settings.turn_yaw_rate == 0.15
+    assert settings.turn_yaw_rate == 1.0
     assert settings.pulse_vx == 0.12
     assert settings.pulse_vy == 0.06

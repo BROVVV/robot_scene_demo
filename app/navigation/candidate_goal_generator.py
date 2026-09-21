@@ -352,13 +352,29 @@ def generate_live_exploration_candidates(
             metric_added = True
         if not metric_added:
             # No mapped nodes yet: a short metric step to a viewpoint ahead.
+            # 计划书 §6.7：frame="map" 的目标必须是地图系里真实存在的位置。
+            # 以前这里按「机器人在原点、朝向 current_yaw_deg」算，机器人一旦
+            # 离原点远（比如已经在 (10, 5)），这个 0.5m 的引导点就落在原点
+            # 旁边——不是「前方一步」，而是让它横穿整个地图。有 robot_pose
+            # 就用真实位姿 + 真实朝向；确实没有时才退回原来那个近似。
             dx = 0.5
-            yaw_rad = current_yaw_deg * 3.141592653589793 / 180.0
+            if robot_pose is not None and len(robot_pose) >= 2:
+                pose_yaw_rad = (
+                    float(robot_pose[2]) if len(robot_pose) > 2
+                    else math.radians(current_yaw_deg)
+                )
+                bootstrap = (
+                    float(robot_pose[0]) + dx * math.cos(pose_yaw_rad),
+                    float(robot_pose[1]) + dx * math.sin(pose_yaw_rad),
+                )
+            else:
+                yaw_rad = math.radians(current_yaw_deg)
+                bootstrap = (dx * math.cos(yaw_rad), dx * math.sin(yaw_rad))
             add(
                 ExplorationGoal(
                     goal_id=f"cand_{len(candidates) + 1:03d}",
                     goal_type=GOAL_NAVIGATE_POSE,
-                    position=(dx * math.cos(yaw_rad), dx * math.sin(yaw_rad)),
+                    position=bootstrap,
                     yaw=current_yaw_deg,
                     frame="map",
                     semantic_reason="metric bootstrap viewpoint",
@@ -404,7 +420,12 @@ def generate_live_exploration_candidates(
                     semantic_reason="short forward to change viewpoint",
                     provenance={
                         "source": "fallback_forward",
-                        "forward_safe": True,
+                        # 计划书 §6.7：这里以前写死 True，于是前方扇区被判
+                        # no-return 时记录里仍写着 forward_safe=true。写真实
+                        # 读数（没有快照就是 None），让记录能被复核。
+                        "forward_safe": (
+                            None if local_safety is None else bool(local_safety.forward_safe)
+                        ),
                     },
                 )
             )

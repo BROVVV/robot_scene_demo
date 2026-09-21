@@ -8,10 +8,13 @@ current_evidence:
   footprint_confirmed: true
   scan_frame_valid: true
   lidar_fresh: false
-  lio_fresh: false
+  navigation_localization_valid: false
   map_valid: false
   tf_valid: false
   compute_path_to_pose_ready: false
+  nav2_lifecycle_active: false
+  speed_chain_single_publisher: false
+  control_source_nav2: false
   nav2_allow_execute: false
   collision_monitor_active: false
   velocity_smoother_active: false

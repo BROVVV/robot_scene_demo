@@ -10,8 +10,22 @@ web:
   search_event_buffer: 500
 
 search:
+  # 死键（2026-09-17 逐行核实过一遍，结论见 44 行前那段注释）：
+  # 本键与下面的 max_search_seconds / max_planning_cycles / max_motion_steps
+  # 都不会被消费，改这里不改变真机行为。
   reasoner: semantic_navigation
-  backend: go2w_experimental     # go2w_experimental | mock | mock_metric
+  # 计划书 §6.6：真机自主搜索只允许 nav2。mock / mock_metric 仅供离线测试，
+  # 由测试直接构造请求，不走这个文件。
+  backend: nav2                  # nav2 | mock | mock_metric
+
+  # 物体识别后端，透传到 run_semantic_exploration.py 的 --detector：
+  #   grounded_sam —— 本地 GroundingDINO + SAM2 出真实 mask，每个物体因而带 3D
+  #                   box（box_size），WebUI 三维视图画的是线框而不是红点；
+  #                   目标的复核仍由 VLM 做（_verify_target，走 verify 模式）。
+  #                   首次调用要加载模型（本机实测 24.7 s），常驻后单帧 0.4 s。
+  #   llm          —— 云端 VLM 出全场景文本 + 关系，产不出 mask ⇒ box_size 恒为
+  #                   None（见 run_semantic_exploration.py:982），物体只有红点。
+  detector: grounded_sam
   # 计划书 §18.2/§19：视觉确认只是接近的开始。真实 Go2W 必须走完
   # target approach + 最终确认才算 TARGET_FOUND，所以这里是 false。
   finish_on_visual_confirmation: false
@@ -41,6 +55,19 @@ search:
   # the camera-local relative provider (never blocks the search).
   rtabmap: false
 
+  # --- 死键（2026-09-17 核实）---------------------------------------------
+  # load_search_defaults() 确实把 max_search_seconds / max_planning_cycles /
+  # max_motion_steps 读进了 defaults（search_models.py:220-223），
+  # 但 SearchStartRequest.from_dict() 对这三个字段只用请求体取值
+  # （search_models.py:123-125 的 value.get(...)），从不回落到 defaults；
+  # reasoner 同理（同文件 :73）。所以这里写的数字没有任何消费者。
+  #
+  # 生效路径是：WebUI 启动请求体 → autonomous_search_worker.build_argv()
+  # → run_semantic_exploration.py 的 argparse。请求体不带这些字段时，
+  # 落到 argparse 默认值（--max-seconds 600.0 / --max-planning-cycles 100 /
+  # --max-motion-steps 50 / --reasoner semantic_navigation）。
+  # 这些默认值目前恰好和下面三个数字相同 —— 这正是这个坑不容易被发现的原因：
+  # 改 yaml 看起来"生效了"，其实什么都没变。
   max_search_seconds: 600
   max_planning_cycles: 100
   max_motion_steps: 50

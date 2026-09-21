@@ -55,7 +55,7 @@ def _isolate_archives(tmp_path):
 
 
 def _make_service(executor=None) -> SearchSessionService:
-    # backend=go2w_experimental（非 mock）会真正走 executor_factory，因此这里的
+    # backend=nav2（非 mock）会真正走 executor_factory，因此这里的
     # Dead/Alive executor 才会生效；task 理解用本地 mock_fallback，避免调用网络 LLM。
     return SearchSessionService(
         owner=ControlOwner(),
@@ -69,7 +69,9 @@ def _req(text: str = "测试目标") -> SearchStartRequest:
     return SearchStartRequest.from_dict({
         "task_text": text,
         "target": text,
-        "backend": "go2w_experimental",
+        # §6.6 / §12.4：真机后端只有 nav2，旧的 go2w_experimental 已经不被
+        # 请求校验接受（validate() 会返回 "unsupported backend"）。
+        "backend": "nav2",
     })
 
 

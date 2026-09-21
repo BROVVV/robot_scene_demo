@@ -8,7 +8,7 @@ def safe_state(**updates):
         "lease_alive": True,
         "lidar_fresh": True,
         "rotation_clearance_valid": True,
-        "lio_fresh": True,
+        "navigation_localization_fresh": True,
         "robot_error_zero": True,
         "emergency_stop": False,
         "remote_override": False,
@@ -42,7 +42,7 @@ def test_default_state_and_each_critical_gate_cancel_motion():
         assert not decision.allowed and decision.velocity.is_zero
 
 
-def test_watchdog_and_nav2_lio_gate():
+def test_watchdog_and_nav2_localization_gate():
     stale = decide_velocity(
         Velocity(0.1, 0.0),
         Velocity(),
@@ -58,9 +58,9 @@ def test_watchdog_and_nav2_lio_gate():
         command_age_seconds=0.0,
         dt_seconds=0.1,
         source="nav2",
-        safety=safe_state(lio_fresh=False),
+        safety=safe_state(navigation_localization_fresh=False),
     )
-    assert not nav2.allowed and "lio_stale" in nav2.reason
+    assert not nav2.allowed and "navigation_localization_stale" in nav2.reason
 
 
 def test_speed_and_acceleration_limits_are_both_enforced():
@@ -99,3 +99,47 @@ def test_unvalidated_rotation_still_allows_zero_yaw_forward_request():
     )
     assert not turn.allowed
     assert "rotation_clearance_unvalidated" in turn.reason
+
+
+def test_unknown_control_source_is_refused():
+    """计划书 §6.5：来源取值必须是已知控制源。
+
+    来源字符串一旦拼错，下面几条按来源分流的闸门会全部静默跳过——那正是最
+    危险的一类失效。宁可拒绝，也不要让一个空字符串绕过 nav2 的定位闸门。
+    """
+    decision = decide_velocity(
+        Velocity(0.1, 0.0),
+        Velocity(),
+        command_age_seconds=0.0,
+        dt_seconds=0.1,
+        source="",
+        safety=safe_state(navigation_localization_fresh=False),
+    )
+    assert not decision.allowed
+    assert "control_source_unknown" in decision.reason
+    assert decision.velocity.is_zero
+
+
+def test_manual_command_does_not_need_navigation_localization():
+    """手动遥控不该因为 Nav2 的坐标桥没起来而失去控制。"""
+    decision = decide_velocity(
+        Velocity(0.1, 0.0),
+        Velocity(),
+        command_age_seconds=0.0,
+        dt_seconds=0.1,
+        source="manual",
+        safety=safe_state(navigation_localization_fresh=False),
+    )
+    assert decision.allowed
+
+
+def test_nav2_command_with_fresh_localization_is_allowed():
+    decision = decide_velocity(
+        Velocity(0.1, 0.0),
+        Velocity(),
+        command_age_seconds=0.0,
+        dt_seconds=0.1,
+        source="nav2",
+        safety=safe_state(navigation_localization_fresh=True),
+    )
+    assert decision.allowed, decision.reason

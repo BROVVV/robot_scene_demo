@@ -59,6 +59,7 @@ class LocalGoalExecutor:
         self,
         *,
         current_yaw_deg: float = 0.0,
+        current_position: tuple[float, float] | None = None,
         capabilities: RobotCapabilities | None = None,
     ) -> ExplorationGoal | None:
         if self._intent is None:
@@ -70,23 +71,19 @@ class LocalGoalExecutor:
         }
         intent = self._intent
         self._goal_seq += 1
+        if capabilities.supports_metric_navigation:
+            return self._metric_goal(
+                intent, current_yaw_deg=current_yaw_deg, current_position=current_position
+            )
         if self._phase == "rotate":
             bearing = self._preferred_bearing(intent, current_yaw_deg)
             delta = self._normalize_deg(bearing - current_yaw_deg)
             if abs(delta) < 5.0:
                 self._phase = "move"
-                return self.next_goal(current_yaw_deg=current_yaw_deg, capabilities=capabilities)
-            if capabilities.supports_metric_navigation and intent.preferred_position is not None:
-                self._phase = "done"
-                return ExplorationGoal(
-                    goal_id=f"local_{self._goal_seq:03d}",
-                    goal_type=GOAL_NAVIGATE_POSE,
-                    position=tuple(intent.preferred_position),
-                    yaw=bearing,
-                    frame=intent.provenance.get("frame", "map") if isinstance(intent.provenance, dict) else "map",
-                    semantic_reason=intent.semantic_reason,
-                    expected_information_gain=intent.spatial_gain,
-                    provenance={"source": "local_goal_executor", "intent": intent.intent_type},
+                return self.next_goal(
+                    current_yaw_deg=current_yaw_deg,
+                    current_position=current_position,
+                    capabilities=capabilities,
                 )
             self._phase = "move"
             return ExplorationGoal(
@@ -115,6 +112,43 @@ class LocalGoalExecutor:
                 provenance={"source": "local_goal_executor", "intent": intent.intent_type},
             )
         return None
+
+    def _metric_goal(
+        self,
+        intent: ExplorationIntent,
+        *,
+        current_yaw_deg: float,
+        current_position: tuple[float, float] | None,
+    ) -> ExplorationGoal | None:
+        """计划书 §6.7：Nav2 模式下每个动作都表达成地图系 ``NAVIGATE_POSE``。
+
+        观察转向也一样——写成「当前位置 + 目标朝向」而不是相对转动。这样每一
+        次位移都要经过 Nav2 的规划、走廊分析和碰撞监视，没有旁路；相对后端那套
+        「先转 30°、再前进一段」的两段式在这里整个消失。
+        """
+        bearing = self._preferred_bearing(intent, current_yaw_deg)
+        target = intent.preferred_position
+        if target is None:
+            # 没有偏好位置时，观察转向退化成「站在原地转到目标朝向」。
+            target = current_position
+        self._phase = "done"
+        if target is None:
+            # 既无偏好位置又拿不到当前位姿：表达不出地图系目标，让上层换候选，
+            # 绝不退回相对转动。
+            return None
+        frame = "map"
+        if isinstance(intent.provenance, dict):
+            frame = str(intent.provenance.get("frame") or "map")
+        return ExplorationGoal(
+            goal_id=f"local_{self._goal_seq:03d}",
+            goal_type=GOAL_NAVIGATE_POSE,
+            position=(float(target[0]), float(target[1])),
+            yaw=bearing,
+            frame=frame,
+            semantic_reason=intent.semantic_reason,
+            expected_information_gain=intent.spatial_gain,
+            provenance={"source": "local_goal_executor", "intent": intent.intent_type},
+        )
 
     def finish(self) -> None:
         self._intent = None

@@ -43,7 +43,9 @@ class CmdVelBridge(Node):
         self._lease_alive = False
         self._lidar_fresh = False
         self._rotation_clearance_valid = False
-        self._lio_fresh = False
+        # 计划书 §6.5：Nav2 执行的定位新鲜度改看坐标桥发布的
+        # /go2w/nav/localization_valid，不再依赖 /lio/valid。
+        self._navigation_localization_fresh = False
         self._robot_error_zero = False
         self._emergency = True
         self._remote_override = True
@@ -61,7 +63,7 @@ class CmdVelBridge(Node):
                 "/go2w/safety/rotation_clearance_valid",
                 "_rotation_clearance_valid",
             ),
-            ("/lio/valid", "_lio_fresh"),
+            ("/go2w/nav/localization_valid", "_navigation_localization_fresh"),
             ("/go2w/robot_error_zero", "_robot_error_zero"),
             ("/go2w/emergency_stop", "_emergency"),
             ("/go2w/remote_override", "_remote_override"),
@@ -99,7 +101,7 @@ class CmdVelBridge(Node):
                 lease_alive=self._lease_alive,
                 lidar_fresh=self._lidar_fresh,
                 rotation_clearance_valid=self._rotation_clearance_valid,
-                lio_fresh=self._lio_fresh,
+                navigation_localization_fresh=self._navigation_localization_fresh,
                 robot_error_zero=self._robot_error_zero,
                 emergency_stop=self._emergency,
                 remote_override=self._remote_override,

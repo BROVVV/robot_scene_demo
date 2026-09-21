@@ -229,3 +229,43 @@ def test_store_snapshot_is_a_copy() -> None:
     first = store.snapshot()
     first["target"] = "mutated"
     assert store.snapshot()["target"] == "x"
+
+
+def test_candidate_decision_reaches_the_snapshot() -> None:
+    """计划书 §14：走廊判定/净空/速度上限必须能在快照里查到。
+
+    这条记录在 nav2 后端里是 NavigationResult.provenance 的一个字段，一路要
+    经过 explorer 事件 → 适配器 → 状态存储三跳。任何一跳把它丢掉，现场验收
+    的第 7 项就没有可查的东西了。
+    """
+    store = SearchStateStore()
+    bus = SearchEventBus()
+    adapter = ExplorerSearchAdapter(bus, store, session_id="contract")
+
+    decision = {
+        "candidate_id": "goal_7",
+        "goal_x": 1.5,
+        "goal_y": -0.25,
+        "goal_yaw": 12.0,
+        "path_length_m": 2.4,
+        "min_left_body_gap_m": 0.62,
+        "min_right_body_gap_m": 0.48,
+        "min_side_gap_m": 0.48,
+        "corridor_decision": "PASS",
+        "speed_limit_mps": 0.35,
+        "center_score": 0.71,
+        "accepted": True,
+        "reject_reason": "",
+    }
+    adapter.on_explorer_event({
+        "event": "navigation_result",
+        "goal_id": "goal_7",
+        "status": "succeeded",
+        "message": "navigate to pose succeeded",
+        "candidate_decision": decision,
+    })
+
+    recorded = store.snapshot()["robot"]["last_motion_result"]["candidate_decision"]
+    assert recorded["corridor_decision"] == "PASS"
+    assert recorded["min_left_body_gap_m"] == 0.62
+    assert recorded["speed_limit_mps"] == 0.35

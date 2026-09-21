@@ -276,18 +276,32 @@ curl -I http://192.168.123.18:8080/color
 
 ~~~bash
 cd /home/unitree/robotscene
-bash scripts/go2w/start_autonomous_search_web.sh
+bash scripts/go2w/start_nav2_autonomous_search.sh
 ~~~
 
-启动器会自动尝试启动 VLM daemon、机器人相机 HTTP capture、FastAPI WebUI 和 ROS 侧三维地图 bridge。默认绑定 0.0.0.0:8765，只读模式下不授权自主运动。
+这是 Nav2 单链路的唯一入口。它按顺序检查感知/激光雷达/plain_slam 是否已在跑
+（不在跑就报出该启动哪个脚本，不代管），拉起 Nav2 bringup、控制仲裁与
+cmd_vel bridge，等齐 `/map`、`map -> odom_fused -> base_link` TF、
+`/go2w/nav/localization_valid`、`planner_server` active 之后，才启动 WebUI 与
+搜索 worker（后端固定 `nav2`）。默认绑定 0.0.0.0:8765。
 
-如果控制主机的 plain_slam topic 已经能通过 DDS 在机器狗发现，可以使用：
+**默认只规划、不执行**：不带开关时 Nav2 以 `execution_enabled:=false` 启动，
+控制器、速度平滑和 Collision Monitor 一个都不起，任何速度都不可能进入机器人。
+现场验收通过后才加唯一那个开关：
 
 ~~~bash
-bash scripts/go2w/start_autonomous_search_web.sh --with-plain-slam
+bash scripts/go2w/start_nav2_autonomous_search.sh --enable-motion
 ~~~
 
---with-plain-slam 会在看不到现有 mapping topic 时尝试启动本机 mapping。split 部署下，如果日志出现“本机启动第二套 mapping”，应立即停止该实例并先修复 DDS/网卡发现，不能保留两套 SLAM。
+即便加了它，速度仍要再过 `go2w_cmd_vel_bridge` 的九道闸门（运动授权 / 急停 /
+租约 / 雷达 / 定位新鲜 / 控制来源 / 机器人错误 / 遥控 / 命令看门狗）。
+`configs/go2w/navigation_gate.yaml` 的 `nav2_allow_execute` 保持 `false`，
+只有人工现场验收后才由用户自己改。
+
+旧的 `start_autonomous_search_web.sh` 仍可用，但它是**旧入口**：只起 WebUI 与
+ROS 侧车，不启动 Nav2 bringup / 坐标桥 / 速度平滑 / Collision Monitor，单独用
+它做 Nav2 自主运动会得到一条断掉的速度链。新入口内部会调用它，所以 WebUI 功能
+不会少（`--mock` 等离线开发用法照旧）。
 
 打开：
 
@@ -296,6 +310,143 @@ http://192.168.123.18:8765/
 ~~~
 
 如果 WebUI 实际跑在控制主机，则打开 http://<控制主机IP>:8765/；浏览器必须能访问运行 Uvicorn 的那台机器。
+
+### 6.4 静止上电验证：只规划、不运动（计划书 §13.2）
+
+机器狗摆好、人退到安全距离，**不带开关**启动（第 1 项本身也是这条命令）：
+
+~~~bash
+cd /home/unitree/robotscene
+bash scripts/go2w/start_nav2_autonomous_search.sh
+~~~
+
+启动脚本自己已经等齐了 `/map` 唯一发布者、`map -> base_link` TF 和
+`planner_server` active。下面七项是给现场人员的复核，任何一项不对就先停下来，
+不要进入 §9 的自主运动阶段。
+
+**1. `/map` 的 `frame_id` 必须是 `map`**
+
+~~~bash
+ros2 topic echo --once --field header.frame_id /map
+~~~
+
+**2. `/map` 只能有一个发布者**
+
+~~~bash
+ros2 topic info /map -v | sed -n '/Publisher count/p'
+~~~
+
+**3. TF 主链连续、没有重复发布者**
+
+~~~bash
+ros2 run tf2_tools view_frames      # 生成 frames_*.pdf，每个子坐标系只应有一个 broadcaster
+ros2 run tf2_ros tf2_echo map base_link
+~~~
+
+`map -> odom_fused` 由 plain_slam 坐标桥发布，`odom_fused -> base_link` 由运动栈发布。
+`view_frames` 里同一个子坐标系出现两个 broadcaster，就是第二个 `/map` 或第二套定位
+混进来了，先解决它。
+
+**4. 静止 10 分钟，`map -> odom_fused` 不应有无解释的大跳变**
+
+`tf2_echo` 只能靠肉眼，下面这段给出可复核的最大跳变（采样 2 Hz，跑 600 秒）：
+
+~~~bash
+/usr/bin/python3 - <<'PY'
+import rclpy, math
+from rclpy.duration import Duration
+from rclpy.node import Node
+from tf2_ros import Buffer, TransformListener
+
+rclpy.init()
+node = Node("plan_only_drift_probe")
+buffer = Buffer()
+TransformListener(buffer, node)
+last = None
+max_xy = max_yaw = 0.0
+samples = 0
+for _ in range(1200):                      # 1200 * 0.5s = 600s
+    rclpy.spin_once(node, timeout_sec=0.5)
+    try:
+        t = buffer.lookup_transform("map", "odom_fused", rclpy.time.Time(), Duration(seconds=0.2))
+    except Exception:
+        continue
+    tr = t.transform.translation
+    q = t.transform.rotation
+    yaw = math.degrees(math.atan2(2.0 * (q.w * q.z + q.x * q.y),
+                                  1.0 - 2.0 * (q.y * q.y + q.z * q.z)))
+    if last is not None:
+        max_xy = max(max_xy, math.hypot(tr.x - last[0], tr.y - last[1]))
+        max_yaw = max(max_yaw, abs((yaw - last[2] + 180.0) % 360.0 - 180.0))
+    last = (tr.x, tr.y, yaw)
+    samples += 1
+node.destroy_node()
+rclpy.shutdown()
+print(f"samples={samples} max_xy_jump={max_xy:.4f} m max_yaw_jump={max_yaw:.3f} deg")
+PY
+~~~
+
+机器狗静止时两个数都应接近 0。出现米级跳变说明 SLAM 在漂或有人在推 map，先查
+地图健康，不要继续。
+
+**5. 请求多个 `ComputePathToPose`，确认路径在膨胀区外、偏向走廊中间**
+
+只规划模式下没有控制器，但规划器是活的，可以直接点它：
+
+~~~bash
+ros2 action send_goal /compute_path_to_pose nav2_msgs/action/ComputePathToPose \
+  "{goal: {header: {frame_id: map}, pose: {position: {x: 1.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}, planner_id: GridBased, use_start: false}" \
+  --feedback
+~~~
+
+换几个目标点各点一次，看返回的 `path.poses`：路径不能穿过障碍物膨胀区，宽走廊里
+应当贴着中线走。规划器用的是 `/map` 的静态层加 `/go2w/lidar/scan` 障碍层，UNKNOWN
+不算可通行。
+
+**6. `/go2w/nav2_cmd_vel` 即使有规划也不会进入机器人**
+
+~~~bash
+ros2 topic info /go2w/nav2_cmd_vel -v | sed -n '/Publisher count/p'   # 只规划模式应为 0
+ros2 topic info /go2w/cmd_vel_selected -v | sed -n '/Publisher count/p'  # 仲裁器在跑，应为 1
+timeout 60 ros2 topic echo /go2w/cmd_vel_bridge/status                  # 应持续打印拒绝原因
+~~~
+
+只规划模式下 Collision Monitor、控制器和速度平滑都没起，`/go2w/nav2_cmd_vel`
+根本没有发布者。即便有速度到达，bridge 的闸门也会因为 `execution_disabled`
+（没传 `execution_enabled:=true`）拒绝——`/go2w/cmd_vel_bridge/status` 会把这条
+原因打出来。速度最终是通过带租约的 `MotionCommand` action 下发的，不是
+`/cmd_vel` 话题。
+
+**7. 走廊分析日志：每个候选一行**
+
+计划书 §14 要求的结构化记录（方位、路径长度、左右最小侧向净空、走廊判定、速度
+上限、拒因）随 `ACTION_FINISHED` 事件落到该次 WebUI 会话的 `events.jsonl`：
+
+~~~bash
+python3 - <<'PY'
+import glob, json, os
+paths = sorted(glob.glob("outputs/live_runs/*/events.jsonl"), key=os.path.getmtime)
+if not paths:
+    raise SystemExit("还没有 WebUI 会话的 events.jsonl")
+for line in open(paths[-1], encoding="utf-8"):
+    row = json.loads(line)
+    record = (row.get("payload") or {}).get("candidate_decision")
+    if record:
+        print(json.dumps(record, ensure_ascii=False))
+PY
+~~~
+
+`candidate_decision.reject_reason` 只会是 `NO_MAP / NO_LOCALIZATION / NO_PATH /
+GOAL_OCCUPIED / TOO_NARROW / NAV2_NOT_READY` 里的一个。看到别的值说明有代码路径
+绕过了这套判定。
+
+另有一类**在规划之前就被挡下**的目标（顶层 `reject_reason` 为 `NOT_MAP_FRAME`
+或 `INVALID_GOAL`），它们根本不生成 `candidate_decision`：`NOT_MAP_FRAME` 意味着
+有调用方把非地图系目标送进了 Nav2——§6.7 做完之后生产路径上不该再出现，出现了
+就是回归。
+
+七项都过了，才可以进入 §9 的 E/F 阶段和 §13.3 的低速现场验收。**`configs/go2w/navigation_gate.yaml`
+的 `nav2_allow_execute` 在此之前必须保持 `false`，改它的人是用户，不是代码修改者。**
 
 ## 7. WebUI 使用方法
 
@@ -370,15 +521,19 @@ curl -s "$BASE/api/search/semantic-map" > "$OUT/semantic-map.json"
 
 在 A–D 全部通过、且当前 /api/slam/map3d 健康前，不得执行自主平移搜索。当前传感器外参仍属于 candidate_unconfirmed 的环境，不能仅凭离线测试宣称动态 SLAM 已验收。
 
-自主运动授权命令：
+E/F 阶段的 Nav2 自主运动授权命令（唯一入口，§6.3）：
 
 ~~~bash
 cd /home/unitree/robotscene
 export GO2W_AREA_CLEARED=I_HAVE_CLEARED_THE_AREA
-bash scripts/go2w/start_autonomous_search_web.sh --enable-autonomous-motion --with-plain-slam
+bash scripts/go2w/start_nav2_autonomous_search.sh --enable-motion
 ~~~
 
 如果不想在 shell 中设置环境变量，启动器会交互要求输入 I_CONFIRM。没有清场或没有急停时不要输入确认。
+
+旧的 `start_autonomous_search_web.sh --enable-autonomous-motion` 是旧入口：它不启动
+Nav2 bringup、坐标桥、速度平滑和 Collision Monitor，单独用它做 Nav2 自主运动只会
+得到一条断掉的速度链，现场不要再用它。
 
 ## 10. 停止、复位和恢复
 
@@ -425,7 +580,207 @@ runtime/go2w/pids/
 
 机器狗和控制主机各自保存本机日志。问题报告请附：启动命令、两机 IP/网卡、/api/status、/api/search/readiness、/api/slam/map3d 原始输出，以及相关日志尾部。
 
-## 11. 离线开发和回归测试
+## 11. 实体遥控器主动建图
+
+这条链路和 §7 的 WASD 网页遥控**是两种不同的"遥控"，不要混用**：这里全程由
+Unitree **实体遥控器**控制机器狗，软件一个运动指令都不发。operate 时人拿着遥控
+器走，软件在后台周期采 D435 关键帧、识别物体、把物体落到 `pslam_map` 上，WebUI
+只当地图查看器。计划书：
+`docs/GO2W_遥控主动建图与周期物体落图_MVP实施计划_20260918.md`。
+
+### 11.1 启动与停止
+
+~~~bash
+# 先启动软件（此时机器狗应当静止）
+bash scripts/go2w/start_remote_control_mapping.sh
+
+# 再拿起实体遥控器开始走
+# ...
+
+# 结束：先用实体遥控器把机器狗停稳，再停软件
+bash scripts/go2w/stop_remote_control_mapping.sh
+~~~
+
+启动器会按 A–F 顺序做完：传感器预检 → 复用或启动 `plain_slam` → 建本次语义会话
+→ 起语义侧车 → 起地图快照写入器 → 以只读模式起 WebUI（默认
+`http://127.0.0.1:8766`）。任一步失败都会明确报出来并指向对应日志。
+
+**绝不传 `--enable-motion`。** 本项目里没有任何一条通往这条链路的命令接受它；
+这条链路根本没有运动客户端。
+
+### 11.2 安全边界
+
+- 不发送 `/go2w/motion`、`cmd_vel`、`/wirelesscontroller`，不调用 Sport API、
+  arm、stop 或 estop；不启动自主搜索、Nav2、frontier 或 PlaceGraph。
+- 不修改 `plain_slam` 算法；侧车只订阅位姿、只读 D435。
+- **识别失败不影响实体遥控器和 SLAM。** 侧车崩了，遥感照旧、建图照旧，只是地图上
+  的物体不再增加；`status.json` 会显示 `degraded` 或进程退出。
+- 停止脚本只结束它自己拥有的进程：WebUI → 快照写入器 → 语义侧车 →（**只有**存在
+  ownership marker 时才）`plain_slam`。SLAM 若是外部已有进程，会打印
+  `reused, left running` 并保留。停止脚本不使用 `pkill ros2`、`killall python`
+  或宽泛的 `pkill -f python`，也不下发任何运动停止 API。
+- **停止软件不会停止机器狗运动**，操作员必须先用实体遥控器停稳。
+- 只读硬门做在 API/WS 入口：`/api/control/*`、`/api/estop*`、`/api/llm/enable`、
+  `/api/search/{start,resume,estop}` 一律 403，控制 WebSocket 输入一律拒收，
+  退出时也不替操作员发停止命令。前端同时显示"实体遥控器模式，网页只读"并把控制区
+  置灰。`/api/llm/disable` 是唯一放行的写入口 —— 它只会让软件更安静。
+
+### 11.3 关键帧与阈值
+
+按「位移 / 转角 / 最长等待」三选一留关键帧，先到先算；队列里的待推理帧上限 20，
+满了先丢与相邻帧最像的冗余帧，再丢最旧的。检测器始终单实例连续消费，上一帧跑完
+立刻取下一帧，没有固定 `sleep(5)`。
+
+| 环境变量 | 默认 | 含义 |
+| --- | --- | --- |
+| `REMOTE_MAPPING_KEYFRAME_DISTANCE_M` | `0.75` | 行进多少米留一帧 |
+| `REMOTE_MAPPING_KEYFRAME_YAW_DEG` | `15` | 累计转多少度留一帧 |
+| `REMOTE_MAPPING_KEYFRAME_MAX_SECONDS` | `1.0` | 慢速或静止时的最长间隔 |
+| `REMOTE_MAPPING_CAPTURE_POLL_SECONDS` | `0.2` | 多久判断一次要不要留帧 |
+| `REMOTE_MAPPING_QUEUE_SIZE` | `20` | 待推理关键帧上限 |
+| `REMOTE_MAPPING_RGBD_BASE_URL` | `http://192.168.123.18:8080` | D435 HTTP RGB-D 服务 |
+| `REMOTE_MAPPING_WEB_PORT` | `8766` | 本模式 WebUI 端口（避开 §7 的 8765） |
+| `REMOTE_MAPPING_SNAPSHOT_PATH` | `outputs/remote_control_mapping/runtime/slam_map_3d.json` | 地图快照 |
+
+检测模型路径、检测阈值、D435 外参和语义合并半径继续用项目现有配置，没有第二套。
+
+> **本模式的地图快照为什么不在 `outputs/autonomous_search/runtime/`：** 那个文件
+> 同时被 WASD 演示台和自主搜索台各自的快照写入器写，两个写手会互相覆盖。本模式
+> 换到自己的目录，前端协议和 `slam_map_3d.js` 完全不动，只是不再和演示台抢同一个
+> 文件。WebUI 通过 `GO2W_SLAM_MAP_SNAPSHOT` 指向自己的快照。
+
+### 11.4 产物与排障
+
+~~~text
+outputs/remote_control_mapping/runtime/events.jsonl          # 语义事件（每行一个 JSON）
+outputs/remote_control_mapping/runtime/status.json           # 侧车状态（原子写）
+outputs/remote_control_mapping/runtime/slam_map_3d.json      # 地图+物体快照
+outputs/remote_control_mapping/runtime/events_<时间戳>.jsonl  # 上一轮的归档
+outputs/remote_control_mapping/logs/semantic_mapper.log
+outputs/remote_control_mapping/logs/snapshot_writer.log
+outputs/remote_control_mapping/logs/web_server.log
+~~~
+
+每次启动都会把上一份 `events.jsonl` / `status.json` 改名归档再新建空的：`pslam_map`
+在新 SLAM session 里可能重新定义，旧坐标系的物体绝不能混进新地图。
+
+常见现象：
+
+| 现象 | 先看哪里 |
+| --- | --- |
+| `state` 停在 `waiting`，没有物体 | `status.json` 的 `last_error`；多半是 D435 RGB-D 服务没起 |
+| `state=degraded` | `semantic_mapper.log`；连续三轮失败才会进 degraded |
+| 地图有物体但位置整体偏移 | 两机时钟不一致 —— 侧车检测到偏差超 5 s 会退回接收时刻，日志里会写；见 §11.6 |
+| 地图上有旧会话的物体 | 不该发生；检查是否手工指定了别的 `events.jsonl` |
+| 地图上冒出一整块"地面/地板"物体框 | `non_object_label` 没命中；RAM++ 会返回**复合写法**（`地板/地面`），整串比不中就见 `app/detectors/vocabulary.py` 的 `_COMPOUND_LABEL_SEPARATORS` |
+| 侧车进程不在但 SLAM 正常 | 符合预期（§9.2 隔离），重启启动脚本即可 |
+| 跑久了网页变卡、地图刷新变慢 | 先看 `snapshot_writer.log` 里 `snapshot written` 的**实际间隔**是不是比配置的 `period_s` 大；见 §11.7 |
+
+真机验收按计划书 §10.3：起软件 → 确认网页显示只读 → 点控制确认被拒且机器狗不动
+→ 静止 20 秒确认地图不自行漂移 → 用实体遥控器缓慢前进约 2 米并左右转向 → 确认
+地图持续扩展 → 在椅子/桌子/门附近经过 → 等两三轮识别后确认 events 出现
+`semantic_object_localized` 且地图上出现物体标记 → 先停稳机器狗再运行停止脚本。
+
+### 11.5 单轮无运动冒烟检查（计划书 §10.2）
+
+机器狗**静止**时先跑这个，确认"RGB-D → 检测 → 深度的 map_xyz → events"整条链是通的：
+
+~~~bash
+bash scripts/go2w/start_remote_control_mapping.sh --smoke
+~~~
+
+只跑一轮识别就退出，不启 SLAM、快照写入器和 WebUI，也不发送任何运动命令。
+结果会打印状态、事件行数和一行 `VERDICT=`：
+
+| VERDICT | 含义 |
+| --- | --- |
+| `MAPXYZ_OK` | 有物体拿到了 `map_xyz` —— §10.2 第三项判据已被实际检验 |
+| `MAPXYZ_UNVERIFIED` | 检出了物体但一个都没落图 —— 判据**没被检验**，换个朝向重跑 |
+| `EMPTY_SCENE` | 本轮没检出物体（可能是合法空结果）—— 判据同样没被检验 |
+
+为什么值得单独跑：侧车本身需要 `rclpy`（只有 `/usr/bin/python3` 有），而检测器
+子进程需要 `torch`（只有 conda 环境有），两者不是同一个解释器。手工照抄命令会漏掉
+`.env` 注入，报"`GROUNDED_SAM_PYTHON` 无效且没有可用的回退解释器"，看着像检测器坏了。
+`--smoke` 复用启动脚本 A 段那套环境注入，保证和正式启动走的是同一条路。
+
+### 11.6 机器狗时钟：为什么必须对齐、怎么对齐
+
+D435 的 HTTP 服务跑在机器狗上，**帧时间戳用的是机器狗的钟**；而落图要按时间戳去找
+拍摄时刻的 SLAM 位姿。侧车因此有一致性门（`--max-clock-skew-seconds`，默认 5 s）：
+偏差超了就**放弃拍摄时间戳**、改用接收时刻，状态里 `timestamp_source` 变成
+`receive_time_clock_skew`、每个物体带一个 `clock_skew_seconds`。
+
+功能不会报错，所以这是个安静的降级：2026-09-18 实测机器狗快 13.6 s，**每一帧**都在
+降级，时间戳系统性偏移一个网络往返，而且这条 WARNING 会把别的问题盖住。
+启动脚本 A 段（`A6`）每次都会打印时钟检查结果，超容差时给修法。
+
+~~~bash
+bash scripts/go2w/sync_robot_clock.sh          # 只读测量并报告（= status）
+bash scripts/go2w/sync_robot_clock.sh apply    # 读取 -> 下推 -> 复测
+~~~
+
+`status` 的退出码可以直接当闸门用：容差内 `0`、超容差 `3`、测不到 `4`。
+容差**不写死**，读的是 worker 里那个常量，避免两处各写一个 5.0 后走岔。
+
+**改钟前必须先停 SLAM**（`apply` 默认会拒绝）：钟一跳变，任何跨机对齐时间轴的环节
+都会看到一个大台阶，宿主侧 IMU 兜底适配器的步长限制会被卡住并留下时间轴脱钩，
+已知后果是**地图重影**。确实要带着 SLAM 改就加 `--force`，并自己承担后果。
+
+~~~bash
+bash scripts/go2w/stop_plain_slam_mapping.sh
+bash scripts/go2w/sync_robot_clock.sh apply
+bash scripts/go2w/start_remote_control_mapping.sh
+~~~
+
+为什么不能让机器狗自己同步：它**没有外网**（NTP 和 HTTPS 都是 no route to host），
+宿主也没有在 123/udp 上对外服务（只装了客户端 `timesyncd`），所以唯一可用的方向是
+从宿主把时间推过去——这就是 `apply` 做的事。
+
+**RTC 是坏的，软件修不了**，这一点很容易误判：备份电池没电，上电清零后从 0 开始数
+（实测 RTC 计数 10189s ≈ uptime 10180s）。而且 `hwclock --systohc` 在这种情况下
+**照样返回 0**、`hwclock --show` 还会静默回落到系统时钟把正确时间打印出来——两个
+都是假绿。唯一可信的读法是 `timedatectl` 的 `RTC time` 行（`apply` 就是这么验的）。
+
+所以重启后的恢复靠的是 systemd 自己的机制：timesyncd 启动时会用
+`/var/lib/systemd/timesync/clock` 里存的时间戳把钟**往前拨**（只前拨、不回拨），
+`apply` 会更新这个文件。注意落点是**上一次 apply 的时刻**、不是当前时刻——关机期间
+它不会自己走，所以断电越久越慢，重启后（或长时间断电后）重新跑一次 `apply`。
+
+### 11.7 长跑变卡：写入器每轮整读 events.jsonl
+
+遥控建图跑久了页面会变卡。2026-09-18 实测的账（`period_s` 被启动脚本覆盖成 **1.0**，
+节点默认的 5.0 不是生效值）：
+
+| 快照写入器每轮 flush 的开销 | 修前 | 修后 |
+| --- | --- | --- |
+| 读语义物体（整读 events.jsonl） | **843 ms** | **0.8 ms** |
+| 轨迹过滤（当时 53 个位姿） | 47 ms | 47 ms |
+| points 逐点 `round()` | 64 ms | 64 ms |
+| `json.dumps` + 落盘 705 KB | 32 ms | 32 ms |
+
+**843 ms 那一项随运行时长线性增长**（events.jsonl 只追加）：3.8 MB→80 ms、
+9.6→220、19→391、38 MB→843 ms。它一项就占了 flush 的 84%，而 flush 的活压在
+1.0 s 的周期上，rclpy 于是跳拍 —— 日志里 `snapshot written` 的实际间隔是
+**1.8~2.0 s，比配置慢一倍**（判据的 `starve_timeout_s = 2 × period_s` 也建立在
+这个周期上）。
+
+根因是每轮都用 `load_object_records()` 把整份文件重新 `json.loads` 一遍 ——
+拆开量过：**99% 时间在解析，去重+归一化只要 8 ms**。所以写端改用
+`IncrementalObjectRecordReader`（`app/spatial/semantic_object_gate.py`）：只解析
+新增的字节，判定语义与整读逐字一致。稳态每轮 0.8 ms，约 **900×**。
+
+换源、截断、**同路径原地重写**（新会话截断重写、归档覆盖同名文件：inode 不变、
+长度还可能变长）都要能认出来，最后一条靠比对已消费段末尾 256 字节，只看
+inode/长度是认不出的。等价性校准覆盖这四种情况 + 边写边读含半行，全部逐字一致。
+改这个文件前先跑一遍那个校准（见提交记录里的 `check_incremental.py` 思路），
+"读出来的物体和整读一样"是唯一的判据。
+
+仍未处理的第二项：**轨迹过滤是 O(点数 × 位姿数)**，位姿按 0.25 m 累积、没有上限
+（实测 53 位姿 47 ms、300 位姿 287 ms、1200 位姿 1088 ms）。本次那种十几分钟的
+走动离它变主因还很远，但走得很远的会话要留意；真要动它得先决定是否接受近似
+（把位姿按距离抽稀会改变边界点的取舍）。
+
+## 12. 离线开发和回归测试
 
 先确认使用项目 .venv，不要用没有 Streamlit/项目依赖的系统 Python：
 
@@ -472,7 +827,7 @@ bash scripts/go2w/stop_autonomous_search_web.sh
 
 plain_slam_web_bridge.py、plain_slam_web_cloud_relay.py 等 ROS 侧车必须使用 /usr/bin/python3，因为它们需要系统 ROS Python 的 rclpy；纯 Python 测试使用 .venv/bin/python3。机器狗上的新 Python 代码必须兼容 Python 3.8。
 
-## 12. 故障排查速查表
+## 13. 故障排查速查表
 
 | 现象 | 检查 | 处理 |
 | --- | --- | --- |
@@ -489,7 +844,7 @@ plain_slam_web_bridge.py、plain_slam_web_cloud_relay.py 等 ROS 侧车必须使
 | 地图刷新后旧房间消失 | map_revision、source_map_points、global_cached_voxels、web_display_points | 检查是否启动了旧 bridge 或把局部 scan 当全局 map |
 | SSH 后台进程断开 | 是否在前台 SSH 会话直接启动 | 使用持久终端/tmux，或使用脚本自身的 setsid 启动器；不要混用旧进程 |
 
-## 13. 代码和配置维护规则
+## 14. 代码和配置维护规则
 
 - 每次更新先在控制主机运行 git diff --check、回归测试和 verify_fresh_deployment.sh。
 - 运行时目录、相机帧、模型权重、.env、PID 和日志不应提交。
@@ -498,7 +853,7 @@ plain_slam_web_bridge.py、plain_slam_web_cloud_relay.py 等 ROS 侧车必须使
 - 不要通过放宽安全阈值、增大单次转角、删除 Place/Frontier、改写坐标系或吞掉异常来“修复”验收失败。
 - 任何未做的现场测试都必须写成“未执行”，不能写成 HEALTHY、已完成或已验收。
 
-## 14. 相关文档
+## 15. 相关文档
 
 - [AI_PROJECT_GUIDE.md](AI_PROJECT_GUIDE.md)：给新 AI/开发者的工程入口。
 - [CODEX_DEPLOY.md](CODEX_DEPLOY.md)：全新电脑的简版部署入口。
@@ -506,11 +861,11 @@ plain_slam_web_bridge.py、plain_slam_web_cloud_relay.py 等 ROS 侧车必须使
 - [docs/GO2W_整改计划_与_交接书_20260903.md](docs/GO2W_整改计划_与_交接书_20260903.md)：当前整改、已完成代码工作、未完成真机验收和现场交接记录。
 - [GO2W_真机自主搜索_详细修改计划书.md](GO2W_真机自主搜索_详细修改计划书.md)：真机搜索链路的详细计划。
 
-## 15. 安全声明
+## 16. 安全声明
 
 本项目会在用户明确授权并通过启动器安全检查后调用真实机器狗运动链。任何现场运行都必须由具备机器狗操作能力的人员负责，保持实体急停可用，并根据实际环境重新判断风险。仓库中的脚本、测试和 WebUI 不能替代机器狗厂商安全规范、现场风险评估或人工急停。
 
-## 16. 2026-09-04 三维建图修复状态
+## 17. 2026-09-04 三维建图修复状态
 
 机器狗端本轮已经落地并准备上传的修复包括：
 

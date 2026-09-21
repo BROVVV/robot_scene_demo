@@ -36,6 +36,10 @@ from app.navigation.approach_controller import (
     robot_bearing_from_camera,
 )
 from app.navigation.candidate_goal_generator import (
+    # 私有名，但它是这条纪律唯一的真源：兜底前进被哪个安全条件挡下。
+    # 候选生成器把它算出来只当布尔用，出了函数就丢，所以这里重算一次
+    # 留下来当证据（计划书 §1.5）。改那边必须同时看这里。
+    _forward_fallback_block_reason,
     generate_live_exploration_candidates,
 )
 from app.navigation.clearance_map import ClearanceMap, clearance_map_from_local_safety
@@ -55,6 +59,7 @@ from app.navigation.exploration_planner import (
     select_exploration_goal,
 )
 from app.navigation.models import (
+    GOAL_NAVIGATE_POSE,
     GOAL_RELATIVE_MOVE,
     GOAL_ROTATE_VIEW,
     ExplorationGoal,
@@ -299,6 +304,7 @@ class AutonomousExplorer:
         on_event: Callable[[dict[str, Any]], None] | None = None,
         finish_on_visual_confirmation: bool = True,
         turn_only: bool = False,
+        dry_run: bool = False,
         session_id: str | None = None,
         max_perception_retries: int = 2,
         max_waiting_for_map_cycles: int = 20,
@@ -335,6 +341,9 @@ class AutonomousExplorer:
         self._on_event = on_event or (lambda event: None)
         self.finish_on_visual_confirmation = bool(finish_on_visual_confirmation)
         self.turn_only = bool(turn_only)
+        # 干跑整场不发运动指令。这是个**会话级**事实（不是逐条结果的事），
+        # 所以由调用方一次告知，不去猜每条结果里的记号。
+        self.dry_run = bool(dry_run)
         self.session_id = session_id or time.strftime("explore_%Y%m%d_%H%M%S")
         self.max_perception_retries = max(0, int(max_perception_retries))
         self.max_waiting_for_map_cycles = max(1, int(max_waiting_for_map_cycles))
@@ -931,6 +940,19 @@ class AutonomousExplorer:
                     break
                 replans += 1
                 continue
+            # 计划书 §1.5：安全条件造成的拒绝也必须可解释。兜底前进那道闸
+            # （`_forward_fallback_block_reason`）算出的原因串在候选生成器
+            # 内部只被当布尔用，出了函数就没了 —— 于是"为什么没往前走"在
+            # 整条链路上没有一处留得下话。这里用**同一份输入**重算一次
+            # （纯函数，同输入同输出，不会与那边漂移），塞进 §29 已有的
+            # safety_rejections 通道：它会同时进 candidate_rejected_safety
+            # 事件和决策记录的 hard_safety_rejections，WebUI 直接可读。
+            forward_blocked = _forward_fallback_block_reason(safety, perception)
+            if forward_blocked and self._forward_fallback_could_apply():
+                safety_rejections.append({
+                    "source": "forward_fallback",
+                    "reason": forward_blocked,
+                })
             if safety_rejections:
                 # 计划书 §29：被硬安全拒掉的 frontier 必须留下证据，绝不能
                 # 静默消失成 "没有候选"。
@@ -1151,7 +1173,13 @@ class AutonomousExplorer:
                        status=result.status.value, message=result.message,
                        requested_motion=result.requested_motion,
                        observed_motion=result.observed_motion,
-                       elapsed_sec=result.elapsed_sec)
+                       elapsed_sec=result.elapsed_sec,
+                       # 计划书 §14：每个候选决策一行结构化记录（走廊宽度、最小
+                       # 侧向净空、判定、速度上限）。后端已经把它放进了
+                       # provenance，这里必须往上带一层——否则它只活在
+                       # BackendHealth.details 里，现场没有任何可查的日志。
+                       candidate_decision=(result.provenance or {}).get(
+                           "candidate_decision"))
             # If this goal physically moved the robot (even without new visual
             # info), it is still active exploration - don't penalize it.
             self._last_execution_moved = bool(result.succeeded)
@@ -1175,7 +1203,14 @@ class AutonomousExplorer:
                 heading_sector=goal.heading_sector,
             )
             if result.succeeded:
-                motion_steps += 1
+                # motion_steps 是"机器狗真的走了几步"。--dry-run-motion 下
+                # 运动指令一条都没发（backend 的 dry_run 分支返回 SUCCEEDED
+                # 只为把推理链跑完），把它计进去会让报表在机器人一步没动时
+                # 报出"走了 N 步" —— 2026-09-15、09-17 两次实测都栽在这。
+                # 代价：干跑不再消耗 max_motion_steps，由 max_seconds /
+                # max_planning_cycles 兜底（这两条本来就管着干跑的长度）。
+                if not self.dry_run:
+                    motion_steps += 1
                 node_id = goal.target_node_id or self._current_node_id(observation)
                 node = self.graph.get_node(node_id)
                 if node is not None:
@@ -1404,6 +1439,49 @@ class AutonomousExplorer:
             last_seen_timestamp=float(observation.timestamp or 0.0),
         )
 
+    @staticmethod
+    def _metric_approach_goal(
+        decision: Any,
+        observation: LiveObservation,
+        best: Any,
+        *,
+        object_id: str | None,
+        steps: int,
+    ) -> ExplorationGoal | None:
+        """计划书 §6.7：把一步接近动作写成地图系 ``NAVIGATE_POSE``。
+
+        转向写成「原地转到新朝向」，前进写成 standoff ring 里已经过五道门
+        的那条候选——两者都是地图系目标，都要经过 Nav2 的规划、走廊分析与
+        碰撞监视。表达不出来就返回 ``None``，由调用方停车，绝不退回相对位移。
+        """
+        if decision.action == ACTION_ROTATE_SMALL:
+            x, y, yaw = _pose_xy_yaw(observation.pose)
+            return ExplorationGoal(
+                goal_id=f"approach_step_{steps}",
+                goal_type=GOAL_NAVIGATE_POSE,
+                position=(x, y),
+                yaw=math.degrees(yaw) + float(decision.relative_dyaw_deg),
+                frame="map",
+                semantic_reason=decision.reason,
+                provenance={"approach": decision.to_dict(), "object_id": object_id},
+            )
+        if decision.action == ACTION_APPROACH_FORWARD and best is not None:
+            x, y, yaw = best.pose
+            return ExplorationGoal(
+                goal_id=f"approach_step_{steps}",
+                goal_type=GOAL_NAVIGATE_POSE,
+                position=(float(x), float(y)),
+                yaw=math.degrees(float(yaw)),
+                frame="map",
+                semantic_reason=decision.reason,
+                provenance={
+                    "approach": decision.to_dict(),
+                    "object_id": object_id,
+                    "viewpoint": best.to_dict(),
+                },
+            )
+        return None
+
     def _run_target_approach(
         self, observation: LiveObservation, match: SemanticMatch,
         object_id: str | None,
@@ -1417,8 +1495,14 @@ class AutonomousExplorer:
         current = observation
         lost_count = 0
         steps = 0
+        # 计划书 §6.7：metric 后端（nav2）下接近动作也必须表达成地图系
+        # NAVIGATE_POSE，相对位移一律不再生成。判定只看能力，不看后端名字。
+        metric_backend = bool(
+            getattr(self._backend.capabilities(), "supports_metric_navigation", False)
+        )
 
         while steps < 12:
+            best = None
             # ---- TARGET_LOCALIZE ---------------------------------------
             self._state = ExplorerState.TARGET_LOCALIZE
             context = self._target_approach_context(current, object_id=object_id)
@@ -1491,17 +1575,32 @@ class AutonomousExplorer:
                 return False, detail
 
             steps += 1
-            goal = ExplorationGoal(
-                goal_id=f"approach_step_{steps}",
-                goal_type=(
-                    GOAL_ROTATE_VIEW if decision.action == ACTION_ROTATE_SMALL
-                    else GOAL_RELATIVE_MOVE
-                ),
-                relative_dx=decision.relative_dx,
-                relative_dyaw=decision.relative_dyaw_deg,
-                semantic_reason=decision.reason,
-                provenance={"approach": decision.to_dict(), "object_id": object_id},
+            goal = (
+                self._metric_approach_goal(
+                    decision, current, best, object_id=object_id, steps=steps
+                )
+                if metric_backend
+                else ExplorationGoal(
+                    goal_id=f"approach_step_{steps}",
+                    goal_type=(
+                        GOAL_ROTATE_VIEW if decision.action == ACTION_ROTATE_SMALL
+                        else GOAL_RELATIVE_MOVE
+                    ),
+                    relative_dx=decision.relative_dx,
+                    relative_dyaw=decision.relative_dyaw_deg,
+                    semantic_reason=decision.reason,
+                    provenance={"approach": decision.to_dict(), "object_id": object_id},
+                )
             )
+            if goal is None:
+                # 计划书 §6.7：metric 后端下表达不出地图系目标就停在这里，
+                # 绝不退回相对位移。原因写进 detail，现场能分辨是哪种缺证据。
+                detail.update(
+                    reason="NO_METRIC_APPROACH_TARGET", steps=steps,
+                    decision_reason=decision.reason,
+                    action=decision.action,
+                )
+                return False, detail
             handle = self._backend.execute_goal(goal)
             result = self._wait_result(handle, timeout_sec=20.0)
             self._record_execution_history(goal, self._backend.get_pose(), result)
@@ -1559,6 +1658,25 @@ class AutonomousExplorer:
         self._state = ExplorerState.TARGET_REACHED
         self._emit("target_reached", **detail)
         return True, detail
+
+    def _forward_fallback_could_apply(self) -> bool:
+        """兜底前进这一轮到底有没有可能被发出来。
+
+        与 `candidate_goal_generator` 里那道闸的**其余**四个条件逐条对齐
+        （能力表允许相对平移、不是 turn_only、词汇表里有 FORWARD）——
+        那边是权威，改那边要同步看这里。这里只决定"该不该把拒绝原因
+        报出来"，不参与任何安全判定，报错了也只是多一行诊断。
+        """
+        if self.turn_only:
+            return False
+        capabilities = self._backend.capabilities()
+        if not getattr(capabilities, "supports_relative_translation", False):
+            return False
+        allowed = {
+            str(item).upper()
+            for item in (getattr(capabilities, "allowed_motion_primitives", None) or ())
+        }
+        return not allowed or "FORWARD" in allowed
 
     def _candidate_plan_context(
         self,
@@ -1678,6 +1796,9 @@ class AutonomousExplorer:
         self._state = ExplorerState.RECOVER
         self._recovery_count += 1
         self._backend.stop()
+        metric_backend = bool(
+            getattr(self._backend.capabilities(), "supports_metric_navigation", False)
+        )
         safety = self._local_safety(observation)
         breadcrumb = self._breadcrumb()
         current_pose = (
@@ -1696,6 +1817,8 @@ class AutonomousExplorer:
             camera_occluded=bool(perception is not None and perception.camera_blocked),
             stuck_state=stuck_state.value if stuck_state is not None else None,
             goal_id=goal_id,
+            # 计划书 §6.7：metric 后端下倒车恢复表达成地图系 NAVIGATE_POSE。
+            metric_navigation=metric_backend,
         )
         payload: dict[str, Any] = {
             "stuck_state": stuck_state.value if stuck_state is not None else None,
@@ -1735,15 +1858,30 @@ class AutonomousExplorer:
                        escape_rotation=escape.to_dict())
             self._emit("recovery_result", **payload)
             return payload
-        turn = ExplorationGoal(
-            goal_id=f"{goal_id}_escape_turn",
-            goal_type=GOAL_ROTATE_VIEW,
-            relative_dyaw=float(escape.yaw_deg),
-            semantic_reason=f"escape rotation after {payload['stuck_state']}",
-            provenance={
-                "recovery_reason": decision.trigger or (payload["stuck_state"] or ""),
-                "escape_rotation": escape.to_dict(),
-            },
+        # 计划书 §6.7：metric 后端下脱困转向也是「原地转到新朝向」的地图系
+        # NAVIGATE_POSE，不生成相对转动。
+        turn_provenance = {
+            "recovery_reason": decision.trigger or (payload["stuck_state"] or ""),
+            "escape_rotation": escape.to_dict(),
+        }
+        turn = (
+            ExplorationGoal(
+                goal_id=f"{goal_id}_escape_turn",
+                goal_type=GOAL_NAVIGATE_POSE,
+                position=(current_pose[0], current_pose[1]),
+                yaw=math.degrees(current_pose[2]) + float(escape.yaw_deg),
+                frame="map",
+                semantic_reason=f"escape rotation after {payload['stuck_state']}",
+                provenance=turn_provenance,
+            )
+            if metric_backend
+            else ExplorationGoal(
+                goal_id=f"{goal_id}_escape_turn",
+                goal_type=GOAL_ROTATE_VIEW,
+                relative_dyaw=float(escape.yaw_deg),
+                semantic_reason=f"escape rotation after {payload['stuck_state']}",
+                provenance=turn_provenance,
+            )
         )
         self._emit("recovery_backward_start", goal=turn.to_dict(),
                    primitive="ESCAPE_ROTATION")

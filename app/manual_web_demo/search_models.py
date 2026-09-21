@@ -22,7 +22,10 @@ class SearchStartRequest:
     target: str = ""
     task_text: str = ""
     reasoner: str = "semantic"
-    backend: str = "go2w_experimental"  # go2w_experimental | mock | mock_metric
+    # 计划书 §6.6：真机只允许 nav2；mock / mock_metric 是离线跑给测试用的。
+    backend: str = "nav2"  # nav2 | mock | mock_metric
+    # 物体识别后端，透传给 --detector（取值与那条 argparse 的 choices 一致）。
+    detector: str = "llm"  # llm | grounded_sam
     finish_on_visual_confirmation: bool = False
     turn_only: bool = False
     enable_autonomous_motion: bool = False
@@ -88,7 +91,7 @@ class SearchStartRequest:
         dry_run_motion = bool(
             value.get(
                 "dry_run_motion",
-                backend == "go2w_experimental"
+                backend not in {"mock", "mock_metric"}
                 and not enable_motion
                 and not operator_supervised,
             )
@@ -99,6 +102,7 @@ class SearchStartRequest:
             target=str(value.get("target") or "").strip(),
             reasoner=requested_reasoner,
             backend=backend,
+            detector=str(value.get("detector") or defaults["detector"]),
             finish_on_visual_confirmation=bool(
                 value.get(
                     "finish_on_visual_confirmation",
@@ -136,10 +140,14 @@ class SearchStartRequest:
             return f"task_text too long (max {MAX_TARGET_LENGTH} chars)"
         if self.reasoner not in {"legacy", "semantic", "hybrid"}:
             return f"unsupported reasoner: {self.reasoner}"
-        if self.backend not in {"go2w_experimental", "mock", "mock_metric"}:
+        if self.backend not in {"nav2", "mock", "mock_metric"}:
             return f"unsupported backend: {self.backend}"
         if self.spatial_provider not in {"camera", "rtabmap", "plain_slam"}:
             return f"unsupported spatial_provider: {self.spatial_provider}"
+        # 取值集合逐字对齐 run_semantic_exploration.py 的 --detector choices；
+        # 不在这里拦，非法值要等 worker 起来才炸成 argparse 错误。
+        if self.detector not in {"llm", "grounded_sam"}:
+            return f"unsupported detector: {self.detector}"
         return None
 
 
@@ -179,7 +187,13 @@ def load_search_defaults() -> dict[str, Any]:
     import os
 
     defaults: dict[str, Any] = {
-        "backend": "go2w_experimental",
+        "backend": "nav2",
+        # 物体识别走哪条路，直接透传给 run_semantic_exploration.py 的 --detector：
+        #   grounded_sam —— 本地 GroundingDINO+SAM2 出真实 mask，因而每个物体都有
+        #                   3D box（box_size）；目标的复核仍由 VLM 做（verify）。
+        #   llm          —— 云端 VLM 出全场景文本，产不出 mask ⇒ box_size 恒为 None，
+        #                   WebUI 上物体只能画成红点。
+        "detector": "llm",
         # 计划书 §18.2：默认走完目标接近再收工，不在视觉确认那一刻就 finish。
         "finish_on_visual_confirmation": False,
         "enable_autonomous_motion": False,
@@ -200,7 +214,7 @@ def load_search_defaults() -> dict[str, Any]:
 
             data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
             search = data.get("search") or {}
-            for key in ("backend",):
+            for key in ("backend", "detector"):
                 if search.get(key):
                     defaults[key] = str(search[key])
             if search.get("finish_on_visual_confirmation") is not None:

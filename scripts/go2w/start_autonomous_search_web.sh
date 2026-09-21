@@ -3,6 +3,15 @@ set -euo pipefail
 
 # Go2-W Autonomous Semantic Search WebUI launcher (plan book §76-§79).
 #
+# ⚠ 这是旧入口（计划书 §9）。它只起 WebUI 与 ROS 侧车，不启动 Nav2 bringup、
+# 坐标桥、速度平滑和 Collision Monitor——单独用它做 Nav2 自主运动，速度链是
+# 断的。Nav2 自主搜索请用新入口：
+#
+#     bash scripts/go2w/start_nav2_autonomous_search.sh [--enable-motion]
+#
+# 新入口内部会调用本脚本，所以 WebUI 功能不会少；本脚本保留是为了兼容已有
+# 的停止脚本与现场习惯。
+#
 #   bash scripts/go2w/start_autonomous_search_web.sh
 #       # read-only start: camera + LLM + Manual WASD, search dry-run only
 #   bash scripts/go2w/start_autonomous_search_web.sh --enable-autonomous-motion
@@ -344,7 +353,9 @@ if [[ "$MOCK" == 1 ]]; then
   export AUTONOMOUS_SEARCH_DEFAULT_BACKEND="mock"
   export AUTONOMOUS_SEARCH_ENABLE_AUTONOMOUS_MOTION="0"
 else
-  export AUTONOMOUS_SEARCH_DEFAULT_BACKEND="go2w_experimental"
+  # 计划书 §6.6 / §12.4：真机只有一个后端，nav2。旧值 go2w_experimental
+  # 会让 WebUI 的默认启动请求落到已被移除的实验后端上。
+  export AUTONOMOUS_SEARCH_DEFAULT_BACKEND="nav2"
   export AUTONOMOUS_SEARCH_ENABLE_AUTONOMOUS_MOTION="${ENABLE_MOTION}"
   # Carry the repository's existing operator-supervised experiment profile
   # into every WebUI start request so it cannot be dropped at the worker

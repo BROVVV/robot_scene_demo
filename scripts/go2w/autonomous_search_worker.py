@@ -115,7 +115,7 @@ def make_event_hook() -> Any:
 def build_argv(params: dict[str, Any]) -> list[str]:
     argv = [
         "--target", str(params.get("target") or ""),
-        "--backend", str(params.get("backend") or "go2w_experimental"),
+        "--backend", str(params.get("backend") or "nav2"),
         "--reasoner", str(params.get("reasoner") or "semantic_navigation"),
     ]
     if params.get("operator_supervised_experiment") or params.get(
@@ -304,12 +304,18 @@ def run_session(params: dict[str, Any]) -> None:
     try:
         if args.replay:
             rc = rse.run_replay(args, hook)
-        elif args.backend == "go2w_experimental":
+        elif args.backend == "nav2":
             _emit_stage("START_EXPLORER")
             rc = rse.run_go2w(args, hook)
             _emit_stage("RUNNING", state="running")
-        else:
+        elif args.backend in {"mock", "mock_metric"}:
             rc = rse._run_offline(args, hook)
+        else:
+            # 计划书 §6.6：真机自主搜索只允许 nav2。这里必须显式失败，绝不悄悄
+            # 换成离线跑或相对移动后端——那会让「跑了但没动」看起来像成功。
+            raise ValueError(
+                f"autonomous search only supports the nav2 backend, got {args.backend!r}"
+            )
     except Exception as exc:  # noqa: BLE001
         import traceback
 

@@ -14,10 +14,12 @@ from typing import Any
 from uuid import uuid4
 
 from app.navigation.models import (
+    GOAL_NAVIGATE_POSE,
     GOAL_RELATIVE_MOVE,
     GOAL_ROTATE_VIEW,
     ExplorationGoal,
 )
+from app.navigation.robot_backend import RobotCapabilities
 from app.spatial.models import MovementEdge
 from app.spatial.place_graph import PlaceGraph
 from app.spatial.topological_frontier import TopologicalFrontier
@@ -165,9 +167,21 @@ class TopologyRouteExecutor:
         current_yaw_deg: float = 0.0,
         capabilities: Any = None,
         frontier: TopologicalFrontier | None = None,
+        current_position: tuple[float, float] | None = None,
     ) -> ExplorationGoal | None:
         if not route or not route.place_path:
             return None
+        # 计划书 §6.7：Nav2 模式下这条路径也只产出地图系 NAVIGATE_POSE。
+        # 拓扑路线的两个分支原本都是相对动作（原地转 + 前进一段），留着它们
+        # 就等于给「不经过 Nav2 的位移」留了一条旁路。
+        if getattr(capabilities, "supports_metric_navigation", False):
+            return self._metric_goal(
+                route=route,
+                place_graph=place_graph,
+                current_yaw_deg=current_yaw_deg,
+                current_position=current_position,
+                frontier=frontier,
+            )
         if len(route.place_path) < 2:
             # Same-place frontier: rotate toward the frontier bearing.
             if route.target_frontier_id is not None:
@@ -220,6 +234,60 @@ class TopologyRouteExecutor:
             goal_id=f"route_move_{route.route_id}",
             goal_type=GOAL_RELATIVE_MOVE,
             relative_dx=min(self.forward_step_m, edge.observed_displacement_m or self.forward_step_m),
+            semantic_reason=f"execute first edge {edge.edge_id} -> {to_id}",
+            provenance={"route": route.to_dict(), "edge": edge.to_dict()},
+        )
+
+    def _metric_goal(
+        self,
+        *,
+        route: TopologicalRoute,
+        place_graph: PlaceGraph,
+        current_yaw_deg: float,
+        current_position: tuple[float, float] | None,
+        frontier: TopologicalFrontier | None,
+    ) -> ExplorationGoal | None:
+        """计划书 §6.7：把一条拓扑边表达成地图系 ``NAVIGATE_POSE``。
+
+        拿不到地图系目标位姿时返回 ``None``（让上层换候选或交给
+        ``LocalGoalExecutor``），绝不退回「按朝向盲走一段」——那正是计划书
+        要求消失的那条旁路。
+        """
+        if len(route.place_path) < 2:
+            # 同 place 的 frontier：只表达成「站在原地转到该朝向」。
+            if route.target_frontier_id is None:
+                return None
+            frontier = frontier or self._find_frontier(place_graph, route.target_frontier_id)
+            if frontier is None or current_position is None:
+                return None
+            bearing = float(frontier.bearing_deg)
+            delta = (bearing - current_yaw_deg + 180.0) % 360.0 - 180.0
+            if abs(delta) <= self.frontier_align_deg:
+                # 已经对上，没有可执行的地图系位移，交回上层。
+                return None
+            return ExplorationGoal(
+                goal_id=f"route_turn_{route.route_id}",
+                goal_type=GOAL_NAVIGATE_POSE,
+                position=(float(current_position[0]), float(current_position[1])),
+                yaw=bearing,
+                frame="map",
+                semantic_reason="same-place frontier rotate",
+                provenance={"route": route.to_dict()},
+            )
+        from_id = route.place_path[0]
+        to_id = route.place_path[1]
+        edge = self._find_edge(place_graph, from_id, to_id)
+        if edge is None:
+            return None
+        target_place = place_graph.places.get(to_id)
+        if target_place is None or target_place.pose is None:
+            return None
+        return ExplorationGoal(
+            goal_id=f"route_move_{route.route_id}",
+            goal_type=GOAL_NAVIGATE_POSE,
+            position=(float(target_place.pose.x), float(target_place.pose.y)),
+            yaw=math.degrees(float(target_place.pose.yaw)),
+            frame="map",
             semantic_reason=f"execute first edge {edge.edge_id} -> {to_id}",
             provenance={"route": route.to_dict(), "edge": edge.to_dict()},
         )

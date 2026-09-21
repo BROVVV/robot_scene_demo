@@ -416,6 +416,8 @@ class ExplorerSearchAdapter:
                     "requested_motion": payload.get("requested_motion") or {},
                     "observed_motion": payload.get("observed_motion") or {},
                     "elapsed_sec": payload.get("elapsed_sec"),
+                    # 计划书 §14 的候选决策记录（走廊判定/净空/速度上限）。
+                    "candidate_decision": payload.get("candidate_decision"),
                     "phase_detail": payload.get("message") or "动作已结束",
                     "phase": "WAIT_RESULT",
                 }),

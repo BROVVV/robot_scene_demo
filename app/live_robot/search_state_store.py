@@ -611,6 +611,9 @@ class SearchStateStore:
             "elapsed_sec": payload.get("elapsed_sec"),
             "requested_motion": copy.deepcopy(payload.get("requested_motion") or {}),
             "observed_motion": copy.deepcopy(payload.get("observed_motion") or {}),
+            # 计划书 §14：候选决策的结构化记录要能在一个地方读到——走廊判定、
+            # 左右最小侧向净空、速度上限、拒因。现场验收就是照这条查的。
+            "candidate_decision": copy.deepcopy(payload.get("candidate_decision")),
         }
         self._snapshot["phase"] = "WAIT_RESULT"
         self._snapshot["phase_detail"] = payload.get("phase_detail") or (
