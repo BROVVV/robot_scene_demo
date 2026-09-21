@@ -6,7 +6,18 @@ import copy
 from pathlib import Path
 
 import rclpy
-from rclpy._rclpy_pybind11 import RCLError
+# RCLError 所在的 C 扩展模块在两个发行版上不同名：Foxy 是 rclpy._rclpy（扩展名
+# _rclpy.cpython-38-aarch64-linux-gnu.so），Galactic 起才改叫 _rclpy_pybind11。
+# 原来只写后者，于是这个节点在机器狗（Foxy）上**启动即崩**：
+#   ModuleNotFoundError: No module named 'rclpy._rclpy_pybind11'
+# 它恰好是 /go2w/sensors/cloud 的唯一发布者，而 lidar_preprocessor 只订阅那条话题
+# —— 结果整个雷达障碍链断在源头：/go2w/lidar/scan 一个发布者都不发帧，
+# global_costmap 的 obstacle_layer 永远没有输入，bridge 的 lidar_stale 恒真。
+# rclpy.exceptions 里两个发行版都没有 RCLError，只能这样取。
+try:  # Foxy（机器狗）
+    from rclpy._rclpy import RCLError
+except ImportError:  # Humble 及以后（控制主机）
+    from rclpy._rclpy_pybind11 import RCLError
 from builtin_interfaces.msg import Time
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from rclpy.node import Node

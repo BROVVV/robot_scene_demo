@@ -117,16 +117,24 @@ owns_pidfile() {
 }
 
 stop_owned() {
+  # pidfile 里存的是 setsid 出来的会话首进程，它的 pgid 就等于 pid，所以要对着
+  # **整个进程组**发信号，不能只发那一个 pid。
+  # `ros2 launch` 收到 SIGINT 后只是尽力把信号转发给子节点；只要有子节点没在下面
+  # 这 10 秒里退出，本函数就会 SIGKILL 掉父进程，而那些子节点会被 reparent 到
+  # pid 1 继续活着。上一轮留下的坐标桥和 bt_navigator 于是和新一轮的同名节点并存：
+  # `/map` 出现两个发布者（§13.2 第 2 项直接失败），lifecycle_manager 的
+  # change_state 也会打到旧的那个上——症状是新的 planner_server 永远停在
+  # unconfigured，bringup 日志里连一句报错都没有。
   local pidfile="$1" needle="$2" pid
   if owns_pidfile "$pidfile" "$needle"; then
     pid="$(<"$pidfile")"
-    printf 'Stopping previous project-owned %s (pid %s) ...\n' "$needle" "$pid" >&2
-    kill -INT "$pid" 2>/dev/null || true
+    printf 'Stopping previous project-owned %s (pid %s, pgid %s) ...\n' "$needle" "$pid" "$pid" >&2
+    kill -INT -- "-${pid}" 2>/dev/null || kill -INT "$pid" 2>/dev/null || true
     for _ in $(seq 1 40); do
-      kill -0 "$pid" 2>/dev/null || break
+      kill -0 -- "-${pid}" 2>/dev/null || break
       sleep 0.25
     done
-    kill -KILL "$pid" 2>/dev/null || true
+    kill -KILL -- "-${pid}" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
   fi
   rm -f "$pidfile"
 }
@@ -241,8 +249,12 @@ node.destroy_node()
 rclpy.shutdown()
 sys.exit(0 if ok else 1)
 ' || ready_ok=0
+# 必须逐字比较，不能 `grep -q active`：`ros2 lifecycle get` 在没起来时返回的是
+# `inactive [2]`，而 grep 的**子串**匹配会把它当成通过。这个假绿曾经把一次真实的
+# bringup 死锁（bt_navigator 卡在 configure，planner_server 停在 inactive）放了过去，
+# 直到有人手工去看代价地图才发现整张图全 0。
 wait_for "planner_server 生命周期 active" 60 \
-  bash -c 'timeout 5 ros2 lifecycle get /planner_server 2>/dev/null | grep -q active' || ready_ok=0
+  bash -c '[[ "$(timeout 5 ros2 lifecycle get /planner_server 2>/dev/null | awk "{ print \$1 }")" == "active" ]]' || ready_ok=0
 
 if [[ "$ready_ok" != 1 ]]; then
   printf 'ERROR: 就绪证据不齐，未启动搜索。日志：%s/nav2_bringup.log\n' "${log_root}" >&2

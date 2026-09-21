@@ -22,7 +22,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, LogInfo
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -47,8 +47,22 @@ def generate_launch_description():
     smoother_params = LaunchConfiguration("velocity_smoother_params_file")
     use_sim_time = LaunchConfiguration("use_sim_time")
     execution_enabled = LaunchConfiguration("execution_enabled")
+    # 两棵树按模式选，理由见 behavior_trees/navigate_to_pose_plan_only.xml：
+    # Foxy 的 BtActionNode 构造时就 wait_for_action_server()，树里带 FollowPath
+    # 而 controller_server 没起 ⇒ bt_navigator 的 on_configure 永久阻塞。
+    # launch 里没有 IfElseSubstitution（Foxy 上 ImportError），用 PythonExpression。
     navigation_bt = PathJoinSubstitution(
-        [share, "behavior_trees", "navigate_to_pose_robot_scene.xml"]
+        [
+            share,
+            "behavior_trees",
+            PythonExpression(
+                [
+                    "'navigate_to_pose_robot_scene.xml' if '",
+                    execution_enabled,
+                    "'.lower() == 'true' else 'navigate_to_pose_plan_only.xml'",
+                ]
+            ),
+        ]
     )
     common = {"use_sim_time": use_sim_time}
 
@@ -132,6 +146,7 @@ def generate_launch_description():
                     # 传不中的后果不是报错，而是**静默回落到内建的
                     # navigate_to_pose_w_replanning_and_recovery.xml**——那份带
                     # BackUp / Spin 恢复分支，正是计划书 §3.1 要避开的。
+                    # 只规划模式拿到的是不带 FollowPath 的那棵树，见上面 navigation_bt。
                     {
                         "default_bt_xml_filename": navigation_bt,       # Foxy 0.4.7
                         "default_nav_to_pose_bt_xml": navigation_bt,    # Humble 1.x

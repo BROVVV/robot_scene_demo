@@ -339,13 +339,23 @@ ros2 topic info /map -v | sed -n '/Publisher count/p'
 **3. TF 主链连续、没有重复发布者**
 
 ~~~bash
-ros2 run tf2_tools view_frames      # 生成 frames_*.pdf，每个子坐标系只应有一个 broadcaster
+ros2 run tf2_tools view_frames.py   # 生成 frames.pdf / frames.gv，在 /tmp 下跑，别把产物落在仓库里
 ros2 run tf2_ros tf2_echo map base_link
+ros2 topic info /tf -v | sed -n '/Publisher count/p'    # 重复发布者先在这里现形
 ~~~
 
+机器狗是 Foxy，可执行名带 `.py` 后缀；`ros2 run tf2_tools view_frames`（Humble 起
+才叫这个名字）在狗上会回 `No executable found`，别把它当成"TF 不在"。`view_frames.py`
+最后调 `dot` 画图，狗上 `/usr/bin/dot` 是有的。
+
+注意 `view_frames` 只能显示**每个子坐标系最终生效的那一个** broadcaster（它的 dot
+数据按子坐标系做字典键，后来的覆盖先前的）。所以"同一个子坐标系有两个 broadcaster"
+这件事它**看不出来**——那种情况要靠 `/tf` 的 Publisher count，或者看那条边上报的
+平均频率是不是翻倍。
+
 `map -> odom_fused` 由 plain_slam 坐标桥发布，`odom_fused -> base_link` 由运动栈发布。
-`view_frames` 里同一个子坐标系出现两个 broadcaster，就是第二个 `/map` 或第二套定位
-混进来了，先解决它。
+同一个子坐标系挂到了两个不同的父坐标系上，就是第二个 `/map` 或第二套定位混进来了，
+先解决它。
 
 **4. 静止 10 分钟，`map -> odom_fused` 不应有无解释的大跳变**
 
@@ -391,17 +401,42 @@ PY
 
 **5. 请求多个 `ComputePathToPose`，确认路径在膨胀区外、偏向走廊中间**
 
+**先确认障碍层真的在吃扫描**，否则这一项是空过的：`/go2w/lidar/scan` 照常 14 Hz 发帧，
+但帧时间戳一旦偏出 TF 缓冲就会被障碍层整条丢掉，而雷达链上看不出任何异常。判据是
+Nav2 日志里**没有**持续的丢弃：
+
+~~~bash
+grep -c "Message Filter dropping message" outputs/autonomous_search/logs/nav2_bringup.log
+# 0，或只有启动瞬间那一两条（那时 map 帧还没出现）。持续增长就是时间轴偏了。
+~~~
+
+**机器狗的钟一跳变，`configs/go2w/time_sync.yaml` 就作废**（RTC 没电，每次重启都要
+从宿主推钟，见 `scripts/go2w/sync_robot_clock.sh`）。失效后障碍层丢 100% 的帧，代价
+地图退化成整张 `FREE`。重启过机器狗或跑过 `sync_robot_clock.sh apply` 之后，**必须
+在机器狗上重测**这份拟合（`measure_time_sync --duration 120`，重测时让机器保持在
+稳态负载，别在窗口开始前"腾机器"），再重启 `start_live_perception.sh`。
+
 只规划模式下没有控制器，但规划器是活的，可以直接点它：
 
 ~~~bash
 ros2 action send_goal /compute_path_to_pose nav2_msgs/action/ComputePathToPose \
-  "{goal: {header: {frame_id: map}, pose: {position: {x: 1.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}, planner_id: GridBased, use_start: false}" \
+  "{pose: {header: {frame_id: map}, pose: {position: {x: 1.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}}, planner_id: GridBased}" \
   --feedback
 ~~~
 
+字段名按狗的 Foxy 写：goal 里是 `pose` 加 `planner_id` 两项，**没有** `goal` 也没有
+`use_start`（那两个是 Humble 起的写法，照抄会静默解析失败或直接报错）。狗上可以用
+`cat /opt/ros/foxy/share/nav2_msgs/action/ComputePathToPose.action` 复核这张表。
+
 换几个目标点各点一次，看返回的 `path.poses`：路径不能穿过障碍物膨胀区，宽走廊里
-应当贴着中线走。规划器用的是 `/map` 的静态层加 `/go2w/lidar/scan` 障碍层，UNKNOWN
-不算可通行。
+应当贴着中线走。规划器用的是 `/map` 的静态层加 `/go2w/lidar/scan` 障碍层。
+
+注意 **UNKNOWN 在当前配置下是「可通行」的**：`nav2_params_humble.yaml` 的
+`global_costmap` 写着 `track_unknown_space: false`，静态层会把地图里的未知格按
+`FREE_SPACE` 填，所以规划器**会**把路径规划进尚未探索的区域。这对"自主搜索"是
+有意的（探索未知本来就是任务目标），但验收时别把它当成"UNKNOWN 被挡住了"的
+证据 —— 那一条没有生效。要改成不可通行是 `track_unknown_space: true`，代价是
+未知区域一大片就规划不出路径，**不要在验收现场临时改**。
 
 **6. `/go2w/nav2_cmd_vel` 即使有规划也不会进入机器人**
 

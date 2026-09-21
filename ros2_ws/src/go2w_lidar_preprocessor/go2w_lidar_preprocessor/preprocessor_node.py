@@ -109,15 +109,22 @@ class LidarPreprocessor(Node):
             self.get_logger().warning(f"base_link TF unavailable: {exc}")
             self._fresh_pub.publish(Bool(data=False))
             return
+        # sensor_msgs_py.point_cloud2.read_points 在两个发行版上是**同名但契约相反**
+        # 的函数：Humble 返回结构化 NumPy 数组（records["x"] 可用），Foxy 返回逐点
+        # yield 元组的生成器。机器狗是 Foxy，按数组下标取会抛
+        #   TypeError: 'generator' object is not subscriptable
+        # 节点收到第一帧点云就退出，而它正是 /go2w/lidar/scan 的唯一发布者——整条
+        # 雷达障碍链断在这里，Nav2 的 obstacle_layer 永远没有输入。
+        # 这个崩溃一直被更上游的 time_bridge 崩溃掩盖着：没有点云到达就永不触发。
         records = point_cloud2.read_points(
             message, field_names=("x", "y", "z"), skip_nans=False
         )
-        source_xyz = np.column_stack(
-            tuple(
-                np.asarray(records[name], dtype=np.float64)
-                for name in ("x", "y", "z")
-            )
-        )
+        if getattr(getattr(records, "dtype", None), "names", None):
+            source_xyz = np.column_stack(
+                [records[name] for name in ("x", "y", "z")]
+            ).astype(np.float64)
+        else:
+            source_xyz = np.asarray(list(records), dtype=np.float64).reshape(-1, 3)
         translation = transform.transform.translation
         rotation = transform.transform.rotation
         xyz = transform_points(

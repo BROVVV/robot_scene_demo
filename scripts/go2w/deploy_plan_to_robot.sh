@@ -179,6 +179,67 @@ files=(
   tests/test_plain_slam_nav_frame_bridge.py
   tests/test_search_session_recovery.py
   tests/test_search_state_store.py
+
+  # --- 第二次补齐：基线 c4412f4 -> 工作区的差集里仍漏掉的文件 ----------------
+  # 上一次（efca394）只比对了 `git diff c4412f4..HEAD`，漏掉了**尚未提交**的那部分
+  # 改动，于是 `app/manual_web_demo/config.py` 没进清单：机器狗上跑的是旧版，
+  # 而新部署的 web_server.py 第 30 行 `from app.manual_web_demo.config import
+  # DISPLAY_ONLY_REASON` —— WebUI 直接 ImportError 起不来，报的是
+  # "Web server did not become ready"，看着像端口/依赖问题，真因是两半版本不一致。
+  #
+  # 判据要用 `git diff c4412f4`（基线对**工作区**），不是 `..HEAD`。
+  # 下面这组就是那次差集的全部（除刻意不同步的 .env.example 与本脚本自身，
+  # 以及本地已删除的 nav2_plan_only launch）。以后再加文件，务必回头补这里。
+  app/detectors/grounded_sam_subprocess.py
+  app/detectors/vocabulary.py
+  app/knowledge/scene_kb.py
+  app/live_robot/live_search_pipeline.py
+  app/live_robot/step_search_runner.py
+  app/manual_web_demo/config.py
+  app/manual_web_demo/static/app.js
+  app/perception/depth_object_localizer.py
+  app/reasoning/semantic_navigation/models.py
+  app/reasoning/semantic_navigation/search_reasoner.py
+  app/spatial/semantic_object_map.py
+  scripts/evaluate_live_search_reasoners.py
+  scripts/go2w/install_dependencies.sh
+  scripts/go2w/start_manual_web_demo.sh
+  scripts/go2w/webui_map_snapshot_writer.py
+  tests/test_depth_object_localizer.py
+  tests/test_depth_object_localizer_identity.py
+  tests/test_exploration_budget.py
+  tests/test_ram_scene_payload.py
+  tests/test_semantic_entity_association.py
+  tests/test_slam_map_3d_frame.js
+
+  # --- 第三次补齐：2026-09-21 §13.2 真机上暴露出来的三个缺陷 ----------------
+  # 1) behavior_trees/ 此前**一个文件都没在清单里**。symlink-install 下安装态是
+  #    指向 ros2_ws/src/... 的符号链接，狗上恰好有旧副本所以一直没炸；新加的
+  #    navigate_to_pose_plan_only.xml 不部署就是悬空链接，launch 直接起不来。
+  # 2) go2w_sensor_time_bridge 与 go2w_lio_bringup 也从未进过清单。前者是
+  #    /go2w/sensors/cloud 的唯一发布者，它因 `from rclpy._rclpy_pybind11`（Foxy
+  #    上根本没这个模块）启动即崩，整条雷达障碍链断在源头。
+  ros2_ws/src/robot_scene_nav_bringup/behavior_trees/navigate_to_pose_robot_scene.xml
+  ros2_ws/src/robot_scene_nav_bringup/behavior_trees/navigate_to_pose_plan_only.xml
+  ros2_ws/src/go2w_sensor_time_bridge/go2w_sensor_time_bridge/time_bridge_node.py
+  ros2_ws/src/go2w_lio_bringup/go2w_lio_bringup/output_adapter.py
+
+  # --- 第四次补齐：2026-09-21 修好 time_bridge 之后暴露出的**第二个断点** ------
+  # 同一个传感器契约在 Humble 与 Foxy 上相反：sensor_msgs_py.point_cloud2
+  # .read_points 在 Humble 返回结构化 NumPy 数组（records["x"] 可用），在 Foxy
+  # 返回逐点 yield 元组的生成器。三个节点按数组下标取值，在机器狗上收到第一帧
+  # 点云就 TypeError 退出。注意 go2w_lidar_preprocessor 与 go2w_rgb_lidar_fusion
+  # 此前**整个包都不在清单里**，狗上是老副本。
+  #
+  # 同一个包里的 hesai_pandarxt16_preprocessor.py 有同款写法但**故意不改**：
+  # 它只由 start_hesai_pandarxt16.sh --with-preprocessor 在**宿主（Humble）**
+  # 启动，原写法在那边是正确的，改了是零收益加风险。
+  ros2_ws/src/go2w_lidar_preprocessor/go2w_lidar_preprocessor/preprocessor_node.py
+  ros2_ws/src/go2w_rgb_lidar_fusion/go2w_rgb_lidar_fusion/fusion_node.py
+  # measure_time_sync.py 也从未进过清单。它在生成的 time_sync.yaml 里写死了
+  # "host ROS receive time fit"，而它其实是在**哪台机器上跑就拟合到哪台的时钟**；
+  # 现在这条流只被机器狗自己的两个节点消费，必须在机器狗上重新拟合。
+  ros2_ws/src/go2w_sensor_time_bridge/go2w_sensor_time_bridge/measure_time_sync.py
 )
 
 missing=()
@@ -240,6 +301,8 @@ remote "cd ${robot_root} && python3 -m py_compile \
   app/live_robot/experiment_readiness.py scripts/go2w/cmd_vel_gate.py \
   scripts/nav2_bridge_worker.py \
   ros2_ws/src/robot_scene_nav_bringup/scripts/plain_slam_nav_frame_bridge.py \
+  ros2_ws/src/go2w_sensor_time_bridge/go2w_sensor_time_bridge/time_bridge_node.py \
+  ros2_ws/src/go2w_lio_bringup/go2w_lio_bringup/output_adapter.py \
   scripts/go2w/plain_slam_web_bridge.py scripts/go2w/plain_slam_web_cloud_relay.py \
   && bash -n scripts/go2w/start_nav2_autonomous_search.sh \
   && bash -n scripts/go2w/start_autonomous_search_web.sh \

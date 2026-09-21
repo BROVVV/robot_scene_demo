@@ -348,6 +348,60 @@ def test_bt_navigator_gets_the_repo_bt_and_a_loadable_plugin_list() -> None:
         assert lib in names
 
 
+def test_plan_only_mode_uses_a_tree_without_follow_path() -> None:
+    """只规划模式必须换一棵不带 FollowPath 的树，否则 bringup 会**静默死锁**。
+
+    Foxy 的 ``nav2_behavior_tree::BtActionNode`` 在构造时就无条件
+    ``wait_for_action_server()``，而整棵树是 bt_navigator 在 ``on_configure`` 里
+    一次性构造出来的。只规划模式下 controller_server 不起，于是：
+
+        bt_navigator 卡在 configure（日志最后一行的 "Waiting for follow_path
+        action server" 之后再无输出） → lifecycle_manager_plan_only 卡住
+        → planner_server 停在 inactive → global_costmap 三层永不 activate
+        → 代价地图整张全 0，§3.2 的占据判定与 §13.2 第 5 项同时失效
+
+    2026-09-21 真机实测过：就绪门当时写 ``grep -q active``，子串匹配把
+    ``inactive [2]`` 判成通过，所以整个死锁一路"绿灯"跑到启动结束。
+    """
+    launch = NAV2_LAUNCH.read_text(encoding="utf-8")
+    # 树是按 execution_enabled 选的，不能写死成执行模式那棵。
+    assert "navigate_to_pose_plan_only.xml" in launch
+    assert "navigate_to_pose_robot_scene.xml" in launch
+    assert "execution_enabled" in launch[launch.index("navigation_bt ="):launch.index("common =")]
+
+    plan_only = BRINGUP / "behavior_trees/navigate_to_pose_plan_only.xml"
+    assert plan_only.is_file(), "只规划模式指向的 BT XML 必须真的在仓库里"
+    # 只看元素，不看注释：这棵树的注释里正解释着为什么不能有 FollowPath。
+    body = re.sub(r"<!--.*?-->", "", plan_only.read_text(encoding="utf-8"), flags=re.S)
+    assert "ComputePathToPose" in body
+    for forbidden in ("FollowPath", "BackUp", "Spin", "DriveOnHeading"):
+        assert forbidden not in body, (
+            f"只规划模式的树不能有 {forbidden}：它的 action server 在只规划模式下不存在，"
+            f"构造该节点会让 bt_navigator 的 configure 永久阻塞"
+        )
+    # 它用到的插件仍要在 plugin_lib_names 里，否则 configure 直接报
+    # "Could not load library"。
+    names = _yaml(NAV2_PARAMS)["bt_navigator"]["ros__parameters"]["plugin_lib_names"]
+    assert "nav2_compute_path_to_pose_action_bt_node" in names
+
+
+def test_launcher_readiness_gate_matches_the_state_word_exactly() -> None:
+    """就绪门不能拿子串去匹配生命周期状态。
+
+    ``ros2 lifecycle get`` 在没起来时返回 ``inactive [2]``，而
+    ``grep -q active`` 会命中其中的 "active" —— 于是真正要挡的那种失败
+    （planner_server 停在 inactive）恰好是它放过去的那一种。
+    """
+    script = (REPO / "scripts/go2w/start_nav2_autonomous_search.sh").read_text(
+        encoding="utf-8"
+    )
+    gate = [ln for ln in script.splitlines() if "planner_server" in ln and "lifecycle" in ln]
+    assert gate, "找不到 planner_server 的生命周期就绪门"
+    joined = "\n".join(gate)
+    assert "grep -q active" not in joined, "子串匹配会把 inactive 判成 active"
+    assert '== "active"' in joined
+
+
 def test_collision_monitor_launch_is_a_plain_includable() -> None:
     """碰撞监视器只做「起一个节点」，是否启动交给主 launch 的 condition 决定。"""
     source = COLLISION_LAUNCH.read_text(encoding="utf-8")
