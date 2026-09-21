@@ -785,3 +785,51 @@ def test_nav2_bootstrap_goal_is_relative_to_the_robot_not_the_map_origin() -> No
     assert bootstrap, [goal.provenance for goal in candidates]
     assert bootstrap[0].frame == "map"
     assert bootstrap[0].position == (pytest.approx(10.5), pytest.approx(5.0))
+
+
+SEMANTIC_LAUNCHER = REPO / "scripts/go2w/start_semantic_exploration.sh"
+READY_CHECK = REPO / "scripts/go2w/check_go2w_ready.sh"
+
+
+def test_semantic_exploration_launcher_has_no_default_backend(
+    tmp_path: Path,
+) -> None:
+    """§4.3：这个实验壳不许替人静默挑后端，更不许挑那个已经被移除的。
+
+    原先第 26 行默认 ``go2w_experimental``、真实路径那行又把 ``--backend`` 写死
+    成同一个值 —— 于是 ``--backend nav2`` 会被无声吃掉，跑的还是旧的相对运动后端。
+    实测一次：脚本真的会执行到守卫之外的路径，所以这里直接跑给断言看。
+    """
+    import subprocess
+
+    source = SEMANTIC_LAUNCHER.read_text(encoding="utf-8")
+    assert "go2w_experimental" not in source
+    # 真实路径必须转发调用方给的 backend，不能写死。
+    real_path = [
+        line for line in source.splitlines()
+        if "run_semantic_exploration.py" in line and not line.strip().startswith("#")
+    ]
+    assert real_path, "找不到转发到 CLI 的那一行"
+    assert all("--backend \"${backend}\"" in line for line in real_path), real_path
+
+    # 不传 --backend 时必须当场拒绝，而不是接着往下跑。
+    result = subprocess.run(
+        ["bash", str(SEMANTIC_LAUNCHER), "--target", "找垃圾桶"],
+        cwd=tmp_path, capture_output=True, text=True, timeout=60,
+        env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)},
+    )
+    assert result.returncode == 2, (result.returncode, result.stdout, result.stderr)
+    assert "--backend is required" in result.stderr, result.stderr
+    assert "start_nav2_autonomous_search.sh" in result.stderr, result.stderr
+
+
+def test_ready_check_does_not_report_a_removed_backend() -> None:
+    """§4.3：就绪检查报的后端名必须是真机上唯一的那个。
+
+    它查的全是机器狗侧的前置项（网络/sport/相机/雷达/motion action/急停），
+    没有任何一条查的是 nav2 本身；报一个已经被移除的后端名会让操作员以为
+    自己手上的链路就是报告里那条。
+    """
+    source = READY_CHECK.read_text(encoding="utf-8")
+    assert "go2w_experimental" not in source
+    assert '"backend": "nav2"' in source

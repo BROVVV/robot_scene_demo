@@ -223,7 +223,10 @@ print(json.dumps({
     "ready": ready,
     "degraded": degraded,
     "checks": checks,
-    "backend": "go2w_experimental",
+    # 计划书 §4.3：真机只有一个后端 nav2。这里报的是「这些机器狗侧前置项是
+    # 为哪个后端的链路把关的」，不是「nav2 已经验证可用」—— nav2 自身的
+    # 活性由 start_nav2_autonomous_search.sh 的就绪闸门检查，本脚本查不到。
+    "backend": "nav2",
 }, ensure_ascii=False))
 PYEOF
 )"
