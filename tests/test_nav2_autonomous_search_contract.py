@@ -353,6 +353,16 @@ def test_production_defaults_select_nav2_only() -> None:
     # 一旦被重新放行，这条断言照样通过。
     rejected = SearchStartRequest(task_text="找垃圾桶", backend="go2w_experimental").validate()
     assert rejected is not None and "unsupported backend" in rejected, rejected
+    # §6.6-2：mock 也不能从生产请求参数进来。默认（allow_mock=False）一律拒，
+    # 只有测试台（SearchSessionService._executor_factory_is_mock）才放行。
+    # 这条挡的不是「跑不起来」，是「给真机 WebUI 发个 backend=mock 就能跑出
+    # 一场编造的搜索、界面上还看不出区别」。
+    for fake in ("mock", "mock_metric"):
+        rejected = SearchStartRequest(task_text="找垃圾桶", backend=fake).validate()
+        assert rejected is not None and "unsupported backend" in rejected, (fake, rejected)
+        assert SearchStartRequest(
+            task_text="找垃圾桶", backend=fake
+        ).validate(allow_mock=True) is None, fake
     # 默认请求必须不带运动授权。run_go2w 的授权分支在没有
     # --operator-supervised-experiment 且没有 --dry-run-motion 时直接拒绝
     # （返回 3），所以「默认只规划、不执行」靠的是这两个默认值，而不是

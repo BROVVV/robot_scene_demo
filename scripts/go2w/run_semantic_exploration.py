@@ -3,10 +3,14 @@
 
 Runs the platform-independent AutonomousExplorer against a chosen backend:
 
-* ``--backend go2w_experimental`` (default): real Go2-W via the audited
-  ``/go2w/motion`` executor from ``run_autonomous_loop.py``; requires
-  ``--operator-supervised-experiment`` (operator with remote present) and the
-  perception / odometry / motion stacks running.
+* ``--backend nav2`` (default, 计划书 §6.6-1): real Go2-W through the Nav2
+  action chain (``ComputePathToPose`` + ``NavigateToPose``); requires the
+  perception / odometry / motion stacks and the Nav2 bringup running.  There
+  is no fallback: if Nav2, the map, TF or localization is not ready the
+  explorer waits or fails, it never drops back to relative motion.
+* ``--backend go2w_experimental``: legacy relative-motion executor from
+  ``run_autonomous_loop.py``.  Kept only for standalone diagnostics (§4.3);
+  not a production choice for autonomous search.
 * ``--backend mock`` / ``--backend mock_metric``: offline E2E with scripted
   vision and simulated motion (no robot needed).
 * ``--replay <session.jsonl>``: deterministic replay of a previous session's
@@ -3528,6 +3532,9 @@ def _probe_readiness(args, node):
     llm_key_configured = bool(os.getenv("SILICONFLOW_API_KEY"))
     llm_runtime_available = llm_key_configured or llm_daemon_available
     return compute_experiment_readiness(
+        # 报告里的 backend 必须是这一趟真正在跑的那个（§4.3：不让
+        # go2w_experimental 的名字继续出现在生产报告里）。
+        backend=str(getattr(args, "backend", "") or "nav2"),
         camera_fresh=camera_ok,
         bundle_fresh=bundle_ok,
         llm_available=llm_runtime_available,

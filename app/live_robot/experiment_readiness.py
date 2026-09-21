@@ -20,7 +20,7 @@ from app.navigation.robot_backend import RobotCapabilities
 @dataclass
 class ExperimentReadiness:
     ready: bool
-    backend: str = "go2w_experimental"
+    backend: str = "nav2"
     degraded: list[str] = field(default_factory=list)
     capabilities: dict[str, Any] = field(default_factory=dict)
     checks: dict[str, Any] = field(default_factory=dict)
@@ -49,6 +49,7 @@ def compute_experiment_readiness(
     pose_freshness_if_available: bool | None = None,
     capabilities: RobotCapabilities | None = None,
     check_llm_key: bool = True,
+    backend: str = "nav2",
 ) -> ExperimentReadiness:
     """Machine-readable automatic readiness (plan section 17)."""
     checks: dict[str, Any] = {
@@ -102,7 +103,10 @@ def compute_experiment_readiness(
     caps = (capabilities or RobotCapabilities()).to_dict()
     return ExperimentReadiness(
         ready=ready,
-        backend="go2w_experimental",
+        # 计划书 §4.3 / §6.6：go2w_experimental 不再出现在生产入口、默认配置
+        # 和可选参数里，这份报告也不该再声称自己跑在那个后端上。默认取生产
+        # 默认值 nav2，调用方（run_semantic_exploration）按 --backend 实传。
+        backend=backend,
         degraded=sorted(set(degraded)),
         capabilities=caps,
         checks=checks,

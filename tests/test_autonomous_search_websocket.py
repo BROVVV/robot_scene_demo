@@ -50,6 +50,9 @@ def make_client(tmp_path: Path, **factory_kwargs) -> tuple[TestClient, FakeWorke
         runtime_dir=str(tmp_path / "runtime"),
         logs_dir=str(tmp_path / "logs"),
         analysis_frames_dir=str(tmp_path / "frames"),
+        # 见 test_autonomous_search_web_routes.py 同名字段的注释：不指到
+        # tmp_path 就会读到仓库里那份真机会话留下的快照，被 409 挡在启动之前。
+        slam_map_snapshot=str(tmp_path / "runtime" / "slam_map_3d.json"),
     )
     worker = FakeWorker()
     runtime = DemoRuntime(

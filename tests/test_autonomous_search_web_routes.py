@@ -46,19 +46,29 @@ class FakeWorker:
     def shutdown(self): pass
 
 
-def make_app(tmp_path: Path, **factory_kwargs) -> tuple[TestClient, FakeWorker]:
+def make_app(tmp_path: Path, *, executor_factory=None,
+             **factory_kwargs) -> tuple[TestClient, FakeWorker]:
     config = replace(
         ManualDemoSettings(),
         runtime_dir=str(tmp_path / "runtime"),
         logs_dir=str(tmp_path / "logs"),
         analysis_frames_dir=str(tmp_path / "frames"),
+        # 绝对路径：config.slam_map_snapshot_path 对相对路径会拼 _PROJECT_ROOT，
+        # 那会把测试指到仓库里那份真机会话留下的 runtime/slam_map_3d.json 上。
+        # 它一旦被判成"发散/冻结"，/api/search/start 会先以 409 MAPPING_FROZEN
+        # 返回，executor 根本不会启动 —— 本文件所有"等状态变成 X"的用例就集体
+        # 超时，看着像代码回归，其实是测试读了别人的运行态。
+        # 同 tests/test_slam_map_snapshot_health_contract.py 的写法。
+        slam_map_snapshot=str(tmp_path / "runtime" / "slam_map_3d.json"),
     )
     worker = FakeWorker()
     runtime = DemoRuntime(
         config,
         worker=worker,
         camera_fresh=lambda: True,
-        search_executor_factory=make_mock_executor_factory(**factory_kwargs),
+        search_executor_factory=(
+            executor_factory or make_mock_executor_factory(**factory_kwargs)
+        ),
         search_session_dir=str(tmp_path / "sessions"),
     )
     app = create_app(config=config, runtime=runtime)
@@ -126,6 +136,36 @@ def test_start_returns_immediately(tmp_path) -> None:
         # The HTTP call must not block until completion: it already returned.
         status = client.get("/api/search/state").json()["status"]
         assert status in {"STARTING", "RUNNING", "TARGET_FOUND"}
+
+
+def test_start_params_carry_the_detector(tmp_path) -> None:
+    """物体识别后端必须活着走到 worker 的 params 上。
+
+    2026-09-17 断的就是这一环：``search_session_service.start_search`` 里那份
+    params 是逐个字段手写的，而 ``detector`` 当时根本不在其中 —— 于是请求里
+    就算带了它，worker 也永远收不到，``--detector`` 恒定落到 argparse 默认值。
+    """
+    captured: dict[str, Any] = {}
+    inner = make_mock_executor_factory()
+
+    def factory():
+        executor = inner()
+        original_start = executor.start
+
+        def start(params):
+            captured.update(params)
+            return original_start(params)
+
+        executor.start = start
+        return executor
+
+    factory.is_mock_factory = True
+    client, _ = make_app(tmp_path, executor_factory=factory)
+    with client:
+        client.post("/api/search/start",
+                    json={"target": "蓝色垃圾桶", "backend": "mock",
+                          "detector": "grounded_sam"})
+        assert captured.get("detector") == "grounded_sam"
 
 
 def test_duplicate_start_409_while_running(tmp_path) -> None:

@@ -86,7 +86,17 @@ class TestExperimentReadiness(unittest.TestCase):
         )
         payload = readiness.to_dict()
         self.assertTrue(payload["ready"])
-        self.assertEqual(payload["backend"], "go2w_experimental")
+        # §4.3：go2w_experimental 不得再出现在生产路径的任何默认值里，
+        # 这份报告也不例外——不传就是生产默认的 nav2。
+        self.assertEqual(payload["backend"], "nav2")
+        self.assertEqual(
+            compute_experiment_readiness(
+                camera_fresh=True, bundle_fresh=True, llm_available=True,
+                motion_action_available=True, robot_mode_ok=True,
+                emergency_stop_available=True, backend="mock_metric",
+            ).to_dict()["backend"],
+            "mock_metric",
+        )
 
 
 if __name__ == "__main__":

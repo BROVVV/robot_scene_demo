@@ -131,8 +131,15 @@ class SearchStartRequest:
             verify_min_confidence=_optional_float(value.get("verify_min_confidence")),
         )
 
-    def validate(self) -> str | None:
-        """Return an error message or None when the request is acceptable."""
+    def validate(self, *, allow_mock: bool = False) -> str | None:
+        """Return an error message or None when the request is acceptable.
+
+        ``allow_mock`` 是「这个 app 实例是测试台」的标记，由调用方按
+        ``SearchSessionService._executor_factory_is_mock`` 传进来，默认 False。
+        计划书 §6.6-2：生产搜索请求只接受 ``nav2``，测试代码直接注入 mock，
+        不经生产请求参数暴露——否则给真机 WebUI 发一个 ``{"backend": "mock"}``
+        就会跑出一场编造的搜索，而界面上看不出任何区别。
+        """
         task_text = (self.task_text or self.target).strip()
         if not task_text:
             return "task_text/target is required"
@@ -140,7 +147,8 @@ class SearchStartRequest:
             return f"task_text too long (max {MAX_TARGET_LENGTH} chars)"
         if self.reasoner not in {"legacy", "semantic", "hybrid"}:
             return f"unsupported reasoner: {self.reasoner}"
-        if self.backend not in {"nav2", "mock", "mock_metric"}:
+        allowed_backends = {"nav2"} | ({"mock", "mock_metric"} if allow_mock else set())
+        if self.backend not in allowed_backends:
             return f"unsupported backend: {self.backend}"
         if self.spatial_provider not in {"camera", "rtabmap", "plain_slam"}:
             return f"unsupported spatial_provider: {self.spatial_provider}"

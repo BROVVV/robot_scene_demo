@@ -360,7 +360,10 @@ class SearchSessionService:
         return self._status
 
     def start_search(self, request: SearchStartRequest) -> dict[str, Any]:
-        error = request.validate()
+        # 计划书 §6.6-2：mock 只能由测试台注入，不能从生产请求参数进来。
+        # 生产跑的是 ROS 子进程工厂（search_executor_factory 为 None ⇒ 默认工厂），
+        # 这个标记恒 False；只有传了 make_mock_executor_factory 的测试实例才为真。
+        error = request.validate(allow_mock=self._executor_factory_is_mock)
         if error:
             detail = search_error(error, code="TASK_INVALID", source="search_api", stage="VALIDATE")
             return {"ok": False, "error": error, "error_detail": detail}
@@ -414,6 +417,9 @@ class SearchSessionService:
                 "task": task_context.to_dict(),
                 "backend": request.backend,
                 "reasoner": request.reasoner,
+                # 会话归档里记明物体识别走的是哪条路：两条路的产物不同
+                # （grounded_sam 有 3D box，llm 没有），事后取证要用。
+                "detector": request.detector,
                 "motion_enabled": request.enable_autonomous_motion,
             })
 
@@ -431,17 +437,12 @@ class SearchSessionService:
             self._adapter = ExplorerSearchAdapter(
                 self._bus, self._store, session_id=session_id,
             )
-            # A direct ``backend=mock`` request is an offline contract.  The
-            # production default factory is a ROS subprocess, which is both
-            # unnecessary for mock runs and may use a different Python
-            # environment.  Keep explicit test factories authoritative, but
-            # make the WebUI mock path deterministic and dependency-free.
-            if request.backend in {"mock", "mock_metric"} and not self._executor_factory_is_mock:
-                from app.manual_web_demo.search_executor import InProcessMockExecutor
-
-                executor = InProcessMockExecutor()
-            else:
-                executor = self._executor_factory()
+            # 工厂一律用注入的那个。这里原本还有一条「生产收到 backend=mock
+            # 就用裸的 InProcessMockExecutor」的分支，§6.6-2 把 mock 挡在
+            # validate() 之后它已经不可达（能走到这儿的 mock 请求必然
+            # _executor_factory_is_mock，也就是测试台自己注入的工厂，
+            # 而那个工厂产出的同样是 InProcessMockExecutor，只是参数是测试给的）。
+            executor = self._executor_factory()
             executor.set_on_message(self._on_executor_message)
             self._executor = executor
             session_dir_path = Path(self._session_dir)
@@ -458,6 +459,7 @@ class SearchSessionService:
                 "worker_generation": generation,
                 "reasoner": request.reasoner,
                 "backend": request.backend,
+                "detector": request.detector,
                 "finish_on_visual_confirmation": request.finish_on_visual_confirmation,
                 "turn_only": request.turn_only,
                 "enable_autonomous_motion": request.enable_autonomous_motion,

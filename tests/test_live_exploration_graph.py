@@ -45,6 +45,9 @@ def make_client(tmp_path: Path) -> TestClient:
         runtime_dir=str(tmp_path / "runtime"),
         logs_dir=str(tmp_path / "logs"),
         analysis_frames_dir=str(tmp_path / "frames"),
+        # 见 test_autonomous_search_web_routes.py 同名字段的注释：不指到
+        # tmp_path 就会读到仓库里那份真机会话留下的快照，被 409 挡在启动之前。
+        slam_map_snapshot=str(tmp_path / "runtime" / "slam_map_3d.json"),
     )
     worker = FakeWorker()
     runtime = DemoRuntime(
@@ -108,15 +111,19 @@ def test_map_persisted_to_session_dir(tmp_path) -> None:
         _wait_finished(client)
         session = client.get("/api/search/state").json()["session_id"]
         session_dir = Path(tmp_path) / "sessions" / session
-        # artifacts are written right after the terminal event; poll briefly
+        # artifacts are written right after the terminal event; poll briefly.
+        # 必须等**全部**三个文件，不能只等 summary.json —— 写手是一个接一个写的
+        # （exploration_graph → summary → events → task → decisions → semantic_map），
+        # 只等第一个就会在 events.jsonl 落盘之前跳出循环，断言随机变红。
+        # 2026-09-21 实测：summary.json 已可见时 events.jsonl 还要再等 <0.5s。
+        expected = ("summary.json", "exploration_graph.json", "events.jsonl")
         deadline = time.time() + 10
         while time.time() < deadline:
-            if (session_dir / "summary.json").is_file():
+            if all((session_dir / name).is_file() for name in expected):
                 break
             time.sleep(0.05)
-        assert (session_dir / "summary.json").is_file()
-        assert (session_dir / "exploration_graph.json").is_file()
-        assert (session_dir / "events.jsonl").is_file()
+        for name in expected:
+            assert (session_dir / name).is_file(), name
         graph = json.loads((session_dir / "exploration_graph.json").read_text())
         # The graph keeps the explorer's internal session id; it must be
         # non-empty and the artifact must live under the Web session dir.
