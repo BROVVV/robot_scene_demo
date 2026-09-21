@@ -226,10 +226,40 @@ def test_centred_route_outscores_an_off_centre_one_on_this_term() -> None:
     )
 
 
+def _open_grid() -> CorridorGrid:
+    """一片全空的栅格：任何方向都量到 2.0 m 上限，对称分恒为满分。
+
+    专门用来验「被拒的候选拿不到这一项」——如果它拿到了，这里就会是白送的 0.25。
+    """
+    width = int(round(6.0 / _GRID_RESOLUTION))
+    height = int(round(6.0 / _GRID_RESOLUTION))
+    return CorridorGrid(
+        resolution=_GRID_RESOLUTION, origin_x=-3.0, origin_y=-3.0,
+        width=width, height=height, data=(0,) * (width * height))
+
+
 def test_center_score_never_rescues_a_candidate_that_failed_hard_safety() -> None:
-    """§7.5 明确这一项不允许覆盖「路径过窄」判定：被拒的仍是零分。"""
-    candidates = _corridor_candidates(occupancy_grid=_corridor_grid())
+    """§7.5 明确这一项不允许覆盖「路径过窄」判定：被拒的仍是零分。
+
+    用「目标贴墙」那个场景 —— 它本来就会拒掉绕到墙那一侧的 ring 候选；
+    再喂一片全空栅格（对称分恒为满分），这样只要有人让被拒候选也参与打分，
+    这里立刻能看出来。
+    """
+    candidates = _planner().generate_and_rank(
+        ViewpointRequest(
+            mode=VIEWPOINT_APPROACH_TARGET, subject_id="target_1",
+            subject_position=(0.0, 1.9), desired_distance_min_m=0.70,
+            desired_distance_max_m=1.10, preferred_distance_m=0.90,
+            require_line_of_sight=True),
+        robot_pose=(0.0, 0.0, 0.0),
+        clearance_map=_wall(_horizontal_wall_at_y(2.0) + [(0.0, 1.9)]),
+        occupancy_grid=_open_grid(),
+    )
+    safe = [item for item in candidates if item.hard_safe]
     rejected = [item for item in candidates if not item.hard_safe]
-    if rejected:
-        assert all(item.score == 0.0 for item in rejected)
-        assert all("center_score" not in item.components for item in rejected)
+    assert rejected, "这个场景必须真的拒掉一些候选，否则这条测试什么也没测"
+    assert safe, "也得留下安全候选，否则「被拒的没拿到分」没有对照"
+    # 全空栅格下安全候选的对称分是满分 —— 所以下面那句断言是有分辨力的。
+    assert any(item.center_score == pytest.approx(1.0) for item in safe)
+    assert all(item.score == 0.0 for item in rejected)
+    assert all(item.components == {"rejected": True} for item in rejected)
