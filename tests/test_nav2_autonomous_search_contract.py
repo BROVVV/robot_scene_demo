@@ -833,3 +833,79 @@ def test_ready_check_does_not_report_a_removed_backend() -> None:
     source = READY_CHECK.read_text(encoding="utf-8")
     assert "go2w_experimental" not in source
     assert '"backend": "nav2"' in source
+
+
+def test_exploration_turn_candidates_become_map_poses_under_nav2() -> None:
+    """§6.7 / §12.4：观察转向要写成「原地转到新朝向」，既不是相对转角，也不该凭空消失。
+
+    这条盯的是一个真的漏过的洞：能力表里没有 ``ROTATE_LEFT``，于是
+    ``add()`` 把整个转向候选丢掉了 —— 语义指令里那个 ``preferred_heading_delta_deg``
+    被无声吃掉，机器人只会平移到别处，永远不会原地转过去看。
+
+    对照组跑相对后端：同一份输入必须真的产出 ``INSPECT_ANCHOR``。少了它，
+    一个什么都不出的生成器也能让这条测试变绿。
+    """
+    from app.navigation.candidate_goal_generator import (
+        generate_live_exploration_candidates,
+    )
+    from app.navigation.exploration_graph import ExplorationGraph
+    from app.navigation.models import LiveObservation
+    from app.navigation.robot_backend import RobotCapabilities
+    from app.reasoning.semantic_navigation.models import (
+        SearchDirective,
+        SearchDirectiveKind,
+    )
+
+    observation = LiveObservation(
+        bundle_id="obs_turn", timestamp=1_700_000_000.0,
+        scene_objects=[
+            {"label": "饮水机", "label_zh": "饮水机", "confidence": 0.9, "object_id": "o1"}
+        ],
+        pose={"x": 1.5, "y": -2.0, "yaw_rad": math.radians(17.0)},
+    )
+    directive = SearchDirective(
+        directive_id="d_turn", kind=SearchDirectiveKind.INSPECT_ANCHOR,
+        source_backend="semantic_navigation", match_state="partial_match",
+        confidence=0.8, preferred_heading_delta_deg=25.0, anchor_label="饮水机",
+    )
+
+    def _goals(capabilities, robot_pose=(1.5, -2.0, math.radians(17.0))):
+        return generate_live_exploration_candidates(
+            observation=observation, graph=ExplorationGraph(session_id="turn"),
+            directive=directive, capabilities=capabilities,
+            current_yaw_deg=17.0, robot_pose=robot_pose,
+        )
+
+    relative = _goals(
+        RobotCapabilities(
+            supports_relative_translation=True, supports_relative_rotation=True,
+            allowed_motion_primitives=("FORWARD", "ROTATE_LEFT", "ROTATE_RIGHT"),
+        )
+    )
+    assert any(
+        goal.goal_type == "INSPECT_ANCHOR" and goal.relative_dyaw == pytest.approx(25.0)
+        for goal in relative
+    ), [(g.goal_type, g.relative_dyaw) for g in relative]
+
+    nav2 = _goals(_nav2_capabilities())
+    turns = [
+        goal for goal in nav2
+        if goal.goal_type == "NAVIGATE_POSE"
+        and goal.provenance.get("source") == "semantic_navigation_directive"
+    ]
+    assert turns, [(g.goal_type, g.provenance) for g in nav2]
+    turn = turns[0]
+    # 原地：位置就是机器人当前位置，只换朝向。
+    assert turn.position == (1.5, -2.0), turn.position
+    assert turn.yaw == pytest.approx(17.0 + 25.0), turn.yaw
+    assert turn.frame == "map", turn.frame
+    assert turn.relative_dyaw is None, turn.relative_dyaw
+    assert not any(goal.goal_type == "RELATIVE_MOVE" for goal in nav2)
+
+    # 拿不到当前位置就不许编一个「原地转」出来 —— 宁可这个候选不出。
+    blind = _goals(_nav2_capabilities(), robot_pose=None)
+    assert not [
+        goal for goal in blind
+        if goal.goal_type == "NAVIGATE_POSE"
+        and goal.provenance.get("source") == "semantic_navigation_directive"
+    ], [(g.goal_type, g.position, g.provenance) for g in blind]
