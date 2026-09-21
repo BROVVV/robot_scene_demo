@@ -21,7 +21,7 @@ import traceback
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from app.config import get_settings
 from app.navigation.approach_controller import (
@@ -121,6 +121,18 @@ def _pose_xy_yaw(pose: dict[str, Any] | None) -> tuple[float, float, float]:
     if yaw is None and data.get("yaw_deg") is not None:
         yaw = math.radians(float(data["yaw_deg"]))
     return float(data.get("x", 0.0)), float(data.get("y", 0.0)), float(yaw or 0.0)
+
+
+def _has_xy(pose: dict[str, Any] | None) -> bool:
+    """这一帧的位姿里到底有没有坐标（计划书 §3.2）。
+
+    ``_pose_xy_yaw`` 对缺失的字段一律回落到 0，所以「机器人在原点」和「这帧
+    根本没有位姿」在它的返回值上长得一模一样。凡是拿这个结果去**发目标**的
+    地方，都必须先在这里问一句，否则位姿一丢就会把地图原点当成机器人所在。
+    """
+    if not isinstance(pose, Mapping):
+        return False
+    return pose.get("x") is not None and pose.get("y") is not None
 
 
 class ExplorerState(str, Enum):
@@ -1455,6 +1467,11 @@ class AutonomousExplorer:
         碰撞监视。表达不出来就返回 ``None``，由调用方停车，绝不退回相对位移。
         """
         if decision.action == ACTION_ROTATE_SMALL:
+            # §3.2：没有真实位姿就表达不出「原地转向」——``_pose_xy_yaw`` 这时
+            # 会编一个原点，而目标是地图系的，等于叫 Nav2 开回地图原点。按本函数
+            # 既有契约返回 None，由调用方停车。
+            if not _has_xy(observation.pose):
+                return None
             x, y, yaw = _pose_xy_yaw(observation.pose)
             return ExplorationGoal(
                 goal_id=f"approach_step_{steps}",
@@ -1515,7 +1532,16 @@ class AutonomousExplorer:
             self._emit("target_localized", **context.to_dict())
 
             # ---- APPROACH_PLAN：只有 metric 目标才有 global 视点可排 ----
-            if context.spatial_quality == "METRIC_RGBD" and context.map_xyz is not None:
+            # §3.2：视点排序要拿机器人真实位置去算距离/朝向，位姿这一帧丢了就
+            # 不能排——``_pose_xy_yaw`` 会把它当成站在原点。少了这个条件，下面
+            # 选出来的 best 是「按原点算出来的视点」，照样是地图系目标。位姿缺失
+            # 时 best 保持 None，接近动作由 ``_metric_approach_goal`` 返回 None，
+            # 调用方停车。
+            if (
+                context.spatial_quality == "METRIC_RGBD"
+                and context.map_xyz is not None
+                and _has_xy(current.pose)
+            ):
                 self._state = ExplorerState.APPROACH_PLAN
                 clearance_map = self._clearance_map(current, safety)
                 if clearance_map is not None:
@@ -1709,7 +1735,14 @@ class AutonomousExplorer:
             clearance_map=clearance_map,
             viewpoint_planner=self._viewpoint_planner,
             frontiers=frontiers,
-            robot_pose=_pose_xy_yaw(observation.pose),
+            # 计划书 §3.2：没有有效定位就不许产生地图系目标。``_pose_xy_yaw``
+            # 是个「读」的便利函数——喂它一个 None 或半截 dict，它会**编**一个
+            # 原点出来（``(0.0, 0.0, 0.0)``），而生成器拿到它之后会当成真实位姿
+            # 用：§6.7 的原地观察转向会变成「开到地图原点」，引导点也会落回原点
+            # 旁边（生成器里那段注释说的「横穿整张地图」正是这个）。
+            # 所以这里只在本帧真的带坐标时才交出去；拿不到就交 None，让生成器
+            # 按「没有这条证据」处理——宁可这个候选不出，也不编一个坐标。
+            robot_pose=_pose_xy_yaw(observation.pose) if _has_xy(observation.pose) else None,
             # 计划书 §7.5：候选的对称净空分要沿候选路径量左右机身净空，需要
             # 后端订阅到的那份占据栅格。只有 nav2 后端有；没有就传 None，
             # 那一条证据为空、不影响其它打分项。
