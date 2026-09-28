@@ -313,6 +313,18 @@ http://192.168.123.18:8765/
 
 ### 6.4 静止上电验证：只规划、不运动（计划书 §13.2）
 
+**前置：轮式里程计必须已经在跑。** `map -> odom_fused -> base_link` 这条 TF
+主链的后半段由 `wheel_odom` 发布。上游没有任何一个脚本会替你发布它：§6.1 的
+`start_plain_slam_mapping.sh` 明确「不会发布 `/go2w/odom/fused`」，
+`start_nav2_autonomous_search.sh` 按「本脚本不代管感知/SLAM」的约定**既不启动
+它也不等待它**。漏了它，就绪闸门会停在一句没有归因的
+`[FAIL] map -> odom_fused -> base_link TF 连通`：
+
+~~~bash
+ros2 launch go2w_lio_bringup wheel_odom.launch.py
+ros2 topic info /go2w/odom/fused -v | sed -n '/Publisher count/p'   # 必须是 1
+~~~
+
 机器狗摆好、人退到安全距离，**不带开关**启动（第 1 项本身也是这条命令）：
 
 ~~~bash
@@ -334,8 +346,18 @@ Python 里每个 rclpy 节点建图都会 `std::bad_alloc` —— 看着像内�
 **1. `/map` 的 `frame_id` 必须是 `map`**
 
 ~~~bash
-ros2 topic echo --once --field header.frame_id /map
+ros2 topic echo /map --no-arr \
+  --qos-durability transient_local --qos-reliability reliable 2>/dev/null \
+  | grep -m1 'frame_id'
 ~~~
+
+**Foxy 上没有 `--once`，也没有 `--field`**（两者都是后续版本才加的），照抄
+`ros2 topic echo --once --field header.frame_id /map` 会以参数错误告终。
+`/map` 是 latched 的，必须显式给 `transient_local` 才收得到；`--no-arr` 只是
+免得把 64 万个栅格值打到终端上。**别用 `ros2 topic echo` 去查非 latched 的
+话题**（如 `/go2w/nav/localization_valid`）：这台 Foxy 上它对 VOLATILE 话题
+收不到任何消息，空输出长得像「话题没在发」。查这类话题用 §6.4 第 4 项那种
+内联 rclpy 写法。
 
 **2. `/map` 只能有一个发布者**
 

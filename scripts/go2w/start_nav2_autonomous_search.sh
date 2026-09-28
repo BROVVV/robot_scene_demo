@@ -219,8 +219,40 @@ printf '%s\n' "$!" >"$bridge_pidfile"
 ready_ok=1
 wait_for "/map 有唯一发布者" 60 \
   bash -c '[[ "$(timeout 5 ros2 topic info /map -v 2>/dev/null | awk "/Publisher count:/ { print \$3; exit }")" == "1" ]]' || ready_ok=0
-wait_for "/go2w/nav/localization_valid" 60 \
-  bash -c 'timeout 5 ros2 topic list 2>/dev/null | grep -qx /go2w/nav/localization_valid' || ready_ok=0
+# 只确认话题名存在是假绿：bridge 在定位无效时照样以 ~15 Hz 发布 false，
+# `grep -qx /go2w/nav/localization_valid` 会照常打 [OK]，搜索却跑在一个
+# 被判无效的定位上。必须读值，且必须等到 true 为止（bridge 只在回调里发，
+# 冷启动头几帧为 false 是正常的，所以要等而不是查一次）。
+#
+# 这里不用 `ros2 topic echo`：这台 Foxy 上它对 VOLATILE 话题收不到任何消息
+# （实测 /go2w/nav/localization_valid、/go2w/safety/lidar_fresh 全空，
+# 而同一条命令对 latched 的 /map 正常），空输出会被误读成「话题没在发」。
+wait_for "/go2w/nav/localization_valid 为 true" 60 \
+  /usr/bin/python3 -c '
+import sys, time
+try:
+    import rclpy
+    from rclpy.node import Node
+    from rclpy.qos import (QoSProfile, ReliabilityPolicy, DurabilityPolicy,
+                           HistoryPolicy)
+    from std_msgs.msg import Bool
+except Exception:
+    sys.exit(1)
+rclpy.init()
+node = Node("nav2_startup_localization_valid_probe")
+got = []
+node.create_subscription(
+    Bool, "/go2w/nav/localization_valid", lambda m: got.append(bool(m.data)),
+    QoSProfile(depth=1, history=HistoryPolicy.KEEP_LAST,
+               reliability=ReliabilityPolicy.RELIABLE,
+               durability=DurabilityPolicy.VOLATILE))
+deadline = time.time() + 8.0
+while time.time() < deadline and not got:
+    rclpy.spin_once(node, timeout_sec=0.2)
+node.destroy_node()
+rclpy.shutdown()
+sys.exit(0 if got and got[-1] else 1)
+' || ready_ok=0
 # TF 连通必须在同一个 rclpy 进程里查，否则每个 ros2 CLI 调用都是一次新的发现。
 wait_for "map -> odom_fused -> base_link TF 连通" 60 \
   /usr/bin/python3 -c '
@@ -258,6 +290,12 @@ wait_for "planner_server 生命周期 active" 60 \
 
 if [[ "$ready_ok" != 1 ]]; then
   printf 'ERROR: 就绪证据不齐，未启动搜索。日志：%s/nav2_bringup.log\n' "${log_root}" >&2
+  # map -> odom_fused -> base_link 断链最常见的原因是轮式里程计没起。
+  # 本脚本按「不代管上游」的约定不启动它，所以只能在这里把出口指出来，
+  # 否则现场看到的是一个没有归因的 TF [FAIL]。
+  printf '%s\n' '提示：若失败项是 map -> odom_fused -> base_link TF，先确认轮式里程计在跑：' >&2
+  printf '%s\n' '  ros2 launch go2w_lio_bringup wheel_odom.launch.py' >&2
+  printf '%s\n' '  ros2 topic info /go2w/odom/fused -v | sed -n "/Publisher count/p"   # 必须是 1' >&2
   exit 3
 fi
 
