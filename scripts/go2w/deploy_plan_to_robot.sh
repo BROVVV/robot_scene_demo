@@ -145,6 +145,9 @@ files=(
   README.md
   docs/GO2W_AUTONOMOUS_SEARCH_WEBUI.md
   docs/GO2W_Nav2自主搜索单链路改造计划.md
+  # 2026-09-28 新增的复核记录。新文件必须手工补进来，否则 rsync 不传它，
+  # 而远端语法自检照样打 REMOTE_SYNTAX_OK（假绿）。
+  docs/GO2W_Nav2单链路_§13.1与§13.2复核记录_20260928.md
   app/live_robot/experiment_readiness.py
   app/live_robot/navigation_gate.py
   app/navigation/corridor_analyzer.py
