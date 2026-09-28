@@ -22,7 +22,14 @@ def test_validated_stationary_config_accepts_pinned_official_geometry():
         root / "configs/go2w/lidar_preprocess.yaml",
         root / "configs/go2w/official_reference.yaml",
     )
-    assert config["revalidation_required"] is False
+    # 2026-08-14（79b093a）把 YAML 的 revalidation_required 由 false 改成 true，
+    # 并配了 revalidation_note 说明原因：自掩膜按新装的 PandarXT-16 保护框扩到
+    # |y|=0.42，且侧向旋转净空尚未独立验证（同文件 rotation_clearance_validation
+    # .valid 也是 false）。那次提交只改了 YAML，没同步这条断言，于是本用例自
+    # 79b093a 起一直红着。这里对齐到 YAML 的保守取值——**不是放宽**：断言 true
+    # 意味着"仍需复验、旋转未获授权"，比 false 更严。
+    # 注意 load_safety_ready_config 返回的就是原始 YAML dict，标志不经代码改写。
+    assert config["revalidation_required"] is True
     assert parameters.minimum_height == -0.588
     assert parameters.maximum_height == 0.972
     assert parameters.ground_height == -0.448
