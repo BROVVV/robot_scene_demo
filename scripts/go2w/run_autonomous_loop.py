@@ -30,6 +30,24 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from cmd_vel_gate import (  # noqa: E402
+    COMMAND_AGE_SECONDS,
+    GATE_DT_SECONDS,
+    GATE_ENV_VAR,
+    GATE_SOURCE,
+    MODE_ENFORCE,
+    MODE_OFF,
+    SafetyState as GateSafetyState,
+    Velocity as GateVelocity,
+    evaluate as evaluate_cmd_vel_gate,
+    requested_velocity_for_step,
+    resolve_mode as resolve_cmd_vel_gate_mode,
+)
+
 from app.live_robot.search_state_machine import SensorSnapshot
 from app.live_robot.step_search_runner import (
     Detection,
@@ -193,14 +211,23 @@ def _gsam_to_dict(obj) -> dict:
 
     消费方只用 label/score/bbox_2d；mask_rle/mask_size 是 §44 目标 2 让 SAM2
     真实 mask 透传出去，供后续 DepthObjectLocalizer / 语义标注使用。
+
+    2026-09-17 补齐 category / source_prompt_term / mask_area_ratio：它们此前
+    在检测器里算好了、到这一层被丢掉，于是下游只剩一个 label 可用 ——
+    「这个框是不是独立物体」「原始 prompt term 是什么」都无从判断
+    （计划书 §6 阶段 B）。**原始英文 label 不许覆盖 label_zh**：两个字段各有
+    各的用途，中文那条是显示契约。
     """
     return {
         "label": obj.label,
         "label_zh": obj.label_zh,
+        "category": obj.category,
+        "source_prompt_term": obj.source_prompt_term,
         "score": obj.score,
         "bbox_2d": list(obj.bbox_2d),
         "mask_rle": obj.mask_rle,
         "mask_size": list(obj.mask_size) if obj.mask_size else None,
+        "mask_area_ratio": obj.mask_area_ratio,
     }
 
 
@@ -555,6 +582,21 @@ class AutonomousLoop(Node):
         self._rotation_lease_path = ""
         self._rotation_lease_error = ""
         self._armed_by_runner = False
+        # In-process wiring of the cmd_vel safety gate (see cmd_vel_gate.py).
+        # Defaults to off, which makes this byte-for-byte the previous
+        # behaviour; "audit" records a verdict per command without blocking,
+        # "enforce" refuses the command.  Read from the environment so a single
+        # run can be switched without touching the WebUI's parameter plumbing.
+        raw_gate_mode = os.environ.get(GATE_ENV_VAR)
+        self._cmd_vel_gate_mode = resolve_cmd_vel_gate_mode(raw_gate_mode)
+        if raw_gate_mode and self._cmd_vel_gate_mode == MODE_OFF:
+            self.get_logger().warning(
+                f"unknown {GATE_ENV_VAR}={raw_gate_mode!r}; gate disabled"
+            )
+        elif self._cmd_vel_gate_mode != MODE_OFF:
+            self.get_logger().warning(
+                f"cmd_vel gate wired in-process in {self._cmd_vel_gate_mode!r} mode"
+            )
         # Breadcrumb-safe backward recovery: the most recently confirmed
         # forward corridor is the only autonomous reverse evidence available.
         self._breadcrumb: dict[str, Any] | None = None
@@ -745,6 +787,54 @@ class AutonomousLoop(Node):
         if not lidar.allowed:
             return False, lidar.reason
         return True, ""
+
+    def _run_cmd_vel_gate(self, step, goal, index, rotation_inputs) -> dict:
+        """Judge one about-to-be-sent command with bridge_core, and record it.
+
+        Called from _execute_step after the goal is built and before it is sent,
+        which is the only point where the exact command exists.  The record is
+        written in both audit and enforce mode, so the verdict on the real path
+        is observable either way; only enforce's caller acts on it.
+        """
+        sport = self._sport
+        safety = GateSafetyState(
+            # The gate is only reached when the operator turned it on, so its
+            # own master switch is on by construction.  The other five fields
+            # keep their fail-closed defaults: this robot has no honest source
+            # for them (see cmd_vel_gate.py).
+            execution_enabled=True,
+            lidar_fresh=bool(self._lidar_fresh),
+            rotation_clearance_valid=bool(rotation_inputs.valid),
+            robot_error_zero=bool(
+                sport is not None
+                and int(sport.mode) == 1
+                and int(sport.error_code) == 0
+            ),
+        )
+        gate = evaluate_cmd_vel_gate(
+            requested=requested_velocity_for_step(step, goal, self._max_yaw_rate),
+            # No command history exists in-process, so the shaping starts from
+            # rest.  The blockers -- which is what the gate decides on -- do not
+            # depend on this; only the shaped velocity does.
+            previous=GateVelocity(),
+            command_age_seconds=COMMAND_AGE_SECONDS,
+            dt_seconds=GATE_DT_SECONDS,
+            source=GATE_SOURCE,
+            safety=safety,
+        )
+        self._write({
+            "event": "cmd_vel_gate",
+            "index": index,
+            "step": step,
+            "mode": self._cmd_vel_gate_mode,
+            "allowed": gate["allowed"],
+            "reason": gate["reason"],
+            "blockers": gate["blockers"],
+            "shaped": gate["shaped"],
+            "cancel_active_action": gate["cancel_active_action"],
+            "host_s": self._host_s(),
+        })
+        return gate
 
     def _backward_safety_ok(self):
         """Breadcrumb-only reverse safety gate (fail closed)."""
@@ -1227,6 +1317,22 @@ class AutonomousLoop(Node):
             else:
                 self.get_logger().error(f"unknown step {step}")
                 return False, f"unknown step {step}"
+            if self._cmd_vel_gate_mode != MODE_OFF:
+                gate = self._run_cmd_vel_gate(step, goal, index, rotation_inputs)
+                if not gate["allowed"] and self._cmd_vel_gate_mode == MODE_ENFORCE:
+                    reason = f"cmd_vel gate refused: {gate['reason']}"
+                    self._write({
+                        "event": "cmd_vel_gate_reject",
+                        "index": index,
+                        "step": step,
+                        "reason": reason,
+                        "blockers": gate["blockers"],
+                        "host_s": self._host_s(),
+                    })
+                    self.get_logger().error(
+                        f"cmd_vel gate refused step {step}: {gate['reason']}"
+                    )
+                    return False, reason
             try:
                 result = self._send_goal(goal)
             except MotionGoalTimeout as exc:

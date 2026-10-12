@@ -31,6 +31,11 @@ from app.live_robot.step_planner import (
     verify_rejection_step,
 )
 from app.live_robot.search_directive_adapter import directive_to_step_plan
+from app.reasoning.semantic_navigation.task_agent import (
+    attach_trace,
+    enrich_context,
+    retrieve_knowledge,
+)
 from app.reasoning.semantic_navigation.models import SearchDirective, SearchReasoningContext
 
 
@@ -266,7 +271,18 @@ class StepSearchRunner:
                     minimum_seconds=self.config.reasoner_min_replan_seconds,
                 )
             else:
-                directive = self._reason_next_view(context)
+                # 计划书 §5.4：把任务 Agent 的 trace 挂到 directive 上，WebUI 的
+                # Agent 面板才有数据。这条路径手上只有 target，没有任务上下文
+                # 和拓扑，如实留空 —— trace 的 missing_sources 会写明是哪几项
+                # 缺席，而不是填 0 冒充"测量值为零"。
+                enrich_context(
+                    context,
+                    task_context=None,
+                    knowledge_items=retrieve_knowledge(str(self.config.target or "")),
+                    topology_summary=None,
+                    run_mode="live",
+                )
+                directive = attach_trace(context, self._reason_next_view(context))
                 self._last_reasoner_key = reasoner_key
                 self._last_reasoner_time = now
                 self._last_reasoner_directive = directive

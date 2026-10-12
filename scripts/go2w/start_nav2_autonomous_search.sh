@@ -12,27 +12,46 @@ set -euo pipefail
 #       # 现场验收通过后才用。即便传了它，真正的运动仍要再过
 #       # go2w_cmd_vel_bridge 的九道闸门（运动授权/急停/租约/雷达/定位/…）。
 #
-# 只有这一个开关。没有它一律只规划；不接受环境变量或第二个隐藏参数绕过。
+#   bash scripts/go2w/start_nav2_autonomous_search.sh --enable-motion \
+#       --operator-supervised-rotation
+#       # 操作员在场时的转向放行（2026-10-10 用户批准，方案见
+#       # docs/GO2W_操作员在场转向放行_方案_20261010.md）。**只**豁免 bridge
+#       # 的净空那一条（雷达看不见自身近场，持久证明在软件上开不了），其余
+#       # 闸门照旧。必须与 --enable-motion 同时用。
+#       # 放行时 /go2w/cmd_vel_bridge/status 写成
+#       # allowed_operator_supervised_rotation —— 看得出是靠豁免，不是净空证据。
+#
+# 就这两个开关。没有 --enable-motion 一律只规划；不接受环境变量或隐藏参数绕过。
 #
 # 本脚本不重复实现已有的启动逻辑：感知、plain_slam、运动控制由既有脚本负责，
 # WebUI 与 ROS 侧车交给 start_autonomous_search_web.sh。这里只补齐 Nav2 这
 # 一层，并负责按顺序等齐 4 项就绪证据。
 
 ENABLE_MOTION=0
+OPERATOR_SUPERVISED_ROTATION=0
 for arg in "$@"; do
   case "$arg" in
     --enable-motion) ENABLE_MOTION=1 ;;
+    --operator-supervised-rotation) OPERATOR_SUPERVISED_ROTATION=1 ;;
     -h|--help)
-      sed -n '3,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      sed -n '3,28p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
       printf 'ERROR: unknown argument: %s\n' "$arg" >&2
-      printf '只接受 --enable-motion（默认只规划）。\n' >&2
+      printf '只接受 --enable-motion 与 --operator-supervised-rotation（默认只规划）。\n' >&2
       exit 2
       ;;
   esac
 done
+
+# 转向放行只在执行链路里有意义：单独传它而不传 --enable-motion，bridge 会以
+# execution_enabled:=false 起来，豁免根本用不上。这里宁可报错，也不要让它看起来
+# 被接受了却没接线 —— "参数写了但没生效"正是本项目反复踩的坑。
+if [[ "$OPERATOR_SUPERVISED_ROTATION" == 1 && "$ENABLE_MOTION" == 0 ]]; then
+  printf '%s\n' 'ERROR: --operator-supervised-rotation 必须与 --enable-motion 同时使用。' >&2
+  exit 2
+fi
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "${script_dir}/../.." && pwd)"
@@ -56,6 +75,12 @@ else
   printf '%s\n' ' GO2-W Nav2 自主搜索：执行链路已启用（--enable-motion）'
   printf '%s\n' ' 现场验收尚未由本项目代为完成；运动仍由 cmd_vel bridge 的'
   printf '%s\n' ' 九道闸门把关。确认场地无人、急停在手后再继续。'
+  if [[ "$OPERATOR_SUPERVISED_ROTATION" == 1 ]]; then
+    printf '%s\n' ' 转向放行：已开启（--operator-supervised-rotation）'
+    printf '%s\n' ' 桥的「净空验证」那一条被豁免，其余闸门照旧。'
+    printf '%s\n' ' 近场盲区是真实存在的（实测最差 0.291 m 不可观测）——'
+    printf '%s\n' ' 这条通道的安全性依赖现场的人手持即停，不是"已证明安全"。'
+  fi
   printf '%s\n' '=============================================================='
 
   # 计划书 §10：执行授权是 configs/go2w/navigation_gate.yaml 里的
@@ -205,7 +230,12 @@ setsid bash -c 'exec ros2 run go2w_control_arbiter arbiter' \
   >"${log_root}/control_arbiter.log" 2>&1 &
 printf '%s\n' "$!" >"$arbiter_pidfile"
 if [[ "$ENABLE_MOTION" == 1 ]]; then
-  setsid bash -c 'exec ros2 run go2w_cmd_vel_bridge bridge --ros-args -p execution_enabled:=true' \
+  bridge_params='-p execution_enabled:=true'
+  if [[ "$OPERATOR_SUPERVISED_ROTATION" == 1 ]]; then
+    bridge_params="${bridge_params} -p operator_supervised_rotation:=true"
+  fi
+  printf 'Starting cmd_vel bridge (ros-args %s) ...\n' "$bridge_params"
+  setsid bash -c "exec ros2 run go2w_cmd_vel_bridge bridge --ros-args ${bridge_params}" \
     >"${log_root}/cmd_vel_bridge.log" 2>&1 &
 else
   setsid bash -c 'exec ros2 run go2w_cmd_vel_bridge bridge' \

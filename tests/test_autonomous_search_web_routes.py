@@ -87,7 +87,11 @@ def _wait_status(client: TestClient, statuses: set[str], timeout: float = 60.0) 
 
 
 def _wait_event(client: TestClient, event_type: str, timeout: float = 30.0) -> list[str]:
-    """等到 `event_type` 出现在事件流里，返回当时全部事件类型。
+    """等到 `event_type` 出现在归档事件流里，返回当时全部事件类型。
+
+    §2.2 删掉了 `/api/search/events`（它是 state 的第二份投影）。事件仍然完整地
+    落在会话归档里，历史详情 API 是唯一的读口 —— 这条路径同时也把"归档里的事件
+    和 live 事件是同一批"钉住了。
 
     ⚠ **不能**在 `_wait_status(TARGET_FOUND)` 之后直接取事件：状态机置位与事件
     落盘不是同一个原子步骤。实测（2026-09-16，12 次）**4 次**会读到"状态已是
@@ -100,25 +104,35 @@ def _wait_event(client: TestClient, event_type: str, timeout: float = 30.0) -> l
     deadline = time.time() + timeout
     types: list[str] = []
     while time.time() < deadline:
-        events = client.get("/api/search/events?limit=100").json()["events"]
-        types = [item["event_type"] for item in events]
-        if event_type in types:
-            return types
+        session_id = client.get("/api/search/state").json().get("session_id") or ""
+        if session_id:
+            record = client.get(f"/api/search/history/{session_id}").json()
+            types = [item["event_type"] for item in (record.get("events") or [])]
+            if event_type in types:
+                return types
         time.sleep(0.05)
     return types
 
 
-def test_idle_state_map_objects_events(tmp_path) -> None:
+def test_idle_state_has_one_empty_graph(tmp_path) -> None:
+    """空闲态：一份 `graph`（`null`）+ 空的小状态，没有第二张图、没有旧路由。
+
+    §2.2 之后 `/api/search/map`、`/objects`、`/events` 都不存在了 —— 这条同时
+    钉住"它们真的没了"（404 而不是返回一份影子数据）。
+    """
     client, _ = make_app(tmp_path)
     with client:
         state = client.get("/api/search/state").json()
         assert state["status"] == "IDLE"
-        assert client.get("/api/search/map").json()["map_mode"] == "topological"
-        assert client.get("/api/search/objects").json() == {
+        assert state["graph"] is None
+        assert state["graph_revision"] == 0
+        assert state["objects"] == {
             "current": [], "session_seen": [], "target_evidence": {},
         }
-        events = client.get("/api/search/events").json()["events"]
-        assert isinstance(events, list)
+        for stale in ("/api/search/map", "/api/search/objects", "/api/search/events",
+                      "/api/search/decisions", "/api/search/frontiers",
+                      "/api/search/place-graph", "/api/search/semantic-map"):
+            assert client.get(stale).status_code == 404, f"{stale} 应当已删除"
         assert client.get("/api/search/history").json()["sessions"] == []
         assert client.get("/api/search/readiness").json()["ready"] is True
 
@@ -193,7 +207,7 @@ def test_search_end_to_end_state_and_summary(tmp_path) -> None:
     )
     with client:
         client.post("/api/search/start", json={
-            "target": "蓝色垃圾桶", "backend": "mock", "reasoner": "semantic_navigation",
+            "target": "蓝色垃圾桶", "backend": "mock",
             # 本用例查的是 WebUI 会话骨架（state/summary/map/objects/events/
             # history），不是目标接近闭环，所以走计划书 §18.2 允许保留的 legacy
             # 分支：看见即收工。接近闭环由 test_autonomous_explorer_target_approach
@@ -205,9 +219,8 @@ def test_search_end_to_end_state_and_summary(tmp_path) -> None:
         assert state["result"] == "TARGET_FOUND"
         assert state["target"] == "蓝色垃圾桶"
         assert state["summary"]["planning_cycles"] == 0
-        map_data = client.get("/api/search/map").json()
-        assert map_data["revision"] >= 1
-        assert client.get("/api/search/objects").json()["session_seen"]
+        assert state["graph"]["revision"] >= 1
+        assert state["objects"]["session_seen"]
         types = _wait_event(client, "SEARCH_FINISHED")
         assert "TARGET_CONFIRMED" in types
         assert "SEARCH_FINISHED" in types
@@ -218,7 +231,7 @@ def test_search_end_to_end_state_and_summary(tmp_path) -> None:
         archived = client.get(f"/api/search/history/{session_id}").json()
         assert archived["ok"] is True
         assert archived["state"]["status"] == "TARGET_FOUND"
-        assert archived["state"]["map"]["revision"] >= 1
+        assert archived["state"]["graph"]["revision"] >= 1
         assert archived["events"]
 
 

@@ -43,6 +43,19 @@ class SafetyState:
     lease_alive: bool = False
     lidar_fresh: bool = False
     rotation_clearance_valid: bool = False
+    # 操作员在场的转向放行（2026-10-10 用户批准；方案见
+    # docs/GO2W_操作员在场转向放行_方案_20261010.md）。
+    #
+    # 它是**唯一**的放宽点，且只放宽下面那一条净空判定 —— 武装、租约、急停、
+    # 雷达新鲜度、遥控接管、定位新鲜度、看门狗全部照旧。默认 False：
+    # 不显式声明"操作员在场"时，本函数的行为与加重这个字段之前**逐位相同**。
+    #
+    # 为什么可以放宽：净空那条要证明的是"原地转一圈不会撞到东西"，而这只狗的
+    # 雷达看不见自身近场（实测 720/720 个采样方位不可观测，最差径向空隙
+    # ~0.291 m），所以持久证明在软件上开不了。替代品不是"证明安全"，而是
+    # "现场有人手持即停"——那是操作决策，所以只能由启动栈的人声明
+    # （`bridge_node` 从启动参数读，不从话题读：话题任何进程都能发）。
+    operator_supervised_rotation: bool = False
     # 计划书 §6.5：Nav2 执行不再看 /lio/valid，改看坐标桥发布的
     # /go2w/nav/localization_valid（map -> odom_fused -> base_link 的新鲜度）。
     navigation_localization_fresh: bool = False
@@ -78,7 +91,13 @@ def decide_velocity(
         blockers.append("lease_unavailable")
     if not safety.lidar_fresh:
         blockers.append("lidar_stale")
-    if abs(requested.angular_z) > 1e-9 and not safety.rotation_clearance_valid:
+    turning = abs(requested.angular_z) > 1e-9
+    # 三者同时成立才算"用上了操作员豁免"：要转向、没有净空证据、操作员声明在场。
+    # 缺任何一条都退回原行为（净空有效时本来就不需要豁免，所以那时也不标它）。
+    supervised_turn = (
+        turning and not safety.rotation_clearance_valid and safety.operator_supervised_rotation
+    )
+    if turning and not safety.rotation_clearance_valid and not safety.operator_supervised_rotation:
         blockers.append("rotation_clearance_unvalidated")
     # 计划书 §6.5：控制来源必须是已知取值。来源字符串一旦拼错或为空，下面几条
     # 按来源分流的闸门会全部静默跳过——那正是最危险的一类失效。
@@ -111,7 +130,15 @@ def decide_velocity(
         _approach(previous.linear_x, target_linear, linear_delta),
         _approach(previous.angular_z, target_angular, angular_delta),
     )
-    return BridgeDecision(shaped, True, "allowed", False)
+    # 放行理由必须**看得出是靠豁免**，不能与"净空已验证"同形：否则事后从话题上
+    # 无法区分哪一次转向有物理依据。这条串会原样发到
+    # /go2w/cmd_vel_bridge/status（`bridge_node._tick`）。
+    return BridgeDecision(
+        shaped,
+        True,
+        "allowed_operator_supervised_rotation" if supervised_turn else "allowed",
+        False,
+    )
 
 
 def _approach(current: float, target: float, maximum_delta: float) -> float:

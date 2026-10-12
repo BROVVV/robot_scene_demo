@@ -47,6 +47,41 @@ class TestExplorationBudget(unittest.TestCase):
         self.assertEqual(result.result, "MAX_STEPS_REACHED")
         self.assertEqual(result.motion_steps, 3)
 
+    def test_dry_run_reports_zero_motion_steps(self) -> None:
+        """干跑不许在报表里冒充"机器狗走了 N 步"（计划书 §60）。
+
+        2026-09-15 实测 `search_20260915_165742_dr03` 报 `motion_steps=12`，
+        但 12 轮 observation 的 pose 逐位相同；2026-09-17 又一次报 3 步。
+        根因是 backend 的 dry_run 分支为了把推理链跑完返回 SUCCEEDED，
+        而计数只看 `result.succeeded`。
+
+        对照臂不能省：同一场景 dry_run=False 必须照常数到 3 —— 少了它，
+        下面那个 0 也可能只是"这条路径压根没成功执行过"。
+        """
+        def _run(dry_run: bool):
+            scene = scenario_no_target(empty_scenes=2)
+            policy = load_exploration_policy()
+            policy.budget = ExplorationBudget(max_motion_steps=3,
+                                              max_planning_cycles=5)
+            explorer = AutonomousExplorer(
+                target="t", observer=scene.observer(), matcher=scene.matcher(),
+                verifier=scene.verifier(), backend=MockBackend(),
+                graph=ExplorationGraph(session_id="t"), policy=policy,
+                dry_run=dry_run,
+            )
+            return explorer.run()
+
+        # 对照臂：真跑（dry_run=False）照常计数，走到 max_motion_steps 收工。
+        control = _run(dry_run=False)
+        self.assertEqual(control.motion_steps, 3)
+        self.assertEqual(control.result, "MAX_STEPS_REACHED")
+
+        # 干跑：执行照样成功，但一步都没走 —— 计数必须是 0，
+        # 且不再消耗 max_motion_steps（改由 planning_cycles 兜底）。
+        dry = _run(dry_run=True)
+        self.assertEqual(dry.motion_steps, 0)
+        self.assertEqual(dry.result, "MAX_PLANNING_CYCLES_REACHED")
+
     def test_planning_cycle_limit_terminates(self) -> None:
         scene = MockObservationScene(scenes=[
             MockSceneStep(objects=["desk"]),

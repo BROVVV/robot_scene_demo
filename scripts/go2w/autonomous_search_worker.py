@@ -12,13 +12,21 @@ Protocol (stdin, JSONL):
 
 Protocol (stdout, JSONL):
     {"type":"ready", ...}
-    {"type":"event","event":{explorer event dict}}   (realtime, graph-augmented)
+    {"type":"graph_snapshot","revision":N,"graph":{...}}  (once per revision)
+    {"type":"event","event":{explorer event dict}}   (realtime, no graph)
     {"type":"worker_status","status":{...}}
     {"type":"error","message":...}
     {"result": {...}}  (SessionResult printed by run_semantic_exploration)
 
 The worker reuses the CLI wiring in ``run_semantic_exploration.py`` via an
 ``event_hook`` that forwards every explorer event to stdout in realtime.
+
+计划书 §2.1：这张图是 worker 与 Web 之间**唯一**的整图传输。普通
+``observation``/``memory_update``/``navigation_result`` 事件不再携带图，
+只报 ``graph_revision``。worker 在 ``event_hook`` 里比对
+``explorer.semantic_graph.revision``，变化时**先**发一条 ``graph_snapshot``，
+再发导致这次变化的事件。图字段的映射只在
+``SemanticNavigationGraph.web_snapshot()`` 里做一次。
 """
 
 from __future__ import annotations
@@ -55,6 +63,8 @@ _STATE: dict[str, Any] = {
     "current_detail": "",
     "phase_started_at": None,
     "last_progress_at": None,
+    # 上次已发给 Web 的图 revision；None 表示本会话还没发过（首次必发）。
+    "last_graph_revision": None,
 }
 
 _EMIT_LOCK = threading.Lock()
@@ -82,12 +92,38 @@ def _project_path(value: Any) -> str:
     return str(path if path.is_absolute() else PROJECT_ROOT / path)
 
 
+def emit_graph_snapshot(explorer: Any) -> None:
+    """Emit the graph once per revision change (计划书 §2.1).
+
+    Called before forwarding the ordinary event that caused the bump, so the
+    Web side always has the graph at least as new as the event it just saw.
+    The first call of a session emits the initial (usually revision 0) graph.
+    """
+    graph = getattr(explorer, "semantic_graph", None)
+    if graph is None:
+        return
+    revision = int(getattr(graph, "revision", 0) or 0)
+    if revision == _STATE.get("last_graph_revision"):
+        return
+    _STATE["last_graph_revision"] = revision
+    emit({
+        "type": "graph_snapshot",
+        "session_id": _STATE.get("session_id") or getattr(explorer, "session_id", None),
+        "task_id": _STATE.get("task_id"),
+        "executor_id": _STATE.get("executor_id"),
+        "worker_generation": _STATE.get("worker_generation"),
+        "revision": revision,
+        "graph": graph.web_snapshot(),
+    })
+
+
 def make_event_hook() -> Any:
     def hook(event: dict[str, Any], holder: dict[str, Any]) -> dict[str, Any]:
         _STATE["holder"] = holder
         explorer = holder.get("explorer")
         if explorer is not None:
             _STATE["session_id"] = explorer.session_id
+            emit_graph_snapshot(explorer)
         if event.get("event") == "session_finish":
             _STATE["finish_reason"] = str(event.get("result") or "")
         now = time.time()
@@ -116,7 +152,10 @@ def build_argv(params: dict[str, Any]) -> list[str]:
     argv = [
         "--target", str(params.get("target") or ""),
         "--backend", str(params.get("backend") or "nav2"),
-        "--reasoner", str(params.get("reasoner") or "semantic_navigation"),
+        # 计划书 §3-C：reasoner 不再由请求选择，Web 侧的命令固定传现有 CLI 名。
+        # 必须与 ``app/manual_web_demo/search_models.SEARCH_REASONER`` 一致
+        # （test_webui_search_request_contract 钉住这一点）。
+        "--reasoner", "semantic_navigation",
     ]
     if params.get("operator_supervised_experiment") or params.get(
         "enable_autonomous_motion"
@@ -151,8 +190,6 @@ def build_argv(params: dict[str, Any]) -> list[str]:
         argv.append("--spatial-v2")
     if params.get("spatial_provider"):
         argv += ["--spatial-provider", str(params["spatial_provider"])]
-    if params.get("rtabmap"):
-        argv.append("--rtabmap")
     for key, flag in (
         ("llm_model", "--llm-model"),
         ("detector", "--detector"),
@@ -163,10 +200,15 @@ def build_argv(params: dict[str, Any]) -> list[str]:
         ("session_dir", "--session-dir"),
         ("replay", "--replay"),
         ("record_video", "--record-video"),
+        # 计划书 §2.3：三维对象上屏的两个路径由 Web 侧配置显式给出，不在下游
+        # 用 glob 或 mtime 去猜"哪份数据属于当前地图"。
+        ("map_meta_path", "--map-meta-path"),
+        ("object_snapshot_path", "--object-snapshot-path"),
     ):
         value = params.get(key)
         if value:
-            if key in {"spool_root", "output", "session_dir", "replay"}:
+            if key in {"spool_root", "output", "session_dir", "replay",
+                       "map_meta_path", "object_snapshot_path"}:
                 value = _project_path(value)
             argv += [flag, str(value)]
     # The WebUI can be launched by systemd, an IDE, or an SSH shell whose
@@ -297,8 +339,9 @@ def run_session(params: dict[str, Any]) -> None:
             },
         })
         return
-    if args.reasoner == "semantic":
-        args.reasoner = "semantic_navigation"
+    # 这里曾经把 ``--reasoner semantic`` 归一成 ``semantic_navigation``：worker
+    # 绕过 ``rse.main()`` 直接调 ``run_go2w``，拿不到那边的同名归一。§3-C 之后
+    # ``build_argv`` 固定传 CLI 名，旧别名在这条路上已经没有产出点。
     _emit_stage("LOAD_PIPELINE")
     hook = make_event_hook()
     try:
@@ -330,6 +373,12 @@ def run_session(params: dict[str, Any]) -> None:
         emit({**envelope, "message": f"{type(exc).__name__}: {exc}"})
         emit({**envelope, "message": traceback.format_exc()[-2000:]})
         rc = 4
+    # 收尾兜底：若最后一次 revision 变化（例如目标确认）没有跟任何普通事件，
+    # 这里补发一次，保证 Web 拿到的最终图与 explorer 收工时一致。
+    if _STATE.get("holder"):
+        explorer = _STATE["holder"].get("explorer")
+        if explorer is not None:
+            emit_graph_snapshot(explorer)
     if rc != 0 and not _STATE.get("finish_reason"):
         # The runner can reject a real session during hardware preflight
         # before an explorer emits session_finish.  Preserve that failure in
@@ -368,6 +417,7 @@ def handle_command(command: dict[str, Any]) -> None:
         )
         _STATE["thread"] = thread
         _STATE["finish_reason"] = ""
+        _STATE["last_graph_revision"] = None
         thread.start()
     elif cmd == "pause":
         explorer = _explorer()

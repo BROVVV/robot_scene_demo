@@ -18,7 +18,7 @@ import json
 import os
 import sys
 import time
-from collections import Counter
+import uuid
 
 import numpy as np
 import rclpy
@@ -40,6 +40,7 @@ from app.spatial.lio_nofix_judge import (  # noqa: E402
     HEALTHY,
     LioNofixJudge,
 )
+from app.spatial.object_display_snapshot import meta_payload  # noqa: E402
 
 DEFAULT_SNAPSHOT = os.path.join(
     _PROJECT_ROOT, "outputs/autonomous_search/runtime/slam_map_3d.json")
@@ -51,14 +52,6 @@ DEFAULT_LIO_DIAG_LOG = os.path.join(
 # 必须回填：LIO 先发散、writer 后启动（launcher 每次都会重启 writer）时，
 # 只 tail 新内容必然假绿。
 LIO_DIAG_BACKFILL_BYTES = 1 << 20
-
-# 三维视图的置信度门限。检测端工作在 GroundingDINO box_threshold=0.12 这种偏召回
-# 的阈值上，上游没有任何一层按分数拦过，于是碎片框全落到画面上：2026-09-11 实测
-# 一次搜索出 17 个"垃圾桶"，只有 1 个 0.82，其余 16 个在 0.12~0.33 —— 里面有
-# 2.7cm 宽的、8cm 立方的、悬空 z=0.74 的，还有同一物体同帧分裂出的两个框
-# （相距 3mm 各自建了实体）。这里只做显示层过滤，不动 events.jsonl 里的原始记录，
-# 取证与融合链路不受影响。
-MIN_OBJECT_CONFIDENCE = 0.35
 
 # 轨迹点的绝对量级上限（米）。odom 发散时 x/y 会指数涨到 1e20 —— 2026-09-11 实测
 # 持久化轨迹 9332 个点里 9206 个是这种值。轨迹决定 WebUI 的画幅 focus_bounds，
@@ -140,13 +133,16 @@ class WebuiSnapshotWriter(Node):
         # 让过滤比例飙到接近 100%，由下面的 50% 护栏自动停用。
         self.declare_parameter("trajectory_path", os.path.join(
             os.path.dirname(DEFAULT_SNAPSHOT), "slam_map_trajectory.json"))
-        # Dataset D 的语义观测（events.jsonl）：把物体标注一并写进快照，
-        # WebUI 的三维视图会把这些物体画在地图上（见 static/slam_map_3d.js）。
-        self.declare_parameter("objects_events", "")
-        self.declare_parameter(
-            "objects_glob",
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__)))), "artifacts/slam_validation/semanticD_*/events.jsonl"))
+        # §2.3：本写端**不再**从 events.jsonl 里挑物体。在线显示的唯一对象源是
+        # 语义建图进程写的 semantic_objects.json，它按 map_epoch 与这张地图配对
+        # （见 app/manual_web_demo/slam_map_snapshot.py 的合成逻辑）。以前这里
+        # 用 glob 猜"哪份 events 属于当前地图"，2026-09-17 实测挑中的是 09-10 的
+        # Dataset D 归档，当天新定位的 20 个物体一个都没上屏 —— 猜来源这条路已经
+        # 被证伪，不要加回来。原始逐帧检测仍留在 events.jsonl 里供离线评测使用。
+        # 点云之外另写一份轻量元数据（map_epoch/frame_id/map_revision），对象
+        # 生产者只读它，不去解析这份几万点的大 JSON。
+        self.declare_parameter("meta_path", os.path.join(
+            os.path.dirname(DEFAULT_SNAPSHOT), "slam_map_meta.json"))
         # LIO 的 launch 日志：§13.4 健康门的判据源。`[GO2W-DIAG]` 那些量
         # （ros2_ws/src/plain_slam_ros2/src/lio_3d_interface.cpp:250-263）没有任何
         # 非日志出口，而那个文件在 §10.2 禁改清单里、且重启 LIO 栈会作废当前建图
@@ -165,6 +161,7 @@ class WebuiSnapshotWriter(Node):
         self._trajectory_saved = 0
         self._trajectory: list = self._load_trajectory()
         self._snapshot_path = str(self.get_parameter("snapshot_path").value)
+        self._meta_path = str(self.get_parameter("meta_path").value)
         self._max_points = int(self.get_parameter("max_points").value)
         self._latest = None
         self._received = 0
@@ -188,6 +185,10 @@ class WebuiSnapshotWriter(Node):
         self._judge = LioNofixJudge(starve_timeout_s=2.0 * self._period_s)
         self._lio_fh = None
         self._session_id = 0
+        # §2.3：进程启动随机前缀 + 地图会话计数。重启即换前缀，LIO 日志截断
+        # （= SLAM 换了会话）即换计数，两种"这不是同一张图了"都因此改变 epoch，
+        # 旧对象立刻不上屏，不需要再造第二套 reset 状态。
+        self._epoch_prefix = uuid.uuid4().hex[:8]
         # §13.5 的 last-good 地图本体，元素见 _flush 里 body 那个 dict。
         # None = 还没攒到过一帧健康地图。
         self._last_good_map = None
@@ -216,6 +217,20 @@ class WebuiSnapshotWriter(Node):
             return None
         trajectory = np.asarray(self._trajectory, dtype=np.float64)
         low, high = trajectory.min(axis=0), trajectory.max(axis=0)
+        # 画幅不许超出当前地图（+边距）。odom 发散时轨迹尾段会甩到几百米外
+        # （2026-09-15 实测 313.7 / 996.8 m，09-17 实测 978.3 m），三个值全都刚好
+        # 绕过 MAX_TRAJECTORY_ABS_M=1000 这道绝对上限，画幅被撑到千米量级、房间压进
+        # 角落的一个像素 —— 就是"地图全缩在边边一点、其余全空"。改用地图当归一化基准
+        # 是相对判据，发散到多远都拦得住，不像常量要靠刚好卡在中间（那条老路三次全没碰到）。
+        if self._latest_bounds is not None:
+            map_low = np.asarray(self._latest_bounds[0], dtype=np.float64)[:2]
+            map_high = np.asarray(self._latest_bounds[1], dtype=np.float64)[:2]
+            low = np.maximum(low, map_low)
+            high = np.minimum(high, map_high)
+            if (low > high).any():
+                # 整条轨迹都被夹到了地图外（SLAM 重启换了原点，轨迹与当前地图不同系）。
+                # 此时画幅取地图范围 —— 绝不能退回上面那个 bbox，它会是个千米级空框。
+                low, high = map_low, map_high
         return {
             "min": [float(low[0] - self._focus_margin),
                     float(low[1] - self._focus_margin), self._min_z],
@@ -297,78 +312,13 @@ class WebuiSnapshotWriter(Node):
             self._last_ros_stamp = stamp
             self._map_updated_at = time.time()
 
-    def _load_objects(self) -> list:
-        """从 Dataset D 的 events.jsonl 读语义物体（label + map_xyz）。
-
-        注意坐标系统一：物体坐标是"采集它那一次 SLAM 会话"的 pslam_map 坐标。
-        若 SLAM 映射栈之后被重启，pslam_map 原点改变，旧物体就与当前地图不同系 ——
-        因此这里每次写快照都**重新发现最新的 Dataset D**，并且只保留落在当前地图
-        包围盒（带余量）内的物体，避免把过期坐标画到新地图上。
-        """
-        import glob
-        path = str(self.get_parameter("objects_events").value)
-        if not path or not os.path.exists(path):
-            pattern = str(self.get_parameter("objects_glob").value)
-            candidates = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
-            if not candidates:
-                return []
-            path = candidates[0]
-        # 按 object_id 去重：events.jsonl 里同一个物体每次被观测/更新都会再写一条
-        # `semantic_object_localized`（observation_count 递增，object_id 不变）。
-        # 若把每条事件都当成新物体，就会把同一张桌子/主机/垃圾桶画两遍
-        # （2026-09-10 实际发生过）。这里保留**最后一次**出现的坐标（最新观测）。
-        deduped: dict = {}
-        with open(path, encoding="utf-8") as handle:
-            for line in handle:
-                try:
-                    event = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if event.get("event") != "semantic_object_localized":
-                    continue
-                obj = event.get("object") or {}
-                xyz = obj.get("map_xyz")
-                if not xyz:
-                    continue
-                if (obj.get("confidence") or 0.0) < MIN_OBJECT_CONFIDENCE:
-                    continue
-                key = obj.get("object_id") or f"{obj.get('label')}|{xyz[0]:.2f}|{xyz[1]:.2f}"
-                box_size = obj.get("box_size")
-                size = None
-                if isinstance(box_size, (list, tuple)) and len(box_size) == 3:
-                    try:
-                        size = [float(v) for v in box_size]
-                    except (TypeError, ValueError):
-                        size = None
-                deduped[key] = {
-                    "label": obj.get("label"),
-                    "x": round(float(xyz[0]), 3),
-                    "y": round(float(xyz[1]), 3),
-                    "z": round(float(xyz[2]), 3),
-                    "confidence": obj.get("confidence"),
-                    "observation_count": obj.get("observation_count"),
-                    "size": size,
-                }
-        objects = list(deduped.values())
-        return self._filter_by_map_bounds(objects)
-
-    def _filter_by_map_bounds(self, objects: list) -> list:
-        """丢掉落在当前地图包围盒之外的物体（多为旧会话的过期坐标）。"""
-        latest = self._latest_bounds
-        if not objects or latest is None:
-            return objects
-        low, high = latest
-        margin = 5.0
-        kept = []
-        for item in objects:
-            if (low[0] - margin <= item["x"] <= high[0] + margin
-                    and low[1] - margin <= item["y"] <= high[1] + margin):
-                kept.append(item)
-        if len(kept) != len(objects):
-            self.get_logger().warn(
-                f"dropped {len(objects) - len(kept)} object(s) outside current map bounds "
-                f"(stale SLAM session coordinates?)")
-        return kept
+    @staticmethod
+    def _write_atomic(path: str, payload: dict) -> None:
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        temporary = f"{path}.tmp"
+        with open(temporary, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle)
+        os.replace(temporary, path)
 
     def _open_lio_diag(self, start: int):
         try:
@@ -490,6 +440,7 @@ class WebuiSnapshotWriter(Node):
             "permanent_source": str(self.get_parameter("map_topic").value),
             "canonical_frame": frame,
             "frame_id": frame,
+            "map_epoch": f"{self._epoch_prefix}-{self._session_id}",
             "target_map_frame": frame,
             "ros_stamp": stamp,
             "last_good_map_stamp": stamp,
@@ -510,7 +461,8 @@ class WebuiSnapshotWriter(Node):
             "focus_bounds": self._focus_bounds(),
             "points": [[round(float(p[0]), 3), round(float(p[1]), 3), round(float(p[2]), 3)]
                        for p in points],
-            "objects": self._load_objects(),
+            # objects / object_filter_stats 不在这里写：本写端只负责地图。
+            # /api/slam/map3d 会把语义建图进程写的对象快照按 map_epoch 合成进来。
             # 本写端不订阅 scan 话题，给一个干净的空 preview；前端显示"未接入"。
             "preview": {"frame_id": "", "ros_stamp": 0.0, "wall_time": 0.0,
                         "point_count": 0, "points": []},
@@ -548,11 +500,10 @@ class WebuiSnapshotWriter(Node):
             if health == DEGRADED_LIO_DRIFT:
                 payload["health_reason"] = self._judge.reason
         self._save_trajectory()
-        os.makedirs(os.path.dirname(self._snapshot_path), exist_ok=True)
-        temporary = f"{self._snapshot_path}.tmp"
-        with open(temporary, "w", encoding="utf-8") as handle:
-            json.dump(payload, handle)
-        os.replace(temporary, self._snapshot_path)
+        self._write_atomic(self._snapshot_path, payload)
+        # 元数据在地图之后落盘：先写 meta 会让对象生产者读到一张还没上屏的地图的
+        # epoch，于是它投影出的对象要等下一次轮询才对得上。
+        self._write_atomic(self._meta_path, meta_payload(payload))
         self.get_logger().info(
             f"snapshot written: {len(points)} pts frame={payload['frame_id']} "
             f"({os.path.getsize(self._snapshot_path)} bytes)")

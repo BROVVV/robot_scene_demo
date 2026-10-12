@@ -27,7 +27,11 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.manual_web_demo.config import ManualDemoSettings, get_manual_demo_settings
+from app.manual_web_demo.config import (
+    DISPLAY_ONLY_REASON,
+    ManualDemoSettings,
+    get_manual_demo_settings,
+)
 from app.manual_web_demo.control_ownership import ControlOwner, OwnerState
 from app.manual_web_demo.manual_drive_controller import (
     KEY_MAP,
@@ -174,6 +178,12 @@ class DemoRuntime:
             owner=self.owner,
             executor_factory=search_executor_factory,
             session_dir=search_session_dir or _DEFAULT_SEARCH_SESSION_DIR,
+            # §2.3：搜索 worker 把三维对象写到哪、读哪份地图元数据，由 Web 侧这
+            # 一份配置说了算；读取端（/api/slam/map3d）用的是同样的两个路径。
+            map_paths={
+                "map_meta_path": config.slam_map_meta,
+                "object_snapshot_path": config.semantic_objects_snapshot,
+            },
         )
         self._last_camera_msg_time = 0.0
         self._camera_info: dict[str, Any] = {}
@@ -199,10 +209,14 @@ class DemoRuntime:
             return
         self._started = False
         self.controller.disable(reason="server_shutdown")
-        if self.controller.state.motion_in_flight:
-            self.worker.request_estop()
-        else:
-            self.worker.request_stop()
+        # 只读（实体遥控器）模式下退出时**不得**替操作员发停止命令：计划书
+        # §6.2 F 要求后端不发 stop/estop/motion，§9.4 更直接——软件不拥有运动
+        # 控制权，退出时不能假设自己有权给机器狗下停止。机器狗由实体遥控器停。
+        if not self.config.display_only:
+            if self.controller.state.motion_in_flight:
+                self.worker.request_estop()
+            else:
+                self.worker.request_stop()
         self.analyzer.stop()
         self.worker.stop()
         for task in self._tasks:
@@ -338,6 +352,11 @@ class DemoRuntime:
             "control": {
                 "default_disabled": not self.config.control_enabled_default,
                 "deadman_ms": self.config.deadman_ms,
+                # 前端据此隐藏 WASD/QE 控制区并显示只读横幅。
+                "display_only": self.config.display_only,
+                "display_only_reason": (
+                    DISPLAY_ONLY_REASON if self.config.display_only else None
+                ),
             },
             "directions": self.controller.direction_availability(),
             "worker": {
@@ -475,7 +494,23 @@ def create_app(
         runtime.search_service,
         on_estop=lambda: runtime.controller.estop(),
         readiness_provider=runtime.search_readiness,
+        display_only_provider=lambda: config.display_only,
     )
+
+    def _display_only_403() -> JSONResponse | None:
+        """只读硬门。返回 None 表示放行。
+
+        计划书 §6.2 F：实体遥控器模式下"必须确保 DISPLAY_ONLY 下没有任何写
+        运动路径"，而且"优先在 API/WS 入口做统一硬门，不要散落很多条件判断"。
+        所以判定只有这一处，各路由只需在第一行调用它。``/api/llm/disable``
+        是唯一的例外（见该路由的注释）：它只会关掉识别，发不出运动。
+        """
+        if not config.display_only:
+            return None
+        return JSONResponse(
+            {"ok": False, "error": "display_only", "reason": DISPLAY_ONLY_REASON},
+            status_code=403,
+        )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -523,25 +558,42 @@ def create_app(
 
     @app.get("/api/slam/map3d")
     async def api_slam_map3d() -> JSONResponse:
-        """Latest decimated mapping-assist cloud; display-only and no-store."""
+        """Latest decimated mapping-assist cloud; display-only and no-store.
+
+        计划书 §2.3：对象不在这里读，而是按 ``map_epoch``/``frame_id`` 与地图
+        配对后合成 —— 对不上就一个都不画，并在 ``object_overlay_status`` 里说明
+        原因。这是前端唯一的三维接口，不再开 /api/objects3d。
+        """
         response = JSONResponse(
-            load_slam_map_snapshot(config.slam_map_snapshot_path)
+            load_slam_map_snapshot(
+                config.slam_map_snapshot_path,
+                config.semantic_objects_snapshot_path,
+            )
         )
         response.headers["Cache-Control"] = "no-store, max-age=0"
         return response
 
     @app.post("/api/llm/enable")
     async def api_llm_enable() -> JSONResponse:
+        # 只读模式下不许打开：这条 VLM 定时识别会与真正做落图的 RGB-D 语义
+        # 侧车抢 GPU（计划书 §2.4 / §6.2 F）。
+        blocked = _display_only_403()
+        if blocked is not None:
+            return blocked
         runtime.analyzer.set_enabled(True)
         return JSONResponse({"ok": True, "enabled": True})
 
     @app.post("/api/llm/disable")
     async def api_llm_disable() -> JSONResponse:
+        # 唯一不挡的写入口：它只会让识别停下来，发不出任何运动请求。
         runtime.analyzer.set_enabled(False)
         return JSONResponse({"ok": True, "enabled": False})
 
     @app.post("/api/control/enable")
     async def api_control_enable() -> JSONResponse:
+        blocked = _display_only_403()
+        if blocked is not None:
+            return blocked
         ok_owner, owner_reason = runtime.owner.try_manual()
         if not ok_owner:
             return JSONResponse({"ok": False, "reason": owner_reason})
@@ -559,6 +611,11 @@ def create_app(
 
     @app.post("/api/control/disable")
     async def api_control_disable() -> JSONResponse:
+        # disable() 会走 _stop_if_motion()，可能发出停止请求 —— 只读模式下一律
+        # 不挡进不出去，直接 403。
+        blocked = _display_only_403()
+        if blocked is not None:
+            return blocked
         runtime.controller.disable(reason="user_disabled")
         runtime.owner.release(OwnerState.MANUAL)
         return JSONResponse({"ok": True})
@@ -567,6 +624,11 @@ def create_app(
     async def api_estop() -> JSONResponse:
         # Estop overrides every owner: manual controller AND search session
         # both stop (plan book §42); no new motion may follow.
+        # 只读模式下后端不代发急停（计划书 §6.2 F）：机器狗的急停握在操作员
+        # 手里的实体遥控器上，网页这条链路本来就没接线。
+        blocked = _display_only_403()
+        if blocked is not None:
+            return blocked
         runtime.owner.estop()
         runtime.controller.estop()
         runtime.search_service.estop_search()
@@ -574,6 +636,10 @@ def create_app(
 
     @app.post("/api/estop/reset")
     async def api_estop_reset() -> JSONResponse:
+        # reset_estop() 内部会 worker.request_stop()，同样是写运动路径。
+        blocked = _display_only_403()
+        if blocked is not None:
+            return blocked
         result = runtime.reset_estop()
         return JSONResponse(result, status_code=200 if result.get("ok") else 409)
 
@@ -749,9 +815,30 @@ def _parse_ws_message(raw: str) -> dict[str, Any] | None:
     return message
 
 
+# 只读模式下拒收的控制 WebSocket 消息。``hello`` 不在其中 —— 页面仍要能渲染
+# 初始状态。这份集合是**唯一**的判定处，不散落到各分支里（计划书 §6.2 F）。
+DISPLAY_ONLY_BLOCKED_WS_TYPES = frozenset({
+    "enable_control",
+    "key_down",
+    "key_up",
+    "heartbeat",
+    "release_all",
+    "estop",
+})
+
+
 async def _dispatch_ws_message(runtime: DemoRuntime, message: dict[str, Any]) -> None:
     msg_type = message.get("type")
     controller = runtime.controller
+    if runtime.config.display_only and msg_type in DISPLAY_ONLY_BLOCKED_WS_TYPES:
+        runtime.broadcaster.publish(
+            {
+                "type": "display_only_rejected",
+                "message_type": msg_type,
+                "reason": DISPLAY_ONLY_REASON,
+            }
+        )
+        return
     if msg_type == "hello":
         runtime.broadcaster.publish(
             {"type": "state", "state": controller.state.to_dict()}

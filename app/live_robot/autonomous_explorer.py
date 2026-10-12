@@ -465,6 +465,27 @@ class AutonomousExplorer:
 
     # ---- main loop ---------------------------------------------------------
 
+    def _pump_backend(self, seconds: float = 0.0) -> None:
+        """重试等待期间把后端的 ROS 订阅转起来。
+
+        nav2 后端的就绪判据（``/go2w/nav/localization_valid``、``/map``）由订阅
+        回调喂，缓存初值是「未收到」。原来的重试只在两次 ``health()`` 之间
+        ``time.sleep``，而 ``run()`` 是阻塞调用、bootstrap 期间没有任何人在 spin，
+        回调永不执行 ⇒ 无论重试几次都判 ``NO_LOCALIZATION``，搜索连第一轮规划都
+        进不去。后端不提供 ``spin_once`` 时（离线 mock、实验后端）退回 sleep，
+        语义与原来一致。
+        """
+        spin = getattr(self._backend, "spin_once", None)
+        if spin is None:
+            if seconds > 0:
+                time.sleep(seconds)
+            return
+        deadline = time.monotonic() + max(0.0, seconds)
+        while True:
+            spin()
+            if time.monotonic() >= deadline:
+                return
+
     def run(self) -> SessionResult:
         started = float(self._now())
         budget = self.policy.budget
@@ -494,6 +515,7 @@ class AutonomousExplorer:
         # ---- BOOTSTRAP ------------------------------------------------------
         backend_ready = False
         for attempt in range(1, max(1, self.policy.recovery.backend_reconnect_attempts) + 1):
+            self._pump_backend()
             health = self._backend.health()
             self._emit("backend_health", attempt=attempt, ready=health.ready,
                        degraded=health.degraded, health=health.to_dict())
@@ -501,7 +523,9 @@ class AutonomousExplorer:
                 backend_ready = True
                 break
             if attempt < self.policy.recovery.backend_reconnect_attempts:
-                time.sleep(self.policy.recovery.backend_reconnect_delay_seconds)
+                self._pump_backend(
+                    self.policy.recovery.backend_reconnect_delay_seconds
+                )
         if not backend_ready:
             finish_reason = "BACKEND_FAILURE"
             self._state = ExplorerState.FAILED
@@ -703,6 +727,7 @@ class AutonomousExplorer:
                         heading_sector=observation.heading_sector,
                         scene_objects=observation.scene_objects,
                         scene_relations=observation.scene_relations,
+                        object_update_result=observation.object_update_result,
                         pose=observation.pose,
                         timestamp=observation.timestamp,
                         target_candidate=True,
@@ -720,7 +745,9 @@ class AutonomousExplorer:
                         object_id=confirmed_object_id,
                         observation_id=observation.bundle_id,
                     )
-                    semantic_map = self.semantic_graph.to_dict()
+                    # 计划书 §2.1：普通事件不再携带整张图。图由 worker 在
+                    # revision 变化时单独发一次 graph_snapshot；这里只报版本号，
+                    # 上面两步 mark_target_confirmed 已经把 revision 推进了。
                     self._emit(
                         "memory_update",
                         node_id=self._current_node_id(observation),
@@ -730,12 +757,12 @@ class AutonomousExplorer:
                         new_sector=True,
                         information_gain=1.0,
                         no_information_cycles=0,
+                        graph_revision=self.semantic_graph.revision,
                         unique_nodes=len(self.graph.nodes),
                         unique_places=len(self.semantic_graph.place_graph.places),
                         unique_objects=len(self.semantic_graph.object_map.objects),
                         frontiers_discovered=len(self.semantic_graph.frontiers),
-                        map_nodes_total=len(semantic_map.get("nodes") or []),
-                        semantic_navigation_graph=semantic_map,
+                        map_nodes_total=self.semantic_graph.node_count,
                     )
                     # 计划书 §18.2：确认只是接近的开始。只有 legacy 开关打开
                     # 时才允许"远处看到就结束"。
@@ -827,19 +854,18 @@ class AutonomousExplorer:
             # Per-cycle flag: the next cycle's UPDATE_MEMORY only sees a
             # movement that happened in the cycle just before it.
             self._last_execution_moved = False
-            semantic_map = self.semantic_graph.to_dict()
             self._emit("memory_update", node_id=self._current_node_id(observation),
                        place_id=self._current_place_id,
                        new_labels=new_labels, new_relations=new_relations,
                        new_sector=new_sector,
                        information_gain=info_gain,
                        no_information_cycles=self._no_information_cycles,
+                       graph_revision=self.semantic_graph.revision,
                        unique_nodes=len(self.graph.nodes),
                        unique_places=len(self.semantic_graph.place_graph.places),
                        unique_objects=len(self.semantic_graph.object_map.objects),
                        frontiers_discovered=len(self.semantic_graph.frontiers),
-                       map_nodes_total=len(semantic_map.get("nodes") or []),
-                       semantic_navigation_graph=semantic_map)
+                       map_nodes_total=self.semantic_graph.node_count)
             if self._no_information_cycles >= max(1, budget.max_consecutive_no_information_cycles):
                 # 计划书 §12：低信息先排除卡死/传感器退化/仍有 frontier，
                 # 只有真正无可达 frontier 才允许判 SEARCH_EXHAUSTED。
@@ -1326,7 +1352,13 @@ class AutonomousExplorer:
             result = self._backend.get_navigation_status(handle)
             if result.status in TERMINAL_NAVIGATION_STATUSES:
                 return result
-            time.sleep(0.2)
+            # nav2 后端的 Action 状态是回调写进去的（RosActionClientPort.poll 的
+            # 文档：必须有人持续 spin，否则状态永远停在 UNKNOWN）。这里原来是裸
+            # ``time.sleep``，等待窗口内没人 spin ⇒ ``ComputePathToPose`` 的回执
+            # 永远读不到，10 s 后按规划超时判 ``NO_PATH``（现场只看到一句
+            # "compute path timeout"，看不出是"没人 spin"）。不提供 ``spin_once``
+            # 的后端（离线 mock、实验后端）退回 sleep，与原来逐字等价。
+            self._pump_backend(0.2)
         return NavigationResult(
             goal_id=getattr(handle, "goal_id", "goal"),
             status=NavigationStatus.TIMEOUT,
@@ -1998,6 +2030,15 @@ class AutonomousExplorer:
             "map_revision": probe.get("map_revision"),
             "generator_empty_reason": probe.get("empty_reason"),
             "local_scan_quota_exhausted": probe.get("local_scan_quota_exhausted"),
+            # §6.3：区分「位姿没进来」与「候选真没有」——地图系后端拿不到当前位置
+            # 就没法把观察转向表达成 NAVIGATE_POSE，两者都表现为同一句
+            # ``local_executor_no_primitive``，只看 reason 会把规划缺陷误判成穷尽。
+            "robot_pose_present": probe.get("robot_pose_present"),
+            "robot_pose_source": probe.get("robot_pose_source"),
+            "plan_context_keys": probe.get("plan_context_keys"),
+            "capabilities_metric_navigation": probe.get("capabilities_metric_navigation"),
+            "intent_type": probe.get("intent_type"),
+            "intent_had_preferred_position": probe.get("intent_had_preferred_position"),
             "scanned_sector_count": int(scanned_sectors),
             "reachable_frontier_count": int(reachable),
             "visited_frontier_count": int(visited),
@@ -2052,6 +2093,7 @@ class AutonomousExplorer:
             heading_sector=observation.heading_sector,
             scene_objects=observation.scene_objects,
             scene_relations=observation.scene_relations,
+            object_update_result=observation.object_update_result,
             pose=observation.pose,
             timestamp=observation.timestamp,
             target_candidate=observation.target_present,
@@ -2341,7 +2383,7 @@ class AutonomousExplorer:
             "unique_places": len(self.semantic_graph.place_graph.places),
             "unique_objects": len(self.semantic_graph.object_map.objects),
             "frontiers_discovered": len(self.semantic_graph.frontiers),
-            "map_nodes_total": len(self.semantic_graph.to_dict().get("nodes") or []),
+            "map_nodes_total": self.semantic_graph.node_count,
             "replans": replans,
             "navigation_failures": navigation_failures,
             "verify_attempts": verify_attempts,
@@ -2362,7 +2404,7 @@ class AutonomousExplorer:
             unique_places=len(self.semantic_graph.place_graph.places),
             unique_objects=len(self.semantic_graph.object_map.objects),
             frontiers_discovered=len(self.semantic_graph.frontiers),
-            map_nodes_total=len(self.semantic_graph.to_dict().get("nodes") or []),
+            map_nodes_total=self.semantic_graph.node_count,
             replans=replans,
             navigation_failures=navigation_failures,
             verify_attempts=verify_attempts,

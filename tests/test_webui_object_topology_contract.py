@@ -39,10 +39,12 @@ def test_frontend_projection_contract():
 
 def test_render_never_prefers_the_whole_navigation_graph():
     text = SEARCH_MAP.read_text(encoding="utf-8")
-    assert "var topology = graph && graph.object_topology ? graph.object_topology : null;" in text
+    # 计划书 §2.1：render() 的入参就是唯一的那张图，直接取 object_topology。
+    assert "var topology = this.graph.object_topology || null;" in text
     # 旧的"先整张导航图，空了才退回 object_topology"逻辑必须彻底消失。
     assert "topology = (graph && graph.object_topology) || null;" not in text
     assert "var topology = graph || null;" not in text
+    assert "semantic_graph" not in text
 
 
 def _graph_with_place_frontier_and_objects() -> SemanticNavigationGraph:

@@ -21,9 +21,41 @@
     return frame;
   }
 
+  // 物体框标签的**唯一**来源是 label_zh（中文显示名，由后端统一解析器给出）。
+  // 刻意不读 raw_label：那是关联键/取证字段，未知类别时它就是英文原文，
+  // 画到 canvas 上等于把整改前的"bin / barrel / speaker"原样漏回页面。
+  // 后端解析不出来时会填「未分类物体」，这里只兜它漏填空串的情况。
+  var OBJECT_LABEL_FALLBACK = "未分类物体";
+
+  function objectLabel(item) {
+    var text = item && item.label_zh != null ? String(item.label_zh).trim() : "";
+    return text || OBJECT_LABEL_FALLBACK;
+  }
+
+  // 目标例外（视觉复核过的目标）换个颜色画，好和普通候选区分开。
+  function objectVerified(item) {
+    return !!item && item.decision === "TARGET_VERIFIED";
+  }
+
+  // 状态栏那行过滤统计。后端没给（老快照）时返回空串，不显示"0/0"这种
+  // 看着像"门把所有东西都滤掉了"的假数字。
+  function objectFilterSummary(stats) {
+    if (!stats || typeof stats.input !== "number") return "";
+    var shown = typeof stats.displayed === "number" ? stats.displayed : 0;
+    var filtered = typeof stats.filtered === "number"
+      ? stats.filtered : Math.max(0, stats.input - shown);
+    return "物体框 " + shown + " 个 / 已过滤 " + filtered + " 个";
+  }
+
   // 供 headless 单测加载（同 search_map.js 的 window.SvgViewport）。
   // 放在这个位置是有意的：下面 canvas 取不到时会 return，之后的行不会执行。
-  window.Slam3dFrame = { saneFrame: saneFrame, centerAndSpan: centerAndSpan };
+  window.Slam3dFrame = {
+    saneFrame: saneFrame,
+    centerAndSpan: centerAndSpan,
+    objectLabel: objectLabel,
+    objectVerified: objectVerified,
+    objectFilterSummary: objectFilterSummary
+  };
 
   var canvas = document.getElementById("slam-map-3d");
   if (!canvas) return;
@@ -111,18 +143,19 @@
                      item.z == null ? 0.5 : Number(item.z)], view.center, scale);
     if (p[0] < -40 || p[0] > canvas.width + 40 ||
         p[1] < -40 || p[1] > canvas.height + 40) return;
+    var verified = objectVerified(item);
     context.beginPath();
     context.arc(p[0], p[1], 5.5, 0, Math.PI * 2);
-    context.fillStyle = "rgba(239, 68, 68, 0.95)";
+    context.fillStyle = verified
+      ? "rgba(250, 204, 21, 0.95)" : "rgba(239, 68, 68, 0.95)";
     context.fill();
     context.lineWidth = 1.3;
     context.strokeStyle = "rgba(255, 255, 255, 0.9)";
     context.stroke();
-    if (item.label) {
-      context.font = "12px system-ui, sans-serif";
-      context.fillStyle = "rgba(255, 243, 243, 0.96)";
-      context.fillText(item.label, p[0] + 9, p[1] - 7);
-    }
+    context.font = "12px system-ui, sans-serif";
+    context.fillStyle = verified
+      ? "rgba(254, 249, 195, 0.97)" : "rgba(255, 243, 243, 0.96)";
+    context.fillText(objectLabel(item), p[0] + 9, p[1] - 7);
   }
 
   function drawObjectBox(item, view, scale) {
@@ -142,8 +175,10 @@
       [4, 5], [5, 6], [6, 7], [7, 4],
       [0, 4], [1, 5], [2, 6], [3, 7]
     ];
+    var verified = objectVerified(item);
     context.lineWidth = 1.5;
-    context.strokeStyle = "rgba(56, 189, 248, 0.92)";
+    context.strokeStyle = verified
+      ? "rgba(250, 204, 21, 0.92)" : "rgba(56, 189, 248, 0.92)";
     context.beginPath();
     edges.forEach(function (e) {
       var a = corners[e[0]], b = corners[e[1]];
@@ -157,14 +192,14 @@
     var top = corners[5];
     context.beginPath();
     context.arc(top[0], top[1], 3, 0, Math.PI * 2);
-    context.fillStyle = "rgba(56, 189, 248, 0.95)";
+    context.fillStyle = verified
+      ? "rgba(250, 204, 21, 0.95)" : "rgba(56, 189, 248, 0.95)";
     context.fill();
-    if (item.label) {
-      var conf = item.confidence != null ? " " + Number(item.confidence).toFixed(2) : "";
-      context.font = "12px system-ui, sans-serif";
-      context.fillStyle = "rgba(224, 242, 254, 0.97)";
-      context.fillText(item.label + conf, top[0] + 7, top[1] - 6);
-    }
+    var conf = item.confidence != null ? " " + Number(item.confidence).toFixed(2) : "";
+    context.font = "12px system-ui, sans-serif";
+    context.fillStyle = verified
+      ? "rgba(254, 249, 195, 0.97)" : "rgba(224, 242, 254, 0.97)";
+    context.fillText(objectLabel(item) + conf, top[0] + 7, top[1] - 6);
   }
 
   function drawGrid(center, scale, span) {
@@ -209,10 +244,13 @@
         });
       });
     }
-    // 语义物体标注层：来自 Dataset D 的三维定位结果（快照的 objects 字段）。
-    // 有 size（3D box）时画 AABB 线框 + 标签；否则退化为红点。
+    // 语义物体标注层：快照的 objects 字段。**这里画的全是已经过了显示门的
+    // 物体** —— 低置信、非物体标签（purple/floor/corner）在写端就被滤掉了，
+    // 前端不做也不该做二次判定（判据只有一份，在 app/spatial/semantic_object_gate.py）。
+    // 有合法 size（3D box）时画 AABB 线框 + 中文标签；否则退化为点。
     if (objects.length) {
       objects.forEach(function (item) {
+        // size 非法时写端已置 null，所以这一个判断同时覆盖"没有"和"不可信"。
         var hasSize = Array.isArray(item.size) && item.size.length === 3;
         if (hasSize) {
           drawObjectBox(item, view, scale);
@@ -243,6 +281,15 @@
     if (value == null) return "--";
     var seconds = Number(value);
     return seconds >= 60 ? (seconds / 60).toFixed(1) + "分" : seconds.toFixed(1) + "s";
+  }
+
+  // 对象与地图的配对状态（后端 app/manual_web_demo/slam_map_snapshot.py 的口径）。
+  // OK / 缺字段 时返回空串 —— 正常情况不占状态栏。
+  function overlayStatusNote(status) {
+    if (status === "MAP_EPOCH_MISMATCH") return "物体属于另一张地图（epoch 不同）";
+    if (status === "FRAME_MISMATCH") return "物体与地图坐标系不同";
+    if (status === "NO_OBJECT_SNAPSHOT") return "本模式没有语义建图进程";
+    return "";
   }
 
   function applySnapshot(snapshot) {
@@ -278,10 +325,18 @@
       state.className = "slam3d-state" + (snapshot.fresh && health === "HEALTHY" ? "" : " stale");
       setLight(snapshot.fresh && health === "HEALTHY" ? "green" : "yellow");
     }
+    // 现场核验用：显示的/被滤的各几个。"门生效了"和"这次本来就没检出东西"
+    // 在页面上长得一样，不给这个数就只能靠猜。
+    // §2.3：物体只有在 map_epoch 与 frame_id 都与本地图相等时才会被合成进来。
+    // 不相等时后端给空 objects 并说明原因 —— 页面必须把这件事说出来，否则
+    // "这张图还没有物体"和"物体属于另一张地图"看起来完全一样。
+    var overlayNote = overlayStatusNote(snapshot.object_overlay_status);
+    var objectSummary = overlayNote || objectFilterSummary(snapshot.object_filter_stats);
     meta.textContent = count(snapshot.web_display_points) + " 显示点 · " +
       (snapshot.canonical_frame || "pslam_map") + " · voxel " +
       Number(snapshot.global_voxel_size_m || 0).toFixed(2) + "m · session " +
-      count(snapshot.mapping_session_id) + " · r" + count(snapshot.map_revision);
+      count(snapshot.mapping_session_id) + " · r" + count(snapshot.map_revision) +
+      (objectSummary ? " · " + objectSummary : "");
     var extent = snapshot.map_extent_m || [0, 0, 0];
     if (capacity) {
       // "全局缓存体素"那层只有 §10 的桥才有（GlobalVoxelCloud + 上限）。写端
@@ -345,5 +400,10 @@
   window.addEventListener("resize", render);
   render();
   poll();
-  window.setInterval(poll, 850);
+  // 轮询周期按**实际快照周期**取。写端每 period_s 秒重写一次快照（手动演示默认
+  // 5.0 s，遥控建图 1.0 s，自主搜索的桥 1.0 s），850 ms 一次比绝大多数写端还密
+  // —— 拉回来的 JSON 每次都是同一份（读取端按 mtime 缓存解析，但传输和渲染照样
+  // 白做）。取 1 s：对最快的写端不慢，对 5 s 的写端也只是多空转几次。
+  // 地图数据本身没变时 applySnapshot 仍是幂等的（render 结果不变）。
+  window.setInterval(poll, 1000);
 })();

@@ -573,7 +573,24 @@ BASE=http://192.168.123.18:8765
 curl -fsS "$BASE/api/status"
 curl -fsS "$BASE/api/search/readiness"
 curl -fsS "$BASE/api/slam/map3d"
-curl -fsS "$BASE/api/search/semantic-map"
+curl -fsS "$BASE/api/search/state"
+~~~
+
+搜索的图只有一个来源：`/api/search/state` 的 `graph` 字段（含 Place、物体、
+Frontier、关系边与 `graph_revision`）。`/api/search/map`、`/place-graph`、
+`/semantic-map`、`/objects`、`/frontiers`、`/decisions`、`/events`、
+`/executor` 这些从同一份 state 重复投影的 GET 路由已经删除，不要再照着旧文档
+调用；历史会话在 `/api/search/history/{session_id}` 里同样是这一份图。
+
+每个 Web 搜索会话在 `outputs/live_runs/<session_id>/` 下归档四份：`webui_session.json`
+（索引）、`webui_state.json`（**不含图**的小状态）、`webui_graph.json`（唯一图快照）、
+`webui_events.jsonl`（只追加小事件）；`events.jsonl` 是 worker 的原始运行证据。
+旧归档把图嵌在 `webui_state.json` 里，运行时**不做**静默兼容，需要跑一次迁移：
+
+~~~bash
+# 先看报告（不写任何文件），确认后加 --apply；原文件先整目录备份
+.venv/bin/python scripts/go2w/migrate_webui_archive_v1.py
+.venv/bin/python scripts/go2w/migrate_webui_archive_v1.py --apply
 ~~~
 
 搜索 API 示例：
@@ -605,6 +622,40 @@ search/start 返回 409 且错误为 MAPPING_FROZEN 时，说明 LIO 漂移健�
 
 /go2w/slam/web_scan 是局部扫描预览，/go2w/slam/web_map 是全局地图 relay，/go2w/odom/fused 是运动/搜索的权威里程计。不能把局部扫描改名成全局地图，也不能在前端旋转点云来掩盖 SLAM 位姿错误。
 
+### 8.1 三维物体与地图怎么配对（计划书 §2.3，2026-10-08）
+
+三维视图上并排显示的两样东西来自**两个进程、两个文件**，靠一对标识配对：
+
+| 文件 | 谁写 | 内容 |
+| --- | --- | --- |
+| `<runtime>/slam_map_3d.json` | 当前模式唯一的地图桥 | 点云、轨迹、地图健康 |
+| `<runtime>/slam_map_meta.json` | 同一个地图桥，**在地图之后**原子写 | 只含 `map_epoch`/`frame_id`/`map_revision`/`generated_at` |
+| `<runtime>/semantic_objects.json` | 语义进程（自主搜索 / 遥控侧车） | 待显示物体 + 过滤统计 |
+
+`map_epoch` 是地图桥在**进程启动时**随机生成的一段前缀 + 本进程的地图会话计数，
+地图 reset 时再换一次 —— 桥重启就是新 epoch，所以上一轮会话的物体不会画到新地图
+上。`GET /api/slam/map3d` 只在 `map_epoch` 与 `frame_id` **同时相等**时合成
+`objects`，否则返回空 `objects` 并在 `object_overlay_status` 里说明原因：
+
+| object_overlay_status | 含义 |
+| --- | --- |
+| `OK` | 配对成功，`objects` / `object_filter_stats` 可用 |
+| `NO_OBJECT_SNAPSHOT` | 本模式没有对象源（手动演示就是这种），或文件读不出来 |
+| `FRAME_MISMATCH` | 物体与地图不在同一个坐标系 |
+| `MAP_EPOCH_MISMATCH` | 物体属于**另一张**地图（桥重启过 / SLAM reset 过） |
+
+判据是数据里的标识，不是文件修改时间、也不是坐标包围盒 —— 后者永远猜不准
+（2026-09-17 实测：页面画的是 09-10 归档里的 7 个物体，当天搜索刚定位的 20 个
+一个都没上屏）。两个地图桥都**不再**从 `events.jsonl` 里挑物体；原始逐帧检测仍
+写在 `events.jsonl` 里，供取证与离线回放，不参与在线选源。
+
+`/api/slam/map3d` 仍是前端唯一的三维接口（没有第二个 `/api/objects3d`），点云
+按文件 `mtime_ns` 缓存解析结果。三个路径由启动脚本显式给出：
+`GO2W_SLAM_MAP_SNAPSHOT` / `GO2W_SLAM_MAP_META` / `GO2W_SEMANTIC_OBJECTS_SNAPSHOT`
+（手动演示用 `outputs/manual_web_demo/runtime/`，遥控建图用自己的默认目录，
+见 §11.4；自主搜索用 `outputs/autonomous_search/runtime/`）。**"物体没显示"先看
+`object_overlay_status`，不要去看文件时间。**
+
 建议每次现场验收都保存原始 JSON：
 
 ~~~bash
@@ -613,7 +664,7 @@ mkdir -p "$OUT"
 curl -s "$BASE/api/status" > "$OUT/status.json"
 curl -s "$BASE/api/search/readiness" > "$OUT/readiness.json"
 curl -s "$BASE/api/slam/map3d" > "$OUT/map3d.json"
-curl -s "$BASE/api/search/semantic-map" > "$OUT/semantic-map.json"
+curl -s "$BASE/api/search/state" > "$OUT/search_state.json"
 ~~~
 
 ## 9. 分级真机验收（必须按顺序）
@@ -788,6 +839,9 @@ bash scripts/go2w/stop_remote_control_mapping.sh
 | `REMOTE_MAPPING_RGBD_BASE_URL` | `http://192.168.123.18:8080` | D435 HTTP RGB-D 服务 |
 | `REMOTE_MAPPING_WEB_PORT` | `8766` | 本模式 WebUI 端口（避开 §7 的 8765） |
 | `REMOTE_MAPPING_SNAPSHOT_PATH` | `outputs/remote_control_mapping/runtime/slam_map_3d.json` | 地图快照 |
+| `REMOTE_MAPPING_META_PATH` | 同目录 `slam_map_meta.json` | 地图元数据（`map_epoch` 等，见 §8.1） |
+| `REMOTE_MAPPING_OBJECTS_PATH` | 同目录 `semantic_objects.json` | 待显示物体（侧车按 epoch 写） |
+| `REMOTE_MAPPING_SNAPSHOT_PERIOD_S` | `1.0` | 快照重写周期；三维页面按它轮询 |
 
 检测模型路径、检测阈值、D435 外参和语义合并半径继续用项目现有配置，没有第二套。
 
@@ -895,6 +949,13 @@ bash scripts/go2w/start_remote_control_mapping.sh
 
 ### 11.7 长跑变卡：写入器每轮整读 events.jsonl
 
+> **2026-10-08 之后这一条已经作废一半**：计划书 §2.3 起，快照写入器**不再读任何
+> `events.jsonl`** —— 在线物体只由语义进程按 `map_epoch` 写 `semantic_objects.json`
+> （见 §8.1），`IncrementalObjectRecordReader` 因为失去调用点已经删除
+> （`load_object_records` 还在，只给离线回放与归档迁移用）。下面留的是
+> 2026-09-18 当时的排查记录，仍然值得一读的是这个量级：**任何整读事件日志的代码
+> 都会随时长线性变慢**（843 ms 那一项占 flush 的 84%），重写这类读口之前先量一遍。
+
 遥控建图跑久了页面会变卡。2026-09-18 实测的账（`period_s` 被启动脚本覆盖成 **1.0**，
 节点默认的 5.0 不是生效值）：
 
@@ -987,7 +1048,7 @@ plain_slam_web_bridge.py、plain_slam_web_cloud_relay.py 等 ROS 侧车必须使
 | VLM 不可用 | siliconflow_vlm_daemon.log、SILICONFLOW_API_KEY | 重新配置 Key、网络和代理；先用 mock 验证 UI |
 | 三维地图空白 | /api/slam/map3d 的 reason、mapping_health、bridge 日志 | 确认 /go2w/slam/web_map 有 publisher，必要时新建 session |
 | MAPPING_FROZEN | /api/search/readiness 的 blocking 项 | 停止自主搜索，按第 10.2 节复位并重新验收 |
-| 搜索三四步就结束 | 搜索 worker 日志、/api/search/events | 查看真实 PLANNING_ERROR、候选异常或预算耗尽，不能把错误改成成功 |
+| 搜索三四步就结束 | 搜索 worker 日志、`outputs/live_runs/<session_id>/events.jsonl` 与 `webui_events.jsonl` | 查看真实 PLANNING_ERROR、候选异常或预算耗尽，不能把错误改成成功 |
 | 地图刷新后旧房间消失 | map_revision、source_map_points、global_cached_voxels、web_display_points | 检查是否启动了旧 bridge 或把局部 scan 当全局 map |
 | SSH 后台进程断开 | 是否在前台 SSH 会话直接启动 | 使用持久终端/tmux，或使用脚本自身的 setsid 启动器；不要混用旧进程 |
 

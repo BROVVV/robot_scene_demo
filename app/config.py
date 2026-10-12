@@ -299,6 +299,11 @@ DEFAULT_GO2W_LIO_MAX_POSE_SPEED_MPS = 2.0
 DEFAULT_GO2W_LIO_RECOVERY_VALID_SAMPLES = 4
 DEFAULT_GO2W_PLACE_MERGE_DISTANCE_M = 0.35
 DEFAULT_GO2W_PLACE_RELOCATION_MIN_M = 0.50
+# 持久三维对象图的入口置信度门。检测端工作在 box_threshold=0.12 这种偏召回的
+# 阈值上，"低分候选"是目标搜索的原料，不是垃圾 —— 所以门开在**入图**这一步，
+# 而不是去抬检测阈值（那会把目标召回一起砍掉）。0.35 与 SAM2_MIN_BOX_SCORE 对齐。
+# 出处：docs/GO2W_WebUI三维物体框中文统一与低置信过滤_整改实施计划_20260917.md §5.1
+DEFAULT_SEMANTIC_MAP_MIN_OBJECT_CONFIDENCE = 0.35
 DEFAULT_GO2W_PERCEPTION_SETTLE_SECONDS = 0.8
 DEFAULT_GO2W_TARGET_POSSIBLE_VERIFY_ATTEMPTS = 2
 # 计划书写 0.3，autonomous_explorer.py 实际 sleep 0.2 —— 取现值。
@@ -679,6 +684,9 @@ class Settings:
     go2w_lio_recovery_valid_samples: int = DEFAULT_GO2W_LIO_RECOVERY_VALID_SAMPLES
     go2w_place_merge_distance_m: float = DEFAULT_GO2W_PLACE_MERGE_DISTANCE_M
     go2w_place_relocation_min_m: float = DEFAULT_GO2W_PLACE_RELOCATION_MIN_M
+    semantic_map_min_object_confidence: float = (
+        DEFAULT_SEMANTIC_MAP_MIN_OBJECT_CONFIDENCE
+    )
     go2w_perception_settle_seconds: float = DEFAULT_GO2W_PERCEPTION_SETTLE_SECONDS
     go2w_target_possible_verify_attempts: int = (
         DEFAULT_GO2W_TARGET_POSSIBLE_VERIFY_ATTEMPTS
@@ -1673,6 +1681,12 @@ def get_settings() -> Settings:
             DEFAULT_GO2W_PLACE_RELOCATION_MIN_M,
             0.0,
             5.0,
+        ),
+        semantic_map_min_object_confidence=_env_float_ranged(
+            "SEMANTIC_MAP_MIN_OBJECT_CONFIDENCE",
+            DEFAULT_SEMANTIC_MAP_MIN_OBJECT_CONFIDENCE,
+            0.0,
+            1.0,
         ),
         go2w_perception_settle_seconds=_env_float_ranged(
             "GO2W_PERCEPTION_SETTLE_SECONDS",

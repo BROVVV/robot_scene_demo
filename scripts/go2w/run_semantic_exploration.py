@@ -143,6 +143,18 @@ class _Nav2MotionEvidenceRecorder:
     def health(self) -> Any:
         return self._inner.health()
 
+    def spin_once(self, timeout_sec: float = 0.1) -> None:
+        """把内层后端依赖的 ROS 订阅推进一轮。
+
+        nav2 后端的 ``localization_valid`` 与 ``/map`` 都靠订阅回调写进缓存，初值
+        是「未收到」。explorer 的 bootstrap 重试要在这个节点上转，否则重试期间
+        回调不执行，三次都判 ``NO_LOCALIZATION``。这层只透传一次 spin，不改任何
+        指令内容与拒绝行为。
+        """
+        import rclpy  # noqa: PLC0415 - 与模块内其他 ROS 依赖一样按需导入
+
+        rclpy.spin_once(self._node, timeout_sec=timeout_sec)
+
     def cancel(self, handle: Any = None) -> bool:
         return self._inner.cancel(handle)
 
@@ -435,6 +447,15 @@ def build_parser() -> argparse.ArgumentParser:
                              "(REOBSERVE-only backend)")
     parser.add_argument("--output", default="outputs/live_sessions/semantic_exploration.jsonl")
     parser.add_argument("--session-dir", default="outputs/live_runs")
+    # 计划书 §2.3：三维对象的上屏通路。本进程把内存里的持久实体投影成显示对象，
+    # 声明自己属于哪张地图；地图桥写的那份轻量元数据是唯一的 epoch/坐标系来源。
+    # 两者路径都由 Web 侧显式传给 worker，再透传到这里，不靠 glob 猜。
+    parser.add_argument("--map-meta-path",
+                        default="outputs/autonomous_search/runtime/slam_map_meta.json",
+                        help="point-cloud-free map metadata written by the map bridge")
+    parser.add_argument("--object-snapshot-path",
+                        default="outputs/autonomous_search/runtime/semantic_objects.json",
+                        help="where this process publishes its display objects")
     parser.add_argument("--record-video", default="",
                         help="record camera stream to MP4 (go2w backend only)")
     parser.add_argument("--dry-run", action="store_true",
@@ -507,7 +528,7 @@ def main(argv: list[str] | None = None) -> int:
         args.spatial_provider = "plain_slam"
     if args.replay:
         return run_replay(args)
-    if args.backend == "go2w_experimental":
+    if args.backend in {"nav2", "go2w_experimental"}:
         return run_go2w(args)
     return _run_offline(args)
 
@@ -515,6 +536,38 @@ def main(argv: list[str] | None = None) -> int:
 # ---------------------------------------------------------------------------
 # shared artifacts
 # ---------------------------------------------------------------------------
+
+
+def _publish_display_objects(state: dict[str, Any], args, node,
+                             semantic_map, revision: int) -> None:
+    """§2.3：实体图更新后，把内存里的持久实体投影成 WebUI 的显示对象。
+
+    `AutonomousExplorer.semantic_graph.object_map` 就是这里的 ``semantic_map``
+    （run_go2w 把它注入 explorer），所以自主搜索与遥控语义建图走的是同一个投影
+    函数。发布会话号取本进程的 ``--session-id``，用来在现场核验"页面上的物体是
+    哪一场搜索写的"。
+
+    拿不到地图桥的 ``map_epoch`` 时整个函数悄然不做任何事 —— 不上屏是正确行为，
+    不是失败：地图桥可能还没起，而对象坐标属于哪张地图无从声明就不该画。
+    """
+    if semantic_map is None:
+        return
+    publisher = state.get("object_display_publisher")
+    if publisher is None:
+        from app.spatial.object_display_snapshot import ObjectDisplayPublisher
+
+        publisher = ObjectDisplayPublisher(
+            meta_path=PROJECT_ROOT / str(args.map_meta_path),
+            snapshot_path=PROJECT_ROOT / str(args.object_snapshot_path),
+            producer_session_id=str(getattr(args, "session_id", "") or ""),
+        )
+        state["object_display_publisher"] = publisher
+    if publisher.publish(
+            (entry.to_dict() for entry in semantic_map.objects.values()),
+            graph_revision=revision):
+        node.get_logger().debug(
+            f"display objects published: revision={revision} "
+            f"epoch={publisher.epoch} -> {publisher.snapshot_path}")
 
 
 def _write_session_artifacts(args, explorer: AutonomousExplorer,
@@ -602,7 +655,6 @@ def _build_offline_components(args):
 
 # Explorer events that carry map meaning; the live WebUI worker augments
 # these with the full exploration-graph snapshot for the SVG map.
-_MAP_RELEVANT_EVENTS = ("observation", "memory_update", "navigation_result")
 
 
 def _run_offline(args, event_hook=None) -> int:
@@ -624,9 +676,8 @@ def _run_offline(args, event_hook=None) -> int:
 
     def on_event(event: dict[str, Any]) -> None:
         if event_hook is not None:
-            explorer = holder.get("explorer")
-            if explorer is not None and event.get("event") in _MAP_RELEVANT_EVENTS:
-                event = {**event, "graph": explorer.graph.to_dict()}
+            # 计划书 §3A：图不再挂在普通事件上。worker 的 event_hook 会在
+            # revision 变化时单独发一条 graph_snapshot。
             event = event_hook(event, holder)
         if event is None:
             return
@@ -723,9 +774,8 @@ def run_replay(args, event_hook=None) -> int:
 
     def on_event(event: dict[str, Any]) -> None:
         if event_hook is not None:
-            explorer = holder.get("explorer")
-            if explorer is not None and event.get("event") in _MAP_RELEVANT_EVENTS:
-                event = {**event, "graph": explorer.graph.to_dict()}
+            # 计划书 §3A：图不再挂在普通事件上。worker 的 event_hook 会在
+            # revision 变化时单独发一条 graph_snapshot。
             event = event_hook(event, holder)
         if event is None:
             return
@@ -1318,7 +1368,7 @@ def _run_go2w_explorer(args, node, policy, event_hook=None,
         from app.spatial.lightweight_depth_bev import LightweightDepthBEVMapper
         from app.spatial.place_graph import PlaceGraph
         from app.spatial.semantic_entity_graph import SemanticEntityGraph
-        from app.spatial.semantic_object_map import SemanticObjectMap
+        from app.spatial.semantic_object_map import SemanticMapUpdateResult, SemanticObjectMap
         from app.spatial.spatial_memory import SpatialMemory
 
         # §15：这几个阈值以前是写死在这里的字面量，而 PlaceGraph /
@@ -1983,6 +2033,10 @@ def _run_go2w_explorer(args, node, policy, event_hook=None,
             "image_timestamp": image_timestamp,
             "timestamp_quality": image_timestamp_quality,
         })
+        if semantic_map is not None:
+            # This map is shared with explorer.semantic_graph. The observer is
+            # the sole writer; explorer reuses this exact association result.
+            observation.object_update_result = SemanticMapUpdateResult()
 
         # ---- SemanticNavigation V2 spatial state update -------------------------------
         if place_graph is not None and pose is not None:
@@ -2317,6 +2371,7 @@ def _run_go2w_explorer(args, node, policy, event_hook=None,
                     now=observation.timestamp,
                     frame_id=observation.rgbd_frame_id,
                 )
+                observation.object_update_result = update_result
             if bev_mapper is not None and rgbd_frame is not None and spatial_pose is not None:
                 bev_mapper.update(rgbd_frame, spatial_pose)
             state["localized"] = localized
@@ -2591,6 +2646,20 @@ def _run_go2w_explorer(args, node, policy, event_hook=None,
         current_position: tuple[float, float] | None = None
         if raw_pose is not None and len(raw_pose) >= 2:
             current_position = (float(raw_pose[0]), float(raw_pose[1]))
+        # §6.3：``robot_pose`` 的两种坏法得分得开——key 根本没传（explorer 的
+        # plan_context 提前 return 了）与 key 传了但值为 None（``_has_xy`` 判定这帧
+        # 没有坐标）。两者的下游症状完全一样，只报一个 bool 会把定位方向带偏。
+        robot_pose_source = (
+            "absent" if "robot_pose" not in kwargs
+            else ("none" if raw_pose is None else f"ok:{len(raw_pose)}")
+        )
+        plan_context_keys = sorted(
+            key for key in (
+                "clearance_map", "frontiers", "viewpoint_planner",
+                "robot_pose", "occupancy_grid",
+            )
+            if key in kwargs
+        )
         # 计划书 §6.3：每次生成都记录真实的地图/frontier 证据，供探索器区分
         # “等地图 / 规划缺陷 / 真穷尽”，不再让空列表自己去猜原因。
         diagnostics: dict[str, Any] = {
@@ -2603,7 +2672,21 @@ def _run_go2w_explorer(args, node, policy, event_hook=None,
             "unreachable_frontier_count": 0,
             "local_scan_quota_exhausted": False,
             "empty_reason": "",
+            # §6.3：地图系后端要「当前位置」才表达得出 NAVIGATE_POSE，而这份
+            # 位置来自 explorer 的 plan_context。缺了它就会退到 ``local_executor``
+            # 里无原语可发、只报一个 ``local_executor_no_primitive``——现场分不清
+            # 是「位姿没传进来」还是「候选真穷尽」。这两条把分叉点直接记下来。
+            "robot_pose_present": False,
+            "capabilities_metric_navigation": False,
+            "robot_pose_source": "",
+            "plan_context_keys": [],
         }
+        diagnostics["robot_pose_present"] = current_position is not None
+        diagnostics["robot_pose_source"] = robot_pose_source
+        diagnostics["plan_context_keys"] = plan_context_keys
+        diagnostics["capabilities_metric_navigation"] = bool(
+            getattr(capabilities, "supports_metric_navigation", False)
+        )
         state["last_candidate_diagnostics"] = diagnostics
 
         # Continue an active local intent if it still has primitives.
@@ -2968,6 +3051,10 @@ def _run_go2w_explorer(args, node, policy, event_hook=None,
             if goal is None:
                 local_executor.finish()
                 diagnostics["empty_reason"] = "local_executor_no_primitive"
+                diagnostics["intent_type"] = str(getattr(intent, "intent_type", ""))
+                diagnostics["intent_had_preferred_position"] = (
+                    getattr(intent, "preferred_position", None) is not None
+                )
                 return []
         goal.semantic_relevance = max(0.0, min(1.0, scored.score))
         goal.expected_information_gain = intent.spatial_gain
@@ -3283,10 +3370,18 @@ def _run_go2w_explorer(args, node, policy, event_hook=None,
     holder: dict[str, Any] = {"explorer": None}
 
     def on_event(event: dict[str, Any]) -> None:
+        explorer = holder.get("explorer")
+        if explorer is not None:
+            # 与发给 Web 的语义图使用同一 revision。目标确认会在观察之后
+            # 更新实体 provenance；若只在 observe() 里写，最终目标标记
+            # 永远停留在确认前的快照。
+            _publish_display_objects(
+                state, args, node, explorer.semantic_graph.object_map,
+                explorer.semantic_graph.revision,
+            )
         if event_hook is not None:
-            explorer = holder.get("explorer")
-            if explorer is not None and event.get("event") in _MAP_RELEVANT_EVENTS:
-                event = {**event, "graph": explorer.graph.to_dict()}
+            # 计划书 §3A：图不再挂在普通事件上。worker 的 event_hook 会在
+            # revision 变化时单独发一条 graph_snapshot。
             event = event_hook(event, holder)
         if event is None:
             return
@@ -3435,6 +3530,10 @@ def _run_go2w_explorer(args, node, policy, event_hook=None,
         f"session={graph.session_id}"
     )
     result = explorer.run()
+    _publish_display_objects(
+        state, args, node, explorer.semantic_graph.object_map,
+        explorer.semantic_graph.revision,
+    )
     if node._armed_by_runner:
         node._emergency_stop()
         try:

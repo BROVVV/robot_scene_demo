@@ -566,6 +566,33 @@ def test_cancel_settles_the_active_goal() -> None:
     assert navigate_client.cancel_calls == 1
 
 
+def test_cancel_frees_the_slot_for_the_next_goal() -> None:
+    """取消之后必须能发下一个 goal。
+
+    现场（2026-10-08 真机验收）栽在这里：``_wait_result`` 等 15 s 超时后
+    explorer 调 ``cancel(handle)`` 重试，但 ``cancel`` 只填了 ``handle.result``、
+    没让出 ``self._active``，而 ``get_navigation_status`` 对已结算的 handle 会在
+    开头就 return ⇒ ``_active`` 永远清不掉，之后每一轮 cycle 的候选都是
+    ``rejected / "nav2 backend already has an active goal"``，
+    ``motion_steps`` 全程 0。
+
+    分辨力：把 ``cancel`` 里那句 ``self._active = None`` 去掉，本测试失败
+    （``assert second.result is None`` 挂），同文件里其余 cancel 用例照过
+    —— 它们只查 handle 是否被结算，查不出槽位没让出来。
+    """
+    backend, path_client, navigate_client = _backend(grid=_corridor_grid(1.25))
+    first = _drive_to_navigating(backend, path_client, navigate_client)
+
+    backend.cancel(first)
+
+    # 光调 get_navigation_status 救不回来：handle 已结算，走的是开头那句 return。
+    assert backend.get_navigation_status(first).status == NavigationStatus.CANCELLED
+
+    second = backend.execute_goal(_goal(goal_id="g2", position=(1.0, 1.0)))
+    assert second.result is None, second.result and second.result.message
+    assert len(path_client.sent) == 2
+
+
 def test_stop_goal_cancels_and_publishes_a_zero_velocity() -> None:
     calls: list[int] = []
     backend, path_client, navigate_client = _backend(

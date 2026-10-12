@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from app.manual_web_demo.search_models import SearchStartRequest
 from app.manual_web_demo.slam_map_snapshot import load_slam_map_snapshot
@@ -456,6 +457,53 @@ def test_missing_snapshot_reports_v2_unavailable_contract(tmp_path: Path) -> Non
     assert value["points"] == []
 
 
+def test_an_unchanged_map_file_is_parsed_once_and_a_new_map_is_reread(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """计划书 §5：文件没变时只解析一次点云 JSON；地图变了必须返回新点云。
+
+    只断言"两次调用结果相同"是空话 —— 每轮都重新解析一遍同样满足它。所以这里数的
+    是 ``json.loads`` 的**真实调用次数**：60k 点的快照约 1.4 MB，前端每秒拉一次，
+    缓存一旦失效就是每秒重解析一份没变的大文件。
+
+    "变了要重解析"这一半同样不能省：只测缓存命中，把 SnapshotReader 改成永远返回
+    第一次的解析结果也能过，而那种写法的症状是地图停在旧帧上不再更新。
+    """
+    import app.manual_web_demo.slam_map_snapshot as module
+
+    monkeypatch.setattr(module, "_PARSED_CACHE", {})
+
+    def _write(points: list) -> Path:
+        path = tmp_path / "cloud.json"
+        path.write_text(json.dumps({
+            "schema_version": "go2w_slam_web_cloud_v2",
+            "map_epoch": "e1", "frame_id": "pslam_map", "map_revision": 7,
+            "generated_at": time.time(), "available": True, "points": points,
+        }), encoding="utf-8")
+        return path
+
+    calls = {"n": 0}
+    real_loads = json.loads
+
+    def counting_loads(text, *args, **kwargs):
+        calls["n"] += 1
+        return real_loads(text, *args, **kwargs)
+
+    monkeypatch.setattr(module.json, "loads", counting_loads)
+
+    path = _write([[1.0, 2.0, 3.0]])
+    first = load_slam_map_snapshot(path)
+    second = load_slam_map_snapshot(path)
+    assert first["point_count"] == second["point_count"] == 1
+    assert calls["n"] == 1, "地图文件没变却又解析了一遍"
+
+    # 写端换了地图：内容长度变了，指纹 (mtime_ns, size) 必然变。
+    path = _write([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    third = load_slam_map_snapshot(path)
+    assert calls["n"] == 2
+    assert third["point_count"] == 2, "地图变了却仍返回缓存里的旧点云"
+
+
 def test_webui_search_defaults_to_plain_slam_and_worker_forwards_provider() -> None:
     request = SearchStartRequest.from_dict({"task_text": "寻找饮水机"})
     assert request.spatial_v2 is True
@@ -494,4 +542,9 @@ def test_webui_contains_live_3d_map_contract() -> None:
     for key in ("source_map_points", "global_cached_voxels", "web_display_points",
                 "canonical_frame", "health_reason", "capacity_limited"):
         assert key in javascript
+    # 计划书 §5：三维 JS 不再 850 ms 请求一份没变化的大地图 —— 那个周期比最快的
+    # 写端（1.0 s）还密，也比最慢的（5.0 s）密五倍。断言的是"旧周期不在了"，
+    # 光断言新周期在，改成两个 setInterval 也能过。
+    assert "setInterval(poll, 850)" not in javascript
+    assert "setInterval(poll, 1000)" in javascript
     assert '@app.get("/api/slam/map3d")' in server

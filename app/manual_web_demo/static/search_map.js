@@ -20,30 +20,6 @@
 (function () {
   "use strict";
 
-  var STATE_SYMBOLS = {
-    CURRENT: "▲",
-    VISITED: "●",
-    OBSERVED: "○",
-    UNSEEN: "○",
-    SEMANTIC_INTEREST: "★",
-    NEGATIVE: "◌",
-    UNREACHABLE: "✕",
-    TARGET_CANDIDATE: "◎",
-    TARGET_CONFIRMED: "✓",
-  };
-
-  var STATE_COLORS = {
-    CURRENT: "#38bdf8",
-    VISITED: "#34d399",
-    OBSERVED: "#8b95a3",
-    UNSEEN: "#4b5563",
-    SEMANTIC_INTEREST: "#fbbf24",
-    NEGATIVE: "#6b7280",
-    UNREACHABLE: "#f87171",
-    TARGET_CANDIDATE: "#c084fc",
-    TARGET_CONFIRMED: "#34d399",
-  };
-
   var WIDTH = 600;
   var HEIGHT = 400;
   var PAD = 34;
@@ -142,7 +118,9 @@
   function SearchMapRenderer(svg, detailEl) {
     this.svg = svg;
     this.detailEl = detailEl;
-    this.data = null;
+    // 计划书 §2.2：唯一图就是 `state.graph`（含 object_topology / places /
+    // objects / frontiers / current_place_id）。前端不再持有第二份图。
+    this.graph = null;
     this.spatial = null;
 
     // 语义拓扑页的投影视图。两份计划在这页画什么上冲突，裁决见
@@ -213,7 +191,7 @@
     this._view = null;
     this._drag = null;
     // Re-render so the next render() auto-fits the content.
-    this.render(this.data, this.spatial);
+    this.render(this.graph, this.spatial);
   };
 
   SearchMapRenderer.prototype._bindViewportGestures = function () {
@@ -285,7 +263,7 @@
   // ------------------------------------------------------------------ //
   SearchMapRenderer.prototype.setTopologyView = function (view) {
     this.topologyView = view === "navigation" ? "navigation" : "objects";
-    this.render(this.data, this.spatial);
+    this.render(this.graph, this.spatial);
   };
 
   SearchMapRenderer.prototype.getTopologyView = function () {
@@ -295,19 +273,18 @@
   // ------------------------------------------------------------------ //
   // Main render dispatch                                               //
   // ------------------------------------------------------------------ //
-  SearchMapRenderer.prototype.render = function (mapData, spatialData) {
-    this.data = mapData || this.data || {};
+  SearchMapRenderer.prototype.render = function (graphData, spatialData) {
+    this.graph = graphData || this.graph || {};
     this.spatial = spatialData || this.spatial || {};
 
     // 计划书 §7.2：语义拓扑页只投影"对象拓扑"。禁止优先把整张
     // semantic_navigation_graph_v1 交给 renderObjectTopology()，否则 P1/F01
     // 这些内部导航节点会漏到界面上。内部导航图仍然保留给规划器使用。
-    var graph = this.spatial.semantic_graph || null;
-    var topology = graph && graph.object_topology ? graph.object_topology : null;
+    var topology = this.graph.object_topology || null;
     var project = this.topologyView === "navigation" ? objectTopologyOnly : objectTopologyStrict;
     this.renderObjectTopology(
       project(topology),
-      this.spatial.semantic_objects || []
+      this.graph.objects || []
     );
   };
 
@@ -608,393 +585,6 @@
     this.detailEl.classList.remove("hidden");
   };
 
-  // ================================================================== //
-  // ⚠ 不可达代码（2026-09-15 起）                                        //
-  //                                                                    //
-  // 计量"空间地图"视图已被 2026-08-26 计划整体移除，本轮又把入口按钮和  //
-  // 模式开关一并删掉，所以下面这一整段（renderSpatialMap 及其专属的     //
-  // drawSpatialOverlay / drawSemanticEdges / drawRoute）**没有任何调用点**。//
-  // 留着只是还没清理，别以为这是个能用的功能，也别去"修"它。           //
-  // 对应的界面图例 #map-legend 也已从 index.html 删除。                  //
-  // ================================================================== //
-  SearchMapRenderer.prototype.renderSpatialMap = function (mapData, spatialData) {
-    this.data = mapData || this.data || {};
-    var map = this.data;
-    var nodes = Array.isArray(map.nodes) ? map.nodes.slice() : [];
-    var edges = Array.isArray(map.edges) ? map.edges.slice() : [];
-    var robot = map.robot || {};
-    var currentId = map.current_node_id || null;
-
-    // Merge PlaceGraph places into the node set so the SVG viewBox and base
-    // topology include real spatial Places (plan §91-§95).
-    var spatial = spatialData || null;
-    if (spatial && spatial.place_graph && Array.isArray(spatial.place_graph.places)) {
-      spatial.place_graph.places.forEach(function (place) {
-        var node = placeToNode(place);
-        if (!nodes.some(function (n) { return n.node_id === node.node_id; })) {
-          nodes.push(node);
-        }
-      });
-    }
-
-    var layout = computeLayout(nodes, robot);
-
-    // fit
-    var bounds = fitBounds(layout, robot, spatial);
-    this._fitViewBox(bounds);
-
-    var ns = "http://www.w3.org/2000/svg";
-    this.svg.textContent = "";
-
-    // grid hint
-    drawGrid(this.svg, ns, bounds);
-
-    // edges
-    edges.forEach(function (edge) {
-      var a = layout[edge.source_node_id];
-      var b = layout[edge.target_node_id];
-      if (!a || !b) return;
-      var line = document.createElementNS(ns, "line");
-      line.setAttribute("x1", a.x); line.setAttribute("y1", a.y);
-      line.setAttribute("x2", b.x); line.setAttribute("y2", b.y);
-      var failed = edge.navigation_result && edge.navigation_result !== "succeeded";
-      line.setAttribute("stroke", failed ? "#f87171" : "#2b333e");
-      line.setAttribute("stroke-width", failed ? 1.6 : 1);
-      line.setAttribute("stroke-dasharray", failed ? "4 3" : "none");
-      this.svg.appendChild(line);
-    }.bind(this));
-
-    // nodes
-    nodes.forEach(function (node) {
-      var pos = layout[node.node_id];
-      if (!pos) return;
-      var g = document.createElementNS(ns, "g");
-      g.setAttribute("transform", "translate(" + pos.x + "," + pos.y + ")");
-      var state = resolveState(node, currentId);
-      var color = STATE_COLORS[state] || "#8b95a3";
-      var symbol = STATE_SYMBOLS[state] || "●";
-      var r = node.node_id === currentId ? 12 : 7;
-      var circle = document.createElementNS(ns, "circle");
-      circle.setAttribute("r", r);
-      circle.setAttribute("fill", color);
-      circle.setAttribute("fill-opacity", "0.18");
-      circle.setAttribute("stroke", color);
-      circle.setAttribute("stroke-width", "1.5");
-      g.appendChild(circle);
-      var text = document.createElementNS(ns, "text");
-      text.setAttribute("text-anchor", "middle");
-      text.setAttribute("dominant-baseline", "central");
-      text.setAttribute("fill", color);
-      text.setAttribute("font-size", node.node_id === currentId ? "14" : "11");
-      text.textContent = symbol;
-      g.appendChild(text);
-      var label = document.createElementNS(ns, "text");
-      label.setAttribute("y", r + 12);
-      label.setAttribute("text-anchor", "middle");
-      label.setAttribute("fill", "#8b95a3");
-      label.setAttribute("font-size", "9");
-      label.textContent = shortNodeLabel(node);
-      g.appendChild(label);
-      g.addEventListener("click", function (event) {
-        event.stopPropagation();
-        this.showDetail(node);
-      }.bind(this));
-      this.svg.appendChild(g);
-    }.bind(this));
-
-    // robot heading (arrow)
-    if (robot && robot.x !== undefined && robot.y !== undefined) {
-      var yaw = Number(robot.yaw || 0);
-      var len = 22;
-      var x2 = robot.x + len * Math.cos(yaw);
-      var y2 = robot.y - len * Math.sin(yaw);
-      var line = document.createElementNS(ns, "line");
-      line.setAttribute("x1", robot.x); line.setAttribute("y1", robot.y);
-      line.setAttribute("x2", x2); line.setAttribute("y2", y2);
-      line.setAttribute("stroke", "#38bdf8");
-      line.setAttribute("stroke-width", "2.5");
-      line.setAttribute("marker-end", "url(#arrow)");
-      this.svg.appendChild(line);
-      var dot = document.createElementNS(ns, "circle");
-      dot.setAttribute("cx", robot.x); dot.setAttribute("cy", robot.y);
-      dot.setAttribute("r", "4"); dot.setAttribute("fill", "#38bdf8");
-      this.svg.appendChild(dot);
-    }
-
-    // spatial overlays (frontiers / semantic objects / PSG regions / goal)
-    if (spatial) {
-      this.drawSpatialOverlay(spatial, layout, robot);
-      this.drawSemanticEdges(spatial, layout);
-      this.drawRoute(spatial, layout);
-    }
-
-    // arrow marker def
-    var defs = document.createElementNS(ns, "defs");
-    var marker = document.createElementNS(ns, "marker");
-    marker.setAttribute("id", "arrow");
-    marker.setAttribute("markerWidth", "6"); marker.setAttribute("markerHeight", "6");
-    marker.setAttribute("refX", "4"); marker.setAttribute("refY", "3");
-    marker.setAttribute("orient", "auto");
-    var path = document.createElementNS(ns, "path");
-    path.setAttribute("d", "M0,0 L6,3 L0,6 z");
-    path.setAttribute("fill", "#38bdf8");
-    marker.appendChild(path);
-    defs.appendChild(marker);
-    this.svg.insertBefore(defs, this.svg.firstChild);
-
-    // topology arrow marker (used only by semantic topology edges)
-    var topoDefs = document.createElementNS(ns, "defs");
-    var tm = document.createElementNS(ns, "marker");
-    tm.setAttribute("id", "topo-arrow");
-    tm.setAttribute("markerWidth", "7"); tm.setAttribute("markerHeight", "7");
-    tm.setAttribute("refX", "6"); tm.setAttribute("refY", "3.5");
-    tm.setAttribute("orient", "auto");
-    var tp = document.createElementNS(ns, "path");
-    tp.setAttribute("d", "M0,0 L7,3.5 L0,7 z");
-    tp.setAttribute("fill", "#c084fc");
-    tm.appendChild(tp);
-    topoDefs.appendChild(tm);
-    this.svg.insertBefore(topoDefs, this.svg.firstChild);
-  };
-
-  SearchMapRenderer.prototype.drawSpatialOverlay = function (spatial, layout, robot) {
-    var ns = "http://www.w3.org/2000/svg";
-    var svg = this.svg;
-
-    // Occupancy / explored background (plan §92)
-    var smap = spatial.spatial_map;
-    if (smap && smap.origin && smap.resolution_m > 0) {
-      var ox = smap.origin[0];
-      var oy = smap.origin[1];
-      var res = smap.resolution_m;
-      var totalCells = (Array.isArray(smap.free) ? smap.free.length : 0) +
-                       (Array.isArray(smap.occupied) ? smap.occupied.length : 0);
-      if (totalCells > 0 && totalCells < 4000) {
-        function cellRect(cell, fill) {
-          var rect = document.createElementNS(ns, "rect");
-          var x = ox + (cell[0] + 0.5) * res;
-          var y = oy + (cell[1] + 0.5) * res;
-          rect.setAttribute("x", x - res / 2);
-          rect.setAttribute("y", -y - res / 2);
-          rect.setAttribute("width", res);
-          rect.setAttribute("height", res);
-          rect.setAttribute("fill", fill);
-          rect.setAttribute("opacity", "0.35");
-          svg.appendChild(rect);
-        }
-        (smap.free || []).forEach(function (cell) { cellRect(cell, "#1e293b"); });
-        (smap.occupied || []).forEach(function (cell) { cellRect(cell, "#f87171"); });
-      }
-    }
-
-    // Frontiers (plan §94)
-    var frontiers = Array.isArray(spatial.frontiers) ? spatial.frontiers : [];
-    frontiers.forEach(function (f) {
-      if (!f.position) return;
-      var g = document.createElementNS(ns, "g");
-      g.setAttribute("transform", "translate(" + f.position[0] + "," + (-f.position[1]) + ")");
-      var circle = document.createElementNS(ns, "circle");
-      circle.setAttribute("r", "7");
-      circle.setAttribute("fill", "#fbbf24");
-      circle.setAttribute("fill-opacity", "0.25");
-      circle.setAttribute("stroke", "#fbbf24");
-      circle.setAttribute("stroke-width", "1.5");
-      g.appendChild(circle);
-      var text = document.createElementNS(ns, "text");
-      text.setAttribute("text-anchor", "middle");
-      text.setAttribute("dominant-baseline", "central");
-      text.setAttribute("fill", "#fbbf24");
-      text.setAttribute("font-size", "8");
-      text.textContent = f.frontier_id.replace("frontier_", "F").replace("relative_f_", "F");
-      g.appendChild(text);
-      svg.appendChild(g);
-    });
-
-    // Semantic objects with a real map position (plan §95, §12.2).
-    // CONFIRMED entities are primary solid nodes; TENTATIVE are semi-transparent
-    // and visually distinct; STALE are muted.
-    var objects = Array.isArray(spatial.semantic_objects) ? spatial.semantic_objects : [];
-    objects.forEach(function (obj) {
-      if (!obj.map_xyz) return;
-      var x = obj.map_xyz[0];
-      var y = -obj.map_xyz[1];
-      var status = String(obj.status || "TENTATIVE").toUpperCase();
-      var confirmed = status === "CONFIRMED";
-      var stale = status === "STALE";
-      var g = document.createElementNS(ns, "g");
-      g.setAttribute("transform", "translate(" + x + "," + y + ")");
-      var diamond = document.createElementNS(ns, "rect");
-      diamond.setAttribute("x", "-4"); diamond.setAttribute("y", "-4");
-      diamond.setAttribute("width", "8"); diamond.setAttribute("height", "8");
-      diamond.setAttribute("transform", "rotate(45)");
-      if (confirmed) {
-        diamond.setAttribute("fill", obj.spatial_quality === "METRIC_RGBD" ? "#34d399" : "#38bdf8");
-        diamond.setAttribute("fill-opacity", "0.9");
-        diamond.setAttribute("stroke", "#ecfdf5");
-        diamond.setAttribute("stroke-width", "1");
-      } else if (stale) {
-        diamond.setAttribute("fill", "#6b7280");
-        diamond.setAttribute("fill-opacity", "0.35");
-      } else {
-        // TENTATIVE
-        diamond.setAttribute("fill", "#38bdf8");
-        diamond.setAttribute("fill-opacity", "0.3");
-        diamond.setAttribute("stroke", "#38bdf8");
-        diamond.setAttribute("stroke-width", "0.8");
-      }
-      g.appendChild(diamond);
-      // Object id + label + obs count (plan §12.2)
-      var idText = document.createElementNS(ns, "text");
-      idText.setAttribute("y", "-8");
-      idText.setAttribute("text-anchor", "middle");
-      idText.setAttribute("fill", confirmed ? "#34d399" : "#94a3b8");
-      idText.setAttribute("font-size", "7");
-      idText.textContent = String(obj.object_id || "");
-      g.appendChild(idText);
-      var label = document.createElementNS(ns, "text");
-      label.setAttribute("y", "12");
-      label.setAttribute("text-anchor", "middle");
-      label.setAttribute("fill", "#8b95a3");
-      label.setAttribute("font-size", "8");
-      label.textContent = String(obj.label || "").slice(0, 8) + (obj.observation_count ? "·" + obj.observation_count : "");
-      g.appendChild(label);
-      g.addEventListener("click", function (event) {
-        event.stopPropagation();
-        this.showObjectDetail(obj);
-      }.bind(this));
-      svg.appendChild(g);
-    });
-
-    // PSG predicted regions (plan §96)
-    var prior = spatial.psg_prior || {};
-    var regions = Array.isArray(prior.region_hypotheses) ? prior.region_hypotheses : [];
-    regions.forEach(function (region) {
-      if (!region.center || region.state === "REJECTED") return;
-      var circle = document.createElementNS(ns, "circle");
-      circle.setAttribute("cx", region.center[0]);
-      circle.setAttribute("cy", -region.center[1]);
-      var radius = (region.radius_max_m || 1.0) * 40;
-      circle.setAttribute("r", radius);
-      circle.setAttribute("fill", "#c084fc");
-      circle.setAttribute("fill-opacity", "0.08");
-      circle.setAttribute("stroke", "#c084fc");
-      circle.setAttribute("stroke-dasharray", "4 3");
-      svg.appendChild(circle);
-    });
-
-    // Selected long-term goal (plan §97)
-    var goal = spatial.long_term_goal;
-    if (goal && goal.preferred_position) {
-      var x = goal.preferred_position[0];
-      var y = -goal.preferred_position[1];
-      var g = document.createElementNS(ns, "g");
-      g.setAttribute("transform", "translate(" + x + "," + y + ")");
-      var star = document.createElementNS(ns, "text");
-      star.setAttribute("text-anchor", "middle");
-      star.setAttribute("dominant-baseline", "central");
-      star.setAttribute("fill", "#f472b6");
-      star.setAttribute("font-size", "16");
-      star.textContent = "★";
-      g.appendChild(star);
-      svg.appendChild(g);
-    }
-  };
-
-  // Semantic graph edges (MOVED_TO / OBSERVED_FROM) with Place <-> object
-  // links (plan §8) - only used in spatial_map mode.
-  SearchMapRenderer.prototype.drawSemanticEdges = function (spatial, layout) {
-    var ns = "http://www.w3.org/2000/svg";
-    var svg = this.svg;
-    var graph = spatial.semantic_graph || null;
-    var edges = (graph && Array.isArray(graph.edges)) ? graph.edges : [];
-    var objects = Array.isArray(spatial.semantic_objects) ? spatial.semantic_objects : [];
-    var objectById = {};
-    objects.forEach(function (obj) { objectById[obj.object_id] = obj; });
-
-    // OBSERVED_FROM edges: object -> place thin lines
-    edges.forEach(function (edge) {
-      var rel = String(edge.relation || "").toUpperCase();
-      if (rel !== "OBSERVED_FROM") return;
-      var aId = edge.from;
-      var bId = edge.to;
-      var placeLayout = layout[aId] || layout[bId];
-      var objLayout = null;
-      var objId = String(aId).indexOf("P") === 0 ? bId : aId;
-      if (objectById[objId] && objectById[objId].map_xyz) {
-        objLayout = { x: objectById[objId].map_xyz[0], y: -objectById[objId].map_xyz[1] };
-      } else if (layout[objId]) {
-        objLayout = layout[objId];
-      }
-      var placeId = String(aId).indexOf("P") === 0 ? aId : bId;
-      placeLayout = layout[placeId];
-      if (!placeLayout || !objLayout) return;
-      var line = document.createElementNS(ns, "line");
-      line.setAttribute("x1", placeLayout.x); line.setAttribute("y1", placeLayout.y);
-      line.setAttribute("x2", objLayout.x); line.setAttribute("y2", objLayout.y);
-      line.setAttribute("stroke", "#64748b");
-      line.setAttribute("stroke-width", "0.8");
-      line.setAttribute("stroke-dasharray", "2 3");
-      line.setAttribute("stroke-opacity", "0.5");
-      svg.appendChild(line);
-    });
-  };
-
-  // Route overlay: robot -> waypoints -> target (plan §12.4).
-  SearchMapRenderer.prototype.drawRoute = function (spatial, layout) {
-    var ns = "http://www.w3.org/2000/svg";
-    var svg = this.svg;
-    var route = spatial.route_plan || null;
-    // Legacy fallback: a route may be nested inside semantic_graph.route_plan.
-    if (!route && spatial.semantic_graph && spatial.semantic_graph.route_plan) {
-      route = spatial.semantic_graph.route_plan;
-    }
-    if (!route || !Array.isArray(route.waypoints) || !route.waypoints.length) return;
-    var pts = route.waypoints.map(function (wp) {
-      return { x: wp[0], y: -wp[1] };
-    });
-    if (pts.length < 2) return;
-    var poly = document.createElementNS(ns, "polyline");
-    var points = pts.map(function (p) { return p.x.toFixed(2) + "," + p.y.toFixed(2); }).join(" ");
-    poly.setAttribute("points", points);
-    poly.setAttribute("fill", "none");
-    poly.setAttribute("stroke", "#22d3ee");
-    poly.setAttribute("stroke-width", "3");
-    poly.setAttribute("stroke-opacity", "0.8");
-    poly.setAttribute("stroke-linejoin", "round");
-    svg.appendChild(poly);
-    // Target marker
-    if (route.target_position) {
-      var g = document.createElementNS(ns, "g");
-      g.setAttribute("transform", "translate(" + route.target_position[0] + "," + (-route.target_position[1]) + ")");
-      var star = document.createElementNS(ns, "text");
-      star.setAttribute("text-anchor", "middle");
-      star.setAttribute("dominant-baseline", "central");
-      star.setAttribute("fill", "#22d3ee");
-      star.setAttribute("font-size", "14");
-      star.textContent = "◎";
-      g.appendChild(star);
-      svg.appendChild(g);
-    }
-  };
-
-  SearchMapRenderer.prototype.showDetail = function (node) {
-    if (!this.detailEl) return;
-    var state = resolveState(node, this.data.current_node_id);
-    var html =
-      "<div><b>" + esc(node.node_id) + "</b> <span style='color:" +
-      (STATE_COLORS[state] || "#8b95a3") + "'>" + esc(state) + "</span></div>" +
-      "<div>时间 " + fmtTime(node.timestamp) + "</div>" +
-      "<div>Pose 质量 " + esc(node.pose_quality || "unavailable") + "</div>" +
-      "<div>访问次数 " + (node.visited_count || 0) + "</div>" +
-      "<div>负证据 " + (node.negative_evidence_count || 0) + "</div>" +
-      "<div>导航失败 " + (node.navigation_fail_count || 0) + "</div>" +
-      "<div>目标匹配 " + esc(node.target_match_level || "none") + "</div>" +
-      "<div>语义相关 " + (node.semantic_relevance || 0).toFixed(2) + "</div>" +
-      "<div>信息增益 " + (node.information_gain || 0).toFixed(2) + "</div>" +
-      "<div>Objects: " + esc((node.objects || []).join(", ") || "-") + "</div>";
-    this.detailEl.innerHTML = html;
-    this.detailEl.classList.remove("hidden");
-  };
 
   SearchMapRenderer.prototype.showObjectDetail = function (obj) {
     if (!this.detailEl) return;
@@ -1017,38 +607,7 @@
   // ------------------------------------------------------------------ //
   // helpers                                                            //
   // ------------------------------------------------------------------ //
-  function resolveState(node, currentId) {
-    if (node.node_id === currentId) return "CURRENT";
-    var s = String(node.reachable_state || "").toUpperCase();
-    if (STATE_COLORS[s]) return s;
-    if (node.visited_count > 0) return "VISITED";
-    return "OBSERVED";
-  }
 
-  function computeLayout(nodes, robot) {
-    var layout = {};
-    var hasPose = false;
-    nodes.forEach(function (node) {
-      var pose = node.pose || {};
-      if (pose.x !== undefined && isFinite(pose.x) && pose.y !== undefined && isFinite(pose.y)) {
-        layout[node.node_id] = { x: pose.x, y: -pose.y };
-        hasPose = true;
-      }
-    });
-    if (robot && robot.x !== undefined && robot.y !== undefined) hasPose = true;
-    if (hasPose) return layout;
-    // layout-only polar fallback by heading sector (display only)
-    nodes.forEach(function (node) {
-      var sector = node.heading_sector;
-      var angle = ((sector == null ? 0 : sector) / 12) * 2 * Math.PI - Math.PI / 2;
-      var radius = 60 + ((hashCode(node.node_id) % 3) * 24);
-      layout[node.node_id] = {
-        x: radius * Math.cos(angle),
-        y: radius * Math.sin(angle),
-      };
-    });
-    return layout;
-  }
 
   // ------------------------------------------------------------------ //
   // Semantic topology layout (deterministic, display-only)            //
@@ -1337,41 +896,6 @@
     return text.slice(0, max - 1) + "…";
   }
 
-  function fitBounds(layout, robot, spatial) {
-    var xs = [];
-    var ys = [];
-    Object.keys(layout).forEach(function (id) {
-      xs.push(layout[id].x); ys.push(layout[id].y);
-    });
-    if (robot && robot.x !== undefined && robot.y !== undefined) {
-      xs.push(robot.x); ys.push(-(robot.y || 0));
-    }
-    // Include persistent objects with a map position (plan §12.6).
-    var spatial2 = spatial || null;
-    if (spatial2 && Array.isArray(spatial2.semantic_objects)) {
-      spatial2.semantic_objects.forEach(function (obj) {
-        if (obj.map_xyz) { xs.push(obj.map_xyz[0]); ys.push(-obj.map_xyz[1]); }
-      });
-    }
-    // Include route / frontiers positions.
-    var route = spatial2 && (spatial2.route_plan || (spatial2.semantic_graph && spatial2.semantic_graph.route_plan));
-    if (route && Array.isArray(route.waypoints)) {
-      route.waypoints.forEach(function (wp) { xs.push(wp[0]); ys.push(-wp[1]); });
-    }
-    if (spatial2 && Array.isArray(spatial2.frontiers)) {
-      spatial2.frontiers.forEach(function (f) {
-        if (f.position) { xs.push(f.position[0]); ys.push(-f.position[1]); }
-      });
-    }
-    if (!xs.length) return { minX: -WIDTH / 2, maxX: WIDTH / 2, minY: -HEIGHT / 2, maxY: HEIGHT / 2 };
-    var minX = Math.min.apply(null, xs);
-    var maxX = Math.max.apply(null, xs);
-    var minY = Math.min.apply(null, ys);
-    var maxY = Math.max.apply(null, ys);
-    if (maxX - minX < 1) { minX -= 20; maxX += 20; }
-    if (maxY - minY < 1) { minY -= 20; maxY += 20; }
-    return { minX: minX, maxX: maxX, minY: minY, maxY: maxY };
-  }
 
   function boundsToViewBox(b) {
     var w = Math.max(60, b.maxX - b.minX);
@@ -1387,46 +911,8 @@
     );
   }
 
-  function drawGrid(svg, ns, bounds) {
-    var step = 50;
-    for (var x = Math.floor(bounds.minX / step) * step; x <= bounds.maxX; x += step) {
-      var line = document.createElementNS(ns, "line");
-      line.setAttribute("x1", x); line.setAttribute("y1", bounds.minY);
-      line.setAttribute("x2", x); line.setAttribute("y2", bounds.maxY);
-      line.setAttribute("stroke", "#161c24");
-      line.setAttribute("stroke-width", "0.5");
-      svg.appendChild(line);
-    }
-    for (var y = Math.floor(bounds.minY / step) * step; y <= bounds.maxY; y += step) {
-      var hline = document.createElementNS(ns, "line");
-      hline.setAttribute("x1", bounds.minX); hline.setAttribute("y1", y);
-      hline.setAttribute("x2", bounds.maxX); hline.setAttribute("y2", y);
-      hline.setAttribute("stroke", "#161c24");
-      hline.setAttribute("stroke-width", "0.5");
-      svg.appendChild(hline);
-    }
-  }
 
-  function placeToNode(place) {
-    return {
-      node_id: place.place_id,
-      pose: place.pose || null,
-      objects: place.observed_object_ids || [],
-      visited_count: place.visit_count || 0,
-      reachable_state: place.target_confirmed ? "TARGET_CONFIRMED" : (place.visit_count > 0 ? "VISITED" : "OBSERVED"),
-      heading_sector: null,
-      timestamp: (place.provenance && place.provenance.created_at) || null,
-      pose_quality: place.pose_quality || "unavailable",
-      negative_evidence_count: place.negative_evidence || 0,
-      target_match_level: place.target_candidate ? "candidate" : "none",
-    };
-  }
 
-  function shortNodeLabel(node) {
-    var objects = node.objects || [];
-    if (!objects.length) return node.node_id;
-    return objects.slice(0, 2).join("+");
-  }
 
   function fmtTime(ts) {
     if (!ts) return "--";

@@ -346,6 +346,10 @@ export MANUAL_DEMO_LOGS_DIR="${MANUAL_DEMO_LOGS_DIR:-outputs/manual_web_demo/log
 export AUTONOMOUS_SEARCH_RUNTIME_DIR="${runtime_root}"
 export AUTONOMOUS_SEARCH_LOGS_DIR="${log_root}"
 export GO2W_SLAM_MAP_SNAPSHOT="${runtime_root}/slam_map_3d.json"
+# 计划书 §2.3：三维对象与地图靠 map_epoch 配对，三个路径显式给出 —— 桥、对象
+# 生产者（搜索 worker）和读取端都用这里的同一份取值，不靠 glob/mtime 猜。
+export GO2W_SLAM_MAP_META="${runtime_root}/slam_map_meta.json"
+export GO2W_SEMANTIC_OBJECTS_SNAPSHOT="${runtime_root}/semantic_objects.json"
 export GO2W_SLAM_RESET_MARKER="${runtime_root}/slam_reset.marker"
 # Search worker interpreter is auto-detected unless the unified bootstrap
 # environment above has already proved it can import both ROS and the project.
@@ -386,6 +390,7 @@ if [[ "$MOCK" == 0 ]]; then
   # 永久地图只来自权威 SLAM 地图（pslam_map）；aligned_scan 只做调试预览层。
   setsid /usr/bin/python3 "${script_dir}/plain_slam_web_bridge.py" \
     --output "$GO2W_SLAM_MAP_SNAPSHOT" \
+    --meta-output "$GO2W_SLAM_MAP_META" \
     --map-topic "${GO2W_SLAM_WEB_MAP_TOPIC:-/go2w/slam/web_map}" \
     --map-info-topic "${GO2W_SLAM_WEB_MAP_INFO_TOPIC:-/go2w/slam/web_map_info}" \
     --map-frame "pslam_map" \

@@ -83,5 +83,40 @@ ok(declared && reset && declared[1] === reset[1],
    "双击重置与默认值一致（声明 " + (declared && declared[1]) +
    " / 重置 " + (reset && reset[1]) + "）");
 
+console.log("objectLabel —— canvas 只许读 label_zh（计划书 §7.4）:");
+ok(F.objectLabel({ label_zh: "音箱", raw_label: "speaker" }) === "音箱",
+   "读的是 label_zh");
+// 本文件存在的第二个理由：整改前画的就是 item.label，于是这三个词原样上屏。
+ok(F.objectLabel({ raw_label: "barrel" }) === "未分类物体",
+   "raw_label=barrel 不会作为可见文字画出");
+ok(F.objectLabel({ label: "bin" }) === "未分类物体",
+   "老字段 label 也不作为兜底");
+ok(F.objectLabel({ label_zh: "桶", raw_label: "barrel" }) === "桶",
+   "有中文时原样用");
+ok(F.objectLabel({}) === "未分类物体", "缺少中文名时显示未分类物体");
+ok(F.objectLabel({ label_zh: "   " }) === "未分类物体", "空白中文名同样兜底");
+ok(F.objectLabel(null) === "未分类物体", "null 不炸");
+// 源码级断言：文本绘制必须走 objectLabel，不许再出现裸的 item.label / raw_label。
+ok(!/fillText\(item\.label/.test(source), "canvas 上没有裸 item.label 的 fillText");
+ok(!/fillText\([^)]*raw_label/.test(source), "fillText 里不许出现 raw_label");
+// 3 处 = 函数声明本身 + 点/框各一次调用。
+ok((source.match(/objectLabel\(item\)/g) || []).length === 3,
+   "两个绘制函数（点/框）都走 objectLabel");
+
+console.log("objectVerified —— 目标例外换颜色:");
+ok(F.objectVerified({ decision: "TARGET_VERIFIED" }) === true, "复核目标认出来");
+ok(F.objectVerified({ decision: "DISPLAY" }) === false, "普通显示不是例外");
+ok(F.objectVerified({}) === false, "缺字段按普通处理");
+
+console.log("objectFilterSummary —— 状态栏的过滤统计:");
+ok(F.objectFilterSummary({ input: 20, displayed: 4, filtered: 16 })
+   === "物体框 4 个 / 已过滤 16 个", "正常统计");
+ok(F.objectFilterSummary({ input: 3, displayed: 3 })
+   === "物体框 3 个 / 已过滤 0 个", "缺 filtered 时自己算差值");
+ok(F.objectFilterSummary({ input: 0, displayed: 0, filtered: 0 })
+   === "物体框 0 个 / 已过滤 0 个", "零也照报");
+ok(F.objectFilterSummary(null) === "", "老快照没有这个字段时不显示");
+ok(F.objectFilterSummary({}) === "", "字段不全时宁可不显示，也不报 0/0");
+
 console.log(failures === 0 ? "ALL SLAM3D FRAME TESTS PASSED" : failures + " FAILURES");
 process.exit(failures === 0 ? 0 : 1);

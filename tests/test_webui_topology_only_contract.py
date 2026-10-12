@@ -30,10 +30,21 @@ class TestWebUITopologyOnlyContract(unittest.TestCase):
         self.assertNotIn("map-legend", html)
         self.assertNotIn("mapLegend", ui_js)
 
-    def test_render_uses_semantic_graph(self) -> None:
+    def test_render_uses_single_graph_argument(self) -> None:
+        """计划书 §2.1：图只有一个来源 —— `state.graph`。
+
+        渲染器不再从 `spatial.semantic_graph` 里翻第二张图，调用方也不再传
+        一份 "map" 进来；`MAP_UPDATED` 只带 revision。
+        """
         text = JS.read_text(encoding="utf-8")
-        self.assertIn("var graph = this.spatial.semantic_graph || null;", text)
+        self.assertIn("var topology = this.graph.object_topology || null;", text)
         self.assertIn("renderObjectTopology", text)
+        for stale in ("this.spatial.semantic_graph", "this.data", "semantic_graph"):
+            self.assertNotIn(stale, text)
+        ui = UI_JS.read_text(encoding="utf-8")
+        self.assertNotIn("appState.map", ui)
+        self.assertIn("appState.graph = state.graph || null;", ui)
+        self.assertIn("pullGraphState();", ui)
 
     def test_no_metric_occupancy_in_render(self) -> None:
         text = JS.read_text(encoding="utf-8")

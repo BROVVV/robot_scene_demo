@@ -16,6 +16,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from app.detectors.vocabulary import LABEL_ZH_FALLBACK
 from app.perception.depth_object_localizer import ObjectSpatialObservation
 from app.spatial.models import (
     SPATIAL_QUALITY_CAMERA_LOCAL,
@@ -36,6 +37,25 @@ ENTITY_REJECTED = "REJECTED"
 ACTION_CREATED = "CREATED"
 ACTION_MERGED = "MERGED"
 ACTION_REJECTED = "REJECTED"
+
+
+def valid_confidence(value: Any) -> float | None:
+    """把分数收敛成 [0,1] 内的有限数；非法值返回 None。
+
+    返回 None 表示「这次观测的分数不可用」，调用方应当把它**当作没有这次
+    观测**来处理置信度聚合 —— 但实体本身照建、位置照合，因为这是分数坏了，
+    不是几何坏了。NaN 会污染一切算术（累计平均一旦吃进 NaN 就永远是 NaN），
+    所以必须在这里拦掉。
+    """
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(score):
+        return None
+    if score < 0.0 or score > 1.0:
+        return None
+    return score
 
 
 @dataclass
@@ -99,13 +119,25 @@ class SemanticMapUpdateResult:
 @dataclass
 class SemanticObjectEntry:
     object_id: str
+    # `label` 是实体关联键与调试字段，`label_zh` 是显示字段。两者可以不同：
+    # 未知英文的 label_zh 会兜底成「未分类物体」，而 label 保持原文，
+    # 免得几个互不相干的未知类别并成一个实体（计划书 §3）。
     label: str
+    label_zh: str = ""
+    category: str = ""
     depth_m: float | None = None
     camera_xyz: tuple[float, float, float] | None = None
     map_xyz: tuple[float, float, float] | None = None
     bearing_deg: float | None = None
     spatial_quality: str = SPATIAL_QUALITY_CAMERA_LOCAL
+    # 聚合置信度（累计平均，见 `_merge`）。**不再等于历史最大值** ——
+    # 一次偶然高分不该让实体永久可信（计划书 §2.3 第 4 条）。
     confidence: float = 0.0
+    # 历史最高分，只用于审计/调试。
+    confidence_max: float = 0.0
+    # 参与聚合的有效观测数。与 `observation_count` 不同：后者统计合并次数，
+    # 其中可能夹着分数非法（NaN/越界）因而被聚合拒绝的那些。
+    confidence_observation_count: int = 0
     observation_count: int = 0
     first_seen: float = 0.0
     last_seen: float = 0.0
@@ -126,12 +158,16 @@ class SemanticObjectEntry:
         return {
             "object_id": self.object_id,
             "label": self.label,
+            "label_zh": self.label_zh,
+            "category": self.category,
             "depth_m": self.depth_m,
             "camera_xyz": list(self.camera_xyz) if self.camera_xyz else None,
             "map_xyz": list(self.map_xyz) if self.map_xyz else None,
             "bearing_deg": self.bearing_deg,
             "spatial_quality": self.spatial_quality,
             "confidence": self.confidence,
+            "confidence_max": self.confidence_max,
+            "confidence_observation_count": self.confidence_observation_count,
             "observation_count": self.observation_count,
             "first_seen": self.first_seen,
             "last_seen": self.last_seen,
@@ -275,15 +311,22 @@ class SemanticObjectMap:
             else:
                 object_id = f"obj_{self._next_id:03d}"
                 self._next_id += 1
+                # 首帧的分数也要过同一道有限性/范围门：非法分数当作"没有这次
+                # 观测"，实体置信度为 0 且计数为 0，后一次合法观测才成为基准。
+                initial = valid_confidence(obs.confidence)
                 self.objects[object_id] = SemanticObjectEntry(
                     object_id=object_id,
                     label=obs.label,
+                    label_zh=getattr(obs, "label_zh", "") or "",
+                    category=getattr(obs, "category", "") or "",
                     depth_m=obs.depth_m,
                     camera_xyz=obs.camera_xyz,
                     map_xyz=obs.map_xyz,
                     bearing_deg=obs.bearing_deg,
                     spatial_quality=obs.spatial_quality,
-                    confidence=obs.confidence,
+                    confidence=initial if initial is not None else 0.0,
+                    confidence_max=initial if initial is not None else 0.0,
+                    confidence_observation_count=1 if initial is not None else 0,
                     observation_count=1,
                     first_seen=now,
                     last_seen=now,
@@ -367,10 +410,14 @@ class SemanticObjectMap:
         # Semantic gate: same label/category by default.
         if self.label_similarity and entry.label != obs.label:
             return False
-        # Frame compatibility.  World (map_xyz) coordinates are comparable
-        # across frames, so the frame gate only applies to camera-local /
-        # RGB_ONLY observations where raw camera coordinates are frame-locked.
-        if entry.map_xyz is None or obs.map_xyz is None:
+        # map_xyz 只有在同一世界坐标系里才可比较；pslam_map 与退化路径的
+        # pslam_odom 即使数值接近，也不能融合成同一个实体。
+        if entry.map_xyz is not None and obs.map_xyz is not None:
+            entry_map_frame = entry.provenance.get("map_frame")
+            obs_map_frame = obs.provenance.get("map_frame")
+            if entry_map_frame and obs_map_frame and entry_map_frame != obs_map_frame:
+                return False
+        else:
             entry_frame = entry.provenance.get("map_frame") or entry.provenance.get("frame_id")
             obs_frame = obs.provenance.get("map_frame") or obs.provenance.get("frame_id")
             if entry_frame and obs_frame and entry_frame != obs_frame:
@@ -547,7 +594,25 @@ class SemanticObjectMap:
         # Never downgrade spatial quality.
         if _quality_rank(obs.spatial_quality) > _quality_rank(entry.spatial_quality):
             entry.spatial_quality = obs.spatial_quality
-        entry.confidence = max(entry.confidence, obs.confidence)
+        # 置信度取累计平均，不再取历史最大值（计划书 §6 阶段 E）。
+        # 老写法 `max(entry.confidence, obs.confidence)` 让一次偶然高分永久
+        # 成为实体置信度，之后再多低分重复观测也拉不下来 —— 2026-09-17 那轮
+        # 41 个持久 ID 里 30 个低于 0.35，实体置信度却照样虚高。
+        # 显示门限另有一套组合判据（快照层），平均值只是它的输入之一。
+        score = valid_confidence(obs.confidence)
+        if score is not None:
+            count = entry.confidence_observation_count
+            entry.confidence = (entry.confidence * count + score) / (count + 1)
+            entry.confidence_observation_count = count + 1
+            entry.confidence_max = max(entry.confidence_max, score)
+        # 中文显示名/类别只在**新值明确有效**时更新：空串和「未分类物体」
+        # 是兜底值，不是知识，拿它顶掉已有的「音箱」就是信息损失。
+        new_zh = str(getattr(obs, "label_zh", "") or "").strip()
+        if new_zh and new_zh != LABEL_ZH_FALLBACK:
+            entry.label_zh = new_zh
+        new_category = str(getattr(obs, "category", "") or "").strip()
+        if new_category and new_category != "unknown":
+            entry.category = new_category
         if place_id and place_id not in entry.seen_from_places:
             entry.seen_from_places.append(place_id)
 

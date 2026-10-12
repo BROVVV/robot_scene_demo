@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import math
+import uuid
 from typing import Any, Iterable
 
 from app.spatial.pointcloud_web_codec import GlobalVoxelCloud
@@ -132,6 +133,11 @@ class SlamWebMapState:
         self.max_web_points = max(1_000, int(max_web_points))
         self.gate = gate or MotionEpisodeGate()
         self.session_id = 1
+        # §2.3：进程启动时的一段随机前缀 + 本地图会话计数。桥重启就换前缀，
+        # 地图 reset 就换计数 —— 两种"这不是同一张图了"都因此改变 epoch，
+        # 不需要再造第二套 reset 状态。
+        self.epoch_prefix = uuid.uuid4().hex[:8]
+        self.map_epoch = self._epoch()
         self.session_start_stamp = 0.0
         self.health = WAITING_FOR_MAP
         self.health_reason = "等待 plain_slam 发布第一张地图"
@@ -155,6 +161,9 @@ class SlamWebMapState:
         self._web_info: dict[str, Any] = {"mode": "empty", "voxel_size_m": 0.0,
                                           "limit": self.max_web_points,
                                           "truncated": False}
+
+    def _epoch(self) -> str:
+        return f"{self.epoch_prefix}-{self.session_id}"
 
     def reject(self, reason: str) -> bool:
         self.rejected_counts[reason] = self.rejected_counts.get(reason, 0) + 1
@@ -221,6 +230,7 @@ class SlamWebMapState:
     def reset_session(self, *, stamp: float, reason: str = "operator_reset") -> None:
         """§9.4：新 mapping session：清空缓存、丢弃旧 session 的迟到消息。"""
         self.session_id += 1
+        self.map_epoch = self._epoch()
         self.session_start_stamp = float(stamp)
         self.cloud.clear()
         self.map_revision += 1
@@ -269,6 +279,7 @@ class SlamWebMapState:
             "permanent_source": self.permanent_source,
             "canonical_frame": self.canonical_frame,
             "frame_id": self.canonical_frame,
+            "map_epoch": self.map_epoch,
             "target_map_frame": self.canonical_frame,
             "mapping_session_id": self.session_id,
             "map_revision": self.map_revision,

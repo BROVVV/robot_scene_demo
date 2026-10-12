@@ -79,6 +79,12 @@ files=(
   app/reasoning/llm_situated_search_reasoner.py
   app/schemas.py
   app/spatial/geometric_relation_extractor.py
+  # 2026-10-08 计划书 §2.3：地图桥与语义建图进程之间新增的两个文件层契约模块。
+  # 机器狗侧的 plain_slam_web_bridge.py 与 run_semantic_exploration.py 都要
+  # import 它们，漏掉这两行 = 远端一启动就 ImportError，而 py_compile 清单里
+  # 没有它们时连远端语法自检都是绿的。
+  app/spatial/object_display_snapshot.py
+  app/spatial/semantic_object_gate.py
   app/spatial/place_graph.py
   app/spatial/pointcloud_web_codec.py
   app/spatial/semantic_navigation_graph.py
@@ -112,6 +118,11 @@ files=(
   scripts/go2w/start_plain_slam_mapping.sh
   scripts/go2w/start_semantic_exploration.sh
   scripts/go2w/start_vlm_daemon.sh
+  # 2026-10-08 计划书 §2.3：停止脚本里新增了「停掉本模式的地图桥」。机器狗上
+  # 本来就有这个文件（09-01 版），但一直不在清单里，改动传不过去 —— 于是
+  # 「一个模式不能有两个进程同时写同一张地图 JSON」在机器狗上仍然不成立：
+  # WebUI 停了、桥还在写。
+  scripts/go2w/stop_autonomous_search_web.sh
   scripts/go2w/stop_manual_web_demo.sh
   scripts/go2w/stop_plain_slam_mapping.sh
   tests/test_autonomous_explorer.py
@@ -297,6 +308,7 @@ remote "cd ${robot_root} && python3 -m py_compile \
   app/reasoning/embodiment_context.py app/reasoning/llm_situated_search_reasoner.py \
   app/spatial/slam_web_map_state.py app/spatial/pointcloud_web_codec.py \
   app/spatial/spatial_pose_validator.py app/manual_web_demo/web_server.py \
+  app/spatial/object_display_snapshot.py app/spatial/semantic_object_gate.py \
   app/manual_web_demo/search_routes.py app/manual_web_demo/search_errors.py \
   app/manual_web_demo/slam_map_snapshot.py app/live_robot/autonomous_explorer.py \
   app/navigation/nav2_search_backend.py app/navigation/corridor_analyzer.py \
@@ -312,6 +324,8 @@ remote "cd ${robot_root} && python3 -m py_compile \
   && bash -n scripts/go2w/start_plain_slam_mapping.sh \
   && bash -n scripts/go2w/setup_environment.sh \
   && bash -n scripts/go2w/reset_plain_slam_session.sh \
+  && bash -n scripts/go2w/stop_autonomous_search_web.sh \
+  && bash -n scripts/go2w/stop_manual_web_demo.sh \
   && echo REMOTE_SYNTAX_OK"
 
 printf '\n同步完成。下一步是计划书 §13.2「静止上电验证，只规划不运动」——\n'

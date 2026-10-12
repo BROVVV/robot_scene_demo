@@ -141,6 +141,18 @@ td.empty { color: var(--muted); text-align: center; }
   word-break: break-all;
 }
 
+/* ---------- 实体遥控器只读模式 ---------- */
+/* 后端已经在 API/WS 入口硬挡（403 / 拒收），这里的置灰只是让操作员一眼看出
+   "这一块现在按不动"，并且不去点它。绝不能只靠 CSS —— 它挡不住 curl。 */
+.display-only-banner {
+  background: rgba(56, 189, 248, 0.14); border: 1px solid var(--accent);
+  color: var(--text); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;
+  font-weight: 700;
+}
+.control-bar.display-only {
+  opacity: 0.45; filter: grayscale(0.6); pointer-events: none;
+}
+
 /* ---------- control bar ---------- */
 .control-bar {
   display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
@@ -335,8 +347,44 @@ button.danger { background: var(--yellow) !important; color: #1a1200 !important;
 .task-understanding { font-size: 12px; line-height: 1.55; color: var(--muted); max-height: 150px; overflow-y: auto; }
 .task-understanding b { color: var(--text); }
 .decision-history { font-size: 12px; line-height: 1.45; max-height: 150px; overflow-y: auto; }
-.decision-history-row { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed var(--border); padding: 3px 0; }
+.decision-history-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; border-bottom: 1px dashed var(--border); padding: 3px 0; }
 .decision-history-row .cnt { color: var(--muted); white-space: nowrap; }
+/* §5.4：Agent 依据独占一行，不挤占原有的「指令 / decision id」两列。 */
+.decision-history-agent { flex-basis: 100%; color: var(--muted); font-size: 11px; }
+
+/* 任务 Agent 解释层（计划书 §5）。它是解释层：字号比主候选区小一号，
+   不抢"下一步决策 / 地图 / 安全状态"的视觉权重。 */
+.agent-safety, .agent-choice, .agent-downstream, .agent-plan,
+.agent-inputs, .agent-uncertainties { font-size: 12px; line-height: 1.5; }
+.agent-kv { display: flex; gap: 8px; padding: 1px 0; }
+.agent-kv .k { color: var(--muted); flex: 0 0 66px; }
+.agent-kv .v { min-width: 0; word-break: break-word; }
+.agent-badge {
+  display: inline-block; background: var(--yellow); color: #101418;
+  font-weight: 700; border-radius: 4px; padding: 0 6px; margin-right: 6px;
+}
+.agent-badge.live { background: var(--panel-2); color: var(--muted); font-weight: 400; }
+.agent-schema { color: var(--muted); font-size: 11px; }
+/* 计划状态一律"图标 + 文字"，不靠颜色单独表意（§5.2）。 */
+.agent-plan-row { display: flex; gap: 6px; padding: 1px 0; }
+.agent-plan-row.active { font-weight: 700; }
+.agent-plan-row .agent-status { flex: 0 0 auto; color: var(--muted); }
+.agent-plan-row.active .agent-status { color: var(--accent); }
+.agent-detail { color: var(--muted); }
+.agent-active-subtask { margin-top: 3px; color: var(--accent); }
+.agent-note { color: var(--muted); font-size: 11px; margin-top: 3px; }
+.agent-note.warn { color: var(--yellow); }
+.agent-cands { max-height: 220px; overflow: auto; }
+.agent-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.agent-table th {
+  text-align: left; color: var(--muted); font-weight: 400;
+  border-bottom: 1px solid var(--border); padding: 2px 4px; white-space: nowrap;
+}
+.agent-table td { border-bottom: 1px dashed var(--border); padding: 2px 4px; vertical-align: top; }
+.agent-table tr.selected td { color: var(--accent); font-weight: 700; }
+.agent-table .agent-rank { font-family: ui-monospace, Menlo, Consolas, monospace; white-space: nowrap; }
+.agent-know { border-bottom: 1px dashed var(--border); padding: 3px 0; }
+.agent-status { color: var(--muted); font-size: 11px; }
 
 /* candidates */
 #dec-candidates .cand { border-bottom: 1px dashed var(--border); padding: 3px 0; font-size: 12px; }

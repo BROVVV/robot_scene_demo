@@ -30,6 +30,7 @@ from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
 
 from app.spatial.pointcloud_web_codec import extract_xyz_array, extract_xyz_points
+from app.spatial.object_display_snapshot import meta_payload
 from app.spatial.slam_web_map_state import MotionEpisodeGate, SlamWebMapState
 
 
@@ -49,6 +50,13 @@ class PlainSlamWebBridge(Node):
         super().__init__("plain_slam_web_bridge")
         self._output = Path(args.output).resolve()
         self._output.parent.mkdir(parents=True, exist_ok=True)
+        # §2.3：点云之外的轻量元数据（map_epoch/frame_id/map_revision）。对象
+        # 生产者只读这一份，不必解析几万点的大地图 JSON。
+        self._meta_output = (
+            Path(args.meta_output).resolve() if args.meta_output
+            else self._output.parent / "slam_map_meta.json"
+        )
+        self._meta_output.parent.mkdir(parents=True, exist_ok=True)
         self._state = SlamWebMapState(
             canonical_frame=args.map_frame,
             permanent_source=args.map_topic,
@@ -227,6 +235,13 @@ class PlainSlamWebBridge(Node):
         temporary = self._output.with_suffix(self._output.suffix + f".{os.getpid()}.tmp")
         temporary.write_text(self._state.serialize(payload), encoding="utf-8")
         os.replace(temporary, self._output)
+        # 元数据在地图之后落盘：先写 meta 会让对象生产者读到一张还没上屏的地图的
+        # epoch，于是它投影出的对象要等下一次轮询才对得上。
+        meta = self._meta_output.with_suffix(
+            self._meta_output.suffix + f".{os.getpid()}.tmp")
+        meta.write_text(json.dumps(meta_payload(payload), ensure_ascii=False,
+                                   separators=(",", ":")), encoding="utf-8")
+        os.replace(meta, self._meta_output)
 
     def _reset_marker_stamp(self) -> float:
         if self._reset_marker_path is None:
@@ -253,6 +268,9 @@ class PlainSlamWebBridge(Node):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
+    parser.add_argument("--meta-output", default="",
+                        help="point-cloud-free slam_map_meta.json; defaults to "
+                             "slam_map_meta.json next to --output")
     parser.add_argument("--map-topic", default="/go2w/slam/map_3d",
                         help="authoritative optimized map cloud (permanent history)")
     parser.add_argument("--map-info-topic", default="",

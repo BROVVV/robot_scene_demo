@@ -122,20 +122,26 @@ def test_store_target_match_and_candidates_and_goal() -> None:
     assert evidence["anchor_labels"] == ["饮水机"]
 
 
-def test_store_map_revision_monotonic() -> None:
+def test_store_graph_revision_monotonic() -> None:
+    """图只有 `set_graph()` 一个写入口，revision 只增不减（§2.2）。
+
+    `MAP_UPDATED` 本身不再携带图 —— 这条同时钉住"事件流写不动图"，免得日后有人
+    把旧路径接回来。
+    """
     store = SearchStateStore()
-    graph = {"nodes": [], "edges": []}
+    store.apply(_event(MAP_UPDATED, payload={"revision": 1}))
+    assert store.snapshot()["graph"] is None, "MAP_UPDATED 不许写图"
     for index in range(5):
-        store.apply(_event(MAP_UPDATED, payload={
-            "graph": {**graph, "nodes": [{"node_id": f"n{index}"}]},
-            "map_mode": "topological",
-        }))
-        assert store.map_snapshot()["revision"] == index + 1
-    final = store.map_snapshot()
-    assert final["schema_version"] == "live_exploration_graph_v1"
-    assert final["map_mode"] == "topological"
-    assert len(final["nodes"]) == 1
-    assert final["nodes"][0]["node_id"] == "n4"
+        assert store.set_graph({
+            "schema_version": "semantic_navigation_graph_v1",
+            "revision": index + 1,
+            "places": [], "edges": [], "objects": [], "frontiers": [],
+            "current_place_id": None, "object_topology": None,
+        }) is True
+        assert store.snapshot()["graph_revision"] == index + 1
+    final = store.snapshot()["graph"]
+    assert final["schema_version"] == "semantic_navigation_graph_v1"
+    assert final["revision"] == 5
 
 
 def test_store_target_confirmed_status() -> None:
@@ -196,6 +202,23 @@ def test_observer_retry_is_recoverable_warning_not_failed() -> None:
     assert snapshot["error"] is None
     assert snapshot["last_warning"]["recoverable"] is True
     assert "vision request timed out" in snapshot["phase_detail"]
+
+
+def test_bus_subscriber_sees_committed_store_state() -> None:
+    archived: list[str] = []
+    store = SearchStateStore(
+        on_change=lambda snapshot, _event: archived.append(snapshot["status"])
+    )
+    bus = SearchEventBus()
+    seen: list[tuple[str, str]] = []
+    bus.subscribe(lambda event: seen.append(
+        (event.event_type, store.snapshot()["status"])
+    ))
+    adapter = ExplorerSearchAdapter(bus, store, session_id="search_test")
+    adapter.on_explorer_event({"event": "session_start", "state": "BOOTSTRAP"})
+    assert seen
+    assert archived
+    assert seen[-1][1] == archived[-1]
 
 
 def test_store_surfaces_terminal_quick_vlm_timeout() -> None:

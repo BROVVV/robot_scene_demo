@@ -90,7 +90,7 @@ def make_writer(tmp: str, log_path: str) -> WebuiSnapshotWriter:
         "-p", f"lio_diag_log:={log_path}",
         "-p", f"trajectory_path:={os.path.join(tmp, 'traj.json')}",
         "-p", "trajectory_radius_m:=0.0",   # 空值的 -p 解析不了，用半径 0 关掉轨迹层
-        "-p", f"objects_glob:={os.path.join(tmp, 'none', '*.jsonl')}",
+        "-p", f"meta_path:={os.path.join(tmp, 'slam_map_meta.json')}",
     ])
     return WebuiSnapshotWriter()
 

@@ -38,7 +38,13 @@
     llmStatus: document.getElementById("llm-status"),
     llmError: document.getElementById("llm-error"),
     btnLlm: document.getElementById("btn-llm"),
+    controlBar: document.getElementById("control-bar"),
+    displayOnlyBanner: document.getElementById("display-only-banner"),
   };
+
+  // 实体遥控器建图模式：网页只读。真正的门在后端（/api/* 一律 403、控制 WS
+  // 一律拒收），这里只是不给操作员一个按了没反应的按钮。
+  var displayOnly = false;
 
   // ------------------------------------------------------------------ //
   // WebSocket                                                          //
@@ -95,6 +101,8 @@
     } else if (type === "deadman") {
       note("连接超时，已自动停止");
       setControlEnabled(false);
+    } else if (type === "display_only_rejected") {
+      note(message.reason || "实体遥控器模式，网页只读");
     }
   }
 
@@ -112,14 +120,17 @@
   }
 
   function enableControl() {
+    if (displayOnly) return;
     send({ type: "enable_control" });
   }
   function disableControl() {
+    if (displayOnly) return;
     releaseAllLocal();
     send({ type: "release_all" });
     setControlEnabled(false);
   }
   function emergencyStop() {
+    if (displayOnly) return;
     estopLatched = true;
     pressed = {};
     send({ type: "estop" });
@@ -154,6 +165,7 @@
   }
 
   document.addEventListener("keydown", function (event) {
+    if (displayOnly) return;
     if (isTypingTarget(event)) return;
     var key = event.key;
     if (!(key in INTERCEPT)) return;
@@ -261,6 +273,8 @@
     var llm = status.llm || {};
     var analysis = llm.analysis || {};
     var directions = status.directions || {};
+    renderDisplayOnly((status.control || {}).display_only,
+                      (status.control || {}).display_only_reason);
 
     // Camera light.
     if (camera.fresh) setLight(els.lightCamera, "green");
@@ -304,6 +318,27 @@
 
     // Blocked note from controller state.
     if (motion.blocked_reason) note(motion.blocked_reason);
+  }
+
+  function renderDisplayOnly(flag, reason) {
+    var on = !!flag;
+    displayOnly = on;
+    els.displayOnlyBanner.classList.toggle("hidden", !on);
+    if (on) {
+      els.displayOnlyBanner.textContent =
+        "实体遥控器模式，网页只读 —— " + (reason || "机器狗请用实体遥控器操作");
+    }
+    // 控制区整体置灰并且点不动；键盘处理也已在 keydown 里提前返回。
+    if (els.controlBar) els.controlBar.classList.toggle("display-only", on);
+    if (on) {
+      setControlEnabled(false);
+      els.btnEnable.disabled = true;
+      els.btnDisable.disabled = true;
+      pressed = {};
+    } else {
+      els.btnEnable.disabled = false;
+      els.btnDisable.disabled = false;
+    }
   }
 
   function pollObjects() {

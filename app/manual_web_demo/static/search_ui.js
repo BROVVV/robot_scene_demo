@@ -20,7 +20,9 @@
     nextMotionCommand: null,
     turnProgress: null,
     candidates: [],
-    map: {},
+    spatial: {},
+    // 唯一一张图（state.graph），由服务端 web_snapshot() 投影。
+    graph: null,
     events: [],
     health: {},
   };
@@ -97,6 +99,17 @@
     decCandidates: document.getElementById("dec-candidates"),
     decMotion: document.getElementById("dec-motion"),
     decHistory: document.getElementById("dec-history"),
+    // task agent panel (plan §5.1) — explanation layer, never replaces the
+    // candidate / map / safety areas below it.
+    agentMode: document.getElementById("agent-mode"),
+    agentSafety: document.getElementById("agent-safety"),
+    agentPlan: document.getElementById("agent-plan"),
+    agentChoice: document.getElementById("agent-choice"),
+    agentDownstream: document.getElementById("agent-downstream"),
+    agentCandidates: document.getElementById("agent-candidates"),
+    agentKnowledge: document.getElementById("agent-knowledge"),
+    agentInputs: document.getElementById("agent-inputs"),
+    agentUncertainties: document.getElementById("agent-uncertainties"),
     // map
     mapMeta: document.getElementById("map-meta"),
     mapNodeDetail: document.getElementById("map-node-detail"),
@@ -180,17 +193,6 @@
         currentLiveState = message.state;
         if (!viewingHistoryId) applyStateSnapshot(message.state);
       }
-    } else if (type === "events") {
-      if (!viewingHistoryId) {
-        // The snapshot is authoritative.  Replaying SESSION_CREATED and old
-        // deltas after it would clear accumulated decisions/topology on every
-        // F5.  Historical events only seed the timeline; new live events are
-        // still applied normally through the singular "event" message.
-        appState.events = (message.events || []).map(function (event) {
-          return { event_type: event.event_type, timestamp: event.timestamp, cycle: event.cycle };
-        });
-        renderTimeline();
-      }
     } else if (type === "event") {
       if (!viewingHistoryId) applySearchEvent(message.event);
     } else if (type === "heartbeat") {
@@ -201,24 +203,23 @@
   // ------------------------------------------------------------------ //
   // State application                                                   //
   // ------------------------------------------------------------------ //
-  // 合并后端 spatial：只要出现了非空 object_topology 就用新的；否则保留上一次
-  // 非空图形（搜索结束 IDLE 也不清空），仅当 sessionId 变化时清空。
-  function mergeSpatialGraph(freshSpatial, sessionChanged) {
-    var out = Object.assign({}, freshSpatial || {});
-    if (sessionChanged) return out;
-    var ot = (out.semantic_graph || {}).object_topology;
-    var oldGraph = appState._lastSemanticGraph ||
-      (appState.spatial && appState.spatial.semantic_graph) || null;
-    var keep = null;
-    if (ot && Array.isArray(ot.nodes) && ot.nodes.length) keep = out.semantic_graph;
-    else if (oldGraph && oldGraph.object_topology &&
-             Array.isArray(oldGraph.object_topology.nodes) &&
-             oldGraph.object_topology.nodes.length) keep = oldGraph;
-    if (keep) {
-      out = Object.assign({}, out, { semantic_graph: keep });
-      appState._lastSemanticGraph = keep;
-    }
-    return out;
+  // 计划书 §2.1：图只有一个来源 —— `GET /api/search/state` 的 `state.graph`。
+  // 客户端不再本地拼第二张图、不再做“保留上一次非空图”的补丁（保留由服务端
+  // 的 store 负责）。`MAP_UPDATED` 只带 revision，收到后拉一次 state。
+  var graphPullPending = false;
+  function pullGraphState() {
+    if (graphPullPending) return;
+    graphPullPending = true;
+    fetch("/api/search/state", { method: "GET", headers: { "Accept": "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (state) {
+        if (!state || !state.session_id) return;
+        currentLiveState = state;
+        if (viewingHistoryId) return;
+        applyStateSnapshot(state);
+      })
+      .catch(function () { /* 后端暂时不可达时忽略，保持上次画面 */ })
+      .then(function () { graphPullPending = false; });
   }
 
   // 兜底轮询：每 2.5s 拉一次后端 state，保证拓扑图/物体列表“从第一次识别就开始
@@ -233,11 +234,12 @@
           if (!state || !state.session_id) return;
           currentLiveState = state;
           if (viewingHistoryId) return;
-          var sessionChanged = !!(appState.search.session_id &&
-            state.session_id !== appState.search.session_id);
           if (!appState.search.session_id) appState.search.session_id = state.session_id;
-          appState.spatial = mergeSpatialGraph(state.spatial || {}, sessionChanged);
+          appState.spatial = state.spatial || {};
+          appState.graph = state.graph || null;
           if (state.embodiment) appState.embodiment = state.embodiment;
+          // 兜底轮询也要带上 Agent trace，否则 WS 掉线时面板会停在旧结论上。
+          if (state.agent) appState.search.agent = state.agent;
           renderAll();
         })
         .catch(function () { /* 后端暂时不可达时忽略，保持上次画面 */ });
@@ -259,7 +261,6 @@
       els.banner.textContent = "";
       els.banner.className = "search-banner hidden";
     }
-    var sessionChanged = !!(appState.search.session_id && state.session_id !== appState.search.session_id);
     appState.search = state;
     appState.observation = state.observation || {};
     appState.objects = state.objects || {};
@@ -269,11 +270,11 @@
     appState.decisions = state.decisions || [];
     appState.nextMotionCommand = state.next_motion_command || null;
     appState.candidates = state.candidates || [];
-    appState.map = state.map || {};
     appState.embodiment = state.embodiment || {};
-    appState.spatial = mergeSpatialGraph(state.spatial || {}, sessionChanged);
-    if (sessionChanged) appState._lastSemanticGraph = null;
+    appState.spatial = state.spatial || {};
+    appState.graph = state.graph || null;
     state.timeline = state.timeline || [];
+    appState.events = state.timeline.slice();
     renderAll();
   }
 
@@ -302,7 +303,7 @@
         appState.targetMatch = {};
         appState.selectedGoal = null;
         appState.candidates = [];
-        appState.map = {};
+        appState.graph = null;
         break;
       case "TASK_UNDERSTANDING":
         appState.task = payload.task || {};
@@ -452,25 +453,8 @@
         showBanner("错误: " + (payload.message || payload.error_type || "unknown"), "error");
         break;
       case "MAP_UPDATED":
-        appState.map = {
-          revision: payload.revision,
-          map_mode: payload.map_mode || "topological",
-          current_node_id: payload.current_node_id,
-          robot: payload.robot,
-          nodes: (payload.graph || {}).nodes || [],
-          edges: (payload.graph || {}).edges || [],
-        };
-        // Semantic topology view reads state.spatial.semantic_graph.object_topology.
-        // Prefer semantic_navigation_graph; otherwise accept a graph that itself
-        // carries object_topology.  Exploration-only graphs stay ignored so the
-        // topology list never flips to empty.
-        appState.spatial = appState.spatial || {};
-        var topoGraph = payload.semantic_navigation_graph ||
-          ((payload.graph && payload.graph.object_topology) ? payload.graph : null);
-        if (topoGraph) {
-          appState.spatial.semantic_graph = topoGraph;
-          appState._lastSemanticGraph = topoGraph;
-        }
+        // 计划书 §2.1：MAP_UPDATED 只带 revision，不携带图；拉一次 state 拿新图。
+        pullGraphState();
         break;
       case "RGBD_FRAME_UPDATED":
         appState.spatial = appState.spatial || {};
@@ -480,32 +464,9 @@
         appState.spatial = appState.spatial || {};
         appState.spatial.spatial_pose = payload.pose || null;
         break;
-      case "SPATIAL_MAP_UPDATED":
-        appState.spatial = appState.spatial || {};
-        appState.spatial.spatial_map = payload.map || null;
-        break;
-      case "FRONTIERS_UPDATED":
-        appState.spatial = appState.spatial || {};
-        appState.spatial.frontiers = payload.frontiers || [];
-        break;
-      case "PLACE_CREATED":
-      case "PLACE_UPDATED":
-        appState.spatial = appState.spatial || {};
-        appState.spatial.place_graph = appState.spatial.place_graph || { places: [], edges: [] };
-        var place = payload.place || {};
-        var places = appState.spatial.place_graph.places || [];
-        var idx = places.findIndex(function (p) { return p.place_id === place.place_id; });
-        if (idx >= 0) { places[idx] = place; } else { places.push(place); }
-        appState.spatial.place_graph.places = places;
-        break;
-      case "SEMANTIC_OBJECT_LOCALIZED":
-        appState.spatial = appState.spatial || {};
-        appState.spatial.semantic_objects = appState.spatial.semantic_objects || [];
-        var obj = payload.object || {};
-        var objs = appState.spatial.semantic_objects;
-        var oidx = objs.findIndex(function (o) { return o.object_id === obj.object_id; });
-        if (oidx >= 0) { objs[oidx] = obj; } else { objs.push(obj); }
-        break;
+      // SPATIAL_MAP_UPDATED / FRONTIERS_UPDATED / PLACE_CREATED / PLACE_UPDATED /
+      // SEMANTIC_OBJECT_LOCALIZED 曾各自在客户端拼一份图；计划书 §2.2 起它们只
+      // 记录时间线，图统一由 state.graph 提供，这里不再有分支。
       case "PSG_PRIOR_UPDATED":
         appState.spatial = appState.spatial || {};
         appState.spatial.psg_prior = payload.prior || null;
@@ -679,8 +640,7 @@
   // 计划书 §7.3：物体列表、计数和拓扑图共用同一个投影，
   // 保证界面上的节点数就是画出来的节点数，绝不退回导航图。
   // 投影跟着当前视图走：物体拓扑下 P1 不计入"N 个物体"。
-  function objectTopology(spatial) {
-    var graph = (spatial || {}).semantic_graph || null;
+  function objectTopology(graph) {
     var raw = graph && graph.object_topology ? graph.object_topology : null;
     if (window.TopologyLayout) {
       var view = mapRenderer && mapRenderer.getTopologyView
@@ -694,9 +654,9 @@
   }
 
   function renderObjects() {
-    // 识别物体列表：与语义拓扑同源（spatial.semantic_graph.object_topology），
+    // 识别物体列表：与语义拓扑同源（state.graph.object_topology），
     // 从第一次识别到物体就开始显示，并随每次 memory_update 实时刷新。
-    var ot = objectTopology(appState.spatial);
+    var ot = objectTopology(appState.graph);
     var nodes = ot && Array.isArray(ot.nodes) ? ot.nodes : [];
     if (els.obsObjectsMeta) {
       els.obsObjectsMeta.textContent = nodes.length ? nodes.length + " 个" : "";
@@ -731,26 +691,25 @@
     renderEmbodiment();
     renderObservation();
     renderObjects();
+    renderAgentPanel();
     renderDecision();
     renderCandidates();
     renderTimeline();
     renderButtons();
     renderDebug();
     renderErrorDetail();
-    var spatial = appState.spatial || null;
     // Semantic topology projection: show only topology stats, never metric
     // map / place metrics. 计量"空间地图"视图已于 2026-08-26 移除，
     // 2026-09-15 起连入口按钮和模式开关也一并删掉，这里不再分支。
-    var hasGraph = !!(spatial && spatial.semantic_graph && spatial.semantic_graph.object_topology);
-    var topology = objectTopology(spatial);
+    var topology = objectTopology(appState.graph);
     var nodes = (topology && topology.nodes) || [];
     var edges = (topology && topology.edges) || [];
     var empty = (nodes.length === 0);
     els.mapMeta.textContent = empty
-      ? (hasGraph ? "已建图 0 节点 · 等待识别到物体" : "等待首次物体识别…识别后自动开始建拓扑")
+      ? (appState.graph ? "已建图 0 节点 · 等待识别到物体" : "等待首次物体识别…识别后自动开始建拓扑")
       : "拓扑节点 " + nodes.length + " · 关系 " + edges.length +
         " · rev " + ((topology && topology.revision) || 0);
-    mapRenderer.render(appState.map || {}, spatial);
+    mapRenderer.render(appState.graph, appState.spatial || null);
     drawOverlay();
   }
 
@@ -978,6 +937,24 @@
     }
   }
 
+  // ---- 任务 Agent 解释层（计划书 §5） ------------------------------------
+  // 展示规则与所有文案都在 agent_trace.js 里（可被 headless node 钉住），
+  // 这里只负责把 HTML 挂到 DOM 上，不重复实现任何判断。
+  function renderAgentPanel() {
+    var agent = (appState.search || {}).agent || null;
+    var html = window.AgentTrace.render(agent && agent.trace, agent);
+    els.agentMode.textContent = "";
+    els.agentMode.innerHTML = html.mode;
+    els.agentSafety.innerHTML = html.safety;
+    els.agentPlan.innerHTML = html.plan;
+    els.agentChoice.innerHTML = html.choice;
+    els.agentDownstream.innerHTML = html.downstream;
+    els.agentCandidates.innerHTML = html.candidates;
+    els.agentKnowledge.innerHTML = html.knowledge;
+    els.agentInputs.innerHTML = html.inputs;
+    els.agentUncertainties.innerHTML = html.uncertainties;
+  }
+
   function renderDecision() {
     var goal = appState.selectedGoal;
     var command = appState.nextMotionCommand ||
@@ -1080,9 +1057,13 @@
       var command = item.next_motion_command || {};
       var text = command.instruction_zh || command.instruction || item.decision_id || "决策";
       var result = item.execution_status ? " · " + item.execution_status : "";
+      // §5.4：每轮历史带上 Agent 依据 —— trace ID、扫描序号、当前子任务、
+      // 选中偏好、reason code、关键证据引用、后续 decision ID 与结果。
+      // 这些字段随决定一起存在已有的 decisions 列表里，没有第二份缓冲区。
+      var agentLine = window.AgentTrace.renderHistoryLine(item.agent);
       return '<div class="decision-history-row"><span>' + esc(text) +
         '</span><span class="cnt">' + esc(String(item.decision_id || "")) +
-        esc(result) + '</span></div>';
+        esc(result) + '</span>' + agentLine + '</div>';
     }).join("");
   }
 
@@ -1384,7 +1365,7 @@
             appState.search = {};
             appState.search.session_id = state.session_id;
             applyStateSnapshot(state);
-            if (fresh) mapRenderer.render(appState.map, appState.spatial);
+            if (fresh) mapRenderer.render(appState.graph, appState.spatial);
           }
         } else if (appState.search.session_id && !ws) {
           appState.search = {};

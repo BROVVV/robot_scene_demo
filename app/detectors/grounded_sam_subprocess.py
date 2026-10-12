@@ -17,8 +17,10 @@ from app.detectors.vocabulary import (
     build_detection_prompts,
     category_for_label,
     color_for_label,
+    filter_ram_scene_term_pairs,
     filter_ram_scene_terms,
-    label_zh,
+    normalize_scene_tag,
+    resolve_label_zh,
     terms_to_prompt,
 )
 from app.perception.grounding_prompt_planner import (
@@ -51,6 +53,10 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
         self.grounding_prompt_retry_plan: GroundingPromptPlan | None = None
         self._worker: subprocess.Popen | None = None
         self._worker_stderr: Any = None
+        # RAM++ 最近一次 `_tag` 返回的 en -> zh 配对。只活在这个实例里：
+        # 对外接口（`discover_scene_terms`）仍然只给英文词表，
+        # GroundingDINO 的 prompt 契约不变（计划书 §6 阶段 B.4）。
+        self._ram_term_zh: dict[str, str] = {}
 
     def detect(self, image_path: str, target_text: str) -> list[DetectedObject]:
         return self.detect_with_dynamic_terms(image_path, target_text, [])
@@ -100,7 +106,15 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
             )
 
         return [
-            _to_detected_object(item, self.target_profile)
+            _to_detected_object(
+                item,
+                self.target_profile,
+                # 归一化必须和配对表建表时用的是同一套，否则查不到（表是空的
+                # 时候表现为"RAM 中文全丢"，不会报错）。
+                runtime_zh=self._ram_term_zh.get(
+                    normalize_scene_tag(item.get("label") or "")
+                ),
+            )
             for item in payload.get("objects", [])
         ]
 
@@ -108,16 +122,21 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
         """问 RAM++「这一帧大概有哪些类别」，返回过滤后的英文物体词。
 
         只用于给 GroundingDINO 扩词，**不返回 embedding、不落库**。
+        中文配对不从这里出去（prompt 只要英文），而是存在实例上供
+        `_to_detected_object` 查 —— RAM++ 已经算好的中文不能再丢（计划书 §2.2）。
         """
         image = Path(image_path).resolve()
         if not image.is_file():
             raise FileNotFoundError(f"Image file not found: {image_path}")
         self._ensure_worker()
         payload = self._request(image=image, operation="tag")
-        return filter_ram_scene_terms(
-            [str(tag) for tag in payload.get("tags_en", [])],
+        pairs = filter_ram_scene_term_pairs(
+            list(payload.get("tags_en", [])),
+            list(payload.get("tags_zh", [])),
             self.settings.ram_scene_max_terms,
         )
+        self._ram_term_zh = {term: zh for term, zh in pairs if zh}
+        return [term for term, _zh in pairs]
 
     def close(self) -> None:
         worker = self._worker
@@ -412,6 +431,7 @@ class GroundedSAMSubprocessDetector(BaseObjectDetector):
 def _to_detected_object(
     item: dict,
     target_profile: TargetProfile | None = None,
+    runtime_zh: str | None = None,
 ) -> DetectedObject:
     label = str(item.get("label") or "object").lower().strip()
     bbox = item.get("bbox_2d") or [0.0, 0.0, 1.0, 1.0]
@@ -425,13 +445,20 @@ def _to_detected_object(
         target_profile is not None
         and _matches_any_term(label, target_profile.direct_terms())
     )
-    return DetectedObject(
-        label=label,
-        label_zh=(
+    # `runtime_zh` 是 RAM++ 同一次 `_tag` 返回的中文配对。它优先于静态词典：
+    # RAM 说是「容器」就不该被我们写死成「垃圾桶」（计划书 §6 阶段 A.3）。
+    label_zh_value = resolve_label_zh(
+        label,
+        runtime_zh=runtime_zh,
+        target_zh=(
             target_profile.canonical_name_zh
             if is_direct_target and target_profile is not None
-            else label_zh(label)
+            else None
         ),
+    )
+    return DetectedObject(
+        label=label,
+        label_zh=label_zh_value,
         category=(
             target_profile.target_type
             if is_direct_target and target_profile is not None

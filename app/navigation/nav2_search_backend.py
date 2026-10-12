@@ -294,11 +294,13 @@ def create_nav2_search_backend(
     from rcl_interfaces.msg import Parameter as ParameterMsg  # noqa: PLC0415
     from rcl_interfaces.msg import ParameterType, ParameterValue  # noqa: PLC0415
     from rcl_interfaces.srv import SetParameters  # noqa: PLC0415
+    from rclpy.duration import Duration  # noqa: PLC0415
     from rclpy.qos import (  # noqa: PLC0415
         DurabilityPolicy,
         QoSProfile,
         ReliabilityPolicy,
     )
+    from rclpy.time import Time  # noqa: PLC0415
     from std_msgs.msg import Bool  # noqa: PLC0415
     from tf2_ros import Buffer, TransformListener  # noqa: PLC0415
 
@@ -359,7 +361,18 @@ def create_nav2_search_backend(
     def _pose_provider() -> RobotPose | None:
         try:
             transform = tf_buffer.lookup_transform(
-                MAP_FRAME, base_frame, node.get_clock().now(), timeout=tf_lookup_timeout_s
+                MAP_FRAME,
+                base_frame,
+                # 查「已有最新一帧」，不查 node 时钟的 now()。TF 从发布到进 buffer
+                # 有几十毫秒延迟，按 now() 查必然外推失败（2026-10-08 实测差
+                # 0.037 s：请求 1791439845.3167，最新数据 1791439845.2796）。
+                Time(),
+                # tf2 的 timeout 只接受 Duration。原写法直接传了 float
+                # （``tf_lookup_timeout_s`` 默认 0.2），比较时抛 TypeError，被下面
+                # 那句 ``except`` 吃掉 ⇒ ``get_pose()`` 恒返回 None；而 ``health()``
+                # 的 pose_quality 取自 readiness、照报 ``metric`` —— 就绪全绿，位姿
+                # 其实一直是空的，自主搜索因此连一个地图系目标都表达不出来。
+                timeout=Duration(seconds=max(0.0, float(tf_lookup_timeout_s))),
             )
         except Exception:  # noqa: BLE001 - TF 没到就是没位姿，不编造
             return None
@@ -618,6 +631,20 @@ class Nav2SearchBackend:
                 provenance=self._decision_provenance(active, REJECT_NAV2_NOT_READY, False)
                 | {"backend": BACKEND_NAME, "canceled": True},
             )
+            # 结算了这一个 handle 就必须让出槽位，否则下一个 goal 会被
+            # ``execute_goal`` 以 ``GOAL_IN_FLIGHT`` 永久拒掉 —— 而唯一会清
+            # ``self._active`` 的地方是 ``get_navigation_status`` 走到
+            # :603，可这里已经把 ``handle.result`` 填上了，那句提前 return
+            # （:587）之后再没人能走到 :603。``_finish_canceled`` 一直是这样
+            # 做的（:822），这里是漏了。
+            #
+            # 现场表现（2026-10-08 真机验收，execution_enabled:=true）：
+            # explorer 的 ``_wait_result`` 等 15 s 超时后调 ``cancel(handle)``
+            # 准备重试，但从第 2 轮 cycle 起每个候选都被立刻拒成
+            # ``"nav2 backend already has an active goal"``，
+            # 于是 3 轮 cycle、2 次 navigation_failure、``motion_steps=0``
+            # —— 日志里没有任何一行指出是这里。
+            self._active = None
         return canceled
 
     def stop(self) -> None:

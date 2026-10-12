@@ -146,6 +146,10 @@ class LiveObservation:
     scene_graph: dict[str, Any] | None = None
     scene_objects: list[dict[str, Any]] = field(default_factory=list)
     scene_relations: list[dict[str, Any]] = field(default_factory=list)
+    # In-process result from the observer's sole persistent-object update.
+    # It is intentionally absent from to_dict(): Web events carry the graph
+    # snapshot, not another copy of the association table.
+    object_update_result: Any | None = None
     target_match: dict[str, Any] | None = None
 
     pose: dict[str, Any] | None = None

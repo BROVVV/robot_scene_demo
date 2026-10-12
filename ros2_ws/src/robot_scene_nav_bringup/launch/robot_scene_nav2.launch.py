@@ -64,6 +64,22 @@ def generate_launch_description():
             ),
         ]
     )
+    # 同一个 XML 也填给 default_nav_through_poses_bt_xml，**必须填**。
+    # Humble 的 bt_navigator 在 on_activate 里会把两棵默认树都先解析一遍（为了尽早
+    # 暴露错误）。只填 to_pose、把 through_poses 留在库存默认值上，那棵库存树就会
+    # 成为真正的要求：它含 BackUp，而 behavior_plugins 为了不让机器人在走廊分析之外
+    # 产生位移，刻意没有注册 backup。实测（2026-10-08，执行模式）：
+    #   [bt_navigator]: "backup" action server not available after waiting for 1.00s
+    #   Exception when loading BT: Action server backup not available
+    #   Error loading XML file: .../navigate_through_poses_w_replanning_and_recovery.xml
+    #   [lifecycle_manager_navigation]: Failed to bring up all requested nodes. Aborting bringup.
+    # 后果不止 bt_navigator：manager 遇错即中止，velocity_smoother / collision_monitor /
+    # behavior_server 全停在 inactive，而 planner_server 与 controller_server 已是 active。
+    # 本项目从不发 NavigateThroughPoses，这棵树只需要能被构造出来，所以复用同一棵按
+    # 模式选出的树即可——两棵树都不含 BackUp / Spin，也就绕开了 behavior_server 的依赖。
+    # 只规划模式同理：那棵 navigate_to_pose_plan_only.xml 不带 FollowPath，正好也不会
+    # 去等没起来的 controller_server。
+    through_poses_bt = navigation_bt
     common = {"use_sim_time": use_sim_time}
 
     return LaunchDescription(
@@ -148,8 +164,10 @@ def generate_launch_description():
                     # BackUp / Spin 恢复分支，正是计划书 §3.1 要避开的。
                     # 只规划模式拿到的是不带 FollowPath 的那棵树，见上面 navigation_bt。
                     {
-                        "default_bt_xml_filename": navigation_bt,       # Foxy 0.4.7
-                        "default_nav_to_pose_bt_xml": navigation_bt,    # Humble 1.x
+                        "default_bt_xml_filename": navigation_bt,            # Foxy 0.4.7
+                        "default_nav_to_pose_bt_xml": navigation_bt,         # Humble 1.x
+                        # 同上，理由见 through_poses_bt 上面那段注释。
+                        "default_nav_through_poses_bt_xml": through_poses_bt,  # Humble 1.x
                     },
                 ],
             ),

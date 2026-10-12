@@ -23,6 +23,20 @@ bt_navigator:
     # 这里只列 behavior_trees/navigate_to_pose_robot_scene.xml 用到的节点。该 XML 的
     # 节点类型是固定的，将来若改了 XML 而漏列，configure 阶段会立刻报出来。
     # ReactiveFallback 是 BT.CPP 内建控制节点，不需要库，所以不在表里。
+    #
+    # **两棵树都由 launch 填**（default_nav_to_pose_bt_xml 与 default_nav_through_poses_bt_xml
+    # 用同一个按模式选出的 XML，见 launch）。这曾经是个坑：Humble 的 bt_navigator 在
+    # on_activate 里会把**两棵默认树都先解析一遍**，所以只要有一棵落在库存默认值上，
+    # 那棵树的节点就会成为真正的要求。库存的 navigate_through_poses_w_replanning_and_recovery.xml
+    # 含 BackUp / RemovePassedGoals / Spin，本表没有、behavior_plugins 也刻意不注册 backup，
+    # 于是整条 bringup 在激活阶段中止：
+    #   [bt_navigator]: "backup" action server not available after waiting for 1.00s
+    #   Exception when loading BT: Action server backup not available
+    #   [lifecycle_manager_navigation] Failed to bring up all requested nodes. Aborting bringup.
+    # 中止之后 velocity_smoother / collision_monitor / behavior_server 全停在 inactive，
+    # 而 planner_server 与 controller_server 已经是 active —— 只看那两个会误判成好的。
+    # 只规划模式看不出来（PLAN_ONLY_NODES 里没有 controller_server，走的是另一棵更小的树），
+    # 执行模式必炸。
     plugin_lib_names:
       - nav2_clear_costmap_service_bt_node          # ClearEntireCostmap
       - nav2_compute_path_to_pose_action_bt_node    # ComputePathToPose

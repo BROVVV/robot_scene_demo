@@ -17,7 +17,7 @@ import threading
 import os
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from app.live_robot.explorer_search_adapter import ExplorerSearchAdapter
 from app.live_robot.search_event import (
@@ -60,6 +60,7 @@ from app.manual_web_demo.control_ownership import ControlOwner, OwnerState
 from app.manual_web_demo.search_executor import SearchExecutor
 from app.manual_web_demo.search_errors import search_error
 from app.manual_web_demo.search_models import (
+    SEARCH_REASONER,
     SearchSessionInfo,
     SearchStartRequest,
     new_session_id,
@@ -97,6 +98,7 @@ class SearchSessionService:
         task_understanding_runner: Callable[[str], Any] | None = None,
         allow_mock_task_fallback: bool = True,
         history_limit: int = 10,
+        map_paths: Mapping[str, str] | None = None,
     ) -> None:
         self.owner = owner
         self._executor_factory = executor_factory or _default_executor_factory
@@ -119,6 +121,10 @@ class SearchSessionService:
         self._worker_generation = 0
         self._task_understanding_runner = task_understanding_runner
         self._allow_mock_task_fallback = bool(allow_mock_task_fallback)
+        # §2.3：三维对象上屏的两个路径来自 Web 侧配置（显式路径，不 glob、不按
+        # mtime 猜）。它们必须与地图桥/读取端用的是同一份配置 —— 否则生产者的
+        # 写点和读取端会静默错开，页面上只是"没有物体"，看不出是路径没对上。
+        self._map_paths = dict(map_paths or {})
         self._restore_latest_session()
 
     # ------------------------------------------------------------------ #
@@ -170,18 +176,6 @@ class SearchSessionService:
             except Exception:
                 pass
         return snapshot
-
-    def map_snapshot(self) -> dict[str, Any]:
-        return self._store.map_snapshot()
-
-    def spatial_snapshot(self) -> dict[str, Any]:
-        return self._store.spatial_snapshot()
-
-    def objects_snapshot(self) -> dict[str, Any]:
-        return self._store.objects_snapshot()
-
-    def decisions_snapshot(self) -> list[dict[str, Any]]:
-        return self._store.decisions_snapshot()
 
     def recent_events(self, limit: int | None = None) -> list[dict[str, Any]]:
         # The process-wide bus may have restored the previous session before a
@@ -252,8 +246,8 @@ class SearchSessionService:
             event_type=ERROR,
             payload={"error_type": detail["code"], **detail},
         )
-        self._bus.publish(error_event)
         self._store.apply(error_event)
+        self._bus.publish(error_event)
         finish = make_event(
             allocator=self._bus.allocator,
             session_id=self._session_id,
@@ -265,8 +259,8 @@ class SearchSessionService:
                 "error_detail": detail,
             },
         )
-        self._bus.publish(finish)
         self._store.apply(finish)
+        self._bus.publish(finish)
         self._status = STATUS_FAILED
         if self._info is not None:
             self._info.status = STATUS_FAILED
@@ -407,7 +401,7 @@ class SearchSessionService:
                 task_text=task_context.raw_text,
                 task_context=task_context.to_dict(),
                 backend=request.backend,
-                reasoner=request.reasoner,
+                reasoner=SEARCH_REASONER,
                 started_at=self._started_at,
             )
 
@@ -416,7 +410,7 @@ class SearchSessionService:
                 "task_text": task_context.raw_text,
                 "task": task_context.to_dict(),
                 "backend": request.backend,
-                "reasoner": request.reasoner,
+                "reasoner": SEARCH_REASONER,
                 # 会话归档里记明物体识别走的是哪条路：两条路的产物不同
                 # （grounded_sam 有 3D box，llm 没有），事后取证要用。
                 "detector": request.detector,
@@ -430,7 +424,7 @@ class SearchSessionService:
             self._store.reset(
                 session_id=session_id,
                 target=task_context.canonical_target,
-                reasoner=request.reasoner,
+                reasoner=SEARCH_REASONER,
                 backend=request.backend,
                 task_context=task_context.to_dict(),
             )
@@ -457,7 +451,6 @@ class SearchSessionService:
                 "session_id": session_id,
                 "executor_id": self._executor_id,
                 "worker_generation": generation,
-                "reasoner": request.reasoner,
                 "backend": request.backend,
                 "detector": request.detector,
                 "finish_on_visual_confirmation": request.finish_on_visual_confirmation,
@@ -470,9 +463,9 @@ class SearchSessionService:
                 "rgbd_base_url": request.rgbd_base_url,
                 "spatial_v2": request.spatial_v2,
                 "spatial_provider": request.spatial_provider,
-                "rtabmap": request.rtabmap,
                 "session_dir": str(session_dir_path),
                 "output": str(run_dir / "events.jsonl"),
+                **self._map_paths,
             }
             for key in (
                 "max_seconds", "max_planning_cycles", "max_motion_steps",
@@ -491,21 +484,20 @@ class SearchSessionService:
                     "target": task_context.canonical_target,
                     "task_text": task_context.raw_text,
                     "task": task_context.to_dict(),
-                    "reasoner": request.reasoner,
                     "backend": request.backend,
                     "phase": "STARTING",
                 },
             )
-            self._bus.publish(created)
             self._store.apply(created)
+            self._bus.publish(created)
             understood = make_event(
                 allocator=self._bus.allocator,
                 session_id=session_id,
                 event_type=TASK_UNDERSTANDING,
                 payload={"task": task_context.to_dict()},
             )
-            self._bus.publish(understood)
             self._store.apply(understood)
+            self._bus.publish(understood)
             if not task_context.executable:
                 rejected = make_event(
                     allocator=self._bus.allocator,
@@ -521,8 +513,8 @@ class SearchSessionService:
                         ),
                     },
                 )
-                self._bus.publish(rejected)
                 self._store.apply(rejected)
+                self._bus.publish(rejected)
                 self._status = "TASK_REJECTED"
                 if self._info is not None:
                     self._info.status = "TASK_REJECTED"
@@ -549,16 +541,16 @@ class SearchSessionService:
                     allocator=self._bus.allocator, session_id=session_id,
                     event_type=ERROR, payload={"error_type": detail["code"], **detail},
                 )
-                self._bus.publish(error_event)
                 self._store.apply(error_event)
+                self._bus.publish(error_event)
                 finish = make_event(
                     allocator=self._bus.allocator, session_id=session_id,
                     event_type=SEARCH_FINISHED,
                     payload={"result": "FAILED", "finish_reason": detail["code"],
                              "error": detail["message"], "error_detail": detail},
                 )
-                self._bus.publish(finish)
                 self._store.apply(finish)
+                self._bus.publish(finish)
                 self._status = STATUS_FAILED
                 self._info.status = STATUS_FAILED
                 self._info.result = "FAILED"
@@ -683,6 +675,16 @@ class SearchSessionService:
                     STATUS_FAILED,
                 }:
                     self.owner.release(OwnerState.AUTONOMOUS)
+        elif msg_type == "graph_snapshot":
+            graph = message.get("graph")
+            if isinstance(graph, dict) and self._adapter is not None:
+                # 归档先落盘，再做 WebSocket 扇出：推送失败不能丢事实。
+                try:
+                    self._archive.record_graph(self._session_id or "", graph)
+                except (OSError, ValueError):
+                    # 搜索安全不依赖存储健康；下一个 revision 会重试。
+                    pass
+                self._adapter.on_graph_snapshot(graph)
         elif msg_type == "session_result":
             result = message.get("result") or {}
             if isinstance(result, dict) and result.get("session_id") not in {None, self._session_id}:
@@ -823,8 +825,8 @@ class SearchSessionService:
                 **result,
             },
         )
-        self._bus.publish(finish)
         self._store.apply(finish)
+        self._bus.publish(finish)
         with self._lock:
             if self._info is not None:
                 self._info.result = finish_reason
@@ -881,8 +883,8 @@ class SearchSessionService:
             event_type=ERROR,
             payload={"error_type": detail["code"], **detail},
         )
-        self._bus.publish(error_event)
         self._store.apply(error_event)
+        self._bus.publish(error_event)
         self._mark_status(STATUS_FAILED)
 
     # ------------------------------------------------------------------ #
@@ -937,7 +939,7 @@ class SearchSessionService:
             started_at=state.get("started_at"),
             finished_at=state.get("finished_at"),
             backend=str(state.get("backend") or marker.get("backend") or ""),
-            reasoner=str(state.get("reasoner") or marker.get("reasoner") or "semantic"),
+            reasoner=str(state.get("reasoner") or marker.get("reasoner") or SEARCH_REASONER),
         )
         self._store.restore(state)
         # Persist the compatibility migration so subsequent page loads and

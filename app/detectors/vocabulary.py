@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+import re
+
+# 未知英文标签的中文显示兜底。它是**显示**兜底，绝不能当实体关联键 ——
+# 否则 bin / barrel / stool 这些互不相干的未知类别会被并成同一个实体
+# （计划书 §3）。`association_label()` 就是为这条存在的。
+LABEL_ZH_FALLBACK = "未分类物体"
+
+_CHINESE_RE = re.compile(r"[一-鿿]")
+
 
 TERM_ZH = {
     "object": "物体",
@@ -56,6 +65,18 @@ TERM_ZH = {
     "fire extinguisher": "灭火器",
     "portable extinguisher": "灭火器",
     "fire suppression unit": "灭火器",
+    # 2026-09-17：RAM++ 开放词表实测命中、而静态词典没覆盖的一批词。
+    # 少一个，WebUI 三维框上就直接漏一个英文（计划书 §2.2）。
+    # `bin` 的静态值只是兜底：RAM++ 同次返回的 tags_zh 优先于这里
+    # （见 `resolve_label_zh`），所以 RAM 说是「容器」就显示「容器」。
+    "bin": "垃圾桶",
+    "barrel": "桶",
+    "stool": "凳子",
+    "lid": "盖子",
+    "hook": "挂钩",
+    "curtain": "窗帘",
+    "speaker": "音箱",
+    "plug": "插头",
 }
 
 TERM_CATEGORY = {
@@ -108,6 +129,14 @@ TERM_CATEGORY = {
     "fire extinguisher": "safety_equipment",
     "portable extinguisher": "safety_equipment",
     "fire suppression unit": "safety_equipment",
+    "bin": "container",
+    "barrel": "container",
+    "lid": "container",
+    "stool": "furniture",
+    "hook": "hardware",
+    "curtain": "furnishing",
+    "speaker": "electronics",
+    "plug": "electronics",
 }
 
 BASE_TERMS = [
@@ -237,26 +266,75 @@ RAM_SCENE_STOPLIST = {
     "wood",
     "metal",
     "plastic",
+    # 2026-09-17：真机实测漏到三维物体框里的三类非独立物体词
+    # （purple / sparkle / corner，见计划书 §2.1）。它们都是 RAM++ 扩出来的，
+    # 目标画像自己的颜色属性走 TARGET_TERM_RULES，不经过这里，所以不误杀。
+    "purple",
+    "sparkle",
+    "corner",
 }
 
 
-def filter_ram_scene_terms(tags: list[str], max_terms: int = 12) -> list[str]:
-    """把 RAM++ 的 scene tags 收敛成能喂给 GroundingDINO 的物体词。
+def normalize_scene_tag(tag: object) -> str:
+    return " ".join(str(tag).lower().split()).strip(" .,;")
+
+
+def _select_ram_scene_tags(
+    tags_en: list[object], max_terms: int
+) -> list[tuple[int, str]]:
+    """过滤规则唯一实现，返回 `(原下标, 归一化英文词)`。
 
     只做规则过滤，不引入 NLP 模型、不做 embedding 相似度：
     小 stoplist + 1~4 个英文单词 + 归一化去重 + 截断。
     不在 `TERM_ZH` / `BASE_TERMS` 里的词**一律保留** —— RAM++ 的意义就是扩大
     开放物体覆盖，按封闭词表过滤等于白装。
+
+    保留原下标是为了让中文侧能对回去（`tags_en` 与 `tags_zh` 同序同长）。
     """
-    filtered: list[str] = []
-    for tag in tags:
-        normalized = " ".join(str(tag).lower().split()).strip(" .,;")
+    selected: list[tuple[int, str]] = []
+    seen: set[str] = set()
+    for index, raw_tag in enumerate(tags_en):
+        normalized = normalize_scene_tag(raw_tag)
         if not normalized or normalized in RAM_SCENE_STOPLIST:
             continue
         if not 1 <= len(normalized.split()) <= 4:
             continue
-        filtered.append(normalized)
-    return _dedupe(filtered)[:max_terms]
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        selected.append((index, normalized))
+        if len(selected) >= max_terms:
+            break
+    return selected
+
+
+def filter_ram_scene_terms(tags: list[str], max_terms: int = 12) -> list[str]:
+    """把 RAM++ 的 scene tags 收敛成能喂给 GroundingDINO 的物体词。"""
+    return [term for _index, term in _select_ram_scene_tags(tags, max_terms)]
+
+
+def filter_ram_scene_term_pairs(
+    tags_en: list[object],
+    tags_zh: list[object],
+    max_terms: int = 12,
+) -> list[tuple[str, str]]:
+    """`filter_ram_scene_terms` 的配对版：过滤后仍保留 en -> zh 的对应关系。
+
+    RAM++ 一次同时返回 `tags_en` 与 `tags_zh`（worker 的 `_tag`），两边同序同长。
+    只消费 `tags_en` 会把 RAM 已经算好的中文丢掉，于是下游只能查静态词典、
+    查不到就漏英文（计划书 §2.2）。这里把配对保住，供
+    `GroundedSAMSubprocessDetector` 生成 `DetectedObject` 时查。
+
+    长度不一致时**不猜**：只对两边都存在的下标做配对，多余的英文词中文侧留空
+    （调用方回落到静态词典）。中文侧为空串的英文词同样保留 —— 丢中文只是少一条
+    优先来源，丢词却是丢了 RAM++ 的开放词表覆盖。
+    """
+    zh_list = list(tags_zh)
+    pairs: list[tuple[str, str]] = []
+    for index, term in _select_ram_scene_tags(tags_en, max_terms):
+        zh = normalize_scene_tag(zh_list[index]) if index < len(zh_list) else ""
+        pairs.append((term, zh))
+    return pairs
 
 
 def build_detection_terms(
@@ -315,6 +393,134 @@ def build_detection_prompts(
 
 def terms_to_prompt(terms: list[str]) -> str:
     return ". ".join(terms) + "."
+
+
+# 不该画成三维物体框的标签：纯颜色/属性词、视觉效果词、画面区域与背景词。
+# 它们会通过 RAM++ 的开放词表混进检测结果（2026-09-17 实测上屏的有
+# purple / sparkle / corner / 地面）。中英都收，因为同一条流水线上游是英文、
+# 下游实体图的 label 是中文（见 app/spatial/dynamic_labels.py 的同类教训）。
+#
+# **刻意不含 "物体"/"object"/"item"**：它们是目标搜索的合法兜底词
+# （TARGET_TERM_RULES 里「绿色」「物体」都映射到它们），拦掉会伤到目标链路。
+NON_OBJECT_LABELS = frozenset(
+    {
+        # 纯颜色（RAM++ 把颜色当 tag 返回，且常与真实物体同帧）
+        "purple", "紫色",
+        "pink", "粉色", "粉红",
+        "brown", "棕色",
+        "orange", "橙色",
+        # 视觉效果 / 材质属性
+        "sparkle", "闪光", "反光",
+        "glossy", "光泽",
+        "shadow", "阴影",
+        "reflection", "倒影",
+        # 画面区域 / 背景
+        "corner", "角落",
+        "floor", "地面", "地板",
+        "wall", "墙", "墙壁",
+        "ceiling", "天花板",
+        "ground", "background", "背景",
+        "room", "房间",
+        "indoor", "outdoor", "室外", "室内",
+        "image", "photo", "画面",
+        "sky", "天空",
+    }
+)
+
+
+# 复合写法里的分隔符。RAM++ 的中文配对会把同义词串成一条（实测「地板/地面」），
+# 而中文化那一步会把实体图的 label 换成这个复合串，原始英文 `floor` 就没了 ——
+# 整串去比 NON_OBJECT_LABELS 必然漏，于是一整块地面被画成三维物体框。
+_COMPOUND_LABEL_SEPARATORS = re.compile(r"[/、,，|]")
+
+
+def is_non_object_label(*labels: object) -> bool:
+    """这些标签里有没有「非独立物体」的。
+
+    调用方把原始英文与中文显示名一起传进来：同一个词在两条路上可能是
+    英文（`floor`）也可能是中文（`地面`），只看一个必然漏。
+
+    同一个词还可能以**复合写法**出现（`地板/地面`、`墙/墙壁`），所以整串比不中时
+    再按分隔符拆开逐段比。拆分只在这个判断里做：`_normalize_label` 同时是关联
+    键的归一化入口，在那里加拆分会改掉实体的关联键。
+    """
+    for label in labels:
+        if label is None:
+            continue
+        text = str(label)
+        if _normalize_label(text) in NON_OBJECT_LABELS:
+            return True
+        for part in _COMPOUND_LABEL_SEPARATORS.split(text):
+            part = part.strip()
+            if part and _normalize_label(part) in NON_OBJECT_LABELS:
+                return True
+    return False
+
+
+def _resolve_zh(
+    raw_label: object,
+    runtime_zh: object = None,
+    target_zh: object = None,
+) -> str | None:
+    """按优先级解析中文名，解析不出来返回 None（不兜底）。
+
+    优先级（计划书 §6 阶段 A）：
+        明确目标画像中文名 > RAM++ 同次 en->zh 配对 > 静态 TERM_ZH
+        > 原文本身已经是中文
+    只有 `resolve_label_zh` 会加兜底；`association_label` 要能区分
+    「知道中文」和「不知道」，所以本体不许兜底。
+    """
+    if target_zh and str(target_zh).strip():
+        return str(target_zh).strip()
+
+    raw = str(raw_label or "").strip()
+    candidate = str(runtime_zh or "").strip()
+    # 兜底串不是知识，喂回来也不能算命中。
+    if candidate and candidate != LABEL_ZH_FALLBACK and _CHINESE_RE.search(candidate):
+        return candidate
+
+    normalized = _normalize_label(raw)
+    if normalized in TERM_ZH:
+        return TERM_ZH[normalized]
+    matched = _match_known_term(normalized, TERM_ZH)
+    if matched != normalized:
+        return TERM_ZH[matched]
+    if raw and _CHINESE_RE.search(raw):
+        return raw
+    return None
+
+
+def resolve_label_zh(
+    raw_label: object,
+    *,
+    runtime_zh: object = None,
+    target_zh: object = None,
+    fallback: str = LABEL_ZH_FALLBACK,
+) -> str:
+    """唯一的中文显示名入口。**未知英文不许作为最终值漏出去。**
+
+    `runtime_zh` 是 RAM++ 同一次调用返回的中文配对（`tags_zh`），
+    `target_zh` 是目标画像里已经明确的中文名。
+    """
+    return _resolve_zh(raw_label, runtime_zh, target_zh) or fallback
+
+
+def association_label(
+    raw_label: object,
+    *,
+    runtime_zh: object = None,
+    target_zh: object = None,
+) -> str:
+    """实体硬关联用的**规范标签**：知道中文就用中文，不知道就用原文。
+
+    刻意不返回 `LABEL_ZH_FALLBACK`：两个互不相干的未知英文类别若共用
+    「未分类物体」当关联键，会被 `SemanticObjectMap` 并成同一个实体
+    （计划书 §3）。显示名走 `resolve_label_zh`，两条路分开。
+    """
+    resolved = _resolve_zh(raw_label, runtime_zh, target_zh)
+    if resolved:
+        return resolved
+    return _normalize_label(str(raw_label or "")) or "object"
 
 
 def label_zh(label: str) -> str:

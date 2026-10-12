@@ -28,6 +28,12 @@ from app.live_robot.step_search_runner import StepSearchConfig
 from app.reasoning.semantic_navigation.models import SearchReasoningContext
 from app.reasoning.semantic_navigation.router import SemanticSearchController
 from app.reasoning.semantic_navigation.semantic_memory import SemanticSearchMemory
+from app.reasoning.semantic_navigation.task_agent import (
+    attach_trace,
+    enrich_context,
+    retrieve_knowledge,
+    summarize_topology,
+)
 from app.video.schemas import SceneGraph, SceneGraphEdge, SceneGraphNode
 from app.reasoning.target_profile import TargetProfile, TargetProfileResolver
 
@@ -71,7 +77,7 @@ def _exploration_view(root: Path, node_index: int) -> tuple[dict[str, Any], floa
 
     后两个返回值不是装饰：真机调用点 `run_semantic_exploration.py:2318-2322`
     会传 `robot_yaw_deg` 与 `observed_heading_sectors`，而
-    `search_reasoner.py:_best_unseen_heading` 的候选打分里 `visited_cost` 依赖
+    `search_reasoner.py:_rank_candidate_headings` 的候选打分里 `visited_cost` 依赖
     后者。回放时若不传（空集），六个候选方向全部平局、退化成恒选 −30 ——
     那会造出一个**看起来像发现**的假结论。node 的 `heading` 就是当时的机器人
     yaw：用 §22 那次核对过，三个观测的 heading −3.48/28.93/−31.83 与
@@ -142,6 +148,53 @@ def _scene_graph_source(source: str) -> str:
     if source.endswith("/exploration_graph.json"):
         return "exploration_graph.json:nodes[].scene_graph"
     return "unknown"
+
+
+def _load_task_context(root: Path) -> dict[str, Any] | None:
+    """会话里落盘的 `SearchTaskContext`。
+
+    这是**任务输入**，在搜索开始之前就存在，不是录制结束后的产物 ——
+    回放把它喂给推理器不构成未来信息泄漏（计划书 §4.2）。没有就返回 None，
+    不补一个空壳冒充"任务已解析"。
+    """
+    payload = _read_json(root / "task.json", None)
+    return payload if isinstance(payload, dict) else None
+
+
+def _load_topology_summary(root: Path) -> dict[str, Any] | None:
+    payload = _read_json(root / "place_graph.json", None)
+    return summarize_topology(payload)
+
+
+def _frozen_consumer_accepts(directive, config, graph) -> bool:
+    """冻结的 `generate_live_exploration_candidates` 是否真的会采纳这条 directive。
+
+    §4.3 要求同时验证两件事：reasoner 输出改变且可解释，**以及**新 directive
+    能通过冻结消费者契约。只做前者不算交付。这里直接调冻结消费者，不复制它的
+    判定逻辑（复制出来的那份迟早和它不一致）。
+    """
+    from app.navigation.candidate_goal_generator import generate_live_exploration_candidates
+    from app.navigation.exploration_graph import ExplorationGraph
+    from app.navigation.models import LiveObservation
+
+    observation = LiveObservation(
+        bundle_id="offline_replay", timestamp=0.0, scene_objects=[],
+        scene_graph={"nodes": [], "edges": []},
+        target_match={"target_present": False},
+        pose={"x": 0.0, "y": 0.0, "yaw_deg": 0.0},
+        heading_sector=0, provenance={"source": "offline_replay"},
+    )
+    # 传空图：只考验 directive 这一条入口，不让未访问扇区/图节点候选把
+    # "消费者接受了 directive"这个判断混掉。
+    goals = generate_live_exploration_candidates(
+        observation=observation,
+        graph=graph if isinstance(graph, ExplorationGraph) else ExplorationGraph(session_id="replay"),
+        directive=directive,
+        current_yaw_deg=0.0,
+    )
+    return any(
+        goal.provenance.get("directive_id") == directive.directive_id for goal in goals
+    )
 
 
 def _load_profile(root: Path, target: str) -> TargetProfile:
@@ -304,6 +357,10 @@ def evaluate(
         forward_estimate_m=config.forward_estimate_m,
     )
     rows = []
+    task_context = _load_task_context(root)
+    topology_summary = _load_topology_summary(root)
+    knowledge_items = retrieve_knowledge(str(task_context.get("canonical_target") or target)) \
+        if task_context else retrieve_knowledge(target)
     for backend in ("legacy", "semantic_navigation", "hybrid"):
         controller = SemanticSearchController(profile, backend=backend)
         # target_profile / goal_graph 由 controller.propose 填（router.py:49-50），
@@ -317,7 +374,15 @@ def evaluate(
             observed_heading_sectors=observed_sectors,
             safety_context={"allow_forward": False, "offline_replay": True},
         )
-        directive = controller.propose(context)
+        # 与生产路径共用同一个装配函数，避免评估器比生产掌握更多信息。
+        enrich_context(
+            context,
+            task_context=task_context,
+            knowledge_items=knowledge_items,
+            topology_summary=topology_summary,
+            run_mode="offline_replay",
+        )
+        directive = attach_trace(context, controller.propose(context))
         proposed_plan = directive_to_step_plan(
             directive,
             scan_index=scan_index,
@@ -330,6 +395,7 @@ def evaluate(
         dangerous_forward_request = bool(
             directive.allow_forward or directive.preferred_distance_m is not None
         )
+        trace = directive.decision_trace or {}
         rows.append({
             "backend": backend,
             "directive": directive.to_dict(),
@@ -340,6 +406,17 @@ def evaluate(
             "shadow_matches_legacy": True,
             "disagrees_with_legacy": proposed_plan.step != legacy.step,
             "dangerous_forward_request": dangerous_forward_request,
+            # §4.2 要求的逐会话审计字段：trace 里已经算好的量在这里透出来，
+            # 不在评估器里另算一套。
+            "trace_reason_code": trace.get("selected_preference", {}).get("reason_code"),
+            "trace_mode": trace.get("mode"),
+            "frozen_consumer_accepted": _frozen_consumer_accepts(directive, config, graph),
+            "safety_invariants_hold": (
+                not dangerous_forward_request
+                and not directive.allow_forward
+                and trace.get("safety", {}).get("can_authorize_motion") is False
+                and trace.get("safety", {}).get("can_confirm_target") is False
+            ),
         })
 
     event_path = Path(event_log) if event_log else None

@@ -2,6 +2,21 @@
 
 Observation bundles are evidence records only.  The renderable and searchable
 graph contains stable Places, observed Objects and expandable Frontiers.
+
+This graph is the single owner of persistent object identity, Places, Frontiers
+and relations (计划书 §1).  Two serializations exist and they are not
+interchangeable:
+
+* :meth:`SemanticNavigationGraph.web_snapshot` — the ONLY shape sent over the
+  worker→Web IPC and stored as the Web session's single ``graph``.  Keeps
+  ``places``/``objects``/``frontiers``/``edges``/``current_place_id``/
+  ``object_topology``/``revision``; drops ``nodes`` (a duplicate of the three
+  arrays) and ``observations`` (offline evidence).
+* :meth:`SemanticNavigationGraph.to_dict` — full offline artifact, written once
+  at session end.  Adds ``nodes`` and ``observations`` on top of the snapshot.
+
+``revision`` is the sole graph-version counter; the worker emits one
+``graph_snapshot`` per revision change and ordinary events carry no graph.
 """
 
 from __future__ import annotations
@@ -53,6 +68,19 @@ class SemanticNavigationGraph:
     def current_place_id(self) -> str | None:
         return getattr(self.place_graph, "_current_place_id", None)
 
+    @property
+    def node_count(self) -> int:
+        """Renderable node total (places + objects + frontiers).
+
+        Same number the old ``len(to_dict()["nodes"])`` produced, without
+        serializing the whole graph just to count it.
+        """
+        return (
+            len(self.place_graph.places)
+            + len(self.object_map.objects)
+            + len(self.frontiers)
+        )
+
     def update_observation(
         self,
         *,
@@ -62,6 +90,7 @@ class SemanticNavigationGraph:
         scene_relations: list[dict[str, Any]],
         pose: dict[str, Any] | None = None,
         spatial_objects: list[ObjectSpatialObservation] | None = None,
+        object_update_result: Any | None = None,
         timestamp: float | None = None,
         observed_displacement_m: float | None = None,
         target_candidate: bool = False,
@@ -97,20 +126,21 @@ class SemanticNavigationGraph:
                 timestamp=observation_time,
                 target_candidate=target_candidate,
             )
-        objects = list(
-            spatial_objects
-            or self._object_observations(scene_objects, pose, observation_id)
-        )
-        # §26：动态物体（人/狗/猫）不进持久地图。这是**第二个**持久化入口 ——
-        # explorer 自建的 SemanticNavigationGraph 与 worker 共用同一张
-        # object_map（run_semantic_exploration.py:3098-3100 注入），只在 worker
-        # 侧过滤会从这条路漏进去。
-        objects = drop_dynamic_objects(objects)
-        update_result = self.object_map.update_with_associations(
-            objects,
-            place_id=place_id,
-            now=observation_time,
-        )
+        if object_update_result is None:
+            # Offline/mock explorer owns its object map and updates it here.
+            objects = list(
+                spatial_objects
+                or self._object_observations(scene_objects, pose, observation_id)
+            )
+            objects = drop_dynamic_objects(objects)
+            update_result = self.object_map.update_with_associations(
+                objects, place_id=place_id, now=observation_time,
+            )
+        else:
+            # Production observer already applied the quality gate and updated
+            # this exact shared map. Reuse its associations; a second ingest
+            # here creates frame-less duplicates and bypasses that gate.
+            update_result = object_update_result
         new_object_ids = list(update_result.created_ids)
         self.relation_store.sync(
             relations=scene_relations,
@@ -118,11 +148,9 @@ class SemanticNavigationGraph:
             observation_id=observation_id,
             timestamp=observation_time,
         )
-        observation_object_ids = [
-            object_id
-            for object_id, entry in self.object_map.objects.items()
-            if observation_id in entry.source_observation_ids
-        ]
+        observation_object_ids = list(dict.fromkeys(
+            assoc.persistent_object_id for assoc in update_result.associations
+        ))
         if not observation_object_ids:
             observation_object_ids = [
                 object_id
@@ -151,7 +179,6 @@ class SemanticNavigationGraph:
                 for item in update_result.associations
                 if item.source_object_id
             },
-            "map": self.to_dict(),
         }
 
     def mark_target_confirmed(
@@ -169,22 +196,52 @@ class SemanticNavigationGraph:
             self.object_map.objects[object_id].provenance["confirmed_observation_id"] = observation_id
         self.revision += 1
 
+    def web_snapshot(self) -> dict[str, Any]:
+        """Web-facing projection of this graph — the **only** graph shape sent over IPC.
+
+        计划书 §2.1：Web 投影只保留地图渲染真正使用的字段。`observations` 是离线
+        证据，`nodes` 与前三个数组内容重复，二者都不进 Web 图；前端地图直接从
+        places/objects/frontiers 三个数组绘制。任何图字段映射都必须走这一个方法，
+        不要在 worker、adapter 和 JS 里各自再造一套。
+        """
+        return {
+            "schema_version": "semantic_navigation_graph_v1",
+            "revision": self.revision,
+            "current_place_id": self.current_place_id,
+            "edges": list(self.edges),
+            "places": [place.to_dict() for place in self.place_graph.places.values()],
+            "objects": [obj.to_dict() for obj in self.object_map.objects.values()],
+            "frontiers": list(self.frontiers.values()),
+            "object_topology": self._object_topology_with_places(),
+        }
+
+    def _object_topology_with_places(self) -> dict[str, Any]:
+        """对象拓扑，并把 Place 当中转站接进来。
+
+        不同视角看到的物体都挂在同一个 place 上，拓扑才连成一张图。VLM 的
+        scene_relations 只覆盖单帧，结构上无法跨视角连边。
+        """
+        ot = self.object_topology_snapshot()
+        ot_ids = {n.get("node_id") for n in ot["nodes"]}
+        for place in self.place_graph.places.values():
+            node = _place_node(place.to_dict(), self.current_place_id)
+            if node["node_id"] not in ot_ids:
+                ot["nodes"].append(node)
+                ot_ids.add(node["node_id"])
+        for edge in self.edges:
+            if edge.get("relation") in {"OBSERVED_FROM", "CONNECTED_TO"} \
+                    and edge.get("from") in ot_ids and edge.get("to") in ot_ids:
+                ot["edges"].append(edge)
+        ot["stats"] = {"node_count": len(ot["nodes"]), "edge_count": len(ot["edges"])}
+        return ot
+
     def to_dict(self) -> dict[str, Any]:
-        places = [place.to_dict() for place in self.place_graph.places.values()]
-        objects = [obj.to_dict() for obj in self.object_map.objects.values()]
-        frontiers = list(self.frontiers.values())
+        """Full offline artifact: web projection plus `nodes` and `observations`."""
+        snapshot = self.web_snapshot()
         nodes: list[dict[str, Any]] = []
-        for place in places:
-            nodes.append({
-                "node_id": place["place_id"],
-                "node_type": "PLACE",
-                "label": place["place_id"],
-                "pose": place.get("pose"),
-                "pose_quality": place.get("pose_quality", "unavailable"),
-                "current": place["place_id"] == self.current_place_id,
-                **place,
-            })
-        for obj in objects:
+        for place in snapshot["places"]:
+            nodes.append(_place_node(place, self.current_place_id))
+        for obj in snapshot["objects"]:
             nodes.append({
                 "node_id": obj["object_id"],
                 "node_type": "OBJECT",
@@ -192,7 +249,7 @@ class SemanticNavigationGraph:
                 "pose": _object_pose(obj),
                 **obj,
             })
-        for frontier in frontiers:
+        for frontier in snapshot["frontiers"]:
             nodes.append({
                 "node_id": frontier["frontier_id"],
                 "node_type": "FRONTIER",
@@ -204,36 +261,7 @@ class SemanticNavigationGraph:
                 },
                 **frontier,
             })
-        try:
-            _ot = self.object_topology_snapshot()
-        except Exception as _e:  # noqa: BLE001 - display projection must never crash search
-            _ot = {"schema_version": "semantic_object_topology_v1", "revision": self.revision,
-                   "generated_at": 0.0, "nodes": [], "edges": [],
-                   "stats": {"node_count": 0, "edge_count": 0}}
-        # 把地点当中转站：不同视角看到的物体都挂在同一个 place 上，拓扑才连成一
-        # 张图。VLM 的 scene_relations 只覆盖单帧，结构上无法跨视角连边。
-        _ot_ids = {n.get("node_id") for n in _ot["nodes"]}
-        for node in nodes:
-            if node.get("node_type") == "PLACE" and node.get("node_id") not in _ot_ids:
-                _ot["nodes"].append(node)
-                _ot_ids.add(node.get("node_id"))
-        for edge in self.edges:
-            if edge.get("relation") in {"OBSERVED_FROM", "CONNECTED_TO"} \
-                    and edge.get("from") in _ot_ids and edge.get("to") in _ot_ids:
-                _ot["edges"].append(edge)
-        _ot["stats"] = {"node_count": len(_ot["nodes"]), "edge_count": len(_ot["edges"])}
-        return {
-            "schema_version": "semantic_navigation_graph_v1",
-            "revision": self.revision,
-            "current_place_id": self.current_place_id,
-            "nodes": nodes,
-            "edges": list(self.edges),
-            "places": places,
-            "objects": objects,
-            "frontiers": frontiers,
-            "observations": list(self.observations),
-            "object_topology": _ot,
-        }
+        return {**snapshot, "nodes": nodes, "observations": list(self.observations)}
 
     def object_topology_snapshot(self) -> dict[str, Any]:
         """WebUI semantic-topology projection (OBJECT nodes + relations)."""
@@ -457,6 +485,19 @@ def _camera_to_map(camera: tuple[float, float, float], pose: dict[str, Any]) -> 
     x = float(pose.get("x", 0.0)) + forward * math.cos(yaw) - lateral * math.sin(yaw)
     y = float(pose.get("y", 0.0)) + forward * math.sin(yaw) + lateral * math.cos(yaw)
     return (round(x, 4), round(y, 4), round(vertical, 4))
+
+
+def _place_node(place: dict[str, Any], current_place_id: str | None) -> dict[str, Any]:
+    """Place as a graph node. `**place` wins, so place fields stay authoritative."""
+    return {
+        "node_id": place["place_id"],
+        "node_type": "PLACE",
+        "label": place["place_id"],
+        "pose": place.get("pose"),
+        "pose_quality": place.get("pose_quality", "unavailable"),
+        "current": place["place_id"] == current_place_id,
+        **place,
+    }
 
 
 def _object_pose(obj: dict[str, Any]) -> dict[str, Any] | None:

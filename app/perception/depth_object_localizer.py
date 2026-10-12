@@ -13,6 +13,7 @@ from typing import Any
 
 import numpy as np
 
+from app.detectors.vocabulary import association_label, category_for_label, resolve_label_zh
 from app.perception.rgbd_source import RGBDFrame
 
 SPATIAL_QUALITY_RGB_ONLY = "RGB_ONLY"
@@ -37,10 +38,37 @@ def decode_mask_runs(
     return mask
 
 
+def object_labels(item: dict[str, Any]) -> tuple[str, str]:
+    """从一个 scene object 取 `(关联用规范标签, 中文显示名)`。
+
+    两个字段各有各的用途，**不能合成一个**：
+
+    * 关联标签喂 `SemanticObjectMap` 的硬门（`entry.label != obs.label`），
+      必须是稳定、可区分的规范值。未知英文保持原文 —— 若与显示名共用
+      「未分类物体」这类兜底词，bin / barrel / stool 会被并成同一个实体
+      （计划书 §3）。
+    * 显示名是 WebUI 的中文契约，未知英文一律兜底成中文，不许把英文漏上屏。
+    """
+    raw = item.get("label") or item.get("name") or "object"
+    zh = item.get("label_zh")
+    return (
+        association_label(raw, runtime_zh=zh),
+        resolve_label_zh(raw, runtime_zh=zh),
+    )
+
+
+def object_category(item: dict[str, Any]) -> str:
+    """取物体类别；检测器已经算好就用它的，否则按标签查静态表。"""
+    raw = item.get("label") or item.get("name") or "object"
+    return str(item.get("category") or category_for_label(str(raw)))
+
+
 @dataclass
 class ObjectSpatialObservation:
     object_id: str | None
     label: str
+    label_zh: str = ""
+    category: str = ""
     bbox: list[float] | None = None
     depth_m: float | None = None
     camera_xyz: tuple[float, float, float] | None = None
@@ -59,6 +87,8 @@ class ObjectSpatialObservation:
         return {
             "object_id": self.object_id,
             "label": self.label,
+            "label_zh": self.label_zh,
+            "category": self.category,
             "bbox": self.bbox,
             "depth_m": self.depth_m,
             "camera_xyz": list(self.camera_xyz) if self.camera_xyz else None,
@@ -236,14 +266,12 @@ class DepthObjectLocalizer:
         v = (bbox_px[1] + bbox_px[3]) / 2.0
         xyz = self._camera_xyz(u, v, depth, frame)
         bearing, elevation = self._angles(xyz)
+        label, label_zh = object_labels(item)
         return ObjectSpatialObservation(
             object_id=_source_object_id(item),
-            label=str(
-                item.get("label_zh")
-                or item.get("label")
-                or item.get("name")
-                or "object"
-            ),
+            label=label,
+            label_zh=label_zh,
+            category=object_category(item),
             bbox=list(bbox),
             depth_m=round(depth, 4),
             camera_xyz=(round(xyz[0], 4), round(xyz[1], 4), round(xyz[2], 4)),
@@ -276,14 +304,12 @@ class DepthObjectLocalizer:
         depth = float(np.median(points[:, 2]))
         bearing, elevation = self._angles(center)
         bbox = item.get("bbox_2d") or item.get("bbox")
+        label, label_zh = object_labels(item)
         return ObjectSpatialObservation(
             object_id=_source_object_id(item),
-            label=str(
-                item.get("label_zh")
-                or item.get("label")
-                or item.get("name")
-                or "object"
-            ),
+            label=label,
+            label_zh=label_zh,
+            category=object_category(item),
             bbox=list(bbox) if isinstance(bbox, list) else None,
             depth_m=round(depth, 4),
             camera_xyz=(round(center[0], 4), round(center[1], 4), round(center[2], 4)),
@@ -375,11 +401,12 @@ class DepthObjectLocalizer:
         )
 
     def _rgb_only(self, item: dict[str, Any], frame: RGBDFrame) -> ObjectSpatialObservation:
+        label, label_zh = object_labels(item)
         return ObjectSpatialObservation(
             object_id=_source_object_id(item),
-            label=str(
-                item.get("label_zh") or item.get("label") or item.get("name") or "object"
-            ),
+            label=label,
+            label_zh=label_zh,
+            category=object_category(item),
             bbox=list(item.get("bbox_2d") or item.get("bbox") or []),
             spatial_quality=SPATIAL_QUALITY_RGB_ONLY,
             confidence=float(item.get("confidence", item.get("score", 0.5))),

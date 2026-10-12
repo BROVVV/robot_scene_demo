@@ -205,3 +205,92 @@ def test_mask_produces_3d_box_center_and_size(tmp_path: Path):
     assert obs.box_size_camera[1] == pytest.approx(0.76, abs=0.08)
     # 深度均匀 → 高度接近 0。
     assert obs.box_size_camera[2] == pytest.approx(0.0, abs=0.1)
+
+
+# --------------------------------------------------------------------------- #
+# §7.2 数据链路契约：label / label_zh / category 三段不丢
+#
+# `label` 是实体关联键，`label_zh` 是显示名，两者可以不同（未知英文的显示名兜底
+# 成「未分类物体」而关联键保留原文）。整改前 localizer 只透传 label，中文名在
+# 这一段被丢掉，于是 WebUI 只能画英文。
+# --------------------------------------------------------------------------- #
+def test_chinese_display_name_is_forwarded(tmp_path: Path):
+    depth_mm = np.full((64, 64), 0, dtype=np.uint16)
+    depth_mm[20:44, 20:44] = 2000
+    frame = _frame(tmp_path, depth_mm)
+    out = DepthObjectLocalizer().localize(
+        [{"label": "speaker", "label_zh": "音箱", "category": "electronics",
+          "bbox_2d": [0.3, 0.3, 0.7, 0.7], "confidence": 0.9}],
+        frame,
+    )
+    # label 是**关联键**：知道中文时就用中文（两只 speaker 才并得成一个实体），
+    # label_zh 是显示名。知道名字的物体上两者相等；未知英文才分叉。
+    assert out[0].label == "音箱"
+    assert out[0].label_zh == "音箱"
+    assert out[0].category == "electronics"
+    assert out[0].to_dict()["label_zh"] == "音箱"
+    assert out[0].to_dict()["category"] == "electronics"
+
+
+def test_unknown_english_keeps_the_original_as_the_association_key(tmp_path: Path):
+    """拿不到中文时：关联键保留原文，显示名兜底 —— 两条路不许合并。
+
+    若这里把 label 也写成「未分类物体」，两个互不相干的未知类别会在
+    `SemanticObjectMap` 里并成同一个实体（计划书 §3）。
+    """
+    depth_mm = np.full((64, 64), 0, dtype=np.uint16)
+    depth_mm[20:44, 20:44] = 2000
+    frame = _frame(tmp_path, depth_mm)
+    out = DepthObjectLocalizer().localize(
+        [{"label": "gizmo", "bbox_2d": [0.3, 0.3, 0.7, 0.7]}], frame)
+    assert out[0].label == "gizmo"
+    assert out[0].label_zh == "未分类物体"
+
+
+def test_display_name_is_resolved_when_absent(tmp_path: Path):
+    """上游只给英文 label 时，localizer 这一层就把它解析成中文。"""
+    depth_mm = np.full((64, 64), 0, dtype=np.uint16)
+    depth_mm[20:44, 20:44] = 2000
+    frame = _frame(tmp_path, depth_mm)
+    out = DepthObjectLocalizer().localize(
+        [{"label": "barrel", "bbox_2d": [0.3, 0.3, 0.7, 0.7]}], frame)
+    assert out[0].label_zh == "桶"
+
+
+def test_category_falls_back_to_the_vocabulary(tmp_path: Path):
+    depth_mm = np.full((64, 64), 0, dtype=np.uint16)
+    depth_mm[20:44, 20:44] = 2000
+    frame = _frame(tmp_path, depth_mm)
+    out = DepthObjectLocalizer().localize(
+        [{"label": "chair", "bbox_2d": [0.3, 0.3, 0.7, 0.7]}], frame)
+    assert out[0].category == "furniture"
+
+
+def test_three_fields_survive_the_mask_path(tmp_path: Path):
+    """mask 分支和 bbox 分支必须走同一套取值，不能有一条漏掉。"""
+    depth_mm = np.full((64, 64), 0, dtype=np.uint16)
+    depth_mm[20:44, 20:44] = 2000
+    frame = _frame(tmp_path, depth_mm)
+    mask = np.zeros((64, 64), dtype=np.uint8)
+    mask[20:44, 20:44] = 1
+    out = DepthObjectLocalizer().localize(
+        [{"label": "speaker", "label_zh": "音箱", "category": "electronics",
+          "mask": mask, "bbox_2d": [0.3, 0.3, 0.7, 0.7], "confidence": 0.9}],
+        frame,
+    )
+    assert (out[0].label, out[0].label_zh, out[0].category) == (
+        "音箱", "音箱", "electronics")
+
+
+def test_three_fields_survive_the_rgb_only_path():
+    frame = RGBDFrame(
+        frame_id="f_rgb2", timestamp=0.0, color_ref="", depth_ref="",
+        width=64, height=64, fx=50.0, fy=50.0, cx=32.0, cy=32.0,
+    )
+    out = DepthObjectLocalizer().localize(
+        [{"label": "bin", "label_zh": "垃圾桶", "category": "container",
+          "bbox_2d": [0.3, 0.3, 0.7, 0.7]}],
+        frame,
+    )
+    assert (out[0].label, out[0].label_zh, out[0].category) == (
+        "垃圾桶", "垃圾桶", "container")

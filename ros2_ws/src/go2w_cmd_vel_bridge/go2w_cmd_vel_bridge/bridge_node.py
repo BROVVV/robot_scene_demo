@@ -23,6 +23,10 @@ class CmdVelBridge(Node):
         self.declare_parameter("maximum_linear_acceleration_mps2", 0.20)
         self.declare_parameter("maximum_angular_acceleration_radps2", 0.40)
         self.declare_parameter("watchdog_sec", 0.30)
+        # 操作员在场的转向放行（2026-10-10 用户批准）。**刻意做成启动参数而不是
+        # 话题订阅**：话题任何进程都能发，参数只有启动这条命令的人能给，于是
+        # "谁开的谁负责"是结构性成立的，不靠约定。默认 False ⇒ 不传时行为不变。
+        self.declare_parameter("operator_supervised_rotation", False)
         self._limits = Limits(
             maximum_linear_x=float(self.get_parameter("maximum_linear_x_mps").value),
             maximum_angular_z=float(self.get_parameter("maximum_angular_z_radps").value),
@@ -72,6 +76,9 @@ class CmdVelBridge(Node):
                 Bool, topic, lambda message, attribute=attribute: setattr(self, attribute, bool(message.data)), 10
             )
         self._execution_enabled = bool(self.get_parameter("execution_enabled").value)
+        self._operator_supervised_rotation = bool(
+            self.get_parameter("operator_supervised_rotation").value
+        )
         self._client = (
             ActionClient(self, MotionCommand, str(self.get_parameter("action_name").value))
             if self._execution_enabled
@@ -101,6 +108,7 @@ class CmdVelBridge(Node):
                 lease_alive=self._lease_alive,
                 lidar_fresh=self._lidar_fresh,
                 rotation_clearance_valid=self._rotation_clearance_valid,
+                operator_supervised_rotation=self._operator_supervised_rotation,
                 navigation_localization_fresh=self._navigation_localization_fresh,
                 robot_error_zero=self._robot_error_zero,
                 emergency_stop=self._emergency,
